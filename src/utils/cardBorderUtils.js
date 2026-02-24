@@ -1,3 +1,5 @@
+import { getTypeTextClass } from '../logic/cards/cardTypeStyles.js';
+
 /**
  * Card Border Rarity System Utilities
  * Generates CSS class names based on card type and rarity
@@ -83,7 +85,8 @@ export const getShipBorderClasses = (rarity = 'Common', isSelected = false, incl
 
 /**
  * Get inner border colors based on card type (for image/description borders)
- * These are the Tailwind classes used inside the card
+ * These are the Tailwind classes used inside the card.
+ * typeText delegates to getTypeTextClass to avoid duplicating the type→color mapping.
  * @param {string} type - Card type
  * @returns {Object} Object with imageBorder, descBorder, footerBorder, typeText classes
  */
@@ -94,21 +97,21 @@ export const getTypeInnerColors = (type) => {
         imageBorder: 'border-red-400/50',
         descBorder: 'border-red-800/70',
         footerBorder: 'border-red-800/70',
-        typeText: 'text-red-400'
+        typeText: getTypeTextClass(type)
       };
     case 'Tactic':
       return {
         imageBorder: 'border-cyan-400/50',
         descBorder: 'border-cyan-800/70',
         footerBorder: 'border-cyan-800/70',
-        typeText: 'text-cyan-400'
+        typeText: getTypeTextClass(type)
       };
     case 'Support':
       return {
         imageBorder: 'border-emerald-400/50',
         descBorder: 'border-emerald-800/70',
         footerBorder: 'border-emerald-800/70',
-        typeText: 'text-emerald-400'
+        typeText: getTypeTextClass(type)
       };
     case 'Upgrade':
     default:
@@ -116,7 +119,7 @@ export const getTypeInnerColors = (type) => {
         imageBorder: 'border-purple-400/50',
         descBorder: 'border-purple-800/70',
         footerBorder: 'border-purple-800/70',
-        typeText: 'text-purple-400'
+        typeText: getTypeTextClass(type)
       };
   }
 };

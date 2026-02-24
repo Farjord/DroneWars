@@ -100,6 +100,18 @@ function applyPassiveAbilitiesToInitializedDrones(dronesOnBoard) {
 }
 
 /**
+ * Create a deep-cloned set of default ship sections (bridge, powerCell, droneControlHub)
+ * @returns {Object} Ship sections object with deep-cloned component data
+ */
+function createDefaultShipSections() {
+  return {
+    bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge') ?? {})),
+    powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell') ?? {})),
+    droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub') ?? {}))
+  };
+}
+
+/**
  * Initialize a test game with custom configuration
  * @param {Object} config - Test game configuration
  * @param {Object} gameStateManager - GameStateManager instance
@@ -147,20 +159,8 @@ export function initializeTestGame(config, gameStateManager) {
     } else {
       // Round 2+: Calculate from ship stats
       // Create temporary player states with just ship sections for stats calculation
-      const tempPlayer1 = {
-        shipSections: {
-          bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge') ?? {})),
-          powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell') ?? {})),
-          droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub') ?? {}))
-        }
-      };
-      const tempPlayer2 = {
-        shipSections: {
-          bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge') ?? {})),
-          powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell') ?? {})),
-          droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub') ?? {}))
-        }
-      };
+      const tempPlayer1 = { shipSections: createDefaultShipSections() };
+      const tempPlayer2 = { shipSections: createDefaultShipSections() };
 
       const player1EffectiveStats = calculateEffectiveShipStats(tempPlayer1, placedSections);
       const player2EffectiveStats = calculateEffectiveShipStats(tempPlayer2, opponentPlacedSections);
@@ -293,11 +293,7 @@ export function initializeTestGame(config, gameStateManager) {
 function createPlayerStateFromConfig(playerConfig, playerName, calculatedResources = {}) {
   // Create deep copies of ship sections to avoid mutations
   // shipComponentCollection contains all ship component definitions
-  const shipSections = {
-    bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge') ?? {})),
-    powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell') ?? {})),
-    droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub') ?? {}))
-  };
+  const shipSections = createDefaultShipSections();
 
   // Build deck from deckComposition if provided, otherwise use provided deck array
   let deck = playerConfig.deck || [];

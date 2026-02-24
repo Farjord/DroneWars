@@ -139,64 +139,40 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
     player2: { drawnCards: [] }
   };
 
-  // Process player1 - calculate hand limit using effective ship stats
-  let player1HandLimit = 5; // Default fallback
-  if (gameDataService && gameState.placedSections) {
-    try {
-      const player1EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-      player1HandLimit = player1EffectiveStats.totals.handLimit;
-      debugLog('CARDS', `📊 Player 1 effective hand limit: ${player1HandLimit} (with placed sections: ${gameState.placedSections.join(', ')})`);
-    } catch (error) {
-      debugLog('CARDS', '⚠️ Failed to calculate Player 1 effective stats, using default hand limit:', error);
-    }
-  } else {
-    debugLog('CARDS', '⚠️ GameDataService not available, using default hand limit for Player 1');
-  }
+  // Process both players with shared logic
+  const playerConfigs = [
+    { playerId: 'player1', label: 'Player 1', sections: gameState.placedSections },
+    { playerId: 'player2', label: 'Player 2', sections: gameState.opponentPlacedSections }
+  ];
 
-  const player1CardsToDraw = Math.max(0, player1HandLimit - gameState.player1.hand.length);
-
-  if (player1CardsToDraw > 0) {
-    const validation1 = validateDrawOperation(gameState.player1, player1CardsToDraw);
-    if (validation1.success) {
-      const oldHandSize = gameState.player1.hand.length;
-      updatedGameState.player1 = drawCardsForPlayer(gameState.player1, player1CardsToDraw, gameState, 'player1');
-      // Extract the newly drawn cards
-      drawResults.player1.drawnCards = updatedGameState.player1.hand.slice(oldHandSize);
+  for (const { playerId, label, sections } of playerConfigs) {
+    let handLimit = 5; // Default fallback
+    if (gameDataService && sections) {
+      try {
+        const effectiveStats = gameDataService.getEffectiveShipStats(gameState[playerId], sections);
+        handLimit = effectiveStats.totals.handLimit;
+        debugLog('CARDS', `📊 ${label} effective hand limit: ${handLimit} (with placed sections: ${sections.join(', ')})`);
+      } catch (error) {
+        debugLog('CARDS', `⚠️ Failed to calculate ${label} effective stats, using default hand limit:`, error);
+      }
     } else {
-      debugLog('CARDS', `⚠️ Player 1 draw validation failed: ${validation1.message}`);
+      debugLog('CARDS', `⚠️ GameDataService not available, using default hand limit for ${label}`);
     }
-  } else {
-    debugLog('CARDS', `🃏 Player 1 already at hand limit (${gameState.player1.hand.length}/${player1HandLimit})`);
-  }
 
-  // Process player2 - calculate hand limit using effective ship stats
-  let player2HandLimit = 5; // Default fallback
-  if (gameDataService && gameState.opponentPlacedSections) {
-    try {
-      const player2EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-      player2HandLimit = player2EffectiveStats.totals.handLimit;
-      debugLog('CARDS', `📊 Player 2 effective hand limit: ${player2HandLimit} (with placed sections: ${gameState.opponentPlacedSections.join(', ')})`);
-    } catch (error) {
-      debugLog('CARDS', '⚠️ Failed to calculate Player 2 effective stats, using default hand limit:', error);
-    }
-  } else {
-    debugLog('CARDS', '⚠️ GameDataService not available, using default hand limit for Player 2');
-  }
+    const cardsToDraw = Math.max(0, handLimit - gameState[playerId].hand.length);
 
-  const player2CardsToDraw = Math.max(0, player2HandLimit - gameState.player2.hand.length);
-
-  if (player2CardsToDraw > 0) {
-    const validation2 = validateDrawOperation(gameState.player2, player2CardsToDraw);
-    if (validation2.success) {
-      const oldHandSize = gameState.player2.hand.length;
-      updatedGameState.player2 = drawCardsForPlayer(gameState.player2, player2CardsToDraw, gameState, 'player2');
-      // Extract the newly drawn cards
-      drawResults.player2.drawnCards = updatedGameState.player2.hand.slice(oldHandSize);
+    if (cardsToDraw > 0) {
+      const validation = validateDrawOperation(gameState[playerId], cardsToDraw);
+      if (validation.success) {
+        const oldHandSize = gameState[playerId].hand.length;
+        updatedGameState[playerId] = drawCardsForPlayer(gameState[playerId], cardsToDraw, gameState, playerId);
+        drawResults[playerId].drawnCards = updatedGameState[playerId].hand.slice(oldHandSize);
+      } else {
+        debugLog('CARDS', `⚠️ ${label} draw validation failed: ${validation.message}`);
+      }
     } else {
-      debugLog('CARDS', `⚠️ Player 2 draw validation failed: ${validation2.message}`);
+      debugLog('CARDS', `🃏 ${label} already at hand limit (${gameState[playerId].hand.length}/${handLimit})`);
     }
-  } else {
-    debugLog('CARDS', `🃏 Player 2 already at hand limit (${gameState.player2.hand.length}/${player2HandLimit})`);
   }
 
   debugLog('CARDS', '✅ Automatic draw phase completed');

@@ -11,6 +11,32 @@ import { starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.
 import { convertComponentsToSectionSlots } from '../logic/migration/saveGameMigrations.js';
 import { debugLog } from '../utils/debugLogger.js';
 
+/** Template for an empty drone slot entry */
+const EMPTY_DRONE_SLOT = { slotDamaged: false, assignedDrone: null };
+
+/** Template for an empty section slot entry */
+const EMPTY_SECTION_SLOT = { componentId: null, damageDealt: 0 };
+
+/**
+ * Create a fresh set of 5 empty drone slots
+ * @returns {Array<Object>} Array of 5 empty drone slot objects
+ */
+function createEmptyDroneSlots() {
+  return Array.from({ length: 5 }, (_, i) => ({ slotIndex: i, ...EMPTY_DRONE_SLOT }));
+}
+
+/**
+ * Create fresh empty section slots for all 3 lanes
+ * @returns {Object} Section slots with empty entries for l, m, r
+ */
+function createEmptySectionSlots() {
+  return {
+    l: { ...EMPTY_SECTION_SLOT },
+    m: { ...EMPTY_SECTION_SLOT },
+    r: { ...EMPTY_SECTION_SLOT }
+  };
+}
+
 class ShipSlotManager {
   constructor(gameStateManager) {
     this.gsm = gameStateManager;
@@ -197,22 +223,11 @@ class ShipSlotManager {
       status: 'empty',
       isImmutable: false,
       decklist: [],
-      // New format: empty drone slots
-      droneSlots: [
-        { slotIndex: 0, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
-      ],
+      droneSlots: createEmptyDroneSlots(),
       // Legacy format for backward compatibility
       drones: [],
       shipComponents: {},
-      sectionSlots: {
-        l: { componentId: null, damageDealt: 0 },
-        m: { componentId: null, damageDealt: 0 },
-        r: { componentId: null, damageDealt: 0 }
-      }
+      sectionSlots: createEmptySectionSlots()
     };
 
     // If this was the default slot, reset to 0

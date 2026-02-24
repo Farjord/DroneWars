@@ -66,17 +66,6 @@ export const getPhaseDisplayName = (phase) => {
 };
 
 /**
- * Shuffle an array using Fisher-Yates algorithm
- * @param {Array} array - Array to shuffle
- * @param {Object} rng - Optional seeded RNG (uses SeededRandom if not provided)
- * @returns {Array} New shuffled array
- */
-export const shuffleArray = (array, rng = null) => {
-  const seededRng = rng || new SeededRandom(Date.now());
-  return seededRng.shuffle(array);
-};
-
-/**
  * Clamp a number between min and max values
  * @param {number} value - Value to clamp
  * @param {number} min - Minimum value

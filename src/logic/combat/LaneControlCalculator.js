@@ -73,15 +73,7 @@ export class LaneControlCalculator {
    * @returns {number} Number of lanes controlled (0-3)
    */
   static countLanesControlled(playerId, player1State, player2State) {
-    const laneControl = this.calculateLaneControl(player1State, player2State);
-    let count = 0;
-
-    for (const lane of ['lane1', 'lane2', 'lane3']) {
-      if (laneControl[lane] === playerId) {
-        count++;
-      }
-    }
-
+    const count = this.getLanesControlled(playerId, player1State, player2State).length;
     debugLog('LANE_CONTROL', `${playerId} controls ${count} lanes`);
     return count;
   }

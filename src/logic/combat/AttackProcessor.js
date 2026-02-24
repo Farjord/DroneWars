@@ -507,9 +507,11 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Create animation events array
     const animationEvents = [];
 
+    // Cache the target lane lookup (used by multiple animation events below)
+    const finalTargetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
+
     // Always start with attack animation if there's an attacker
     if (attacker && attacker.id && !isAbilityOrCard) {
-      const targetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
       const attackValue = effectiveAttacker ? effectiveAttacker.attack : 1;
       animationEvents.push(createDroneAttackAnimation(
         attacker,
@@ -517,7 +519,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         attackerLane,
         finalTarget,
         defendingPlayerId,
-        targetLane,
+        finalTargetLane,
         finalTargetType,
         attackValue,
         sourceCardInstanceId
@@ -526,11 +528,10 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
 
     // Add shield damage event if shields absorbed damage
     if (shieldDamage > 0) {
-      const targetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
       animationEvents.push(createShieldDamageAnimation(
         finalTarget,
         defendingPlayerId,
-        targetLane,
+        finalTargetLane,
         finalTargetType,
         shieldDamage,
         sourceCardInstanceId
@@ -540,22 +541,20 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Handle destruction vs survival
     if (wasDestroyed) {
       // Target was destroyed
-      const targetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
       animationEvents.push(createDestructionAnimation(
         finalTarget,
         defendingPlayerId,
-        targetLane,
+        finalTargetLane,
         finalTargetType,
         sourceCardInstanceId
       ));
     } else {
       // Target survived - add hull damage event if hull was hit
       if (hullDamage > 0) {
-        const targetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
         animationEvents.push(createHullDamageAnimation(
           finalTarget,
           defendingPlayerId,
-          targetLane,
+          finalTargetLane,
           finalTargetType,
           hullDamage,
           sourceCardInstanceId

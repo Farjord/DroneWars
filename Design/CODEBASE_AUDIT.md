@@ -324,10 +324,10 @@
 - [FIXED] [DEAD] cardDrawUtils.js — `calculateHandLimit` exported but never imported.
 - [FIXED] [DEAD] csvExport.js — `navigator.msSaveBlob` IE10 compat code is dead in 2026.
 - [DEAD] seededRandom.js — orphaned JSDoc block for deleted `forCardShuffle` factory.
-- [DUP] cardDrawUtils.js — player 1/player 2 processing blocks are near-identical copy-paste (~30 lines each).
+- [FIXED] [DUP] cardDrawUtils.js — player 1/player 2 processing blocks are near-identical copy-paste (~30 lines each).
 - [DUP] csvExport.js — `convertDecisionsToCsv` and `convertFullHistoryToCsv` share identical header/row logic.
-- [DUP] cardBorderUtils.js ↔ cardTypeStyles.js — duplicate type color mappings.
-- [DUP] gameUtils.js — `shuffleArray` trivially wraps `SeededRandom.shuffle`.
+- [FIXED] [DUP] cardBorderUtils.js ↔ cardTypeStyles.js — duplicate type color mappings.
+- [FIXED] [DUP] gameUtils.js — `shuffleArray` trivially wraps `SeededRandom.shuffle`.
 - [SIZE] glossaryAnalyzer.js (834), uiTargetingHelpers.js (531), deckExportUtils.js (495), deckFilterUtils.js (487).
 - [SMELL] chartUtils.jsx — magic numbers throughout.
 - [SMELL] mapGenerator.js — magic numbers (`5`, `10`).
@@ -423,7 +423,7 @@
 - **[FIXED] [EDGE] TargetLockAbilityProcessor.js** — spends energy and ends turn even when target drone not found.
 - **[FIXED] [LOG] 11x raw `console.warn`** across 5 ability files.
 - **[DUP] CardActionStrategy.js** — `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x.
-- **[DUP] AbilityResolver.js** — `resolveShipRecallEffect` duplicates `RecallAbilityProcessor.process`. Dead code path.
+- **[FIXED] [DUP] AbilityResolver.js** — `resolveShipRecallEffect` duplicates `RecallAbilityProcessor.process`. Dead code path.
 
 #### B3: src/logic/combat/ + animations (11 files)
 
@@ -437,9 +437,9 @@
 **Findings:**
 
 - **[SIZE] AttackProcessor.js (809)** — `resolveAttack` is ~524 lines. God function with 6x duplicate "find drone in lanes" pattern.
-- **[DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
+- **[FIXED] [DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
 - **[FIXED] [DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
-- **[DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
+- **[FIXED] [DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
 - **[IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`.
 
 #### B4: src/logic/effects/ (32 files)
@@ -569,7 +569,7 @@
 - **[FIXED] [LOG] LootGenerator.js** — 4x `console.warn`.
 - **[FIXED] [LOG] PathValidator.js** — 2x raw `console.log`.
 - **[DUP] A* search** implemented 3x across PathValidator and EscapeRouteCalculator. Extract shared utility.
-- **[DUP] ExtractionController.js:358** — own LCG RNG implementation duplicating `SeededRandom`.
+- **[FIXED] [DUP] ExtractionController.js:358** — own LCG RNG implementation duplicating `SeededRandom`.
 - **[FIXED] [DUP] saveGameFactory.js** — 6x `JSON.parse(JSON.stringify(...))`. Migrated to `structuredClone`.
 - **[TODO] SinglePlayerCombatInitializer.js:672** — "Load from ship slot if upgrades supported" — unresolved.
 - **[TODO] EncounterController.js:405** — "Track looted POIs in currentRunState" — unresolved.
@@ -606,7 +606,7 @@
 - **[SIZE] testGameInitializer.js** — 579 lines (400+ threshold). Three large functions; `createPlayerStateFromConfig` (127 lines) could extract.
 - **[FIXED] [LOG] testGameInitializer.js:114,280,349** — 3 raw `console.error/warn` calls despite importing `debugLog`.
 - **[LOGIC] testGameInitializer.js:318** — `sort(() => 0.5 - Math.random())` is a biased shuffle. Fine for test init but not uniform.
-- **[DUP] testGameInitializer.js:150-163,296-300** — Ship section initialization (`JSON.parse(JSON.stringify(shipComponentCollection.find(...)))`) duplicated between two functions.
+- **[FIXED] [DUP] testGameInitializer.js:150-163,296-300** — Ship section initialization (`JSON.parse(JSON.stringify(shipComponentCollection.find(...)))`) duplicated between two functions.
 - **[EDGE] testGameInitializer.js:152-154,297-299** — `shipComponentCollection.find(c => c.key === 'bridge')` could return `undefined`. `JSON.stringify(undefined)` would throw.
 
 #### C2: src/managers/ (24 files, 48 issues)
@@ -684,7 +684,7 @@
 **ShipSlotManager.js (577 lines, 3 issues):**
 - **[SIZE]** — 577 lines (400+ threshold). Repair operations and instance operations are two sub-concerns.
 - **[LOGIC] :362** — **CRITICAL BUG:** Fallback `ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10` uses `10`, but the constant is `200`. Line 425 correctly uses `|| 200`. Inconsistent fallback would silently use wrong repair cost if constant removed.
-- **[DUP] :194-216** — Empty slot template in `deleteShipSlotDeck` is a structural constant that likely duplicates `saveGameSchema.js` shape.
+- **[FIXED] [DUP] :194-216** — Empty slot template in `deleteShipSlotDeck` is a structural constant that likely duplicates `saveGameSchema.js` shape.
 
 **RunLifecycleManager.js (494 lines, 3 issues):**
 - **[SIZE]** — 494 lines. `startRun` (lines 34-255, ~220 lines) and `endRun` (lines 261-491, ~230 lines) are both large.
@@ -699,7 +699,7 @@
 - **[TODO] :336** — `broadcastPhaseUpdate` is a no-op stub. Not tracked in FUTURE_IMPROVEMENTS.md.
 
 **AIPhaseProcessor.js (406 lines, 2 issues):**
-- **[DUP] :209,259** — `const sequentialPhases = ['deployment', 'action']` duplicated twice, plus 3 more times in other files.
+- **[FIXED] [DUP] :209,259** — `const sequentialPhases = ['deployment', 'action']` duplicated twice, plus 3 more times in other files.
 - **[SIZE]** — 406 lines (400+ threshold). Clean delegation-focused design.
 
 **SoundManager.js (378 lines, 2 issues):**
@@ -744,7 +744,7 @@
 
 - **[FIXED] [LOG] P2PManager.js** — 21 raw `console.error`/`console.warn` calls throughout (lines 65, 126, 240, 328, 339, 352, 355, 368, 373, 409, 421, 426, 439, 450, 455, 468, 480, 485, 507, 516). Worst logging violation in the codebase.
 - **[SIZE]** — 593 lines (400+ threshold). Three sub-concerns: connection lifecycle (~170 lines), message sending (~150 lines), action handler setup (~85 lines).
-- **[DUP]** — Guard pattern `if (!this.isConnected || !this.currentPeerId) { console.warn(...); return; }` copy-pasted in 5 methods. Extract `_requireConnection(context)`.
+- **[FIXED] [DUP]** — Guard pattern `if (!this.isConnected || !this.currentPeerId) { console.warn(...); return; }` copy-pasted in 5 methods. Extract `_requireConnection(context)`.
 - **[FIXED] [DEAD] :515-526** — `syncGameState()` is deprecated with `console.warn`. Remove or fix callers.
 - **[TEST]** — No test file. 593 lines of WebRTC lifecycle with no coverage is a significant gap.
 

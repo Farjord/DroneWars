@@ -332,13 +332,23 @@ class P2PManager {
   }
 
   /**
+   * Guard: check that a peer connection exists, log and return false if not
+   * @param {string} context - Description for the log message
+   * @returns {boolean} True if connected, false otherwise
+   */
+  _requireConnection(context) {
+    if (!this.isConnected || !this.currentPeerId) {
+      debugLog('MULTIPLAYER', `⚠️ ${context} - no connection available`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Send data to peer (generic method)
    */
   sendData(data) {
-    if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', '⚠️ Attempted to send data but no connection available');
-      return;
-    }
+    if (!this._requireConnection('Attempted to send data')) return;
 
     try {
       // Route to appropriate action based on data type
@@ -369,10 +379,7 @@ class P2PManager {
       return;
     }
 
-    if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', '⚠️ Cannot broadcast state - no connection available');
-      return;
-    }
+    if (!this._requireConnection('Cannot broadcast state')) return;
 
     try {
       debugLog('MULTIPLAYER', '[P2P HOST] Broadcasting state - checking player2 hand:', {
@@ -422,10 +429,7 @@ class P2PManager {
       return;
     }
 
-    if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', '⚠️ Cannot send action - no connection to host');
-      return;
-    }
+    if (!this._requireConnection('Cannot send action')) return;
 
     try {
       const actionData = {
@@ -451,10 +455,7 @@ class P2PManager {
       return;
     }
 
-    if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', '⚠️ Cannot request sync - no connection to host');
-      return;
-    }
+    if (!this._requireConnection('Cannot request sync')) return;
 
     try {
       const requestData = {
@@ -481,10 +482,7 @@ class P2PManager {
       return;
     }
 
-    if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', '⚠️ Cannot send sync response - no connection available');
-      return;
-    }
+    if (!this._requireConnection('Cannot send sync response')) return;
 
     try {
       // Update sequence to match what we're sending
