@@ -83,23 +83,6 @@ After each extraction step in Phase 3, verify:
 - [ ] Complete one combat round
 - [ ] Save and load a game
 
-## Refactoring Order
-
-Mandatory bottom-up sequence — earlier files have no dependencies on later files:
-
-| Order | File | Reason |
-|-|-|-|
-| 1 | cardData.js | No dependencies on other 10 files |
-| 2 | saveGameSchema.js | Depends only on cardData |
-| 3 | AIPhaseProcessor.js | No dependencies on other 10 files |
-| 4 | ActionProcessor.js | Depends on AIPhaseProcessor |
-| 5 | GameStateManager.js | Depends on cardData, saveGameSchema, ActionProcessor |
-| 6 | GameFlowManager.js | Depends on GameStateManager, AIPhaseProcessor |
-| 7 | DeckBuilder.jsx | Depends on cardData only |
-| 8 | HangarScreen.jsx | Depends on cardData only |
-| 9 | TacticalMapScreen.jsx | Depends on GameStateManager, GameFlowManager |
-| 10 | App.jsx | Depends on most files — must be last |
-
 ## Refactoring Documentation (Non-Negotiable)
 
 Every REFACTOR_*.md MUST use the BEFORE / TO DO / NOW structure (see Document Template above).

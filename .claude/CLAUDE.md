@@ -1,3 +1,13 @@
+## Master Plan
+
+- **Start of session**: Read `Design/Technical Debt Refactor/MASTER_PLAN.md` to know current phase and progress.
+- **End of session**: Update MASTER_PLAN.md with what was completed (check boxes, update phase status).
+- Supporting documentation ecosystem:
+  - `Design/Technical Debt Refactor/CODE_STANDARDS.md` — refer and update as standards evolve
+  - `Design/Technical Debt Refactor/FUTURE_IMPROVEMENTS.md` — resolve items when fixed, add when deferred
+  - `Design/CODEBASE_AUDIT.md` — mark findings `[FIXED]` as they're addressed
+  - `Design/Technical Debt Refactor/CURRENT_STATE_AUDIT.md` — update metrics after each phase
+
 ## Context Efficiency
 
 ### Subagent Discipline
@@ -29,6 +39,12 @@ Keep explanations proportional to complexity. Simple changes need one sentence, 
 
 Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project standards.
 
+### Zero Test Failures
+
+- **All tests must pass before committing.** No exceptions.
+- If a test fails, stop and fix it before proceeding with any other work.
+- Never commit with known test failures, even if they are "unrelated" to your change.
+
 ## Git Workflow
 
 - **No feature branches**: Work directly on master.
@@ -53,6 +69,12 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 - **Audit doc**: `Design/CODEBASE_AUDIT.md`
 - When fixing an issue listed in the audit, prefix the finding with `[FIXED]` in the audit doc in the same commit.
 - The audit is a historical record — don't delete findings, just mark them resolved.
+
+## Plan Mode
+
+- **Plan mode is sacred.** Never edit files, run non-readonly commands, or commit while plan mode is active — regardless of how trivial the change appears.
+- If instructed to implement while in plan mode, call `ExitPlanMode` first, get approval, then execute.
+- "It's just one line" is never a valid reason to skip the workflow.
 
 ## Refactoring
 
