@@ -7,6 +7,9 @@
 
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 
+// Total phase display duration: 1500ms display + 300ms fade out
+const PHASE_DISPLAY_DURATION = 1800;
+
 class PhaseAnimationQueue {
   constructor(gameStateManager = null) {
     this.queue = [];
@@ -177,7 +180,7 @@ class PhaseAnimationQueue {
     this.emit('animationStarted', this.currentAnimation);
 
     // Wait for animation duration (1500ms display + 300ms fade out)
-    await new Promise(resolve => setTimeout(resolve, 1800));
+    await new Promise(resolve => setTimeout(resolve, PHASE_DISPLAY_DURATION));
 
     // SAFETY CHECK: If clear() was called during the await, abort gracefully
     // This prevents crash when currentAnimation is null

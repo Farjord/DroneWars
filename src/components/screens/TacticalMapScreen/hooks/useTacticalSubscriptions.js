@@ -18,6 +18,9 @@ import { shipComponentCollection } from '../../../../data/shipSectionData.js';
 import { calculateSectionBaseStats } from '../../../../logic/statsCalculator.js';
 import { getValidDeploymentsForDeck } from '../../../../logic/quickDeploy/QuickDeployValidator.js';
 
+// Delay before clearing threat alert animation (ms)
+const THREAT_ALERT_CLEAR_DELAY = 3000;
+
 // --- Helper ---
 
 export const isBlueprintRewardType = (rewardType) => {
@@ -114,7 +117,7 @@ export const useTacticalSubscriptions = ({
     const levels = { low: 0, medium: 1, high: 2 };
     if (levels[threshold] > levels[prev]) {
       setThreatAlert(threshold);
-      const timer = setTimeout(() => setThreatAlert(null), 3000);
+      const timer = setTimeout(() => setThreatAlert(null), THREAT_ALERT_CLEAR_DELAY);
       return () => clearTimeout(timer);
     }
   }, [tacticalMapRunState?.detection, setThreatAlert]);

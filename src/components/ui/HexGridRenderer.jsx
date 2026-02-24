@@ -12,6 +12,24 @@ import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import './HexGridRenderer.css';
 
+// Zoom and pan constants
+const DEFAULT_ZOOM = 4;
+const MIN_ZOOM = 3.5;
+const MAX_ZOOM = 6;
+const ZOOM_STEP = 0.2;
+const ZOOM_BUTTON_MIN = 2.8;
+const ZOOM_BUTTON_MAX = 4;
+const PAN_LIMIT_MULTIPLIER = 0.8;
+const WHEEL_ZOOM_STEP = 0.1;
+
+// Stroke width constants
+const STROKE_WIDTH_HIGHLIGHTED = 3;
+const STROKE_WIDTH_POI = 2.5;
+const STROKE_WIDTH_DEFAULT = 1.5;
+
+// Transition duration for pan/zoom (seconds)
+const TRANSITION_DURATION = '0.1s';
+
 // Available tactical background images
 const tacticalBackgrounds = [
   new URL('/Tactical/Tactical1.jpg', import.meta.url).href,
@@ -112,7 +130,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
   // Pan/Zoom state
   // Default zoom higher to compensate for expanded viewBox with decorative hexes
-  const [zoom, setZoom] = useState(4);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -198,9 +216,8 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     const visibleHeight = height / zoomLevel;
 
     // Pan limit = half of (grid size - visible area) * zoom, with multiplier to keep edge hexes visible
-    const panLimitMultiplier = 0.8; // Tweak: 1.0 = exact edge, lower = more restricted
-    const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * zoomLevel * panLimitMultiplier);
-    const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * zoomLevel * panLimitMultiplier);
+    const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * zoomLevel * PAN_LIMIT_MULTIPLIER);
+    const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * zoomLevel * PAN_LIMIT_MULTIPLIER);
 
     return {
       x: Math.max(-maxPanX, Math.min(maxPanX, panX)),
@@ -235,7 +252,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   const handleResetView = () => {
-    setZoom(4); // Reset to default zoom
+    setZoom(DEFAULT_ZOOM);
     setPan({ x: 0, y: 0 });
     panRef.current = { x: 0, y: 0 };
   };
@@ -256,10 +273,9 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
     const handleWheel = (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const delta = e.deltaY > 0 ? -WHEEL_ZOOM_STEP : WHEEL_ZOOM_STEP;
       setZoom(prevZoom => {
-        // Min zoom 2.8 to stay close to the map, max 4 for close inspection
-        const newZoom = Math.min(6, Math.max(3.5, prevZoom + delta));
+        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom + delta));
         setPan(p => {
           if (!containerRef.current || newZoom <= 1) return { x: 0, y: 0 };
           const { width, height } = containerRef.current.getBoundingClientRect();
@@ -270,9 +286,8 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           const gridSize = totalRadius * hexSize * 3;
           const visibleWidth = width / newZoom;
           const visibleHeight = height / newZoom;
-          const panLimitMultiplier = 0.8;
-          const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * newZoom * panLimitMultiplier);
-          const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * newZoom * panLimitMultiplier);
+          const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * newZoom * PAN_LIMIT_MULTIPLIER);
+          const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * newZoom * PAN_LIMIT_MULTIPLIER);
 
           return {
             x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
@@ -611,7 +626,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           points={points}
           fill={getHexFill(hex)}
           stroke={getStrokeColor(hex, highlighted)}
-          strokeWidth={highlighted ? 3 : (isPOI ? 2.5 : 1.5)}
+          strokeWidth={highlighted ? STROKE_WIDTH_HIGHLIGHTED : (isPOI ? STROKE_WIDTH_POI : STROKE_WIDTH_DEFAULT)}
           className="hex-cell"
         />
 
@@ -822,7 +837,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         cursor: isDragging ? 'grabbing' : 'grab',
-        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+        transition: isDragging ? 'none' : `transform ${TRANSITION_DURATION} ease-out`
       }}>
         <svg
           viewBox={viewBox}
@@ -925,7 +940,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            setZoom(z => Math.min(4, z + 0.2));
+            setZoom(z => Math.min(ZOOM_BUTTON_MAX, z + ZOOM_STEP));
           }}
         >
           <Plus size={18} />
@@ -935,7 +950,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            setZoom(z => Math.max(2.8, z - 0.2));
+            setZoom(z => Math.max(ZOOM_BUTTON_MIN, z - ZOOM_STEP));
           }}
         >
           <Minus size={18} />

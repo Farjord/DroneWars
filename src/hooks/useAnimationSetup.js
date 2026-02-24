@@ -4,6 +4,30 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 
+// Animation durations (ms)
+const LASER_DURATION = 500;
+const TELEPORT_DURATION = 600;
+const SPLASH_DURATION = 1000;
+const OVERFLOW_PROJECTILE_DURATION = 1200;
+const RAILGUN_BEAM_DURATION = 1000;
+const SHAKE_DURATION = 500;
+const PHASE_BREATHING_ROOM_DELAY = 300;
+
+// Animation sizes and offsets (px)
+const HAND_AREA_OFFSET = 100;
+const LANE_AREA_OFFSET = 200;
+const OVERFLOW_SOURCE_OFFSET = 50;
+const RAILGUN_GUN_LENGTH = 25;
+const RAILGUN_OVERFLOW_EXTENSION = 200;
+
+// Barrage impact settings
+const BARRAGE_IMPACT_SIZE = 10;
+const BARRAGE_IMPACT_DELAY = 50;
+const BARRAGE_FLASH_DURATION = 250;
+
+// Default fallback values
+const DEFAULT_RAILGUN_ATTACK = 8;
+
 export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, setStatusConsumptions) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
@@ -86,7 +110,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         startPos,
         endPos,
         attackValue: attackValue || 1,
-        duration: 500,
+        duration: LASER_DURATION,
         onComplete: () => {
           setLaserEffects(prev => prev.filter(l => l.id !== laserId));
           onComplete?.();
@@ -216,8 +240,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       // Determine source Y based on local player perspective
       const localPlayerId = gameStateManager.getLocalPlayerId();
       const sourceY = sourcePlayer === localPlayerId
-        ? gameAreaRect.bottom - 100  // Local player's hand at bottom
-        : gameAreaRect.top + 100;     // Opponent's hand at top
+        ? gameAreaRect.bottom - HAND_AREA_OFFSET  // Local player's hand at bottom
+        : gameAreaRect.top + HAND_AREA_OFFSET;     // Opponent's hand at top
       const sourceX = gameAreaRect.left + (gameAreaRect.width / 2);
 
       let targetCenter;
@@ -262,8 +286,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
             // Empty lane - use lane center position (approximate)
             const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
             const laneY = perspectivePlayer === localPlayerId
-              ? gameAreaRect.bottom - 200  // Local player's lanes at bottom
-              : gameAreaRect.top + 200;     // Opponent's lanes at top
+              ? gameAreaRect.bottom - LANE_AREA_OFFSET  // Local player's lanes at bottom
+              : gameAreaRect.top + LANE_AREA_OFFSET;     // Opponent's lanes at top
             targetCenter = {
               x: gameAreaRect.left + (gameAreaRect.width / 4) * (laneIndex + 1),
               y: laneY
@@ -398,7 +422,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Add brief delay to provide visual breathing room between overlay clearing and announcement
       // Waiting overlays now clear immediately via 'bothPlayersComplete' event
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, PHASE_BREATHING_ROOM_DELAY));
 
       timingLog('[VISUAL HANDLER] Breathing room complete', {
         phaseName,
@@ -495,7 +519,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         setTimeout(() => {
           targetEl.classList.remove('animate-shake-damage');
           onComplete?.();
-        }, config?.duration || 500);
+        }, config?.duration || SHAKE_DURATION);
       } else {
         onComplete?.();
       }
@@ -533,7 +557,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
           top: referencePos.y,
           left: referencePos.x,
           color: teleportColor,
-          duration: 600,
+          duration: TELEPORT_DURATION,
           onComplete: () => {
             setTeleportEffects(prev => prev.filter(t => t.id !== teleportId));
             onComplete?.();
@@ -567,8 +591,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const sourcePos = {
         x: gameAreaRect.left + gameAreaRect.width / 2,
         y: isAttackerLocal
-          ? gameAreaRect.bottom - 50  // Local player (attacker): bottom
-          : gameAreaRect.top + 50      // Opponent (attacker): top
+          ? gameAreaRect.bottom - OVERFLOW_SOURCE_OFFSET  // Local player (attacker): bottom
+          : gameAreaRect.top + OVERFLOW_SOURCE_OFFSET      // Opponent (attacker): top
       };
 
       // Get drone position
@@ -609,10 +633,10 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const projectileId = `overflow-${targetId}-${Date.now()}`;
 
       // DEBUG: Log projectile timing calculation
-      const calculatedPhaseDuration = hasOverflow ? 1200 / 3 : 1200 / 2;
+      const calculatedPhaseDuration = hasOverflow ? OVERFLOW_PROJECTILE_DURATION / 3 : OVERFLOW_PROJECTILE_DURATION / 2;
       debugLog('ANIMATIONS', '⏱️ [OVERFLOW TIMING] Creating projectile with:', {
         hasOverflow,
-        duration: 1200,
+        duration: OVERFLOW_PROJECTILE_DURATION,
         calculatedPhaseDuration,
         expectedImpactTime: calculatedPhaseDuration
       });
@@ -624,7 +648,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         shipPos: shipPos,
         hasOverflow: hasOverflow,
         isPiercing: isPiercing,
-        duration: 1200,
+        duration: OVERFLOW_PROJECTILE_DURATION,
         onComplete: () => {
           setOverflowProjectiles(prev => prev.filter(p => p.id !== projectileId));
           onComplete?.();
@@ -655,7 +679,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       setSplashEffects(prev => [...prev, {
         id: splashId,
         centerPos: centerPos,
-        duration: 1000,
+        duration: SPLASH_DURATION,
         onComplete: () => {
           setSplashEffects(prev => prev.filter(s => s.id !== splashId));
           onComplete?.();
@@ -691,8 +715,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Generate random impact positions over the drone
       const impacts = [];
-      const impactSize = 10;
-      const impactDelay = 50; // 50ms between impacts
+      const impactSize = BARRAGE_IMPACT_SIZE;
+      const impactDelay = BARRAGE_IMPACT_DELAY;
 
       for (let i = 0; i < impactCount; i++) {
         // Random position within drone bounds
@@ -714,7 +738,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       setBarrageImpacts(prev => [...prev, ...impacts]);
 
       // Complete after all impacts finish
-      const totalDuration = impactCount * impactDelay + 250; // Last impact delay + flash duration
+      const totalDuration = impactCount * impactDelay + BARRAGE_FLASH_DURATION;
       setTimeout(() => {
         setBarrageImpacts(prev => prev.filter(impact =>
           !impacts.find(i => i.id === impact.id)
@@ -839,7 +863,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const dx = droneCenter.x - turretPos.x;
       const dy = droneCenter.y - turretPos.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const gunLength = 25; // Approximate half of scaled gun height (50px / 2)
+      const gunLength = RAILGUN_GUN_LENGTH;
 
       // Offset turret position towards drone by gun length to get gun tip
       const gunTipPos = {
@@ -858,7 +882,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       if (hasOverflow) {
         // Extend the beam further in the same direction (reuse dx, dy, distance from gun tip calculation)
-        const extensionDistance = 200; // Extend by 200px beyond drone
+        const extensionDistance = RAILGUN_OVERFLOW_EXTENSION;
 
         endPos = {
           x: gunTipPos.x + (dx / distance) * (distance + extensionDistance),
@@ -878,8 +902,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         id: beamId,
         startPos: gunTipPos,
         endPos: endPos,
-        attackValue: attackValue || 8,
-        duration: 1000,
+        attackValue: attackValue || DEFAULT_RAILGUN_ATTACK,
+        duration: RAILGUN_BEAM_DURATION,
         onComplete: () => {
           setRailgunBeams(prev => prev.filter(b => b.id !== beamId));
           onComplete?.();

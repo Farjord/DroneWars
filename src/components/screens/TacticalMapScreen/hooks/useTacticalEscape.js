@@ -16,6 +16,9 @@ import { getTacticalItemById } from '../../../../data/tacticalItemData.js';
 import SeededRandom from '../../../../utils/seededRandom.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
 
+// Delay before executing threat reduce after modal close (ms)
+const CONFIRMATION_DELAY = 400;
+
 /**
  * Hook that provides all escape, evade, and tactical item handlers for TacticalMapScreen.
  *
@@ -155,7 +158,7 @@ export function useTacticalEscape({
     // Delay execution to allow modal to close
     setTimeout(() => {
       handleUseThreatReduce();
-    }, 400);
+    }, CONFIRMATION_DELAY);
   }, [handleUseThreatReduce, setTacticalItemConfirmation]);
 
   /**
