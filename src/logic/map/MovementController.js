@@ -155,16 +155,14 @@ class MovementController {
   handleHexArrival(hex, gameState) {
     debugLog('MOVEMENT_EFFECT', `[Movement] Arrived at hex (${hex.q}, ${hex.r}) - Type: ${hex.type}`);
 
-    // Phase 6: PoI encounters
+    // PoI encounters — handled by useTacticalEncounters hook, not MovementController
     if (hex.type === 'poi') {
       debugLog('MOVEMENT_EFFECT', `[Movement] PoI encounter: ${hex.poiType}`);
-      // TODO: Trigger EncounterController
     }
 
-    // Phase 9: Extraction gates
+    // Extraction gates — handled by useTacticalExtraction hook, not MovementController
     else if (hex.type === 'gate') {
       debugLog('MOVEMENT_EFFECT', '[Movement] Arrived at extraction gate');
-      // TODO: Trigger ExtractionController
     }
 
     // Empty hex - no special behavior

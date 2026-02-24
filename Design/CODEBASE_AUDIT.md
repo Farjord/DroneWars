@@ -1361,4 +1361,4 @@ All [STD-CHALLENGE] items collected from the audit:
 3. **[SMELL] App.jsx:601** — `cancelAllActions` not wrapped in `useCallback`. Defeats memoization in consuming hooks.
 4. **[LOG]** — 297 raw console calls across 66 files. ~200 actionable violations after excluding debugLogger and showcase.
 5. **[TEST]** — ~280 of ~500 source files (56%) have no test coverage. All 26 hooks untested.
-6. **[TODO]** — 23 actionable TODOs in production code, most not tracked in FUTURE_IMPROVEMENTS.md.
+6. **[FIXED] [TODO]** — 23 actionable TODOs triaged: 3 stale removed, 6 tracked in FUTURE_IMPROVEMENTS.md (#33-38), rest valid notes/scaffolding.

@@ -330,12 +330,8 @@ class PhaseManager {
       return;
     }
 
-    // This will be integrated with ActionProcessor's broadcastStateToGuest
-    // For now, just log
+    // Guest broadcast handled by GameFlowManager.broadcastStateToGuest() at phase transitions
     debugLog('PHASE_MANAGER', `📡 Broadcasting phase update: ${this.phaseState.turnPhase}`);
-
-    // TODO: Integrate with ActionProcessor.broadcastStateToGuest()
-    // This method will be called by ActionProcessor when integrated
   }
 
   /**

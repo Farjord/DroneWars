@@ -167,29 +167,29 @@ All 8 data files now have backward-compatible re-exports. 20 functions extracted
 
 ## Phase E: Structural Moves
 
-**Status: Pending**
+**Status: In Progress**
 
 **Goal:** Implement decided standards challenges and fix misplaced files.
 
 ### Batch E1 — Misplaced files (4 items, low risk)
-- [ ] `utils/chartUtils.jsx` → `components/ui/ChartUtils.jsx`
-- [ ] `services/testGameInitializer.js` → `test/helpers/testGameInitializer.js`
-- [ ] `logic/aiLogic.js` → `logic/ai/aiLogic.js`
-- [ ] `utils/glossaryAnalyzer.js` → `logic/glossary/glossaryAnalyzer.js`
+- [x] `utils/chartUtils.jsx` → `components/ui/ChartUtils.jsx`
+- [x] `services/testGameInitializer.js` → `test/helpers/testGameInitializer.js`
+- [x] `logic/aiLogic.js` → `logic/ai/aiLogic.js`
+- [x] `logic/cards/glossaryAnalyzer.js` → `logic/glossary/glossaryAnalyzer.js`
 
 ### Batch E2 — Flatten `logic/effects/` (STD-CHALLENGE-02)
-- [ ] `destroy/DestroyEffectProcessor.js` → `effects/DestroyEffectProcessor.js`
-- [ ] `detection/IncreaseThreatEffectProcessor.js` → `effects/IncreaseThreatEffectProcessor.js`
-- [ ] `marking/MarkingEffectProcessor.js` → `effects/MarkingEffectProcessor.js`
-- [ ] `mines/MineTriggeredEffectProcessor.js` → `effects/MineTriggeredEffectProcessor.js`
-- [ ] `movement/MovementEffectProcessor.js` → `effects/MovementEffectProcessor.js`
-- [ ] `stat_modification/ModifyStatEffectProcessor.js` → `effects/ModifyStatEffectProcessor.js`
-- [ ] `tokens/TokenCreationProcessor.js` → `effects/TokenCreationProcessor.js`
+- [x] `destroy/DestroyEffectProcessor.js` → `effects/DestroyEffectProcessor.js`
+- [x] `detection/IncreaseThreatEffectProcessor.js` — already at `effects/` (no subdir)
+- [x] `marking/MarkingEffectProcessor.js` — already at `effects/` (no subdir)
+- [x] `mines/MineTriggeredEffectProcessor.js` — already at `effects/` (no subdir)
+- [x] `movement/MovementEffectProcessor.js` → `effects/MovementEffectProcessor.js`
+- [x] `stat_modification/ModifyStatEffectProcessor.js` — already at `effects/` (no subdir)
+- [x] `tokens/TokenCreationProcessor.js` — already at `effects/` (no subdir)
 
 Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energy/`, `healing/`, `meta/`, `state/`, `upgrades/`
 
 ### Batch E3 — TODO triage
-- [ ] Review 23 actionable TODOs: add to FUTURE_IMPROVEMENTS.md or delete if stale
+- [x] Review 23 actionable TODOs: 3 stale deleted, 6 new items added to FUTURE_IMPROVEMENTS.md (#33-38), rest kept (valid notes/scaffolding)
 
 ### Batch E4 — Hook co-location (STD-CHALLENGE-01, HIGH RISK)
 
