@@ -27,6 +27,7 @@ import { applyMovementInhibitorAdjustments } from '../adjustmentPasses/movementI
 
 import { isCardConditionMet } from '../../targeting/CardConditionValidator.js';
 import { isLaneControlCardPlayable } from '../../targeting/LaneControlValidator.js';
+import { resolveSecondaryTargets } from '../../targeting/uiTargetingHelpers.js';
 
 // ========================================
 // ACTIVE ABILITY TARGET HELPER
@@ -178,10 +179,55 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       if (card.effect?.condition) {
         if (!isLaneControlCardPlayable(card, 'player2', playerStates)) return false;
       }
+      // Skip NONE-type cards that require modal interaction (upgrades, System Sabotage)
+      // Purge Protocol (NONE + scope: 'ALL') auto-resolves without a modal, so allow it through.
+      if (card.targeting?.type === 'NONE' && card.effect?.scope !== 'ALL') return false;
       return true;
     });
     for (const card of playableCards) {
-      if (card.targeting) {
+      // SINGLE_MOVE with secondaryTargeting — use primary targets + secondary lane resolution
+      if (card.effect?.type === 'SINGLE_MOVE' && card.secondaryTargeting) {
+        const primaryTargets = card.targeting
+          ? getValidTargets('player2', null, card, player1, player2)
+          : readyAiDrones.map(d => ({ ...d, owner: 'player2' }));
+
+        for (const primaryTarget of primaryTargets) {
+          const primaryLane = primaryTarget.lane;
+          const secondaryTargets = resolveSecondaryTargets(
+            { target: primaryTarget, lane: primaryLane, owner: primaryTarget.owner },
+            card.secondaryTargeting,
+            { actingPlayerId: 'player2', player1, player2, getEffectiveStats: null }
+          );
+
+          for (const secTarget of secondaryTargets) {
+            const toLane = secTarget.id;
+            const fromLane = primaryLane;
+
+            // Check maxPerLane restriction for friendly drone movements
+            if (primaryTarget.owner === 'player2') {
+              const baseDrone = fullDroneCollection.find(d => d.name === primaryTarget.name);
+              if (baseDrone?.maxPerLane) {
+                const currentCount = countDroneTypeInLane(player2, primaryTarget.name, toLane);
+                if (currentCount >= baseDrone.maxPerLane) continue;
+              }
+            }
+
+            const uniqueKey = `card-${card.id}-${primaryTarget.id}-${fromLane}-${toLane}`;
+            if (!uniqueCardPlays.has(uniqueKey)) {
+              possibleActions.push({
+                type: 'play_card',
+                card,
+                target: null,
+                moveData: { drone: primaryTarget, fromLane, toLane },
+                score: 0
+              });
+              uniqueCardPlays.add(uniqueKey);
+            }
+          }
+        }
+      }
+      // Normal targeted cards (DRONE, LANE, SHIP_SECTION — not SINGLE_MOVE or NONE)
+      else if (card.targeting && card.effect?.type !== 'SINGLE_MOVE' && card.targeting.type !== 'NONE') {
         let targets = getValidTargets('player2', null, card, player1, player2);
 
         if (card.effect.type === 'HEAL_SHIELDS') {
@@ -202,27 +248,25 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
             uniqueCardPlays.add(uniqueKey);
           }
         }
-      } else if (card.effect.type === 'SINGLE_MOVE') {
-        // Special handling for SINGLE_MOVE cards - create one entry per valid move
+      }
+      // Legacy SINGLE_MOVE without secondaryTargeting (fallback)
+      else if (card.effect?.type === 'SINGLE_MOVE') {
         for (const drone of readyAiDrones) {
           const fromLaneIndex = parseInt(drone.lane.slice(-1));
 
-          // Check adjacent lanes
           [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
             if (toLaneIndex >= 1 && toLaneIndex <= 3) {
               const toLane = `lane${toLaneIndex}`;
               const fromLane = drone.lane;
 
-              // Check maxPerLane restriction
               const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
               if (baseDrone && baseDrone.maxPerLane) {
                 const currentCountInTarget = countDroneTypeInLane(player2, drone.name, toLane);
                 if (currentCountInTarget >= baseDrone.maxPerLane) {
-                  return; // Skip this move - would violate maxPerLane
+                  return;
                 }
               }
 
-              // Create possibleActions entry with move metadata
               const uniqueKey = `card-${card.id}-${drone.id}-${fromLane}-${toLane}`;
               if (!uniqueCardPlays.has(uniqueKey)) {
                 possibleActions.push({
