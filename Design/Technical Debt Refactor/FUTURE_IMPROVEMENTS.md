@@ -28,6 +28,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 20 | ModalLayer.jsx | Prop relay pattern (430 lines, 60+ props). Similar to TacticalMapModals (#17). Future refactor could use modal context or modal manager. | App.jsx Session 4 | 2026-02-23 | Low |
 | 21 | App.jsx | At 1,331 lines after Session 6 (11 hooks, 3 sub-components). Remaining: ~40 useState declarations, 4 useEffects, cancelAllActions, handleConfirmDeployment, JSX return (~385 lines). Pure orchestration/composition root — no further extraction warranted. | App.jsx Session 6 | 2026-02-23 | Resolved |
 | 22 | useClickHandlers.js | At 956 lines (above 800-line threshold). Contains 7 click handlers + module-level TargetingRouter. Potential split: useCardInteractions (handleCardClick, handleTargetClick) vs useUnitInteractions (handleTokenClick, handleLaneClick, handleAbilityIconClick, handleShipAbilityClick). Deferred because handlers share many params. | App.jsx Session 5 | 2026-02-23 | Low |
+| 32 | CSS strategy | Hybrid approach: 12 global files in `styles/`, 28 co-located component CSS, 2 CSS Module files. No documented standard in CODE_STANDARDS.md. Decide: (a) co-located plain CSS for components, (b) `styles/` for shared/global, (c) CSS Modules policy. STD-CHALLENGE-03. | Codebase audit | 2026-02-24 | Medium |
 
 ## Audit Findings (2026-02-23)
 
@@ -39,7 +40,7 @@ Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). St
 |-|-|-|-|
 | 23 | ~200 raw `console.log` calls | Across ~64 non-test files. Top: P2PManager (20), SaveGameService (11), useAnimationSetup (9), cardDrawUtils (8). | Medium |
 | 24 | 26 hooks — zero test coverage | 10,413 lines completely untested. Highest risk: useDragMechanics (1653), useClickHandlers (956), useTacticalEncounters (931). | Medium |
-| 25 | 10+ utils files with domain logic | glossaryAnalyzer.js, phaseValidation.js, shipPlacementUtils.js, etc. Violate "pure utility" standard. Should relocate to `logic/`. | Medium |
+| ~~25~~ | ~~10+ utils files with domain logic~~ | ~~Resolved: 11 domain-aware utils migrated to `logic/` subdirectories (2026-02-24)~~ | ~~Resolved~~ |
 | 26 | useAnimationSetup.js:8-899 | Entire hook body is a single 890-line useEffect. | Medium |
 | 27 | useGameLifecycle.js:293,316,356 | 3 `const result = await processActionWithGuestRouting(...)` assigned but never read. Dead code. | Low |
 | 28 | 23 actionable TODOs in production code | Spread across ActionProcessor, RunLifecycleManager, ShipPlacementScreen, useClickHandlers, MovementController, PhaseManager, RewardManager, GSM. | Low |
@@ -53,3 +54,4 @@ Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). St
 | 23–27 | useGameLifecycle, AIDecisionLogModal, TacticalTicker, PhaseManager, quickDeploy/index | 5 high-priority bugs: CSV column mismatch, prop mutation, stale closure, phase list divergence, broken export | 2026-02-23 | Direct fix |
 | 28–30 | useResolvers, FlashEffect, LaserEffect | 3 medium-priority bugs: null guards, try/catch, timer cleanup | 2026-02-23 | Direct fix |
 | 31 | BaseEffectProcessor.js | Fragile type detection in createResult | 2026-02-23 | Direct fix |
+| 25 | 10+ utils files with domain logic | Violate "pure utility" standard | 2026-02-24 | Migrated 11 files to `logic/` subdirectories |

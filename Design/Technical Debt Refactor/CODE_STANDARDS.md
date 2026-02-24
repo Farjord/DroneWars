@@ -63,7 +63,7 @@ src/
       __tests__/
     ships/            # Ship-related components
       __tests__/
-  hooks/              # Custom React hooks
+  hooks/              # Custom React hooks (shared/app-level only)
     __tests__/
   logic/              # Pure game logic (no React)
     ai/               # AI decision-making
@@ -86,6 +86,56 @@ src/
   styles/             # Shared styles
   theme/              # Theme definitions
 ```
+
+## Hook Co-location
+
+Screen-specific hooks (single consumer) co-locate with their screen component:
+
+```
+components/screens/TacticalMapScreen/
+  TacticalMapScreen.jsx
+  TacticalMapScreen.css
+  hooks/
+    useTacticalMovement.js
+    useTacticalEncounters.js
+    ...
+```
+
+Hooks that stay in `src/hooks/`:
+- **Shared hooks** consumed by 2+ components (e.g., `useGameState`, `useGameData`)
+- **App-level hooks** consumed by `App.jsx` or `AppRouter.jsx` (root components, not screens)
+
+## Effects Directory Rules
+
+- Subdirectories under `src/logic/effects/` only when they contain **2+ related source files** (excluding `__tests__/`)
+- Single-file processors live directly in `effects/`
+- Multi-file subdirectories (e.g., `effects/damage/` with processor + animations) are fine
+
+## Magic Numbers
+
+Extract timing, sizing, and layout values as named constants at module level:
+
+```js
+// --- Animation Timing ---
+const LASER_DURATION = 600;
+const FLASH_DURATION = 200;
+```
+
+Exceptions: `0`, `1`, `-1`, array indices, and values whose meaning is clear from context.
+
+## ID Generation
+
+Use `crypto.randomUUID()` for generating unique IDs in non-seeded contexts. Keep semantic prefixes for readability:
+
+```js
+const id = `laser-${droneId}-${crypto.randomUUID()}`;
+```
+
+Do not use `Date.now()` or `Math.random()` for IDs — collision risk in same-millisecond scenarios.
+
+## CSS Strategy
+
+> Pending — requires dedicated discussion. See FUTURE_IMPROVEMENTS.md.
 
 ## Test Convention
 
