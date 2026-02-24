@@ -144,22 +144,24 @@ Excluded: `debugLogger.js` (6, intentional), `modalShowcaseHelpers.js` (79, dev-
 
 ## Phase D: Data File Purity
 
-**Status: Pending**
+**Status: Done**
 
 **Goal:** Extract logic from 8 data files to `src/logic/` per CODE_STANDARDS.md.
 
 | Data file | Functions | Target | Done |
 |-|-|-|-|
-| cardPackData.js | `createSeededRNG`, `getPackCostForTier`, `generateRandomShopPack` | `logic/cards/cardPackHelpers.js` | [ ] |
-| salvageItemData.js | `findEligibleItems`, `selectSalvageItem`, `generateSalvageItemFromValue` | `logic/salvage/salvageItemHelpers.js` | [ ] |
-| missionData.js | `getMissionById`, `getIntroMissions`, `getMissionsByCategory` | `logic/missions/missionHelpers.js` | [ ] |
-| tutorialData.js | `getTutorialByScreen`, `getAllTutorialScreenIds`, `createDefaultTutorialDismissals` | `logic/tutorial/tutorialHelpers.js` | [ ] |
-| reputationRewardsData.js | `getLevelData`, `getNewlyUnlockedLevels` | `logic/reputation/reputationRewardsHelpers.js` | [ ] |
-| shipData.js | `getShipById`, `getAllShips`, `getDefaultShip` | co-located `shipDataHelpers.js` | [ ] |
-| tacticalItemData.js | `getTacticalItemById`, etc. | co-located `tacticalItemDataHelpers.js` | [ ] |
-| aiCoresData.js | `calculateAICoresDrop`, `getAICoresCost` | `logic/economy/aiCoresHelpers.js` | [ ] |
+| cardPackData.js | `createSeededRNG`, `getPackCostForTier`, `generateRandomShopPack` | `logic/cards/cardPackHelpers.js` | [x] |
+| salvageItemData.js | `findEligibleItems`, `selectSalvageItem`, `generateSalvageItemFromValue` | `logic/salvage/salvageItemHelpers.js` | [x] |
+| missionData.js | `getMissionById`, `getIntroMissions`, `getMissionsByCategory` | `logic/missions/missionHelpers.js` | [x] |
+| tutorialData.js | `getTutorialByScreen`, `getAllTutorialScreenIds`, `createDefaultTutorialDismissals` | `logic/tutorial/tutorialHelpers.js` | [x] |
+| reputationRewardsData.js | `getLevelData`, `getNewlyUnlockedLevels` | `logic/reputation/reputationRewardsHelpers.js` | [x] |
+| shipData.js | `getShipById`, `getAllShips`, `getDefaultShip` | co-located `data/shipDataHelpers.js` | [x] |
+| tacticalItemData.js | `getTacticalItemById`, etc. | co-located `data/tacticalItemDataHelpers.js` | [x] |
+| aiCoresData.js | `calculateAICoresDrop`, `getAICoresCost` | `logic/economy/aiCoresHelpers.js` | [x] |
 
-**Verification:** Full test suite + build after each extraction.
+All 8 data files now have backward-compatible re-exports. 20 functions extracted total.
+
+**Verification:** `npx vitest run` → 3748 passing. `npx vite build` → clean.
 
 ---
 
