@@ -65,7 +65,7 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
 
     // Standard mock context - simulating Purge Protocol card
     mockContext = {
-      target: null, // ALL_MARKED targeting provides no single target
+      target: null, // NONE targeting provides no single target
       actingPlayerId: 'player1',
       playerStates: mockPlayerStates,
       placedSections: {
@@ -78,8 +78,9 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
         name: 'Purge Protocol',
         instanceId: 'inst_purge',
         targeting: {
-          type: 'ALL_MARKED',
-          affinity: 'ENEMY'
+          type: 'NONE',
+          affinity: 'ENEMY',
+          affectedFilter: ['MARKED']
         },
         effect: {
           type: 'DESTROY',

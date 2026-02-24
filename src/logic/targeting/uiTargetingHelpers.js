@@ -510,7 +510,7 @@ export function calculateEffectTargetsWithCostContext(card, costSelection, playe
     targetingType: card.targeting?.type,
     targetingLocation: card.targeting?.location,
     targetingAffinity: card.targeting?.affinity,
-    customCriteria: card.targeting?.custom
+    customCriteria: card.targeting?.restrictions || card.targeting?.custom
   });
 
   const validTargets = targetingRouter.routeTargeting(context);

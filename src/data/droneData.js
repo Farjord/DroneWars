@@ -61,7 +61,7 @@ const fullDroneCollection = [
             type: 'DRONE',
             affinity: 'FRIENDLY',
             location: 'SAME_LANE',
-            custom: ['DAMAGED_HULL']
+            restrictions: ['DAMAGED_HULL']
         },
         effect: { type: 'HEAL', value: 3 },
         cost: { energy: 1, exhausts: true }

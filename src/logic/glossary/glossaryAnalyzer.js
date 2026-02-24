@@ -181,9 +181,10 @@ export const analyzeTargetingTypes = () => {
       targetData.locationOptions.add(targeting.location);
     }
 
-    // Track custom filters
-    if (targeting.custom && Array.isArray(targeting.custom)) {
-      targeting.custom.forEach(filter => targetData.customFilters.add(filter));
+    // Track restriction filters (supports both `restrictions` and legacy `custom`)
+    const restrictions = targeting.restrictions || targeting.custom;
+    if (restrictions && Array.isArray(restrictions)) {
+      restrictions.forEach(filter => targetData.customFilters.add(filter));
     }
 
     // Store example

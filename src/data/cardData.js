@@ -86,7 +86,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: ['MARKED'],
+      restrictions: ['MARKED'],
     },
     effect: { type: 'DESTROY', scope: 'SINGLE' },
   },
@@ -100,7 +100,10 @@ const fullCardCollection = [
     cost: 5,
     image: '/DroneWars/cards/ShriekerMissiles.png',
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
-    targeting: { type: 'LANE', affinity: 'ENEMY' },
+    targeting: {
+      type: 'LANE', affinity: 'ENEMY',
+      affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+    },
     effect: {
       type: 'DESTROY',
       scope: 'FILTERED',
@@ -117,7 +120,10 @@ const fullCardCollection = [
     cost: 4,
     image: '/DroneWars/cards/ShriekerMissiles.png',
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
-    targeting: { type: 'LANE', affinity: 'ENEMY' },
+    targeting: {
+      type: 'LANE', affinity: 'ENEMY',
+      affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+    },
     effect: {
       type: 'DESTROY',
       scope: 'FILTERED',
@@ -177,7 +183,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SidewinderMissiles.png',
     description: 'Deal 2 damage to all enemy drones with a speed of 4 or Less in a selected lane.',
     visualEffect: { type: 'ENERGY_WAVE' },
-    targeting: { type: 'LANE', affinity: 'ENEMY' },
+    targeting: {
+      type: 'LANE', affinity: 'ENEMY',
+      affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }]
+    },
     effect: {
       type: 'DAMAGE',
       value: 2,
@@ -252,7 +261,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: ['EXHAUSTED'],
+      restrictions: ['EXHAUSTED'],
     },
     effect: { type: 'DAMAGE', value: 4 },
   },
@@ -271,7 +280,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: ['EXHAUSTED'],
+      restrictions: ['EXHAUSTED'],
     },
     effect: { type: 'DAMAGE', value: 5 },
   },
@@ -286,7 +295,11 @@ const fullCardCollection = [
     image: '/DroneWars/cards/StrafeRun.png',
     description: 'Deal 1 damage to the first 3 enemy drones in target lane (left to right).',
     visualEffect: { type: 'LASER_BLAST' },
-    targeting: { type: 'LANE', affinity: 'ENEMY' },
+    targeting: {
+      type: 'LANE', affinity: 'ENEMY',
+      affectedFilter: [{ stat: 'hull', comparison: 'GTE', value: 0 }],
+      maxTargets: 3
+    },
     effect: {
       type: 'DAMAGE',
       value: 1,
@@ -320,7 +333,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/PurgeProtocol.png',
     description: 'Destroy all marked enemy drones.',
     visualEffect: { type: 'NUKE_BLAST' },
-    targeting: { type: 'ALL_MARKED', affinity: 'ENEMY' },
+    targeting: { type: 'NONE', affinity: 'ENEMY', affectedFilter: ['MARKED'] },
     effect: { type: 'DESTROY', scope: 'ALL' },
   },
   {
@@ -452,7 +465,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { stat: 'hull', comparison: 'LTE', value: 1 },
       ],
     },
@@ -481,7 +494,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { stat: 'hull', comparison: 'LTE', value: 2 },
       ],
     },
@@ -606,7 +619,7 @@ const fullCardCollection = [
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'ENEMY',
-      custom: ['REQUIRES_LANE_CONTROL'],
+      restrictions: ['REQUIRES_LANE_CONTROL'],
       validSections: ['left', 'right'],
     },
     effect: {
@@ -635,7 +648,7 @@ const fullCardCollection = [
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'ENEMY',
-      custom: ['REQUIRES_LANE_CONTROL'],
+      restrictions: ['REQUIRES_LANE_CONTROL'],
       validSections: ['middle'],
     },
     effect: {
@@ -664,7 +677,7 @@ const fullCardCollection = [
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'ENEMY',
-      custom: ['REQUIRES_LANE_CONTROL'],
+      restrictions: ['REQUIRES_LANE_CONTROL'],
     },
     effect: {
       type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -688,7 +701,7 @@ const fullCardCollection = [
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'ENEMY',
-      custom: ['REQUIRES_LANE_CONTROL'],
+      restrictions: ['REQUIRES_LANE_CONTROL'],
       validSections: ['left', 'middle', 'right'],
     },
     effect: {
@@ -718,7 +731,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { type: 'IN_LANE_CONTROLLED_BY', controller: 'ACTING_PLAYER' },
       ],
     },
@@ -815,7 +828,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'FRIENDLY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { stat: 'class', comparison: 'LTE', value: 2 },
         'EXHAUSTED',
       ],
@@ -836,7 +849,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'FRIENDLY',
       location: 'ANY_LANE',
-      custom: ['EXHAUSTED'],
+      restrictions: ['EXHAUSTED'],
     },
     effect: { type: 'READY_DRONE' },
   },
@@ -990,6 +1003,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
     targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1006,6 +1020,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1084,6 +1099,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SwiftManeuver.png',
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
     targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1108,6 +1124,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/TacticalShift.png',
     description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
     targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1132,6 +1149,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/AssaultReposition.png',
     description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +1 attack.',
     targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1211,7 +1229,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'FRIENDLY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         'EXHAUSTED',
         { type: 'IN_LANE_NOT_CONTROLLED_BY', controller: 'ACTING_PLAYER' },
       ],
@@ -1342,10 +1360,11 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { stat: 'class', comparison: 'LTE', value: 2 },
       ],
     },
+    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1389,7 +1408,7 @@ const fullCardCollection = [
       type: 'DRONE',
       affinity: 'ANY',
       location: 'ANY_LANE',
-      custom: [
+      restrictions: [
         { stat: 'class', comparison: 'LTE', value: 2 },
       ],
     },
@@ -1437,7 +1456,7 @@ const fullCardCollection = [
     cost: 1,
     image: '/DroneWars/cards/SystemSabotage.png',
     description: 'Destroy a single applied Upgrade on an enemy drone type.',
-    targeting: { type: 'APPLIED_UPGRADE', affinity: 'ENEMY' },
+    targeting: { type: 'NONE' },
     effect: { type: 'DESTROY_UPGRADE' },
   },
   {
@@ -1500,11 +1519,28 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ExhaustingStrike.png',
     description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower speed in the same lane.',
     visualEffect: { type: 'DISRUPTION' },
+    // New targeting model (Phase 1): primary = friendly drone, secondary = enemy drone
+    secondaryTargeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'PRIMARY_SOURCE_LANE',
+      restrictions: [
+        {
+          type: 'STAT_COMPARISON',
+          stat: 'speed',
+          comparison: 'LT',
+          reference: 'PRIMARY_TARGET',
+          referenceStat: 'speed',
+        },
+      ],
+    },
+    secondaryEffect: { type: 'EXHAUST_DRONE' },
+    // Legacy targeting model (still active until Phase 2 engine is built)
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'SAME_LANE_AS_COST',
-      custom: [
+      restrictions: [
         {
           type: 'STAT_COMPARISON',
           stat: 'speed',
@@ -1532,11 +1568,31 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ForcedRepositioning.png',
     description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
+    // New targeting model (Phase 1): primary = friendly drone, secondary = enemy drone
+    secondaryTargeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'PRIMARY_SOURCE_LANE',
+      restrictions: [
+        {
+          type: 'STAT_COMPARISON',
+          stat: 'attack',
+          comparison: 'GT',
+          reference: 'PRIMARY_TARGET',
+          referenceStat: 'attack',
+        },
+      ],
+    },
+    secondaryEffect: {
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST'],
+    },
+    // Legacy targeting model (still active until Phase 2 engine is built)
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
       location: 'COST_SOURCE_LANE',
-      custom: [
+      restrictions: [
         {
           type: 'STAT_COMPARISON',
           stat: 'attack',
@@ -1638,7 +1694,7 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'limit', value: 1 },
@@ -1656,7 +1712,7 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1. Go again.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'limit', value: 1 },
@@ -1675,7 +1731,7 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/OverclockedThrusters.png',
     description: 'Permanently grant all drones of a target type +1 Speed.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'speed', value: 1 },
@@ -1693,7 +1749,7 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/OverclockedThrusters.png',
     description: 'Permanently grant all drones of a target type +1 Speed.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'speed', value: 1 },
@@ -1711,7 +1767,7 @@ const fullCardCollection = [
     cost: 6,
     image: '/DroneWars/cards/PiercingRounds.png',
     description: 'Permanently grant all drones of a target type the Piercing keyword.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: {
@@ -1736,7 +1792,7 @@ const fullCardCollection = [
     cost: 4,
     image: '/DroneWars/cards/EfficiencyModule.png',
     description: 'Permanently reduce the deployment cost of all drones of a target type by 1.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'cost', value: -1 },
@@ -1754,7 +1810,7 @@ const fullCardCollection = [
     cost: 5,
     image: '/DroneWars/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'attack', value: 1 },
@@ -1772,7 +1828,7 @@ const fullCardCollection = [
     cost: 5,
     image: '/DroneWars/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'attack', value: 1 },
@@ -1790,7 +1846,7 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 1.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'shields', value: 1 },
@@ -1808,7 +1864,7 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 2.',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'shields', value: 2 },

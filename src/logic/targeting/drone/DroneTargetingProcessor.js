@@ -43,7 +43,8 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
     this.logProcessStart(context);
 
     const { actingPlayerId, source, definition, costSelection } = context;
-    const { affinity, location, custom } = definition.targeting;
+    const { affinity, location, restrictions, custom } = definition.targeting;
+    const criteria = restrictions || custom;
     const targets = [];
 
     const isCard = this.isCard(definition);
@@ -75,7 +76,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         actingPlayerId,
         userLane,
         location,
-        custom,
+        criteria,
         isCard,
         targets,
         costContext,
@@ -91,7 +92,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         actingPlayerId,
         userLane,
         location,
-        custom,
+        criteria,
         isCard,
         targets,
         costContext,
@@ -135,13 +136,13 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
    * @param {string} actingPlayerId - Player performing the targeting
    * @param {string|null} userLane - Source lane for SAME_LANE abilities
    * @param {string} location - ANY_LANE or SAME_LANE
-   * @param {Array} custom - Custom criteria
+   * @param {Array} restrictions - Restriction criteria (was `custom`)
    * @param {boolean} isCard - Whether this is a card (vs ability)
    * @param {Array} targets - Array to add valid targets to
    * @param {Object} costContext - Optional cost selection context for stat comparisons
    * @param {Object} context - Targeting context with getEffectiveStats function
    */
-  processPlayerDrones(playerState, playerId, actingPlayerId, userLane, location, custom, isCard, targets, costContext = null, context = null) {
+  processPlayerDrones(playerState, playerId, actingPlayerId, userLane, location, restrictions, isCard, targets, costContext = null, context = null) {
     debugLog('ADDITIONAL_COST_TARGETING', '🔍 processPlayerDrones called', {
       playerId,
       actingPlayerId,
@@ -189,9 +190,9 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           const effectType = context?.definition?.effect?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
 
-          // Check if EXHAUSTED is explicitly allowed as a custom criterion
-          const allowsExhausted = custom && Array.isArray(custom) &&
-            custom.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
+          // Check if EXHAUSTED is explicitly allowed as a restriction
+          const allowsExhausted = restrictions && Array.isArray(restrictions) &&
+            restrictions.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
 
           // For movement effects, skip exhausted drones unless explicitly allowed
           if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
@@ -209,7 +210,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
             if (stats.keywords.has('INERT')) return;
           }
 
-          if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
+          if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {
             targets.push({ ...drone, lane, owner: playerId });
           }
         });
@@ -220,9 +221,9 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           const effectType = context?.definition?.effect?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
 
-          // Check if EXHAUSTED is explicitly allowed as a custom criterion
-          const allowsExhausted = custom && Array.isArray(custom) &&
-            custom.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
+          // Check if EXHAUSTED is explicitly allowed as a restriction
+          const allowsExhausted = restrictions && Array.isArray(restrictions) &&
+            restrictions.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
 
           // For movement effects, skip exhausted drones unless explicitly allowed
           if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
@@ -240,7 +241,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
             if (stats.keywords.has('INERT')) return;
           }
 
-          if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
+          if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {
             targets.push({ ...drone, lane, owner: playerId });
           }
         });

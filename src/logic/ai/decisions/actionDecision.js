@@ -60,8 +60,9 @@ export const getActiveAbilityTargets = (ability, sourceDrone, player1, player2) 
     const dronesInLane = owner.dronesOnBoard[lane] || [];
 
     for (const drone of dronesInLane) {
-      // Apply custom filters
-      if (targeting.custom?.includes('DAMAGED_HULL')) {
+      // Apply restriction filters (supports both `restrictions` and legacy `custom`)
+      const restrictions = targeting.restrictions || targeting.custom;
+      if (restrictions?.includes('DAMAGED_HULL')) {
         if (drone.hull >= drone.maxHull) continue; // Only target damaged drones
       }
 

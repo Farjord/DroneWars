@@ -97,7 +97,8 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
     const { definition, actingPlayerId } = context;
     const targeting = definition.targeting;
 
-    if (!targeting.custom?.includes('REQUIRES_LANE_CONTROL')) {
+    const restrictions = targeting.restrictions || targeting.custom;
+    if (!restrictions?.includes('REQUIRES_LANE_CONTROL')) {
       return targets;
     }
 

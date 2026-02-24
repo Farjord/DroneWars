@@ -32,12 +32,13 @@ import { debugLog } from '../utils/debugLogger.js';
  */
 class TargetingRouter {
   constructor() {
-    // Phase 2: Initialize processors for all targeting types
+    // Initialize processors for all targeting types
     this.processors = {
       LANE: new LaneTargetingProcessor(),
       SHIP_SECTION: new ShipSectionTargetingProcessor(),
       DRONE: new DroneTargetingProcessor(),
       MULTI_DRONE: new DroneTargetingProcessor(), // Uses same processor as DRONE
+      // Legacy processors — kept for backward compatibility during rework
       DRONE_CARD: new DroneCardTargetingProcessor(),
       APPLIED_UPGRADE: new AppliedUpgradeTargetingProcessor(),
       ALL_MARKED: new AllMarkedProcessor(),
@@ -59,6 +60,16 @@ class TargetingRouter {
    */
   routeTargeting(context) {
     const targetingType = context.definition.targeting.type;
+
+    // NONE type — no target selection needed, return empty array
+    if (targetingType === 'NONE') {
+      debugLog('TARGETING_ROUTING', '✅ NONE targeting — no targets needed', {
+        actingPlayer: context.actingPlayerId,
+        definitionName: context.definition?.name
+      });
+      return [];
+    }
+
     const processor = this.processors[targetingType];
 
     if (!processor) {

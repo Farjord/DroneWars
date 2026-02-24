@@ -62,7 +62,7 @@ describe('HandView action card drag-and-drop', () => {
     name: 'Slimline Bodywork',
     cost: 2,
     type: 'Upgrade',
-    targeting: { type: 'DRONE_CARD' },
+    targeting: { type: 'NONE' },
     effect: { type: 'MODIFY_DRONE_BASE' }
   };
 

@@ -29,7 +29,7 @@ class BaseTargetingProcessor {
    * @param {string} context.definition.targeting.type - Targeting type
    * @param {string} context.definition.targeting.affinity - FRIENDLY/ENEMY/ANY
    * @param {string} context.definition.targeting.location - ANY_LANE/SAME_LANE
-   * @param {Array} context.definition.targeting.custom - Custom criteria (EXHAUSTED, MARKED, etc.)
+   * @param {Array} context.definition.targeting.restrictions - Restriction criteria (EXHAUSTED, MARKED, etc.) — also accepts legacy `custom`
    * @returns {Array} Array of valid targets with owner and lane properties
    * @throws {Error} If not implemented in subclass
    */

@@ -494,12 +494,28 @@ const useDragMechanics = ({
     }
 
     // Case 2: Upgrade cards - open upgrade selection modal
-    if (card.type === 'Upgrade' || card.targeting?.type === 'DRONE_CARD') {
-      setUpgradeSelectionModal({ card, targets: validCardTargets });
+    if (card.type === 'Upgrade' || card.targeting?.type === 'DRONE_CARD' || card.targeting?.type === 'NONE') {
+      // NONE-type upgrade cards and legacy DRONE_CARD both open the upgrade modal
+      if (card.type === 'Upgrade') {
+        setUpgradeSelectionModal({ card, targets: validCardTargets });
+        return;
+      }
+      // NONE-type non-upgrade cards with effect DESTROY_UPGRADE → System Sabotage
+      if (card.effect?.type === 'DESTROY_UPGRADE') {
+        setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
+        return;
+      }
+      // NONE-type cards with scope ALL (Purge Protocol) — auto-resolve
+      if (card.effect?.scope === 'ALL') {
+        setCardConfirmation({ card, target: null });
+        return;
+      }
+      // Generic NONE card — show confirmation
+      setCardConfirmation({ card, target: null });
       return;
     }
 
-    // Case 3: System Sabotage (APPLIED_UPGRADE) - open destroy upgrade modal
+    // Case 3: System Sabotage (legacy APPLIED_UPGRADE) - open destroy upgrade modal
     if (card.targeting?.type === 'APPLIED_UPGRADE') {
       setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
       return;
