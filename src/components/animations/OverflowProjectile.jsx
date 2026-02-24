@@ -150,23 +150,4 @@ const OverflowProjectile = ({
   );
 };
 
-// CSS animations would be injected or in global styles
-const styles = `
-@keyframes pulse {
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-  100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
-}
-
-@keyframes impact {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.5); }
-  100% { transform: scale(1); }
-}
-
-@keyframes spin {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-`;
-
 export default OverflowProjectile;

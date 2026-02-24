@@ -15,27 +15,13 @@ import mapIconUrl from '/Ships/Corvette/MapIcon.png';
 // import CorvetteIcon from './CorvetteIcon.jsx';
 
 /**
- * Faction color mapping
- * player = blue, enemy = red, neutral = white
- * Note: PNG images don't support dynamic coloring - this is only used for SVG icons
- */
-const FACTION_COLORS = {
-  player: '#3b82f6',   // Blue-500
-  enemy: '#ef4444',    // Red-500
-  neutral: '#ffffff',  // White
-};
-
-/**
  * Ship icon component mapping (commented out - using PNG image)
  * Maps shipId to the appropriate icon component.
  * All currently use CorvetteIcon as placeholder - future ship icons
  * can be added here.
+ * FACTION_COLORS and SHIP_ICON_MAP were removed as dead code — restore
+ * from git history if SVG icons are re-enabled.
  */
-// const SHIP_ICON_MAP = {
-//   'SHIP_001': CorvetteIcon,    // Reconnaissance Corvette
-//   'SHIP_002': CorvetteIcon,    // Heavy Assault Carrier (TODO: CarrierIcon)
-//   'SHIP_003': CorvetteIcon,    // Scout (TODO: ScoutIcon)
-// };
 
 /**
  * ShipIconRenderer - Renders ship icon at a position on the tactical map SVG.

@@ -15,8 +15,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
 import {
   calculateRoundStartReset,
   calculateReallocationRemovalReset,
-  calculateReallocationAddingReset,
-  calculateReallocationDisplayShields
+  calculateReallocationAddingReset
 } from '../ShieldResetUtils.js';
 
 describe('Shield Allocation Reset Behavior', () => {
@@ -141,47 +140,4 @@ describe('Shield Allocation Reset Behavior', () => {
     });
   });
 
-  describe('Shield Display During Reallocation', () => {
-    /**
-     * Display should apply pending deltas to game state value.
-     */
-    it('should apply pending shield changes (deltas) to display during reallocation', () => {
-      // ARRANGE: Game state has 2 shields on bridge
-      const gameStateShields = 2;
-      const pendingChanges = { bridge: -1 }; // Removed 1
-
-      // ACT: Calculate display value
-      const displayValue = calculateReallocationDisplayShields(gameStateShields, pendingChanges, 'bridge');
-
-      // ASSERT: Display should show 1 shield (2 - 1)
-      expect(displayValue).toBe(1);
-    });
-
-    it('should show original shields when pendingShieldChanges is empty', () => {
-      // ARRANGE: Game state has 2 shields on bridge
-      const gameStateShields = 2;
-      const pendingChanges = {}; // No changes yet
-
-      // ACT
-      const displayValue = calculateReallocationDisplayShields(gameStateShields, pendingChanges, 'bridge');
-
-      // ASSERT: Display should show original 2 shields
-      expect(displayValue).toBe(2);
-    });
-
-    it('should correctly handle additions during adding phase', () => {
-      // ARRANGE: Game state has 2 shields, pending has -1 removal + 1 addition to different section
-      const bridgeGameState = 2;
-      const powerCellGameState = 0;
-      const pendingChanges = { bridge: -1, powerCell: 1 };
-
-      // ACT
-      const bridgeDisplay = calculateReallocationDisplayShields(bridgeGameState, pendingChanges, 'bridge');
-      const powerCellDisplay = calculateReallocationDisplayShields(powerCellGameState, pendingChanges, 'powerCell');
-
-      // ASSERT
-      expect(bridgeDisplay).toBe(1); // 2 - 1
-      expect(powerCellDisplay).toBe(1); // 0 + 1
-    });
-  });
 });

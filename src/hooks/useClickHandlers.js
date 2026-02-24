@@ -1,6 +1,6 @@
 import TargetingRouter from '../logic/TargetingRouter.js';
 import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
-import { extractDroneNameFromId, getFriendlyDroneTargets } from '../logic/droneUtils.js';
+import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -96,7 +96,7 @@ export default function useClickHandlers({
 
   const handleToggleDroneSelection = (drone) => {
     if (passInfo[getLocalPlayerId() + 'Passed']) return;
-    if (selectedDrone && selectedDrone.name === drone.name) {
+    if (selectedDrone && selectedDrone.id === drone.id) {
      setSelectedDrone(null);
     } else {
      setSelectedDrone(drone);
@@ -547,7 +547,7 @@ export default function useClickHandlers({
 
       debugLog('SINGLE_MOVE_MODE', '🎯 Lane selected for single-move', {
         cardName: singleMoveMode.card.name,
-        drone: extractDroneNameFromId(singleMoveMode.droneId),
+        droneId: singleMoveMode.droneId,
         from: singleMoveMode.sourceLane,
         to: lane
       });

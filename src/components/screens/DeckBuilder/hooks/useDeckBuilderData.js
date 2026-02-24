@@ -289,19 +289,24 @@ const useDeckBuilderData = ({
     return { cardCount: total, deckListForDisplay: displayList, baseCardCounts: counts, typeCounts: types };
   }, [deck, processedCardCollection]);
 
-  const typeLimits = {
-    Ordnance: activeShip?.deckLimits?.ordnanceLimit ?? 15,
-    Tactic: activeShip?.deckLimits?.tacticLimit ?? 15,
-    Support: activeShip?.deckLimits?.supportLimit ?? 15,
-    Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10
-  };
-  const totalCardLimit = activeShip?.deckLimits?.totalCards ?? 40;
-
-  const typeValid = Object.keys(typeLimits).every(
-    type => typeCounts[type] <= typeLimits[type]
-  );
-
-  const isDeckValid = cardCount === totalCardLimit && typeValid;
+  const { typeLimits, totalCardLimit, typeValid, isDeckValid } = useMemo(() => {
+    const limits = {
+      Ordnance: activeShip?.deckLimits?.ordnanceLimit ?? 15,
+      Tactic: activeShip?.deckLimits?.tacticLimit ?? 15,
+      Support: activeShip?.deckLimits?.supportLimit ?? 15,
+      Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10
+    };
+    const totalLimit = activeShip?.deckLimits?.totalCards ?? 40;
+    const valid = Object.keys(limits).every(
+      type => typeCounts[type] <= limits[type]
+    );
+    return {
+      typeLimits: limits,
+      totalCardLimit: totalLimit,
+      typeValid: valid,
+      isDeckValid: cardCount === totalLimit && valid
+    };
+  }, [activeShip, typeCounts, cardCount]);
 
   // --- Drone Counts & Validation ---
 

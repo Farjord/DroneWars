@@ -7,10 +7,6 @@
 
 import PathValidator from './PathValidator.js';
 import DetectionManager from '../detection/DetectionManager.js';
-import gameStateManager from '../../managers/GameStateManager.js';
-import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
-import { mapTiers } from '../../data/mapData.js';
-import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * MovementController - Singleton controller for player movement
@@ -19,8 +15,8 @@ import { debugLog } from '../../utils/debugLogger.js';
  * - Path calculation using A*
  * - Movement validation (path exists, detection check)
  * - Detection cost calculation
- * - Player position updates
- * - Hex arrival triggers (PoI encounters, gate extraction)
+ * - Movement preview data for UI
+ * - Encounter risk calculation
  */
 class MovementController {
   constructor() {
@@ -97,78 +93,6 @@ class MovementController {
     }
 
     return { valid: true, path, cost };
-  }
-
-  /**
-   * Execute player movement to target hex
-   * @param {Object} targetHex - Target hex object
-   * @param {Object} gameState - Current game state
-   * @returns {boolean} Success
-   */
-  movePlayer(targetHex, gameState) {
-    const currentRunState = tacticalMapStateManager.getState();
-
-    if (!currentRunState || !currentRunState.mapData) {
-      debugLog('MOVEMENT_EFFECT', '[Movement] Cannot move: No active run');
-      return false;
-    }
-
-    const { mapData, playerPosition } = currentRunState;
-    const tierConfig = mapTiers[mapData.tier - 1];
-
-    // Validate move
-    const validation = this.isValidMove(
-      playerPosition,
-      targetHex,
-      mapData.hexes,
-      tierConfig
-    );
-
-    if (!validation.valid) {
-      debugLog('MOVEMENT_EFFECT', `[Movement] Invalid move: ${validation.reason}`);
-      return false;
-    }
-
-    const { path, cost } = validation;
-
-    debugLog('MOVEMENT_EFFECT', `[Movement] Moving ${path.length - 1} hexes (cost: +${cost.toFixed(1)}% detection)`);
-
-    // Add detection
-    DetectionManager.addDetection(cost, 'Movement');
-
-    // Update player position
-    tacticalMapStateManager.setState({
-      playerPosition: targetHex
-    });
-
-    // Handle hex arrival triggers
-    this.handleHexArrival(targetHex, gameState);
-
-    return true;
-  }
-
-  /**
-   * Handle arriving at a hex (trigger encounters, extraction, etc.)
-   * @param {Object} hex - Arrived hex
-   * @param {Object} gameState - Current game state
-   */
-  handleHexArrival(hex, gameState) {
-    debugLog('MOVEMENT_EFFECT', `[Movement] Arrived at hex (${hex.q}, ${hex.r}) - Type: ${hex.type}`);
-
-    // PoI encounters — handled by useTacticalEncounters hook, not MovementController
-    if (hex.type === 'poi') {
-      debugLog('MOVEMENT_EFFECT', `[Movement] PoI encounter: ${hex.poiType}`);
-    }
-
-    // Extraction gates — handled by useTacticalExtraction hook, not MovementController
-    else if (hex.type === 'gate') {
-      debugLog('MOVEMENT_EFFECT', '[Movement] Arrived at extraction gate');
-    }
-
-    // Empty hex - no special behavior
-    else {
-      debugLog('MOVEMENT_EFFECT', '[Movement] Empty hex - no encounter');
-    }
   }
 
   /**

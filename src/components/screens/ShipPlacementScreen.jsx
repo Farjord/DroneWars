@@ -281,7 +281,6 @@ function ShipPlacementScreen() {
   const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
 
-  // DEBUG LOGGING - Remove after fixing multiplayer issue
   debugLog('PLACEMENT', '🔍 [SHIP PLACEMENT] Render check:', {
     gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),

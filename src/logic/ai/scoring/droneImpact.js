@@ -27,29 +27,3 @@ export const calculateDroneImpact = (drone, lane, gameDataService) => {
   return attackValue + classValue + durabilityValue;
 };
 
-/**
- * Compare two drones by their impact values
- * @param {Object} droneA - First drone
- * @param {Object} droneB - Second drone
- * @param {string} lane - Lane ID for effective stat calculation
- * @param {Object} gameDataService - GameDataService instance
- * @returns {number} Positive if A > B, negative if A < B, 0 if equal
- */
-export const compareDroneImpact = (droneA, droneB, lane, gameDataService) => {
-  const impactA = calculateDroneImpact(droneA, lane, gameDataService);
-  const impactB = calculateDroneImpact(droneB, lane, gameDataService);
-  return impactA - impactB;
-};
-
-/**
- * Sort drones by impact (lowest first for sacrifice decisions)
- * @param {Array} drones - Drones to sort
- * @param {string} lane - Lane ID for effective stat calculation
- * @param {Object} gameDataService - GameDataService instance
- * @returns {Array} Sorted drones (lowest impact first)
- */
-export const sortDronesByImpactAscending = (drones, lane, gameDataService) => {
-  return [...drones].sort((a, b) =>
-    calculateDroneImpact(a, lane, gameDataService) - calculateDroneImpact(b, lane, gameDataService)
-  );
-};

@@ -10,11 +10,10 @@ import React, { useState, useEffect } from 'react';
 /**
  * StatusConsumptionOverlay - Shows status effect consumption with player-aware label
  * @param {string} label - "You Removed Snare Effect From X in Lane Y" or "Opponent Removed..."
- * @param {string} droneName - Name of the affected drone
  * @param {string} statusType - 'snared' or 'suppressed'
  * @param {Function} onComplete - Callback when animation completes
  */
-const StatusConsumptionOverlay = ({ label, droneName, statusType, onComplete }) => {
+const StatusConsumptionOverlay = ({ label, statusType, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

@@ -100,14 +100,3 @@ export const calculateLaneScore = (laneId, player2State, player1State, allSectio
   return baseScore + speedScore + healthModifier;
 };
 
-/**
- * Analyze the strategic state of a lane
- * @param {number} laneScore - Result from calculateLaneScore
- * @returns {Object} Lane analysis with boolean flags
- */
-export const analyzeLaneState = (laneScore) => ({
-  isLosingBadly: laneScore < -15,
-  isWinningStrongly: laneScore > 15,
-  isDominant: laneScore > 20,
-  isBalanced: laneScore >= -15 && laneScore <= 15,
-});

@@ -376,8 +376,6 @@ function LobbyScreen() {
           </div>
         )}
       </div>
-      {/* FIXED: Properly closed the wrapper div here */}
-
       {/* View Deck Modal */}
       {deckModalOpen && deckModalAI && (
         <ViewDeckModal

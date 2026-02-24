@@ -28,7 +28,7 @@ const CardVisualEffect = ({ visualType, startPos, endPos, onComplete }) => {
     case 'LASER_BLAST':
       return <LaserBlastEffect startPos={startPos} endPos={endPos} duration={ANIMATION_DURATION} />;
     case 'ENERGY_WAVE':
-      return <EnergyWaveEffect startPos={startPos} endPos={endPos} duration={ANIMATION_DURATION} />;
+      return <EnergyWaveEffect endPos={endPos} duration={ANIMATION_DURATION} />;
     case 'NUKE_BLAST':
       return <NukeBlastEffect endPos={endPos} duration={ANIMATION_DURATION} />;
     default:

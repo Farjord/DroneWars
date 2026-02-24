@@ -73,7 +73,7 @@ const staticAssets = {
     '/DroneWars/Menu/NewGame.png',
     '/DroneWars/Menu/LoadGame.png'
   ],
-  hanger: [
+  hangar: [
     '/DroneWars/Hanger/Inventory.png',
     '/DroneWars/Hanger/Replicator.png',
     '/DroneWars/Hanger/Blueprints.png',
@@ -108,7 +108,7 @@ export const assetManifest = {
   backgrounds: backgroundImages,
   ships: shipImages,
   menu: staticAssets.menu,
-  hanger: staticAssets.hanger,
+  hangar: staticAssets.hangar,
   tactical: staticAssets.tactical,
   eremos: staticAssets.eremos,
   tacticalItems: tacticalItemImages,
@@ -149,7 +149,7 @@ export const CATEGORY_LABELS = {
   backgrounds: 'Backgrounds',
   ships: 'Ship Models',
   menu: 'Menu Graphics',
-  hanger: 'Hangar Interface',
+  hangar: 'Hangar Interface',
   tactical: 'Tactical Maps',
   eremos: 'Eremos Assets',
   tacticalItems: 'Tactical Items',

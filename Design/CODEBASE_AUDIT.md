@@ -234,7 +234,7 @@
 - [FIXED] [COMMENT] shipData.js:78 — typo "Leightweight reconnocence" → "Lightweight reconnaissance".
 - [FIXED] [COMMENT] playerDeckData.js:4 — typo "leightweight" → "lightweight".
 - [FIXED] [COMMENT] vsModeDeckData.js:5 — typo "subtefuge" → "subterfuge".
-- [COMMENT] pointsOfInterestData.js — stale "TBD (placeholder)" comments in tierAIMapping.
+- [FIXED] [COMMENT] pointsOfInterestData.js — stale "TBD (placeholder)" comments in tierAIMapping.
 - [FIXED] [DUP] vsModeDeckData.js — VS_DECK_002 and VS_DECK_003 have identical decklists/dronePools/shipComponents. Only names differ. Likely copy-paste placeholder bug.
 - [DUP] pointsOfInterestData.js — three drone PoI entries repeat identical boolean config blocks.
 - [DUP] shipSectionData.js — BRIDGE_001 and BRIDGE_HEAVY have identical ability objects.
@@ -252,12 +252,12 @@
 
 **Findings:**
 - [FIXED] [NAME] backgrounds.js — inconsistent ID casing: `nebula_1` (snake_case) vs `Orbit_1`, `Deep_Space_1` (Pascal_Snake). Normalize to snake_case.
-- [COMMENT] backgrounds.js — scaffolding "Add more backgrounds here" comment. Remove.
+- [FIXED] [COMMENT] backgrounds.js — scaffolding "Add more backgrounds here" comment. Remove.
 - [DEAD] backgrounds.js — `getBackgroundById` fallback chain could return undefined despite JSDoc contract.
 - [SMELL] devConfig.js — `DEV_MODE = true` is hardcoded. Should derive from `import.meta.env.DEV` or warn about manual toggle.
-- [DEAD] devConfig.js — redundant dual export (named + default). Pick one convention.
-- [COMMENT] soundConfig.js — commented-out "Phase 2 (future)" railgun sounds. Track in FUTURE_IMPROVEMENTS.md or delete.
-- [DEAD] soundConfig.js — `getSoundManifest()` is a trivial getter for `SOUND_MANIFEST`. Only one consumer; consider removing.
+- [FIXED] [DEAD] devConfig.js — redundant dual export (named + default). Pick one convention.
+- [FIXED] [COMMENT] soundConfig.js — commented-out "Phase 2 (future)" railgun sounds. Track in FUTURE_IMPROVEMENTS.md or delete.
+- [FIXED] [DEAD] soundConfig.js — `getSoundManifest()` is a trivial getter for `SOUND_MANIFEST`. Only one consumer; consider removing.
 
 #### A3: src/theme/ (1 file)
 
@@ -303,7 +303,7 @@
 
 **debugLogger.js** (5 issues):
 - [DEAD] Line 7: `import { FastForward } from "lucide-react"` — unused React icon import in a logging utility.
-- [COMMENT] 35+ stale annotations in category config: `(DISABLED - not needed)`, `(ENABLED for Railgun investigation)`, `(NEW - for refactor)`. Duplicate category keys: `QUICK_DEPLOY`, `EXTRACTION`, `ENCOUNTER` (later keys shadow earlier).
+- [FIXED] [COMMENT] 35+ stale annotations in category config: `(DISABLED - not needed)`, `(ENABLED for Railgun investigation)`, `(NEW - for refactor)`. Duplicate category keys: `QUICK_DEPLOY`, `EXTRACTION`, `ENCOUNTER` (later keys shadow earlier).
 - [PURITY] Timing utilities (`getTimestamp`, `timingLog`, `getBrowserState`) are separate concerns from logging.
 - [LOG] `setDebugEnabled`/`setDebugCategory` use raw `console.log` for announcements.
 
@@ -375,7 +375,7 @@
 | ai/helpers/hullIntegrityHelpers.js | 183 | 0 | -- |
 | ai/helpers/index.js | 10 | 0 | -- |
 | ai/helpers/jammerHelpers.js | 37 | 0 | -- |
-| ai/helpers/keywordHelpers.js | 182 | 1 | DEAD |
+| ai/helpers/keywordHelpers.js | 182 | 1 | [FIXED] DEAD |
 | ai/helpers/upgradeHelpers.js | 114 | 0 | -- |
 | ai/scoring/droneImpact.js | 55 | 1 | DEAD |
 | ai/scoring/index.js | 8 | 0 | -- |
@@ -389,10 +389,10 @@
 - **[FIXED] [SMELL] aiLogic.js** — 4x `Math.random()` instead of `SeededRandom`. Non-deterministic AI decisions. Fixed in actionDecision.js + deploymentDecision.js (Phase G).
 - **[FIXED] [SIZE] aiLogic.js (1209→14)** — Decomposed and moved to `logic/ai/` in Phase F. God functions split into handler modules.
 - **[FIXED] [LOG] aiLogic.js:246** — raw `console.error`.
-- **[DEAD] adjustmentPasses/index.js** — `applyAllAdjustments` exported but never imported. Uses `require()` in ES module.
+- **[FIXED] [DEAD] adjustmentPasses/index.js** — `applyAllAdjustments` exported but never imported. Uses `require()` in ES module.
 - **[DEAD] ai/helpers/droneHelpers.js** — entire file unused (zero external consumers).
-- **[DEAD] ai/scoring/droneImpact.js, laneScoring.js** — exported functions with zero consumers.
-- **[COMMENT] ai/decisions/*.js** — stale "Future integration" stubs. Track or remove.
+- **[FIXED] [DEAD] ai/scoring/droneImpact.js, laneScoring.js** — exported functions with zero consumers.
+- **[FIXED] [COMMENT] ai/decisions/*.js** — stale "Future integration" stubs. Track or remove.
 - **[SMELL] cardEvaluators/damageCards.js, movementCards.js, statusEffectCards.js** — magic numbers should be in `aiConstants.js`.
 - **[FIXED] [LOGIC] droneAttack.js:138** — `Math.min` with `INTERCEPTION_COVERAGE_MIN` may have sign mismatch. Changed to `Math.max` to properly cap penalty.
 
@@ -561,8 +561,8 @@
 - **[SIZE] CombatOutcomeProcessor.js (866)** — `processVictory` ~230 lines. Mixed mutation patterns. Should split into Victory/Defeat/LootCollector.
 - **[SIZE] SinglePlayerCombatInitializer.js (810)** — `initiateCombat` ~260 lines, `buildPlayerState` ~170 lines.
 - **[ERROR] CommitmentStrategy.js:330** — silently swallows AI commitment errors.
-- **[DEAD] ShieldResetUtils.js:65** — `calculateReallocationDisplayShields` documented as "CURRENT BUG: not called". Dead code with known bug.
-- **[DEAD] MovementController.js** — `handleHexArrival` and `movePlayer` appear to be dead code.
+- **[FIXED] [DEAD] ShieldResetUtils.js:65** — `calculateReallocationDisplayShields` documented as "CURRENT BUG: not called". Dead code with known bug.
+- **[FIXED] [DEAD] MovementController.js** — `handleHexArrival` and `movePlayer` appear to be dead code.
 - **[FIXED] [DEAD] tickerConfig.js** — `MESSAGE_TEMPLATES` (100 lines) never imported by any generator.
 - **[FIXED] [LOG] DetectionManager.js** — 4x raw `console.log`/`console.warn` including on every hex move.
 - **[FIXED] [LOG] MovementController.js** — 7x raw `console.log`/`console.error`.
@@ -594,7 +594,7 @@
 
 **Per-file issues:**
 
-- **[NAME] assetManifest.js:76-77,152** — Property `hanger` but UI label says "Hangar Interface". Spelling inconsistency propagates to consumers.
+- **[FIXED] [NAME] assetManifest.js:76-77,152** — Property `hanger` but UI label says "Hangar Interface". Spelling inconsistency propagates to consumers.
 - **[FIXED] [LOGIC] AssetPreloader.js:97-100** — `.catch()` swallows errors silently, returning `undefined`. This makes `Promise.allSettled` at line 115 report "fulfilled with undefined" instead of "rejected". Defeats the purpose of `allSettled`.
 - **[FIXED] [LOG] AssetPreloader.js:233** — `console.warn('Failed to load assets:')` should use `debugLog`. File already imports `debugLog` elsewhere.
 - **[SMELL] gameDataCache.js:74,76** — Magic numbers `1000` (max cache) and `200` (eviction batch). Should be named constants.
@@ -665,7 +665,7 @@
 - **[FIXED] [LOG] :336,497,609,833** — 4 `console.warn` calls.
 - **[FIXED] [DEAD] :82-88** — `DEFAULT_STATE` constant defined but never referenced. Constructor creates same structure inline.
 - **[TODO] :468** — `reputation: 0, // TODO: Calculate reputation` not tracked in FUTURE_IMPROVEMENTS.md.
-- **[COMMENT]** — Test file `__tests__/RewardManager.test.js` contains banned `// NEW` comments (5 occurrences).
+- **[FIXED] [COMMENT]** — Test file `__tests__/RewardManager.test.js` contains banned `// NEW` comments (5 occurrences).
 
 **ActionProcessor.js (1006 lines, 4 issues):**
 - **[SIZE]** — 1006 lines. Teleport state management (~80 lines) could extract to shared `TeleportStateHandler`.
@@ -722,7 +722,7 @@
 - **[FIXED] [LOG] :68** — Raw `console.error` in `_emit()`.
 
 **GuestSyncManager.js (199 lines, 1 issue):**
-- **[DEAD] :62-63** — Empty `if` block with comment-only body. Remove dead branch.
+- **[FIXED] [DEAD] :62-63** — Empty `if` block with comment-only body. Remove dead branch.
 
 **WaypointManager.js (173 lines, 1 issue):**
 - **[FIXED] [LOG] :35** — Raw `console.log` for diagnostic logging.
@@ -855,7 +855,7 @@
 **useGameLifecycle.js (606 lines, 7 issues):**
 - **[SIZE]** — 606 lines (400+ threshold). Bundles reset, exit, pass, mandatory discard/removal, debug tools, footer toggle, modals — a grab-bag of unrelated concerns.
 - **[LOGIC] :461-473** — **BUG:** `downloadLogAsCSV` headers have 8 columns but row mapping writes 7 values (skips `TimestampUTC`). Produces misaligned CSV output.
-- **[DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
+- **[FIXED] [DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
 - **[DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
 - **[DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
 - **[SMELL] :457** — Raw browser `alert()` call. Should use project's modal/toast system.
@@ -987,12 +987,12 @@
 **Per-file issues:**
 - **[LOGIC] FlashEffect.jsx:18-26** — Three `setTimeout` calls with no cleanup. If component unmounts mid-animation, setState fires on unmounted component.
 - **[LOGIC] LaserEffect.jsx:23-27** — Same timer cleanup issue; only 1 of 3 timers is cleared on unmount.
-- **[DEAD] OverflowProjectile.jsx:160-176** — `const styles` template literal assigned but never used.
+- **[FIXED] [DEAD] OverflowProjectile.jsx:160-176** — `const styles` template literal assigned but never used.
 - **[FIXED] [LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
-- **[DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
+- **[FIXED] [DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
 - **[SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
 - **[DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config computed identically twice.
-- **[DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
+- **[FIXED] [DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
 - **[SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
 - **[SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` for trail particle offset.
 
@@ -1004,7 +1004,7 @@
 | ShipIconRenderer.jsx | 118 | 1 | Reviewed |
 
 - **[FIXED] [DEAD] CorvetteIcon.jsx** — Orphaned component. Only imported by commented-out code in ShipIconRenderer (uses PNG instead).
-- **[DEAD] ShipIconRenderer.jsx:22-26** — `FACTION_COLORS` constant only referenced in commented-out code.
+- **[FIXED] [DEAD] ShipIconRenderer.jsx:22-26** — `FACTION_COLORS` constant only referenced in commented-out code.
 
 #### E3: src/components/quickDeploy/ (4 files, 4 issues)
 
@@ -1088,7 +1088,7 @@
 - **[PURITY] TacticalMapModals.jsx:283-303** — Imports and calls logic singletons inline (`DetectionManager`, `ExtractionController`, `aiPersonalities`).
 - **[PURITY] TacticalItemsPanel.jsx:12-14** — Module-level data fetches.
 - **[SMELL] NewsTicker.jsx:83-131** — Diagnostic logging interval runs every 1s parsing CSS transforms. Dev code in production.
-- **[NAME] AngularBandsBackground.jsx** — File exports `MorphingBackground` but filename says `AngularBandsBackground`.
+- **[FIXED] [NAME] AngularBandsBackground.jsx** — File exports `MorphingBackground` but filename says `AngularBandsBackground`.
 - **[FIXED] [LOG] ActionCard.jsx:77-83** — `debugLog` runs on every render of every card. Performance concern.
 - **[DUP] HiddenShipCard.jsx + HiddenShipSectionCard.jsx** — Nearly identical to `HiddenCard.jsx`, only icon differs.
 
@@ -1140,7 +1140,7 @@
 
 - **[LOGIC] AIDecisionLogModal.jsx:106** — **BUG:** `decisionLog.sort(...)` mutates prop array in-place during render. Should be `[...decisionLog].sort(...)`.
 - **[PURITY] WinnerModal.jsx:34-89** — Reads `gameStateManager`/`tacticalMapStateManager`, calls `CombatOutcomeProcessor`. Business logic in component.
-- **[DEAD] ReputationRewardModal.jsx:13** — `getLevelData` imported but never used.
+- **[FIXED] [DEAD] ReputationRewardModal.jsx:13** — `getLevelData` imported but never used.
 - **[PURITY] ReputationRewardModal.jsx:48-65** — `handleCollectLoot` mutates gameStateManager state directly. Business logic in component.
 - **[PURITY] MIARecoveryModal.jsx** — Imports `miaRecoveryService` and calls it directly.
 - **[PURITY] LootRevealModal.jsx** — Imports `SoundManager` singleton directly.
@@ -1176,9 +1176,9 @@
 - **[SMELL] TacticalMapScreen.jsx:47-161** — 40+ useState + 10+ useRef declarations.
 - **[SMELL] TacticalMapScreen.jsx:586-661** — TacticalMapModals receives ~75 props.
 - **[FIXED] [LOG] DeckSelectionScreen.jsx:144,284** — 2 raw `console.error`.
-- **[COMMENT] DeckSelectionScreen.jsx:341** — Stale `// DEBUG LOGGING - Remove after fixing multiplayer issue`.
+- **[FIXED] [COMMENT] DeckSelectionScreen.jsx:341** — Stale `// DEBUG LOGGING - Remove after fixing multiplayer issue`.
 - **[FIXED] [LOG] ShipPlacementScreen.jsx:185,255** — 2 raw console calls.
-- **[COMMENT] ShipPlacementScreen.jsx:284** — Same stale debug comment as DeckSelectionScreen.
+- **[FIXED] [COMMENT] ShipPlacementScreen.jsx:284** — Same stale debug comment as DeckSelectionScreen.
 
 **Files under 500 lines (9 files, 11 issues):**
 
@@ -1198,7 +1198,7 @@
 - **[FIXED] [LOG] ExtractionDeckBuilder.jsx:338,348,357** — 3 raw console calls.
 - **[SIZE] ExtractionDeckBuilder.jsx** — 425 lines (400+ threshold).
 - **[FIXED] [LOG] LobbyScreen.jsx:59,66,73** — 3 raw `console.error`.
-- **[COMMENT] LobbyScreen.jsx:379** — Banned comment: `{/* FIXED: Properly closed the wrapper div here */}`.
+- **[FIXED] [COMMENT] LobbyScreen.jsx:379** — Banned comment: `{/* FIXED: Properly closed the wrapper div here */}`.
 - **[SMELL] LobbyScreen.jsx:60,67,74** — `alert()` for error display.
 - **[PURITY] LobbyScreen.jsx:81-113** — Game initialization logic in component.
 - **[FIXED] [LOG] MultiplayerLobby.jsx:78,98,111** — 3 raw `console.error`.
@@ -1231,10 +1231,10 @@
 
 **App.jsx (1333 lines, 9 issues):**
 - **[SIZE]** — 1333 lines. Despite heavy hook extraction, still owns ~50 useState, ~10 refs, ~10 hooks, and a 400-line render prop-pass. Animation state cluster (lines 127-146, ~20 setters) could extract to `useAnimationState`. ModalLayer prop-pass could collapse into a context.
-- **[DEAD] :160,162,205,723,780,782,789,791** — Eight "moved to..." breadcrumb comments (e.g., `// Combat and attack state -- potentialGuardians moved to useInterception`). Banned per comment standards.
+- **[FIXED] [DEAD] :160,162,205,723,780,782,789,791** — Eight "moved to..." breadcrumb comments (e.g., `// Combat and attack state -- potentialGuardians moved to useInterception`). Banned per comment standards.
 - **[DEAD] :443-452** — Commented-out debugLog block.
 - **[FIXED] [DEAD] :1317-1326** — `WaitingOverlay` rendered with `isVisible={false}` and `lastAction={null}`. Inert dead code.
-- **[DEAD] :374** — `// addLogEntry is now provided by useGameState hook` — stale breadcrumb.
+- **[FIXED] [DEAD] :374** — `// addLogEntry is now provided by useGameState hook` — stale breadcrumb.
 - **[SMELL] :215-242** — `useAnimationSetup` receives 18 individual setter functions as arguments. Brittle call signature.
 - **[SMELL] :601-615** — `cancelAllActions` is a plain function (not `useCallback`) but passed as dependency to `useDragMechanics`. New reference every render defeats memoization.
 - **[COMMENT] :785** — `// Note: Guest render notification removed` — describes a past change. Banned pattern.
@@ -1362,7 +1362,7 @@ All [STD-CHALLENGE] items collected from the audit:
 #### Phase F+G — Critical Findings Summary
 
 1. **[SIZE] App.jsx** — 1333 lines. Largest React component. ~50 useState, ~10 refs. Animation state cluster and ModalLayer prop-pass are extraction candidates.
-2. **[DEAD] App.jsx** — 8 banned "moved to" breadcrumb comments + 2 dead code blocks.
+2. **[FIXED] [DEAD] App.jsx** — 8 banned "moved to" breadcrumb comments + 2 dead code blocks.
 3. **[SMELL] App.jsx:601** — `cancelAllActions` not wrapped in `useCallback`. Defeats memoization in consuming hooks.
 4. **[FIXED] [LOG]** — 297 raw console calls across 66 files. ~200 actionable violations migrated to debugLog in Phase B2 (193 calls across 61 files).
 5. **[TEST]** — ~280 of ~500 source files (56%) have no test coverage. All 26 hooks untested.

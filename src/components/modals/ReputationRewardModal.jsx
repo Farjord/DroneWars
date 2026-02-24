@@ -11,7 +11,6 @@ import LootRevealModal from './LootRevealModal';
 import gameStateManager from '../../managers/GameStateManager';
 import { packTypes } from '../../data/cardPackData';
 import { RARITY_COLORS } from '../../data/rarityColors';
-import { getLevelData } from '../../data/reputationRewardsData';
 
 function ReputationRewardModal({ onClose }) {
   const [claimingReward, setClaimingReward] = useState(null); // Current reward being claimed

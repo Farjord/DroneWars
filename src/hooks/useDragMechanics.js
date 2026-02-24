@@ -328,9 +328,10 @@ const useDragMechanics = ({
             targetDroneId: target.id
           });
 
-          const [targetLane] = Object.entries(targetPlayerState.dronesOnBoard).find(
+          const laneEntry = Object.entries(targetPlayerState.dronesOnBoard).find(
             ([_, drones]) => drones.some(d => d.id === target.id)
-          ) || [];
+          );
+          const targetLane = laneEntry?.[0];
 
           // DEBUG: Log targetLane lookup result
           debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetLane lookup result', {

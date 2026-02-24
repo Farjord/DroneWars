@@ -6,7 +6,7 @@
 // - calculateAiInterception: AI-specific interception decision logic
 
 import { calculateEffectiveStats } from '../statsCalculator.js';
-import { getLaneOfDrone } from '../gameLogic.js';
+import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
 
 /**
  * Calculate which opponent drones can intercept an attack

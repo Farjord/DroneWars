@@ -72,7 +72,7 @@ export function useTacticalEncounters({
     pendingCombatLoadingRef,
     pathProgressRef,
     skipWaypointRemovalRef,
-  } = sharedRefs;
+  } = sharedRefs || {};
 
   // ========================================
   // SHARED HELPERS

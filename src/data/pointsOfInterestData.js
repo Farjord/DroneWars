@@ -104,9 +104,9 @@ export const poiTypes = [
     disableSalvage: true,  // No salvage operations allowed
     threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
     tierAIMapping: {
-      1: 'Rogue Scout Pattern',  // Tier 1: Easy difficulty
-      2: 'Rogue Scout Pattern',  // Tier 2: TBD (placeholder)
-      3: 'Rogue Scout Pattern'   // Tier 3: TBD (placeholder)
+      1: 'Rogue Scout Pattern',
+      2: 'Rogue Scout Pattern',
+      3: 'Rogue Scout Pattern'
     }
   },
 
@@ -128,9 +128,9 @@ export const poiTypes = [
     disableSalvage: true,  // No salvage operations allowed
     threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
     tierAIMapping: {
-      1: 'Specialized Hunter Group',  // Tier 1: Medium difficulty
-      2: 'Specialized Hunter Group',  // Tier 2: TBD (placeholder)
-      3: 'Specialized Hunter Group'   // Tier 3: TBD (placeholder)
+      1: 'Specialized Hunter Group',
+      2: 'Specialized Hunter Group',
+      3: 'Specialized Hunter Group'
     }
   },
 
@@ -152,9 +152,9 @@ export const poiTypes = [
     disableSalvage: true,  // No salvage operations allowed
     threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
     tierAIMapping: {  // Tier-specific AI assignments
-      1: 'Capital-Class Blockade Fleet',  // Tier 1: Hard difficulty
-      2: 'Capital-Class Blockade Fleet',  // Tier 2: TBD (placeholder)
-      3: 'Capital-Class Blockade Fleet'   // Tier 3: TBD (placeholder)
+      1: 'Capital-Class Blockade Fleet',
+      2: 'Capital-Class Blockade Fleet',
+      3: 'Capital-Class Blockade Fleet'
     }
   }
 ];

@@ -20,51 +20,51 @@ const DEBUG_CONFIG = {
   // Category-specific toggles
   categories: {
     DEPLOYMENT: false,          // Drone deployment tracking
-    DRAG_DROP_DEPLOY: false,   // Drag-and-drop deployment debugging (DISABLED - not needed)
+    DRAG_DROP_DEPLOY: false,   // Drag-and-drop deployment debugging
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
-    PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
-    PHASE_TRANSITIONS: false,    // Game phase transitions and flow (ENABLED for ship ability debugging)
-    PHASE_MANAGER: false,        // Phase Manager state tracking and transitions (NEW - for refactor)
+    PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
+    PHASE_TRANSITIONS: false,    // Game phase transitions and flow
+    PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
     AI_DECISIONS: false,        // AI decision making
-    MULTIPLAYER: false,          // Network sync and multiplayer (ENABLED for Phase 8 testing)
+    MULTIPLAYER: false,          // Network sync and multiplayer
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
-    ANIMATIONS: false,           // Animation system (ENABLED for Railgun investigation)
-    OPTIMISTIC: false,           // Animation deduplication and matching logic (ENABLED for Phase 8 testing)
-    COMMITMENTS: false,          // Simultaneous phase commitments (ENABLED for Phase 8 testing)
-    COMBAT: false,              // Combat resolution (DISABLED - can disable now)
-    PASS_LOGIC: false,           // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
-    STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
-    BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
+    ANIMATIONS: false,           // Animation system
+    OPTIMISTIC: false,           // Animation deduplication and matching logic
+    COMMITMENTS: false,          // Simultaneous phase commitments
+    COMBAT: false,              // Combat resolution
+    PASS_LOGIC: false,           // Pass handling and pass notification debugging
+    STATE_SYNC: false,          // State synchronization
+    BROADCAST_TIMING: false,    // Broadcast timing and state validation
     ENERGY: false,              // Energy management (shield allocation)
-    RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds (ENABLED for deployment budget debugging)
-    CARDS: false,                // Card play and effects (ENABLED for Railgun investigation)
-    RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation (NEW)
-    HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
+    RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds
+    CARDS: false,                // Card play and effects
+    RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation
+    HAND_VIEW: false,            // Hand display and card interaction
     CARD_PLAY: false,             // Card playability and clicking
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,         // Button click tracking and effects
     MOVEMENT_LANES: false,        // Movement card lane highlighting diagnostics
-    GUEST_CASCADE: false,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
-    CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
-    VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
-    TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
+    GUEST_CASCADE: false,        // Guest optimistic cascade flow
+    CASCADE_LOOP: false,        // Cascade loop iteration details
+    VALIDATION: false,           // State validation and reconciliation
+    TIMING: false,               // High-resolution timing milestones with timestamps
     ANNOUNCE_TRACE: false,      // Announcement queueing and playback tracing
-    SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
-    FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
+    SUBTITLE_CALC: false,       // Phase animation subtitle calculation
+    FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
     EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
     SAVE: false,                 // Save game migration and format conversion
     ENCOUNTER: false,          // Random encounter rolls and combat triggers
-    QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
-    PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
+    QUICK_DEPLOY: false,         // Quick deployment validation and selection
+    PHASE_FLOW: false,           // Phase transitions and announcements
     TICKER: false,              // News ticker message generation and data flow
     INTERCEPTOR_GLOW: false,     // Interceptor glow calculation debugging
     AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: false,           // Card wrapper and sizing debugging
     ASSET_PRELOAD: false,          // Asset preloading and splash screen timing
-    SP_COMBAT: false,              // Single-player combat init, abandon, and state transitions (ENABLED for waypoint debugging)
+    SP_COMBAT: false,              // Single-player combat init, abandon, and state transitions
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: false,     // Encounter rolls: chance, roll value, increase per salvage
@@ -84,28 +84,28 @@ const DEBUG_CONFIG = {
     EFFECT_FALLBACK: false,      // Effects falling back to monolithic switch (not yet extracted)
 
     // Targeting System Refactoring - Modular Processor Logging
-    TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
-    TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - can disable now)
-    TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
+    TARGETING_ROUTING: false,    // Targeting router decisions
+    TARGETING_PROCESSING: false, // Targeting processor execution
+    TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
     MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
-    TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
+    TURN_TRANSITION_DEBUG: false,  // Turn transition investigation
     AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
     SINGLE_MOVE_FLOW: false,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
 
     // Additional Cost Card Flow Debugging
-    ADDITIONAL_COST_UI: false,         // UI state transitions, drag/drop, phase changes (DISABLED - too verbose)
-    ADDITIONAL_COST_TARGETING: false,  // Target calculation, filtering, routing (DISABLED - too verbose)
-    ADDITIONAL_COST_HIGHLIGHT: false,  // Visual highlighting state and rendering (DISABLED - too verbose)
+    ADDITIONAL_COST_UI: false,         // UI state transitions, drag/drop, phase changes
+    ADDITIONAL_COST_TARGETING: false,  // Target calculation, filtering, routing
+    ADDITIONAL_COST_HIGHLIGHT: false,  // Visual highlighting state and rendering
     ADDITIONAL_COST_VALIDATION: false,  // Cost/effect validation checks
-    ADDITIONAL_COST: false,             // Card execution, cost processing, animations (KEEP - critical flow tracking)
-    ADDITIONAL_COST_MODE: false,       // Additional cost mode validation and flow control (DISABLED - too verbose)
-    ADDITIONAL_COST_EFFECT_FLOW: false, // Comprehensive effect selection completion flow (DISABLED - no longer needed, direct execution)
+    ADDITIONAL_COST: false,             // Card execution, cost processing, animations
+    ADDITIONAL_COST_MODE: false,       // Additional cost mode validation and flow control
+    ADDITIONAL_COST_EFFECT_FLOW: false, // Comprehensive effect selection completion flow
 
     // Checkpoint flow debugging for drag-drop event tracking
-    CHECKPOINT_FLOW: false,            // Drag-drop event checkpoint tracking (DISABLED - too verbose)
+    CHECKPOINT_FLOW: false,            // Drag-drop event checkpoint tracking
 
     // Modal and click debugging for additional cost investigation
     LANE_CLICK_ENTRY: false,   // Track all lane click invocations
@@ -128,11 +128,8 @@ const DEBUG_CONFIG = {
 
     // Tactical Map Screen
     MOVEMENT: false,                   // Hex movement loop, scan, journey commence/pause/stop
-    ENCOUNTER: false,                  // POI encounters, blueprint encounters, combat init
     SALVAGE: false,                    // Salvage slot selection, leave, combat, quit
     LOOT: false,                       // Loot collection, POI loot, blueprint rewards
-    QUICK_DEPLOY: false,               // Quick deploy validation, selection, routing
-    EXTRACTION: false,                 // Extraction, blockade, abandon run
   }
 };
 

@@ -5,7 +5,7 @@
 // Shows turn status with shimmer gradient text
 
 import React from 'react';
-import MorphingBackground from './AngularBandsBackground.jsx';
+import MorphingBackground from './MorphingBackground.jsx';
 
 const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastAction, localPlayerState, opponentPlayerState, getLocalPlayerId }) => {
   if (!isVisible) return null;

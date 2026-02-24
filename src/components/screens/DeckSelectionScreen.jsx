@@ -338,7 +338,6 @@ function DeckSelectionScreen() {
   const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
 
-  // DEBUG LOGGING - Remove after fixing multiplayer issue
   debugLog('DECK_SELECTION', '🔍 [DECK SELECTION] Render check:', {
     gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),

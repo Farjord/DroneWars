@@ -170,9 +170,15 @@ const useMultiplayerSync = ({
   // --- Guest render completion for animations ---
   // Signal to GuestMessageQueueService that React has finished rendering
   // This ensures animations (like teleport effects) have valid DOM elements to target
+  // Throttled to avoid excessive emit calls on rapid state changes
+  const lastRenderCompleteRef = useRef(0);
   useEffect(() => {
     if (gameState.gameMode === 'guest') {
-      gameStateManager.emit('render_complete');
+      const now = Date.now();
+      if (now - lastRenderCompleteRef.current >= 100) {
+        lastRenderCompleteRef.current = now;
+        gameStateManager.emit('render_complete');
+      }
     }
   }, [gameState, gameStateManager]);
 

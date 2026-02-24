@@ -547,7 +547,7 @@ describe('RewardManager', () => {
   });
 
   // ==============================================
-  // NEW TESTS: Card Format (TDD - RED)
+  // Card Format
   // ==============================================
   describe('Card Format - Architecture Fix', () => {
     it('should return salvage slot cards with cardId and cardName properties (not id/name)', () => {
@@ -572,7 +572,7 @@ describe('RewardManager', () => {
   });
 
   // ==============================================
-  // NEW TESTS: Slot Count Distribution (TDD - RED)
+  // Slot Count Distribution
   // ==============================================
   describe('generateSalvageSlots - Slot Count Distribution', () => {
     it('should not exceed max 5 slots in core zone (was returning 6)', () => {
@@ -645,7 +645,7 @@ describe('RewardManager', () => {
   });
 
   // ==============================================
-  // NEW TESTS: Salvage Slot Type Consistency
+  // Salvage Slot Type Consistency
   // ==============================================
   describe('Salvage Slot Type Consistency', () => {
     it('should use salvageItem type (not salvage) for SalvageController compatibility', () => {
@@ -667,7 +667,7 @@ describe('RewardManager', () => {
   });
 
   // ==============================================
-  // NEW TESTS: finalizeRewards Card Property Access
+  // finalizeRewards Card Property Access
   // ==============================================
   describe('finalizeRewards - Card Property Access', () => {
     it('should use cardId (not id) when adding cards to inventory', () => {
@@ -700,7 +700,7 @@ describe('RewardManager', () => {
   });
 
   // ==============================================
-  // NEW TESTS: Salvage Slot Redesign (TDD - RED)
+  // Salvage Slot Redesign
   // Every slot must yield loot (cards + salvage, no empty)
   // ==============================================
   describe('generateSalvageSlots - Redesigned Behavior', () => {

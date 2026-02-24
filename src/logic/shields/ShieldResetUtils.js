@@ -58,18 +58,3 @@ export function calculateReallocationAddingReset(postRemovalChanges) {
   };
 }
 
-/**
- * Calculates the display value for shields during reallocation.
- * Applies pending deltas to the game state value.
- *
- * CURRENT BUG: This function is not called - display uses game state directly
- *
- * @param {number} gameStateShields - Current shields in game state
- * @param {Object} pendingChanges - Pending shield changes (deltas)
- * @param {string} sectionName - Section to get display value for
- * @returns {number} Display value for shields
- */
-export function calculateReallocationDisplayShields(gameStateShields, pendingChanges, sectionName) {
-  const delta = pendingChanges[sectionName] || 0;
-  return gameStateShields + delta;
-}
