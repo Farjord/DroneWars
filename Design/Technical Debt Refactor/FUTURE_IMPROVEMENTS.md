@@ -37,6 +37,22 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 38 | useClickHandlers.js:146,864,881 | 3 `TECHNICAL DEBT` TODOs: `getLaneOfDrone` utility extraction, `getValidTargets` for special/upgrade cards | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 39 | useAnimationSetup.js | 33 positional parameters — refactor to a single deps/config object for readability and maintainability | Architect review (W1) | 2026-02-24 | Medium |
 | 40 | ShipPlacementScreen.jsx:186,245,256 | 3 error paths log failures but show no user-facing UI feedback (empty sections, submission failure, exception) | TODO triage (Phase K) | 2026-02-24 | Low |
+| 41 | PathValidator+EscapeRouteCalculator | A* search implemented 3x — extract shared pathfinding utility | Audit closure (Phase M) | 2026-02-24 | Low |
+| 42 | GameFlowManager+3 files | `sequentialPhases` still duplicated in 4 files despite `SEQUENTIAL_PHASES` in gameUtils.js | Audit closure (Phase M) | 2026-02-24 | Low |
+| 43 | GameFlowManager.js | `_updateContext` try/finally pattern repeated 5x — share ActionProcessor's `_withUpdateContext()` | Audit closure (Phase M) | 2026-02-24 | Low |
+| 44 | SoundManager.js | `preload()` duplicates fetch-decode loop from `preloadOnly()` — extract shared `_loadBuffers` | Audit closure (Phase M) | 2026-02-24 | Low |
+| 45 | useTacticalWaypoints.js | Detection cost + encounter risk calc duplicated between `addWaypoint` and `recalculateWaypoints` | Audit closure (Phase M) | 2026-02-24 | Low |
+| 46 | GameDataService.js:246 | `getPlayerIdFromState` uses `JSON.stringify(...).length` as fallback ID — fragile, non-unique | Audit closure (Phase M) | 2026-02-24 | Low |
+| 47 | GameDataService.js:285 | `hasGuardianInLane` fragile indirect recursion — works but risky when refactoring | Audit closure (Phase M) | 2026-02-24 | Low |
+| 48 | Hook files (useResolvers, useGameLifecycle) | `Date.now()` / `Date.now()+Math.random()` for animation/instance IDs — collision risk, desync risk | Audit closure (Phase M) | 2026-02-24 | Low |
+| 49 | useResolvers.js:148 | `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting` | Audit closure (Phase M) | 2026-02-24 | Low |
+| 50 | useMultiplayerSync.js:249 | `render_complete` event fires on every `gameState` change — excessive fire rate | Audit closure (Phase M) | 2026-02-24 | Low |
+| 51 | useDeckBuilderData.js:292 | `typeLimits` computed outside `useMemo` but used in memoized `isDeckValid` — could be stale | Audit closure (Phase M) | 2026-02-24 | Low |
+| 52 | CardActionStrategy.js | `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x | Audit closure (Phase M) | 2026-02-24 | Low |
+| 53 | App.jsx:601 | `cancelAllActions` is a plain function (not `useCallback`) — defeats memoization in useDragMechanics | Audit closure (Phase M) | 2026-02-24 | Low |
+| 54 | useCardSelection.js:267 | useEffect deps include `additionalCostState` but early-returns skip recalculation — fires unnecessarily | Audit closure (Phase M) | 2026-02-24 | Low |
+| 55 | TestingSetupScreen.jsx:862-1005 | Lane controls for lane1/lane2/lane3 copy-pasted 3x — dev-only, fix when UI revamped | Audit closure (Phase M) | 2026-02-24 | Low |
+| 56 | QuickDeployEditorScreen.jsx:346-417 | Deployment order index remapping duplicated | Audit closure (Phase M) | 2026-02-24 | Low |
 
 ## Audit Findings (2026-02-23)
 

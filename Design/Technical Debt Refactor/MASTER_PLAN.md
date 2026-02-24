@@ -30,7 +30,9 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | G | Bugs + Quick Wins | Done |
 | H | Deduplication (Round 2) | Done (partial) |
 | J | Code Quality / SMELL Fixes | Done (partial) |
-| K | Documentation + SIZE Tracking | In Progress |
+| K | Documentation + SIZE Tracking | Done |
+| L | Standards Compliance + Remaining Fixes | Done |
+| M | Audit Closure — Triage All Findings | Done |
 
 ---
 
@@ -379,6 +381,29 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 - [x] L2: Mark 5 already-resolved audit items [FIXED], resolve FI #8 (ShipSlotManager repair cost)
 - [x] L3: Remove unused FastForward import from debugLogger, normalize background ID casing, mark 4 more audit items [FIXED]
 - Net file reduction: -5 files (3 re-export stubs + 2 inlined sole-consumer modules)
+
+---
+
+## Phase M: Audit Closure — Triage All Findings
+
+**Status: Done**
+
+**Goal:** Give every remaining untagged finding in CODEBASE_AUDIT.md a final disposition. No code changes — documentation only.
+
+- [x] Verify 2 uncertain items (LaneTargetingProcessor BY-DESIGN, useResolvers deps ACCEPTABLE)
+- [x] Mark 12 items `[FIXED]` (confirmed fixed in earlier phases but unmarked)
+- [x] Mark 18 items `[DEFERRED]` (valid concerns tracked in FUTURE_IMPROVEMENTS #41-56)
+- [x] Mark 124 items `[CLOSED]` with reason codes:
+  - `SIZE-TRACKED` (33) — already tracked in FUTURE_IMPROVEMENTS SIZE table
+  - `ACCEPTABLE` (46) — acceptable pattern, no runtime impact
+  - `TEST-OOS` (10) — test coverage out of scope for refactoring effort
+  - `TODO-FEATURE` (10) — feature stubs, not debt
+  - `SUMMARY` (11) — section summaries duplicating individual findings
+  - `BY-DESIGN` (7) — intentional architecture decisions
+  - `DEV-ONLY` (6) — dev/test tooling, low priority
+  - `DUP-ACCEPTABLE` (1) — cross-file similarity, not copy-paste
+
+**Final audit counts:** 208 [FIXED], 1 [INCORRECT], 18 [DEFERRED], 124 [CLOSED] = 351 total tagged findings. Zero untagged. Audit complete.
 
 ---
 

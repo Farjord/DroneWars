@@ -1,18 +1,22 @@
-# Tech Debt Audit — Post-Phase L Cleanup (2026-02-24)
+# Tech Debt Audit — Post-Phase M Final (2026-02-24)
 
 ## Summary
 
-| Metric | Pre-Refactoring (Feb 21) | Post-Audit (Feb 23) | Post-Phase K (Feb 24) | Post-Phase L (Feb 24) |
+| Metric | Pre-Refactoring (Feb 21) | Post-Audit (Feb 23) | Post-Phase L (Feb 24) | Post-Phase M Final |
 |-|-|-|-|-|
 | Files over 800 lines | 46 | 27 | ~25 | ~25 |
 | Files 400-799 lines | 32 | 54 | ~52 | ~52 |
 | Tests outside `__tests__/` | 199 of 201 | 0 of 220 | 0 of 220 | 0 of 220 |
 | Data files with logic | 9 | 9 | 5 | 5 |
-| Total source lines (non-test) | ~140k (est.) | 122,846 | ~121k (est.) | ~121k |
-| Audit issues found | — | ~433 | ~433 | ~433 |
-| Audit issues [FIXED] | — | 139 | 240 | 249 |
-| Phases completed | A-F | A-F | A-K | A-L |
-| Files deleted (total) | — | — | — | +5 (3 re-export stubs, 2 inlined modules) |
+| Total source lines (non-test) | ~140k (est.) | 122,846 | ~121k | ~121k |
+| Audit issues found | — | ~433 | ~433 | 351 (recount) |
+| Audit issues [FIXED] | — | 139 | 249 | 208 |
+| Audit issues [DEFERRED] | — | — | — | 18 |
+| Audit issues [CLOSED] | — | — | — | 124 |
+| Audit issues [INCORRECT] | — | — | — | 1 |
+| Untagged findings | — | ~294 | ~184 | **0** |
+| Phases completed | A-F | A-F | A-L | **A-M (complete)** |
+| Files deleted (total) | — | — | +5 | +5 (3 re-export stubs, 2 inlined modules) |
 
 ## Critical (800+ lines) — 27 files
 
@@ -80,3 +84,4 @@ Unchanged from baseline — 9 data files with 30+ logic functions. See baseline 
 2. **Test migration complete** — 151 files moved to `__tests__/`, 0 misplaced
 3. **Full codebase audit** — ~500 files reviewed, ~433 issues catalogued in `Design/CODEBASE_AUDIT.md`
 4. **7 standards challenges** identified for CODE_STANDARDS.md evolution
+5. **Audit complete** — All 351 findings have dispositions: 208 fixed, 18 deferred (tracked in FI #41-56), 124 closed with reason codes, 1 incorrect. Zero open findings remain.
