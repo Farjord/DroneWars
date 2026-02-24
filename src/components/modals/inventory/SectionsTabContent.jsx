@@ -4,7 +4,7 @@
 // Ship Sections category: stats bar and component grid
 
 import React from 'react';
-import HiddenShipSectionCard from '../../ui/HiddenShipSectionCard';
+import HiddenCard from '../../ui/HiddenCard';
 import ShipSectionCard from '../../ui/ShipSectionCard';
 import { getRarityColor } from './inventoryUtils';
 import RarityStatsBar from './RarityStatsBar';
@@ -60,7 +60,8 @@ const SectionsTabContent = ({ enrichedComponents, componentStats }) => {
                         transform: 'scale(0.72)',
                         transformOrigin: 'top left'
                       }}>
-                        <HiddenShipSectionCard
+                        <HiddenCard
+                          variant="section"
                           rarity={comp.rarity}
                           size="full"
                           style={{ opacity: 0.8 }}

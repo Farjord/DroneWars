@@ -6,52 +6,8 @@
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
+import { calculateDamageByType } from '../utils/damageCalculation.js';
 import { debugLog } from '../../utils/debugLogger.js';
-
-/**
- * Calculate damage distribution based on damage type
- * (Copied from DamageEffectProcessor for consistency)
- * @param {number} damageValue - Total damage to apply
- * @param {number} shields - Target's current shields
- * @param {number} hull - Target's current hull
- * @param {string} damageType - NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
- * @returns {Object} { shieldDamage, hullDamage }
- */
-const calculateDamageByType = (damageValue, shields, hull, damageType) => {
-  switch (damageType) {
-    case 'PIERCING':
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    case 'SHIELD_BREAKER': {
-      const effectiveShieldDmg = Math.min(damageValue * 2, shields);
-      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
-      const remainingDmg = damageValue - dmgUsedOnShields;
-      return {
-        shieldDamage: effectiveShieldDmg,
-        hullDamage: Math.min(Math.floor(remainingDmg), hull)
-      };
-    }
-
-    case 'ION':
-      return { shieldDamage: Math.min(damageValue, shields), hullDamage: 0 };
-
-    case 'KINETIC':
-      if (shields > 0) {
-        return { shieldDamage: 0, hullDamage: 0 };
-      }
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    default: {
-      // NORMAL damage
-      const shieldDmg = Math.min(damageValue, shields);
-      const remainingDamage = damageValue - shieldDmg;
-      return {
-        shieldDamage: shieldDmg,
-        hullDamage: Math.min(remainingDamage, hull)
-      };
-    }
-  }
-};
 
 /**
  * Processor for CONDITIONAL_SECTION_DAMAGE effect type

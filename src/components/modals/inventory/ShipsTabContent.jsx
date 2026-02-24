@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Rocket } from 'lucide-react';
-import HiddenShipCard from '../../ui/HiddenShipCard';
+import HiddenCard from '../../ui/HiddenCard';
 import ShipCard from '../../ui/ShipCard';
 import { getRarityColor } from './inventoryUtils';
 import RarityStatsBar from './RarityStatsBar';
@@ -67,7 +67,8 @@ const ShipsTabContent = ({ enrichedShips, shipStats }) => {
                           transform: 'scale(0.72)',
                           transformOrigin: 'top left'
                         }}>
-                          <HiddenShipCard
+                          <HiddenCard
+                            variant="ship"
                             rarity={ship.rarity || 'Common'}
                             size="full"
                             style={{ opacity: 0.8 }}

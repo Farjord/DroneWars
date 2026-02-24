@@ -6,6 +6,16 @@
 
 import React, { useState, useEffect } from 'react';
 
+// Size-dependent configuration lookup
+const SIZE_CONFIG = {
+  small: { particleCount: 12, spread: 40, glowSize: 30, duration: 1000 },
+  medium: { particleCount: 18, spread: 60, glowSize: 50, duration: 1200 },
+  large: { particleCount: 24, spread: 80, glowSize: 70, duration: 1400 }
+};
+
+/** Derive size tier from heal amount */
+const getSizeTier = (healAmount) => healAmount === 1 ? 'small' : healAmount <= 3 ? 'medium' : 'large';
+
 /**
  * HEAL EFFECT COMPONENT
  * Renders a particle-based heal animation with floating + symbols.
@@ -23,15 +33,8 @@ const HealEffect = ({ position, healAmount, onComplete }) => {
       return;
     }
 
-    // Determine size tier based on heal amount
-    const size = healAmount === 1 ? 'small' : healAmount <= 3 ? 'medium' : 'large';
-
-    // Size-dependent configuration
-    const config = {
-      small: { particleCount: 12, spread: 40, glowSize: 30, duration: 1000 },
-      medium: { particleCount: 18, spread: 60, glowSize: 50, duration: 1200 },
-      large: { particleCount: 24, spread: 80, glowSize: 70, duration: 1400 }
-    }[size];
+    const size = getSizeTier(healAmount);
+    const config = SIZE_CONFIG[size];
 
     // Generate particles in random positions within spread radius
     const newParticles = [];
@@ -60,13 +63,8 @@ const HealEffect = ({ position, healAmount, onComplete }) => {
 
   if (!position || !healAmount) return null;
 
-  // Determine size configuration
-  const size = healAmount === 1 ? 'small' : healAmount <= 3 ? 'medium' : 'large';
-  const config = {
-    small: { particleCount: 12, spread: 40, glowSize: 30, duration: 1000 },
-    medium: { particleCount: 18, spread: 60, glowSize: 50, duration: 1200 },
-    large: { particleCount: 24, spread: 80, glowSize: 70, duration: 1400 }
-  }[size];
+  const size = getSizeTier(healAmount);
+  const config = SIZE_CONFIG[size];
 
   return (
     <div

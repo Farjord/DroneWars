@@ -138,9 +138,8 @@ export function registerProjectileAnimations(animationManager, {
 
     if (hasOverflow) {
       const gameState = gameStateManager.getState();
-      const localPlayerId = gameStateManager.getLocalPlayerId();
 
-      // Use perspective-relative lookup: local vs opponent
+      // Use perspective-relative lookup: local vs opponent (localPlayerId already in scope above)
       const placedSections = targetPlayer === localPlayerId
         ? gameState.placedSections
         : gameState.opponentPlacedSections;

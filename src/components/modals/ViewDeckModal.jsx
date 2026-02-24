@@ -75,33 +75,37 @@ const ViewDeckModal = ({
     }
   }, [isOpen]);
 
+  /**
+   * Build group definitions for a given mode.
+   * @param {string} mode - 'cost', 'type', or 'rarity'
+   * @param {string} cssPrefix - CSS class prefix ('dw-swimlane-header' or 'dw-matrix-header')
+   */
+  const buildGroups = (mode, cssPrefix) => {
+    switch (mode) {
+      case 'cost': {
+        const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
+        return costs.map(cost => ({
+          key: cost,
+          label: cssPrefix.includes('matrix') ? `${cost}` : `Cost ${cost}`,
+          headerClass: ''
+        }));
+      }
+      case 'type':
+        return ['Ordnance', 'Support', 'Tactic', 'Upgrade'].map(t => ({
+          key: t, label: t, headerClass: `${cssPrefix}--${t.toLowerCase()}`
+        }));
+      case 'rarity':
+        return ['Common', 'Uncommon', 'Rare', 'Mythic'].map(r => ({
+          key: r, label: r, headerClass: `${cssPrefix}--${r.toLowerCase()}`
+        }));
+      default:
+        return [];
+    }
+  };
+
   // Group and sort cards into swimlanes
   const swimlaneGroups = useMemo(() => {
-    // Define group configurations
-    const getGroups = () => {
-      switch (swimlaneMode) {
-        case 'cost': {
-          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
-          return costs.map(cost => ({ key: cost, label: `Cost ${cost}`, headerClass: '' }));
-        }
-        case 'type':
-          return [
-            { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-swimlane-header--ordnance' },
-            { key: 'Support', label: 'Support', headerClass: 'dw-swimlane-header--support' },
-            { key: 'Tactic', label: 'Tactic', headerClass: 'dw-swimlane-header--tactic' },
-            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-swimlane-header--upgrade' }
-          ];
-        case 'rarity':
-          return [
-            { key: 'Common', label: 'Common', headerClass: 'dw-swimlane-header--common' },
-            { key: 'Uncommon', label: 'Uncommon', headerClass: 'dw-swimlane-header--uncommon' },
-            { key: 'Rare', label: 'Rare', headerClass: 'dw-swimlane-header--rare' },
-            { key: 'Mythic', label: 'Mythic', headerClass: 'dw-swimlane-header--mythic' }
-          ];
-        default:
-          return [];
-      }
-    };
+    const getGroups = () => buildGroups(swimlaneMode, 'dw-swimlane-header');
 
     // Sub-sort function
     const sortCards = (items) => {
@@ -130,60 +134,11 @@ const ViewDeckModal = ({
   const matrixData = useMemo(() => {
     if (viewMode !== 'matrix') return null;
 
-    // Get column groups (based on swimlaneMode - the "Group by")
-    const getColumnGroups = () => {
-      switch (swimlaneMode) {
-        case 'cost': {
-          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
-          return costs.map(cost => ({ key: cost, label: `${cost}`, headerClass: '' }));
-        }
-        case 'type':
-          return [
-            { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-matrix-header--ordnance' },
-            { key: 'Support', label: 'Support', headerClass: 'dw-matrix-header--support' },
-            { key: 'Tactic', label: 'Tactic', headerClass: 'dw-matrix-header--tactic' },
-            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-matrix-header--upgrade' }
-          ];
-        case 'rarity':
-          return [
-            { key: 'Common', label: 'Common', headerClass: 'dw-matrix-header--common' },
-            { key: 'Uncommon', label: 'Uncommon', headerClass: 'dw-matrix-header--uncommon' },
-            { key: 'Rare', label: 'Rare', headerClass: 'dw-matrix-header--rare' },
-            { key: 'Mythic', label: 'Mythic', headerClass: 'dw-matrix-header--mythic' }
-          ];
-        default:
-          return [];
-      }
-    };
-
-    // Get row groups (based on subSortBy)
-    const getRowGroups = () => {
-      switch (subSortBy) {
-        case 'cost': {
-          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
-          return costs.map(cost => ({ key: cost, label: `Cost ${cost}` }));
-        }
-        case 'type':
-          return [
-            { key: 'Ordnance', label: 'Ordnance' },
-            { key: 'Support', label: 'Support' },
-            { key: 'Tactic', label: 'Tactic' },
-            { key: 'Upgrade', label: 'Upgrade' }
-          ];
-        case 'rarity':
-          return [
-            { key: 'Common', label: 'Common' },
-            { key: 'Uncommon', label: 'Uncommon' },
-            { key: 'Rare', label: 'Rare' },
-            { key: 'Mythic', label: 'Mythic' }
-          ];
-        default:
-          return [];
-      }
-    };
-
-    const columns = getColumnGroups();
-    const rows = getRowGroups();
+    // Column groups use matrix CSS prefix, row groups use no styling (headerClass stripped)
+    const columns = buildGroups(swimlaneMode, 'dw-matrix-header');
+    const rows = buildGroups(subSortBy, 'dw-swimlane-header').map(
+      ({ key, label }) => ({ key, label })
+    );
 
     // Helper functions for getting values
     const getColumnValue = (card) => swimlaneMode === 'cost' ? card.cost : card[swimlaneMode];

@@ -61,6 +61,53 @@ export const formatLogicForCsv = (logicArray) => {
   return cleanedLogic.join('; ');
 };
 
+/** CSV column headers for decision exports */
+const DECISION_CSV_HEADERS = [
+  'GameTimestamp', 'Phase', 'Turn', 'ActionIndex', 'Type',
+  'Instigator', 'Target', 'FinalScore', 'Logic', 'IsChosen',
+  'AIEnergy', 'AICPU', 'OpponentEnergy', 'OpponentCPU'
+];
+
+/**
+ * Extract player context metrics from game state
+ * @param {Object} gameState - Current game state
+ * @returns {Object} - { aiEnergy, aiCPU, opponentEnergy, opponentCPU }
+ */
+const extractContext = (gameState) => ({
+  aiEnergy: gameState?.player2?.energy ?? 'N/A',
+  aiCPU: gameState?.player2 ? Object.values(gameState.player2.dronesOnBoard || {}).flat().length : 'N/A',
+  opponentEnergy: gameState?.player1?.energy ?? 'N/A',
+  opponentCPU: gameState?.player1 ? Object.values(gameState.player1.dronesOnBoard || {}).flat().length : 'N/A'
+});
+
+/**
+ * Convert a batch of decisions into CSV row strings
+ * @param {Array} decisions - Decision array
+ * @param {string} timestamp - Game timestamp
+ * @param {string} phase - Decision phase
+ * @param {number} turn - Turn number
+ * @param {Object} ctx - Context from extractContext()
+ * @returns {Array<string>} - Array of CSV row strings
+ */
+const buildDecisionRows = (decisions, timestamp, phase, turn, ctx) => {
+  return decisions.map((decision, index) => [
+    escapeCSVValue(timestamp || new Date().toISOString()),
+    escapeCSVValue(phase || 'unknown'),
+    escapeCSVValue(turn ?? 'N/A'),
+    escapeCSVValue(index),
+    escapeCSVValue(decision.type || 'deploy'),
+    escapeCSVValue(decision.instigator || 'N/A'),
+    escapeCSVValue(decision.targetName || 'N/A'),
+    escapeCSVValue(decision.score ?? 0),
+    escapeCSVValue(formatLogicForCsv(decision.logic || [])),
+    escapeCSVValue(decision.isChosen ? 'TRUE' : 'FALSE'),
+    escapeCSVValue(ctx.aiEnergy),
+    escapeCSVValue(ctx.aiCPU),
+    escapeCSVValue(ctx.opponentEnergy),
+    escapeCSVValue(ctx.opponentCPU)
+  ].join(','));
+};
+
 /**
  * Convert decision objects to CSV string
  * @param {Object} params - Parameters object
@@ -76,53 +123,11 @@ export const convertDecisionsToCsv = ({ decisions, phase, turn, gameTimestamp, g
     return '';
   }
 
-  // CSV Header
-  const headers = [
-    'GameTimestamp',
-    'Phase',
-    'Turn',
-    'ActionIndex',
-    'Type',
-    'Instigator',
-    'Target',
-    'FinalScore',
-    'Logic',
-    'IsChosen',
-    'AIEnergy',
-    'AICPU',
-    'OpponentEnergy',
-    'OpponentCPU'
+  const ctx = extractContext(gameState);
+  const csvRows = [
+    DECISION_CSV_HEADERS.join(','),
+    ...buildDecisionRows(decisions, gameTimestamp, phase, turn, ctx)
   ];
-
-  const csvRows = [headers.join(',')];
-
-  // Extract context from gameState
-  const aiEnergy = gameState?.player2?.energy ?? 'N/A';
-  const aiCPU = gameState?.player2 ? Object.values(gameState.player2.dronesOnBoard || {}).flat().length : 'N/A';
-  const opponentEnergy = gameState?.player1?.energy ?? 'N/A';
-  const opponentCPU = gameState?.player1 ? Object.values(gameState.player1.dronesOnBoard || {}).flat().length : 'N/A';
-
-  // Convert each decision to a CSV row
-  decisions.forEach((decision, index) => {
-    const row = [
-      escapeCSVValue(gameTimestamp || new Date().toISOString()),
-      escapeCSVValue(phase || 'unknown'),
-      escapeCSVValue(turn ?? 'N/A'),
-      escapeCSVValue(index),
-      escapeCSVValue(decision.type || 'deploy'),
-      escapeCSVValue(decision.instigator || 'N/A'),
-      escapeCSVValue(decision.targetName || 'N/A'),
-      escapeCSVValue(decision.score ?? 0),
-      escapeCSVValue(formatLogicForCsv(decision.logic || [])),
-      escapeCSVValue(decision.isChosen ? 'TRUE' : 'FALSE'),
-      escapeCSVValue(aiEnergy),
-      escapeCSVValue(aiCPU),
-      escapeCSVValue(opponentEnergy),
-      escapeCSVValue(opponentCPU)
-    ];
-
-    csvRows.push(row.join(','));
-  });
 
   return csvRows.join('\n');
 };
@@ -137,57 +142,12 @@ export const convertFullHistoryToCsv = (decisionHistory) => {
     return '';
   }
 
-  // CSV Header
-  const headers = [
-    'GameTimestamp',
-    'Phase',
-    'Turn',
-    'ActionIndex',
-    'Type',
-    'Instigator',
-    'Target',
-    'FinalScore',
-    'Logic',
-    'IsChosen',
-    'AIEnergy',
-    'AICPU',
-    'OpponentEnergy',
-    'OpponentCPU'
-  ];
+  const csvRows = [DECISION_CSV_HEADERS.join(',')];
 
-  const csvRows = [headers.join(',')];
-
-  // Process each decision entry
   decisionHistory.forEach((entry) => {
     const { decisions, phase, turn, timestamp, gameState } = entry;
-
-    // Extract context from gameState
-    const aiEnergy = gameState?.player2?.energy ?? 'N/A';
-    const aiCPU = gameState?.player2 ? Object.values(gameState.player2.dronesOnBoard || {}).flat().length : 'N/A';
-    const opponentEnergy = gameState?.player1?.energy ?? 'N/A';
-    const opponentCPU = gameState?.player1 ? Object.values(gameState.player1.dronesOnBoard || {}).flat().length : 'N/A';
-
-    // Convert each decision to a CSV row
-    decisions.forEach((decision, index) => {
-      const row = [
-        escapeCSVValue(timestamp || new Date().toISOString()),
-        escapeCSVValue(phase || 'unknown'),
-        escapeCSVValue(turn ?? 'N/A'),
-        escapeCSVValue(index),
-        escapeCSVValue(decision.type || 'deploy'),
-        escapeCSVValue(decision.instigator || 'N/A'),
-        escapeCSVValue(decision.targetName || 'N/A'),
-        escapeCSVValue(decision.score ?? 0),
-        escapeCSVValue(formatLogicForCsv(decision.logic || [])),
-        escapeCSVValue(decision.isChosen ? 'TRUE' : 'FALSE'),
-        escapeCSVValue(aiEnergy),
-        escapeCSVValue(aiCPU),
-        escapeCSVValue(opponentEnergy),
-        escapeCSVValue(opponentCPU)
-      ];
-
-      csvRows.push(row.join(','));
-    });
+    const ctx = extractContext(gameState);
+    csvRows.push(...buildDecisionRows(decisions, timestamp, phase, turn, ctx));
   });
 
   return csvRows.join('\n');

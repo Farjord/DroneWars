@@ -9,6 +9,7 @@ import { calculateEffectiveStats, calculateEffectiveShipStats } from '../statsCa
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
 import { updateAuras } from '../utils/auraManager.js';
 import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
+import { calculateDamageByType } from '../utils/damageCalculation.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { createDroneAttackAnimation } from './animations/DroneAttackAnimation.js';
@@ -20,55 +21,6 @@ import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js
 import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimation.js';
 import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
 import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
-
-/**
- * Calculate damage distribution based on damage type
- * @param {number} damageValue - Total damage to apply
- * @param {number} shields - Target's current shields
- * @param {number} hull - Target's current hull
- * @param {string} damageType - NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
- * @returns {Object} { shieldDamage, hullDamage }
- */
-const calculateDamageByType = (damageValue, shields, hull, damageType) => {
-  switch (damageType) {
-    case 'PIERCING':
-      // Bypass shields entirely
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    case 'SHIELD_BREAKER': {
-      // Each point of damage removes 2 shield points
-      // Remaining damage after shields are gone hits hull at 1:1
-      const effectiveShieldDmg = Math.min(damageValue * 2, shields);
-      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
-      const remainingDmg = damageValue - dmgUsedOnShields;
-      return {
-        shieldDamage: effectiveShieldDmg,
-        hullDamage: Math.min(Math.floor(remainingDmg), hull)
-      };
-    }
-
-    case 'ION':
-      // Only damages shields, excess is wasted
-      return { shieldDamage: Math.min(damageValue, shields), hullDamage: 0 };
-
-    case 'KINETIC':
-      // Only damages hull, but completely blocked by any shields
-      if (shields > 0) {
-        return { shieldDamage: 0, hullDamage: 0 };
-      }
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    default: {
-      // NORMAL: Damage shields first, then hull
-      const shieldDmg = Math.min(damageValue, shields);
-      const remainingDamage = damageValue - shieldDmg;
-      return {
-        shieldDamage: shieldDmg,
-        hullDamage: Math.min(remainingDamage, hull)
-      };
-    }
-  }
-};
 
 /**
  * Calculate after-attack state changes and effects

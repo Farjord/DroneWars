@@ -244,14 +244,7 @@ const useShieldAllocation = ({
   };
 
   const handleCancelReallocation = () => {
-    setPendingShieldChanges({});
-    setPostRemovalPendingChanges({});
-    setReallocationPhase(null);
-    setShieldsToRemove(0);
-    setShieldsToAdd(0);
-    setOriginalShieldAllocation(null);
-    setPostRemovalShieldAllocation(null);
-    setReallocationAbility(null);
+    clearReallocationState();
   };
 
   const handleConfirmReallocation = () => {

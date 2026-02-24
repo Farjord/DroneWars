@@ -79,10 +79,10 @@ export default function useGameLifecycle({
   // Track previous turnPhase for footer view switching and mandatory action clearing
   const footerPreviousPhaseRef = useRef(null);
 
-  // --- handleReset ---
+  // --- Shared state clearing ---
 
-  const handleReset = () => {
-    resetGame();
+  /** Reset all UI selection/modal state. Used by handleReset and handleExitGame. */
+  const clearUIState = () => {
     isResolvingAttackRef.current = false;
     setSelectedDrone(null);
     setModalContent(null);
@@ -95,6 +95,13 @@ export default function useGameLifecycle({
     setValidCardTargets([]);
     setCardConfirmation(null);
     setShowWinnerModal(false);
+  };
+
+  // --- handleReset ---
+
+  const handleReset = () => {
+    resetGame();
+    clearUIState();
   };
 
   // --- handleExitGame ---
@@ -112,18 +119,7 @@ export default function useGameLifecycle({
     }
 
     endGame();
-    isResolvingAttackRef.current = false;
-    setSelectedDrone(null);
-    setModalContent(null);
-    setAbilityMode(null);
-    setValidAbilityTargets([]);
-    setMandatoryAction(null);
-    setShowMandatoryActionModal(false);
-    setConfirmationModal(null);
-    setSelectedCard(null);
-    setValidCardTargets([]);
-    setCardConfirmation(null);
-    setShowWinnerModal(false);
+    clearUIState();
   };
 
   // --- handleConfirmAbandonRun ---
@@ -308,19 +304,24 @@ export default function useGameLifecycle({
     }
   };
 
-  // --- handleMandatoryDiscardContinue ---
+  // --- Shared mandatory phase commitment ---
 
-  const handleMandatoryDiscardContinue = async () => {
-    debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Player completing mandatory discard phase');
+  /**
+   * Commit a mandatory phase and show waiting overlay if opponent hasn't committed.
+   * Waits for the animation queue to drain before showing the overlay.
+   * Shared by handleMandatoryDiscardContinue and handleMandatoryDroneRemovalContinue.
+   */
+  const commitMandatoryPhase = async (phaseName, logLabel) => {
+    debugLog('PHASE_TRANSITIONS', `[${logLabel}] Player completing ${phaseName} phase`);
 
     await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
-      phase: 'mandatoryDiscard',
+      phase: phaseName,
       actionData: { completed: true }
     });
 
     const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.mandatoryDiscard || {};
+    const phaseCommitments = commitments[phaseName] || {};
     const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
 
     if (!opponentCommitted) {
@@ -333,60 +334,30 @@ export default function useGameLifecycle({
         if (queueLength > 0 || isPlaying) {
           debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
           const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDiscard');
+            setWaitingForPlayerPhase(phaseName);
             unsubscribe();
             debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
           });
         } else {
-          setWaitingForPlayerPhase('mandatoryDiscard');
+          setWaitingForPlayerPhase(phaseName);
         }
       } else {
-        setWaitingForPlayerPhase('mandatoryDiscard');
+        setWaitingForPlayerPhase(phaseName);
       }
     } else {
       debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
     }
   };
+
+  // --- handleMandatoryDiscardContinue ---
+
+  const handleMandatoryDiscardContinue = () =>
+    commitMandatoryPhase('mandatoryDiscard', 'MANDATORY DISCARD');
 
   // --- handleMandatoryDroneRemovalContinue ---
 
-  const handleMandatoryDroneRemovalContinue = async () => {
-    debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Player completing mandatory drone removal phase');
-
-    await processActionWithGuestRouting('commitment', {
-      playerId: getLocalPlayerId(),
-      phase: 'mandatoryDroneRemoval',
-      actionData: { completed: true }
-    });
-
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.mandatoryDroneRemoval || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-
-      if (phaseAnimationQueue) {
-        const queueLength = phaseAnimationQueue.getQueueLength();
-        const isPlaying = phaseAnimationQueue.isPlaying();
-
-        if (queueLength > 0 || isPlaying) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDroneRemoval');
-            unsubscribe();
-            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
-          });
-        } else {
-          setWaitingForPlayerPhase('mandatoryDroneRemoval');
-        }
-      } else {
-        setWaitingForPlayerPhase('mandatoryDroneRemoval');
-      }
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
-  };
+  const handleMandatoryDroneRemovalContinue = () =>
+    commitMandatoryPhase('mandatoryDroneRemoval', 'MANDATORY DRONE REMOVAL');
 
   // --- checkBothPlayersHandLimitComplete ---
 

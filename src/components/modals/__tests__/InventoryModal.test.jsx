@@ -41,15 +41,12 @@ vi.mock('../../../data/shipData.js', () => ({
 
 // Mock the card components to simplify testing
 vi.mock('../../ui/HiddenCard', () => ({
-  default: ({ rarity }) => <div data-testid="hidden-card">Hidden {rarity}</div>
-}));
-
-vi.mock('../../ui/HiddenShipCard', () => ({
-  default: ({ rarity }) => <div data-testid="hidden-ship-card">Hidden Ship {rarity}</div>
-}));
-
-vi.mock('../../ui/HiddenShipSectionCard', () => ({
-  default: ({ rarity }) => <div data-testid="hidden-section-card">Hidden Section {rarity}</div>
+  default: ({ rarity, variant = 'default' }) => {
+    const testId = variant === 'ship' ? 'hidden-ship-card'
+      : variant === 'section' ? 'hidden-section-card'
+      : 'hidden-card';
+    return <div data-testid={testId}>Hidden {rarity}</div>;
+  }
 }));
 
 vi.mock('../../ui/ActionCard', () => ({

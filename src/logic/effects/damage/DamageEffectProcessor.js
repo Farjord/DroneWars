@@ -17,55 +17,13 @@ import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
 import { calculateEffectiveStats } from '../../statsCalculator.js';
 import { gameEngine } from '../../gameLogic.js';
 import { resolveAttack } from '../../combat/AttackProcessor.js';
+import { calculateDamageByType } from '../../utils/damageCalculation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { buildDefaultDamageAnimation } from './animations/DefaultDamageAnimation.js';
 import { buildRailgunAnimation } from './animations/RailgunAnimation.js';
 import { buildOverflowAnimation } from './animations/OverflowAnimation.js';
 import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
-
-/**
- * Calculate damage distribution based on damage type
- * @param {number} damageValue - Total damage to apply
- * @param {number} shields - Target's current shields
- * @param {number} hull - Target's current hull
- * @param {string} damageType - NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
- * @returns {Object} { shieldDamage, hullDamage }
- */
-const calculateDamageByType = (damageValue, shields, hull, damageType) => {
-  switch (damageType) {
-    case 'PIERCING':
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    case 'SHIELD_BREAKER': {
-      const effectiveShieldDmg = Math.min(damageValue * 2, shields);
-      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
-      const remainingDmg = damageValue - dmgUsedOnShields;
-      return {
-        shieldDamage: effectiveShieldDmg,
-        hullDamage: Math.min(Math.floor(remainingDmg), hull)
-      };
-    }
-
-    case 'ION':
-      return { shieldDamage: Math.min(damageValue, shields), hullDamage: 0 };
-
-    case 'KINETIC':
-      if (shields > 0) {
-        return { shieldDamage: 0, hullDamage: 0 };
-      }
-      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
-
-    default: {
-      const shieldDmg = Math.min(damageValue, shields);
-      const remainingDamage = damageValue - shieldDmg;
-      return {
-        shieldDamage: shieldDmg,
-        hullDamage: Math.min(remainingDamage, hull)
-      };
-    }
-  }
-};
 
 /**
  * Processor for all damage effect types
@@ -548,31 +506,22 @@ class DamageEffectProcessor extends BaseEffectProcessor {
 
     // Calculate total damage (including marked bonus)
     const totalDamage = baseDamage + (targetDrone.isMarked ? markedBonus : 0);
+    const damageType = isPiercing ? 'PIERCING' : 'NORMAL';
 
     // Calculate damage needed to destroy drone
-    let damageToKill;
-    if (isPiercing) {
-      damageToKill = targetDrone.hull;
-    } else {
-      damageToKill = targetDrone.currentShields + targetDrone.hull;
-    }
+    const damageToKill = isPiercing
+      ? targetDrone.hull
+      : targetDrone.currentShields + targetDrone.hull;
 
-    // Apply damage to drone
-    let shieldDamage = 0;
-    let hullDamage = 0;
-
-    if (isPiercing) {
-      // Piercing ignores shields
-      hullDamage = Math.min(totalDamage, targetDrone.hull);
-      targetDrone.hull -= hullDamage;
-    } else {
-      // Non-piercing: damage shields first
-      shieldDamage = Math.min(totalDamage, targetDrone.currentShields);
-      targetDrone.currentShields -= shieldDamage;
-      const remainingDamage = totalDamage - shieldDamage;
-      hullDamage = Math.min(remainingDamage, targetDrone.hull);
-      targetDrone.hull -= hullDamage;
-    }
+    // Apply damage to drone using shared damage calculator
+    const { shieldDamage, hullDamage } = calculateDamageByType(
+      totalDamage,
+      targetDrone.currentShields,
+      targetDrone.hull,
+      damageType
+    );
+    targetDrone.currentShields -= shieldDamage;
+    targetDrone.hull -= hullDamage;
 
     const droneDestroyed = targetDrone.hull <= 0;
 
@@ -589,19 +538,16 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       if (sectionName && newPlayerStates[opponentId].shipSections[sectionName]) {
         const shipSection = newPlayerStates[opponentId].shipSections[sectionName];
 
-        // Apply overflow damage to ship section (inheriting piercing property)
-        if (isPiercing) {
-          // Piercing overflow bypasses ship shields
-          shipSection.hull -= overflowDamage;
-        } else {
-          // Non-piercing overflow must go through shields first
-          const shipShieldDamage = Math.min(overflowDamage, shipSection.allocatedShields);
-          shipSection.allocatedShields -= shipShieldDamage;
-          const shipRemainingDamage = overflowDamage - shipShieldDamage;
-          if (shipRemainingDamage > 0) {
-            shipSection.hull -= shipRemainingDamage;
-          }
-        }
+        // Apply overflow damage to ship section using shared damage calculator
+        // (inheriting piercing property; uses allocatedShields for ship sections)
+        const sectionResult = calculateDamageByType(
+          overflowDamage,
+          shipSection.allocatedShields,
+          shipSection.hull,
+          damageType
+        );
+        shipSection.allocatedShields -= sectionResult.shieldDamage;
+        shipSection.hull -= sectionResult.hullDamage;
 
         // Log overflow damage
         if (callbacks?.logCallback) {

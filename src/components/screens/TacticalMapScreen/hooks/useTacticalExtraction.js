@@ -42,6 +42,20 @@ export function useTacticalExtraction({
   const { shouldStopMovement, pendingExtractionRef, pendingCombatLoadingRef, pathProgressRef } = sharedRefs;
 
   /**
+   * Store extraction result and show the extraction loading screen.
+   * Shared by handleExtract (blockade-cleared), handleExtractionConfirmed, and handleExtractionWithItem.
+   */
+  const showExtractionResult = useCallback((runState, result) => {
+    setExtractionScreenData({
+      creditsEarned: runState.creditsEarned || 0,
+      cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+      aiCoresEarned: runState.aiCoresEarned || 0
+    });
+    pendingExtractionRef.current = result;
+    setShowExtractionScreen(true);
+  }, [setExtractionScreenData, pendingExtractionRef, setShowExtractionScreen]);
+
+  /**
    * Handle extraction button click - show confirmation modal or extract directly if blockade already cleared
    */
   const handleExtract = useCallback(() => {
@@ -60,26 +74,14 @@ export function useTacticalExtraction({
       debugLog('EXTRACTION', 'Blockade already cleared - skipping modal, extracting directly');
 
       const result = ExtractionController.completeExtraction(runState);
-
-      // Prepare extraction screen data
-      setExtractionScreenData({
-        creditsEarned: runState.creditsEarned || 0,
-        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-        aiCoresEarned: runState.aiCoresEarned || 0
-      });
-
-      // Store the result for after animation
-      pendingExtractionRef.current = result;
-
-      // Show extraction loading screen
-      setShowExtractionScreen(true);
+      showExtractionResult(runState, result);
       return;
     }
 
     // Normal flow - show confirmation modal (modal handles blockade check internally)
     debugLog('EXTRACTION', 'Showing extraction confirmation modal');
     setShowExtractionConfirm(true);
-  }, [shouldStopMovement, setIsMoving, setIsScanningHex, setExtractionScreenData, pendingExtractionRef, setShowExtractionScreen, setShowExtractionConfirm]);
+  }, [shouldStopMovement, setIsMoving, setIsScanningHex, showExtractionResult, setShowExtractionConfirm]);
 
   /**
    * Handle extraction cancel - close confirmation modal
@@ -105,20 +107,8 @@ export function useTacticalExtraction({
     }
 
     const result = ExtractionController.completeExtraction(runState);
-
-    // Prepare extraction screen data
-    setExtractionScreenData({
-      creditsEarned: runState.creditsEarned || 0,
-      cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-      aiCoresEarned: runState.aiCoresEarned || 0
-    });
-
-    // Store the result for after animation
-    pendingExtractionRef.current = result;
-
-    // Show extraction loading screen
-    setShowExtractionScreen(true);
-  }, [setShowExtractionConfirm, setExtractionScreenData, pendingExtractionRef, setShowExtractionScreen]);
+    showExtractionResult(runState, result);
+  }, [setShowExtractionConfirm, showExtractionResult]);
 
   /**
    * Handle extraction with Clearance Override item
@@ -143,24 +133,12 @@ export function useTacticalExtraction({
 
       // Complete extraction (no blockade check needed)
       const extractionResult = ExtractionController.completeExtraction(runState);
-
-      // Prepare extraction screen data
-      setExtractionScreenData({
-        creditsEarned: runState.creditsEarned || 0,
-        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-        aiCoresEarned: runState.aiCoresEarned || 0
-      });
-
-      // Store the result for after animation
-      pendingExtractionRef.current = extractionResult;
-
-      // Show extraction loading screen
-      setShowExtractionScreen(true);
+      showExtractionResult(runState, extractionResult);
     } else {
       // Item use failed - shouldn't happen if button is only shown when available
       debugLog('EXTRACTION', '[WARN] Clearance Override failed');
     }
-  }, [setShowExtractionConfirm, setExtractionScreenData, pendingExtractionRef, setShowExtractionScreen]);
+  }, [setShowExtractionConfirm, showExtractionResult]);
 
   /**
    * Handle blockade combat - engage with standard deploy

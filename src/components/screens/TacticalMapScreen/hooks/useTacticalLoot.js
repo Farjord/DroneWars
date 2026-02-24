@@ -45,6 +45,26 @@ export function useTacticalLoot({
   const { encounterResolveRef, skipWaypointRemovalRef } = sharedRefs;
 
   /**
+   * Resolve the encounter promise and resume journey with remaining waypoints.
+   * Shared by handlePOILootCollected and handleBlueprintRewardAccepted.
+   */
+  const resolveAndResumeJourney = useCallback(() => {
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
+    }
+
+    if (pendingResumeWaypoints?.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after loot/blueprint:', {
+        count: pendingResumeWaypoints?.length,
+        destinations: pendingResumeWaypoints?.map(w => w.hex)
+      });
+      setWaypoints(pendingResumeWaypoints);
+      setPendingResumeWaypoints(null);
+    }
+  }, [encounterResolveRef, pendingResumeWaypoints, setWaypoints, setPendingResumeWaypoints]);
+
+  /**
    * Handle loot selection confirmation - complete extraction with selected items
    */
   const handleLootSelectionConfirm = useCallback((selectedLoot) => {
@@ -201,26 +221,11 @@ export function useTacticalLoot({
     setPoiLootToReveal(null);
     setPendingLootEncounter(null);
 
-    // Resume movement by resolving the waiting promise (normal flow)
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-      encounterResolveRef.current = null;
-    }
-
-    // Resume journey with remaining waypoints (post-combat flow)
-    // This happens when player won combat at a PoI and just collected PoI loot
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after loot:', {
-        count: pendingResumeWaypoints?.length,
-        destinations: pendingResumeWaypoints?.map(w => w.hex)
-      });
-      setWaypoints(pendingResumeWaypoints);
-      setPendingResumeWaypoints(null);
-      // Movement will start via the executeMovement useEffect that watches waypoints
-    }
+    // Resume movement and journey
+    resolveAndResumeJourney();
 
     debugLog('LOOT', 'POI loot finalized, resuming movement');
-  }, [pendingLootEncounter, pendingResumeWaypoints, encounterResolveRef, setPoiLootToReveal, setPendingLootEncounter, setWaypoints, setPendingResumeWaypoints]);
+  }, [pendingLootEncounter, resolveAndResumeJourney, setPoiLootToReveal, setPendingLootEncounter]);
 
   /**
    * Handle blueprint reward modal acceptance
@@ -281,23 +286,12 @@ export function useTacticalLoot({
       setPendingLootEncounter(null);
     }
 
-    // Resume journey if waypoints remain (handled by existing logic)
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after blueprint:', { count: pendingResumeWaypoints?.length });
-      setWaypoints(pendingResumeWaypoints);
-      setPendingResumeWaypoints(null);
-      // Movement will start via the executeMovement useEffect that watches waypoints
-    }
-
-    // Resume movement by resolving the waiting promise
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-      encounterResolveRef.current = null;
-    }
+    // Resume movement and journey
+    resolveAndResumeJourney();
 
     setIsPaused(false);
     debugLog('ENCOUNTER', 'Blueprint reward finalized, resuming movement');
-  }, [pendingLootEncounter, pendingResumeWaypoints, encounterResolveRef, setShowBlueprintRewardModal, setPendingBlueprintReward, setPendingLootEncounter, setWaypoints, setPendingResumeWaypoints, setIsPaused]);
+  }, [pendingLootEncounter, resolveAndResumeJourney, setShowBlueprintRewardModal, setPendingBlueprintReward, setPendingLootEncounter, setIsPaused]);
 
   return {
     handleLootSelectionConfirm,

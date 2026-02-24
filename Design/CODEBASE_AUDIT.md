@@ -325,7 +325,7 @@
 - [FIXED] [DEAD] csvExport.js — `navigator.msSaveBlob` IE10 compat code is dead in 2026.
 - [DEAD] seededRandom.js — orphaned JSDoc block for deleted `forCardShuffle` factory.
 - [FIXED] [DUP] cardDrawUtils.js — player 1/player 2 processing blocks are near-identical copy-paste (~30 lines each).
-- [DUP] csvExport.js — `convertDecisionsToCsv` and `convertFullHistoryToCsv` share identical header/row logic.
+- [FIXED] [DUP] csvExport.js — Headers, context extraction, and row building extracted to shared `DECISION_CSV_HEADERS`, `extractContext`, and `buildDecisionRows`.
 - [FIXED] [DUP] cardBorderUtils.js ↔ cardTypeStyles.js — duplicate type color mappings.
 - [FIXED] [DUP] gameUtils.js — `shuffleArray` trivially wraps `SeededRandom.shuffle`.
 - [SIZE] glossaryAnalyzer.js (834), uiTargetingHelpers.js (531), deckExportUtils.js (495), deckFilterUtils.js (487).
@@ -481,9 +481,9 @@
 **Findings:**
 
 - **[FIXED] BaseEffectProcessor.js:83** — `createResult` auto-detects animation vs additional effects by checking `[0]?.type`. Fragile: effects also have `.type`. Latent bug.
-- **[DUP] ConditionalSectionDamageProcessor.js** — `calculateDamageByType` copy-pasted from DamageEffectProcessor. Comment admits it.
-- **[DUP] DamageEffectProcessor.js** — `processOverflowDamage` (158 lines) re-implements damage logic already in `calculateDamageByType`.
-- **[DUP] DestroyEffectProcessor.js** — `onDroneDestroyed` + cleanup pattern repeated 5x across methods.
+- **[FIXED] [DUP] ConditionalSectionDamageProcessor.js** — `calculateDamageByType` copy-pasted from DamageEffectProcessor. Comment admits it. Extracted to shared `utils/damageCalculation.js`.
+- **[FIXED] [DUP] DamageEffectProcessor.js** — `processOverflowDamage` (158 lines) re-implements damage logic already in `calculateDamageByType`. Refactored to call shared `calculateDamageByType`.
+- **[FIXED] [DUP] DestroyEffectProcessor.js** — `onDroneDestroyed` + cleanup pattern repeated 5x across methods. Extracted to `applyDestroyCleanup` helper method.
 - **[FIXED] [LOG] DamageEffectProcessor.js** — 3x `console.warn`. [FIXED] StatusEffectProcessor.js:184 — template literal in single quotes (bug: logs literal `${target.id}`).
 - **[SIZE] MovementEffectProcessor.js (633)** — `executeSingleMove` (186 lines) and `executeMultiMove` (166 lines) share significant structural duplication.
 
@@ -641,7 +641,7 @@
 
 **GameFlowManager.js (1673 lines, 5 issues):**
 - **[SIZE]** — 1673 lines, largest file in codebase. `onSimultaneousPhaseComplete` (lines 505-661) is 156 lines with drone extraction + RNG init logic that belongs in a dedicated handler.
-- **[DUP] :343** — `const sequentialPhases = ['deployment', 'action']` repeated in GameFlowManager, ActionProcessor:433, AIPhaseProcessor:209, AIPhaseProcessor:259, and PhaseManager. Should be a shared constant.
+- **[DUP] :343** — `const sequentialPhases` still duplicated in GameFlowManager:344, ActionProcessor:434, PhaseManager:389, PhaseTransitionStrategy:128. `SEQUENTIAL_PHASES` exists in `gameUtils.js` but local copies remain.
 - **[SMELL] :578,1360** — `this.gameStateManager._updateContext = 'GameFlowManager'` try/finally pattern appears 5 times. ActionProcessor already has `_withUpdateContext()`. Should share.
 - **[LOGIC] :1083** — `getNextRequiredPhase` log references `ROUND_PHASES[i-1]` which on first iteration may reference the current phase, producing misleading log.
 - **[TEST]** — Has 6 test files (main, quickDeploy, subscription, resubscribe, asymmetric, integration). Coverage exists.
@@ -823,7 +823,7 @@
 - **[SIZE]** — 931 lines, exceeds 800-line threshold. Manages POI encounters, blueprints, salvage, quick deploy, combat loading — 5 distinct concerns.
 - **[PURITY]** — Contains significant business logic (loot generation, AI selection, salvage collection, combat init) that belongs in logic/ or managers/.
 - **[FIXED] [DUP] :432-531 vs :608-691** — Salvage logic extracted to `collectAndStoreSalvageLoot`/`initiateSalvageCombat` helpers.
-- **[DUP] :229-267 vs :305-351** — `handleBlueprintEncounterAccept` and `handleBlueprintEncounterAcceptWithQuickDeploy` nearly identical except for `quickDeployId` field.
+- **[FIXED] [DUP] :229-267 vs :305-351** — `handleBlueprintEncounterAccept` and `handleBlueprintEncounterAcceptWithQuickDeploy` nearly identical except for `quickDeployId` field.
 - **[SMELL] :556-728** — `handleEncounterProceedWithQuickDeploy` is 172 lines handling 3 completely different pathways.
 - **[DEAD] :590-591, :671-672, :716-717** — Consecutive blank lines, remnants of removed code.
 - **[LOGIC] :152** — `Math.random()` used directly for credit generation; breaks seeded RNG reproducibility.
@@ -838,7 +838,7 @@
 - **[FIXED] [SMELL] :7** — Function signature had 16 positional parameters (now 33 — tracked as tech debt in FUTURE_IMPROVEMENTS #39).
 - **[FIXED] [SMELL] :8-899** — Single 890-line `useEffect` split into 4 handler modules in Phase F.
 - **[STD-CHALLENGE] :89,498,527,612,627,658,695,843,861,881** — Multiple magic numbers for animation durations, offsets, delays.
-- **[DUP] :588-589** — `localPlayerId` recalculated 3 lines after already being set; inner const shadows outer.
+- **[FIXED] [DUP] :588-589** — `localPlayerId` shadow removed in `useProjectileAnimations.js` (post-decomposition location).
 - **[LOGIC] :82,137,186...** — Animation IDs use `Date.now()` which can collide in same millisecond. Use counter or UUID.
 - **[TEST]** — Zero tests.
 
@@ -856,8 +856,8 @@
 - **[SIZE]** — 606 lines (400+ threshold). Bundles reset, exit, pass, mandatory discard/removal, debug tools, footer toggle, modals — a grab-bag of unrelated concerns.
 - **[LOGIC] :461-473** — **BUG:** `downloadLogAsCSV` headers have 8 columns but row mapping writes 7 values (skips `TimestampUTC`). Produces misaligned CSV output.
 - **[FIXED] [DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
-- **[DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
-- **[DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
+- **[FIXED] [DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
+- **[FIXED] [DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
 - **[FIXED] [SMELL] :457** — Raw browser `alert()` call. Should use project's modal/toast system.
 - **[STD-CHALLENGE] :168** — `Date.now()` + `Math.random()` for instance IDs. Non-deterministic, could desync multiplayer.
 
@@ -868,7 +868,7 @@
 
 **useShieldAllocation.js (428 lines, 4 issues):**
 - **[SIZE]** — 428 lines (400+ threshold).
-- **[DUP] :246-255 vs :379-388** — `handleCancelReallocation` and `clearReallocationState` perform same 8 state resets.
+- **[FIXED] [DUP] :246-255 vs :379-388** — `handleCancelReallocation` and `clearReallocationState` perform same 8 state resets.
 - **[LOGIC] :53-71** — `useEffect` depends on entire `localPlayerState` object. Any unrelated change resets user's in-progress allocation.
 - **[FIXED] [SMELL] :140** — `const { turnPhase } = gameState` shadows the `turnPhase` already destructured at line 33.
 
@@ -892,16 +892,16 @@
 - **[LOGIC] :80,108** — Detection thresholds `50` and `80` are magic numbers. Should be named constants.
 
 **useTacticalLoot.js (307 lines, 2 issues):**
-- **[DUP] :76-223 vs :229-299** — `handlePOILootCollected` and `handleBlueprintRewardAccepted` share duplicated "finalize loot and resume" sequence.
+- **[FIXED] [DUP] :76-223 vs :229-299** — `handlePOILootCollected` and `handleBlueprintRewardAccepted` share duplicated "finalize loot and resume" sequence.
 - **[SMELL] :76** — `handlePOILootCollected` at 147 lines is a god function handling 8+ loot types + POI marking + detection + mission progress + encounter resolution + waypoint resumption.
 
 **useTacticalExtraction.js (297 lines, 2 issues):**
-- **[DUP] :62-77 vs :96-121 vs :127-163** — Extraction completion pattern repeated 3 times. Extract `showExtractionResult(runState)`.
+- **[FIXED] [DUP] :62-77 vs :96-121 vs :127-163** — Extraction completion pattern repeated 3 times. Extract `showExtractionResult(runState)`.
 - **[LOGIC] :187** — `tier || 1` should be `tier ?? 1` to handle falsy-but-valid `0`.
 
 **useTacticalWaypoints.js (287 lines, 3 issues):**
 - **[TODO] :76** — Open TODO not tracked in FUTURE_IMPROVEMENTS.md.
-- **[DUP] :117-127 vs :138-148** — Pathfinding mode branching duplicated between `getPreviewPath` and `addWaypoint`.
+- **[FIXED] [DUP] :117-127 vs :138-148** — Pathfinding mode branching duplicated between `getPreviewPath` and `addWaypoint`.
 - **[DUP] :155-166 vs :198-207** — Detection cost + encounter risk calculation duplicated between `addWaypoint` and `recalculateWaypoints`.
 
 **useMultiplayerSync.js (261 lines, 3 issues):**
@@ -991,7 +991,7 @@
 - **[FIXED] [LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
 - **[FIXED] [DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
 - **[FIXED] [SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
-- **[DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config computed identically twice.
+- **[FIXED] [DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config extracted to module-level `SIZE_CONFIG` and `getSizeTier`.
 - **[FIXED] [DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
 - **[FIXED] [SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
 - **[SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` for trail particle offset.
@@ -1090,7 +1090,7 @@
 - **[FIXED] [SMELL] NewsTicker.jsx:83-131** — Diagnostic logging interval runs every 1s parsing CSS transforms. Dev code in production.
 - **[FIXED] [NAME] AngularBandsBackground.jsx** — File exports `MorphingBackground` but filename says `AngularBandsBackground`.
 - **[FIXED] [LOG] ActionCard.jsx:77-83** — `debugLog` runs on every render of every card. Performance concern.
-- **[DUP] HiddenShipCard.jsx + HiddenShipSectionCard.jsx** — Nearly identical to `HiddenCard.jsx`, only icon differs.
+- **[FIXED] [DUP] HiddenShipCard.jsx + HiddenShipSectionCard.jsx** — Merged into `HiddenCard.jsx` with `variant="ship"` / `variant="section"` props. Consumers updated.
 
 #### E5: src/components/modals/ (65 files, 17 issues)
 
@@ -1118,7 +1118,7 @@
 - **[FIXED] [SMELL] InventoryModal.jsx:658-730** — Card-tile pattern consolidated during Phase F decomposition.
 - **[SIZE] GlossaryModal.jsx** — 851 lines. Each `renderXxx` function is extraction candidate.
 - **[FIXED] [LOG] MapOverviewModal.jsx:97,222** — 2 raw `console.error`/`console.warn`.
-- **[DUP] ViewDeckModal.jsx:83-104,131-157** — `getColumnGroups`/`getGroups` contain identical group definitions.
+- **[FIXED] [DUP] ViewDeckModal.jsx:83-104,131-157** — `getColumnGroups`/`getGroups` unified into shared `buildGroups(mode, cssPrefix)` helper.
 - **[FIXED] [LOG] DeckBuildingModal.jsx:165** — Raw `console.error`.
 - **[FIXED] [DUP] SalvageModal.jsx:15-19 + POIEncounterModal.jsx:11-16** — `IconPOI` extracted to shared component.
 

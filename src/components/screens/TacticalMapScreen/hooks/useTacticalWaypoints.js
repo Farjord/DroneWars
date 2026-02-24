@@ -98,6 +98,26 @@ export function useTacticalWaypoints({
     [waypoints]
   );
 
+  // --- Weighted Pathfinding ---
+
+  /**
+   * Find a weighted path between two hexes using the current pathfinding mode.
+   * Shared by getPreviewPath and addWaypoint to ensure preview matches actual path.
+   */
+  const findWeightedPath = useCallback((from, to) => {
+    if (pathfindingMode === 'lowThreat') {
+      const result = EscapeRouteCalculator.findLowestThreatPath(
+        from, to, mapData.hexes, tierConfig, mapData.radius
+      );
+      return result?.path || null;
+    } else {
+      const result = EscapeRouteCalculator.findLowestEncounterPath(
+        from, to, mapData.hexes, tierConfig, mapData
+      );
+      return result?.path || null;
+    }
+  }, [pathfindingMode, mapData, tierConfig]);
+
   // --- Path Preview ---
 
   /**
@@ -114,18 +134,8 @@ export function useTacticalWaypoints({
       ? waypoints[waypoints.length - 1].hex
       : playerPosition;
 
-    if (pathfindingMode === 'lowThreat') {
-      const result = EscapeRouteCalculator.findLowestThreatPath(
-        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData.radius
-      );
-      return result?.path || null;
-    } else {
-      const result = EscapeRouteCalculator.findLowestEncounterPath(
-        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData
-      );
-      return result?.path || null;
-    }
-  }, [inspectedHex, isMoving, playerPosition, mapData, tierConfig, waypoints, pathfindingMode]);
+    return findWeightedPath(lastPosition, inspectedHex);
+  }, [inspectedHex, isMoving, playerPosition, mapData, tierConfig, waypoints, findWeightedPath]);
 
   // --- Waypoint CRUD ---
 
@@ -134,18 +144,7 @@ export function useTacticalWaypoints({
 
     const lastPosition = getLastJourneyPosition();
 
-    let path;
-    if (pathfindingMode === 'lowThreat') {
-      const result = EscapeRouteCalculator.findLowestThreatPath(
-        lastPosition, hex, mapData.hexes, tierConfig, mapData.radius
-      );
-      path = result?.path || null;
-    } else {
-      const result = EscapeRouteCalculator.findLowestEncounterPath(
-        lastPosition, hex, mapData.hexes, tierConfig, mapData
-      );
-      path = result?.path || null;
-    }
+    const path = findWeightedPath(lastPosition, hex);
 
     if (!path) {
       debugLog('WAYPOINT_MANAGER', '[WARN] No path available to waypoint');
@@ -177,7 +176,7 @@ export function useTacticalWaypoints({
     }]);
 
     return true;
-  }, [waypoints, setWaypoints, pathfindingMode, mapData, tierConfig, getLastJourneyPosition, getJourneyEndDetection, getJourneyEndEncounterRisk]);
+  }, [waypoints, setWaypoints, findWeightedPath, mapData, tierConfig, getLastJourneyPosition, getJourneyEndDetection, getJourneyEndEncounterRisk]);
 
   const recalculateWaypoints = useCallback((waypointList, fromIndex) => {
     if (waypointList.length === 0) {

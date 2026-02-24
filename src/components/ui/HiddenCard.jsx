@@ -5,7 +5,7 @@
 // Used in InventoryModal (undiscovered cards) and LootRevealModal (card backs)
 
 import React from 'react';
-import { Package, Shield } from 'lucide-react';
+import { Package, Shield, Rocket, Cog } from 'lucide-react';
 import { RARITY_COLORS } from '../../data/rarityColors';
 import './HiddenCard.css';
 
@@ -33,11 +33,14 @@ const TOKEN_COLORS = {
  * @param {string} size - "full" (225x275px) or "sm" (scaled for grids)
  * @param {string} className - Additional CSS classes for positioning
  * @param {object} style - Additional inline styles
- * @param {string} variant - "default" for rarity-based cards, "salvage" for gold salvage items, "token" for cyan security tokens
+ * @param {string} variant - "default" for rarity-based cards, "salvage" for gold salvage items, "token" for cyan security tokens, "ship" for hidden ships, "section" for hidden ship sections
+ * @param {number} scale - Optional scale multiplier (default: 1.0)
  */
-const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = {}, variant = 'default' }) => {
+const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = {}, variant = 'default', scale = 1.0 }) => {
   const isSalvage = variant === 'salvage';
   const isToken = variant === 'token';
+  const isShip = variant === 'ship';
+  const isSection = variant === 'section';
 
   // Use appropriate color scheme based on variant
   const cardColor = isToken
@@ -46,7 +49,7 @@ const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = 
       ? SALVAGE_COLORS.primary
       : (RARITY_COLORS[rarity] || RARITY_COLORS.Common);
 
-  // Shimmer intensity - higher for salvage/token to give it a valuable feel
+  // Shimmer intensity - higher for salvage/token to give it a valuable feel, rarity-based for ship/section
   const shimmerIntensity = (isSalvage || isToken) ? 0.3 : ({
     Common: 0.12,
     Uncommon: 0.18,
@@ -60,6 +63,12 @@ const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = 
   // Label based on variant
   const label = isToken ? 'Token' : isSalvage ? 'Salvage' : rarity;
 
+  // Apply scale transform if provided
+  const scaleStyle = scale !== 1.0 ? {
+    transform: `scale(${scale})`,
+    transformOrigin: 'center center'
+  } : {};
+
   // CSS modifier class for variants
   const variantClass = isToken
     ? 'dw-hidden-card--token'
@@ -67,8 +76,16 @@ const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = 
       ? 'dw-hidden-card--salvage'
       : '';
 
+  // Test ID based on variant for test selectors
+  const testId = isShip ? 'hidden-ship-card'
+    : isSection ? 'hidden-section-card'
+    : isSalvage ? 'hidden-salvage-card'
+    : isToken ? 'hidden-token-card'
+    : 'hidden-card';
+
   return (
     <div
+      data-testid={testId}
       className={`dw-hidden-card ${size === 'sm' ? 'dw-hidden-card--sm' : ''} ${variantClass} ${className}`}
       style={{
         '--rarity-color': cardColor,
@@ -77,11 +94,16 @@ const HiddenCard = ({ rarity = 'Common', size = 'full', className = '', style = 
         backgroundColor: (isSalvage || isToken)
           ? undefined  // Let CSS handle gradient background
           : cardColor,
+        ...scaleStyle,
         ...style
       }}
     >
       <div className="dw-hidden-card__pattern">
-        {isToken ? (
+        {isShip ? (
+          <Rocket size={size === 'sm' ? 28 : 48} className="text-white/80" style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))' }} />
+        ) : isSection ? (
+          <Cog size={size === 'sm' ? 28 : 48} className="text-white/80" style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.5))' }} />
+        ) : isToken ? (
           <Shield size={size === 'sm' ? 28 : 48} className="dw-hidden-card__icon dw-hidden-card__icon--shield" />
         ) : isSalvage ? (
           <Package size={size === 'sm' ? 28 : 48} className="dw-hidden-card__icon dw-hidden-card__icon--package" />

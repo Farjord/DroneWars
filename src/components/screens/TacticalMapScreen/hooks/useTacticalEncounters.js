@@ -301,6 +301,53 @@ export function useTacticalEncounters({
   // ========================================
 
   /**
+   * Shared logic for accepting a blueprint encounter (with or without quick deploy).
+   * Sets up encounter state, stores victory processing info, shows loading screen,
+   * stops movement, and resolves the encounter promise.
+   */
+  const initiateBlueprintCombat = (encounter, { quickDeployId = null } = {}) => {
+    // Store encounter data for combat initialization
+    setCurrentEncounter({
+      poi: encounter.poi,
+      outcome: 'combat',
+      aiId: encounter.aiId,
+      reward: encounter.reward,
+      fromBlueprintPoI: true
+    });
+
+    // Store encounter info for victory processing
+    tacticalMapStateManager.setState({
+      pendingPOICombat: {
+        packType: encounter.reward.rewardType,
+        fromBlueprintPoI: true
+      },
+      currentPOI: encounter.poi
+    });
+
+    // Transition to combat with loading screen
+    const loadingData = {
+      aiName: encounter.aiData.name,
+      aiShipClass: encounter.aiData.shipClass,
+      aiDifficulty: encounter.aiData.difficulty,
+      escapeDamage: encounter.aiData.escapeDamage,
+      transitionMessage: `Engaging ${encounter.poi.poiData.name}...`
+    };
+    if (quickDeployId) loadingData.quickDeployId = quickDeployId;
+    setLoadingEncounterData(loadingData);
+    pendingCombatLoadingRef.current = true;
+    setShowLoadingEncounter(true);
+
+    // Stop movement before resolving promise (prevents journey from continuing)
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+
+    // Resume movement logic after modal dismissal
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+    }
+  };
+
+  /**
    * Handle blueprint encounter accept - initiate combat with guardian AI
    */
   const handleBlueprintEncounterAccept = useCallback(async () => {
@@ -309,46 +356,7 @@ export function useTacticalEncounters({
     debugLog('ENCOUNTER', 'Blueprint encounter accepted - initiating combat');
     setShowBlueprintEncounterModal(false);
 
-    const encounter = pendingBlueprintEncounter;
-
-    // Store encounter data for combat initialization
-    setCurrentEncounter({
-      poi: encounter.poi,
-      outcome: 'combat',
-      aiId: encounter.aiId,           // Required by handleLoadingEncounterComplete
-      reward: encounter.reward,        // Needed for pendingPOICombat
-      fromBlueprintPoI: true           // Flag for special handling
-    });
-
-    // Store encounter info for victory processing
-    tacticalMapStateManager.setState({
-      pendingPOICombat: {
-        packType: encounter.reward.rewardType,
-        fromBlueprintPoI: true  // Flag for conditional threat increase
-      },
-      currentPOI: encounter.poi  // Store for threat calculation
-    });
-
-    // Transition to combat with loading screen
-    setLoadingEncounterData({
-      aiName: encounter.aiData.name,
-      aiShipClass: encounter.aiData.shipClass,
-      aiDifficulty: encounter.aiData.difficulty,
-      escapeDamage: encounter.aiData.escapeDamage,
-      transitionMessage: `Engaging ${encounter.poi.poiData.name}...`
-    });
-    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
-    setShowLoadingEncounter(true);
-
-    // Stop movement before resolving promise (prevents journey from continuing)
-    shouldStopMovement.current = true;
-    setIsMoving(false);
-
-    // Combat will be initiated by handleLoadingEncounterComplete
-    // Resume movement logic after modal dismissal
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-    }
+    initiateBlueprintCombat(pendingBlueprintEncounter);
   }, [pendingBlueprintEncounter]);
 
   /**
@@ -392,47 +400,7 @@ export function useTacticalEncounters({
 
     debugLog('QUICK_DEPLOY', 'Blueprint encounter accepted with quick deploy:', deployment.name);
 
-    const encounter = pendingBlueprintEncounter;
-
-    // Store encounter data for combat initialization
-    setCurrentEncounter({
-      poi: encounter.poi,
-      outcome: 'combat',
-      aiId: encounter.aiId,
-      reward: encounter.reward,
-      fromBlueprintPoI: true
-      // Note: Blueprint PoI is NOT a blockade - do not set isBlockade flag
-    });
-
-    // Store encounter info for victory processing
-    tacticalMapStateManager.setState({
-      pendingPOICombat: {
-        packType: encounter.reward.rewardType,
-        fromBlueprintPoI: true
-      },
-      currentPOI: encounter.poi
-    });
-
-    // Transition to combat with loading screen + quick deploy
-    setLoadingEncounterData({
-      aiName: encounter.aiData.name,
-      aiShipClass: encounter.aiData.shipClass,
-      aiDifficulty: encounter.aiData.difficulty,
-      escapeDamage: encounter.aiData.escapeDamage,
-      transitionMessage: `Engaging ${encounter.poi.poiData.name}...`,
-      quickDeployId: deployment.id  // Include quick deploy ID
-    });
-    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
-    setShowLoadingEncounter(true);
-
-    // Stop movement before resolving promise (prevents journey from continuing)
-    shouldStopMovement.current = true;
-    setIsMoving(false);
-
-    // Resume movement logic
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-    }
+    initiateBlueprintCombat(pendingBlueprintEncounter, { quickDeployId: deployment.id });
   }, [pendingBlueprintEncounter]);
 
   // ========================================
