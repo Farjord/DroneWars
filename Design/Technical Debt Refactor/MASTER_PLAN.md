@@ -369,6 +369,19 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 
 ---
 
+## Phase L: Standards Compliance + Remaining Fixes
+
+**Status: Done**
+
+**Goal:** Fix standards violations from Phases G-K, mark already-resolved audit items, handle remaining actionable fixes.
+
+- [x] L1: Delete 3 zero-consumer re-export stubs, remove dead gameUtils re-exports, inline abilityConfig.js + tacticalBackgrounds.js into sole consumers
+- [x] L2: Mark 5 already-resolved audit items [FIXED], resolve FI #8 (ShipSlotManager repair cost)
+- [x] L3: Remove unused FastForward import from debugLogger, normalize background ID casing, mark 4 more audit items [FIXED]
+- Net file reduction: -5 files (3 re-export stubs + 2 inlined sole-consumer modules)
+
+---
+
 ## Verification Protocol (Every Session)
 
 1. `npx vitest run` → 0 failures (mandatory per CLAUDE.md)
