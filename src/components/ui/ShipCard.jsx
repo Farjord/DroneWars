@@ -9,7 +9,7 @@ import React from 'react';
 import { Crosshair, Layers } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
-import { getShipBorderClasses } from '../../utils/cardBorderUtils.js';
+import { getShipBorderClasses } from '../../logic/cards/cardBorderUtils.js';
 
 /**
  * Deck Composition Bars Sub-component

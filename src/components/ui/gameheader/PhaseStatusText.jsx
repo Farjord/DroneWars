@@ -5,7 +5,7 @@
 // Extracted from GameHeader.jsx
 
 import React from 'react';
-import { getPhaseDisplayName } from '../../../utils/gameUtils.js';
+import { getPhaseDisplayName } from '../../../logic/phase/phaseDisplayUtils.js';
 import { extractDroneNameFromId } from '../../../logic/droneUtils.js';
 
 /**

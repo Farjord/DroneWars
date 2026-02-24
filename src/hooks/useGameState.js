@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import gameStateManager from '../managers/GameStateManager.js';
 import p2pManager from '../network/P2PManager.js';
-import { isSimultaneousPhase, isSequentialPhase } from '../utils/gameUtils.js';
+import { isSimultaneousPhase, isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 export const useGameState = () => {

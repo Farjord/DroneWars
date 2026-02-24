@@ -280,12 +280,12 @@
 | chartUtils.jsx | 28 | 1 | SMELL |
 | csvExport.js | 255 | 2 | DUP, DEAD |
 | debugLogger.js | 326 | 5 | DEAD, COMMENT, PURITY, LOG |
-| deckExportUtils.js | 495 | 2 | SIZE, PURITY |
+| deckExportUtils.js | 495 | 2 | SIZE, [FIXED] PURITY |
 | deckFilterUtils.js | 487 | 1 | SIZE |
 | deckStateUtils.js | 49 | 0 | -- |
 | droneSelectionUtils.js | 124 | 0 | -- |
 | firstPlayerUtils.js | 142 | 0 | -- |
-| gameUtils.js | 179 | 3 | PURITY, SMELL, DUP |
+| gameUtils.js | 179 | 3 | [FIXED] PURITY, SMELL, DUP |
 | glossaryAnalyzer.js | 834 | 3 | SIZE, PURITY, PLACE |
 | hexGrid.js | 101 | 1 | TEST |
 | hexHeadingUtils.js | 99 | 0 | -- |
@@ -315,7 +315,10 @@
 - slotDamageUtils.js → should be `logic/damage/`
 - uiTargetingHelpers.js → should be `logic/targeting/`
 - mapGenerator.js → should be `logic/map/`
-- gameUtils.js — phase display names, lane calculations = domain knowledge
+- [FIXED] gameUtils.js — phase display names moved to logic/phase/phaseDisplayUtils.js; lane calculations remain (DOM utility)
+- [FIXED] cardDrawUtils.js → moved to logic/cards/cardDrawUtils.js (card-dealing game logic)
+- [FIXED] cardBorderUtils.js → moved to logic/cards/cardBorderUtils.js (card type domain knowledge)
+- [FIXED] deckExportUtils.js → moved to logic/cards/deckExportUtils.js (deck/card domain logic)
 
 **Other findings:**
 - [FIXED] [LOG] cardDrawUtils.js — 6x `console.warn` instead of debugLog.
@@ -812,7 +815,7 @@
 - **[SIZE]** — 956 lines, exceeds 800-line threshold. 7 distinct handler functions.
 - **[SMELL] :710-944** — `handleCardClick` is 234 lines routing across 8+ card interaction types.
 - **[SMELL] :452-706** — `handleLaneClick` is 254 lines covering 6 interaction modes.
-- **[PURITY] :196-226** — `handleShipAbilityClick` hardcodes ability names (`'Reallocate Shields'`, `'Recalculate'`, etc.) for routing. Should use IDs or lookup table.
+- **[FIXED] [PURITY] :196-226** — `handleShipAbilityClick` ability routing extracted to `ABILITY_CONFIG` lookup table in `src/logic/combat/abilityConfig.js`.
 - **[TODO] :146,898,915** — Three `// TODO: TECHNICAL DEBT` comments for `gameEngine` direct calls.
 - **[FIXED] [DUP] :489-561** — Cost movement destination logic extracted to shared `calculateCostReminderArrow` in `gameUtils.js`.
 - **[IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log.
@@ -862,8 +865,8 @@
 - **[STD-CHALLENGE] :168** — `Date.now()` + `Math.random()` for instance IDs. Non-deterministic, could desync multiplayer.
 
 **useDeckBuilderData.js (454 lines, 3 issues):**
-- **[SIZE]** — 454 lines (400+ threshold). 95 lines of module-level helpers could extract to `deckBuilderDataHelpers.js`.
-- **[PURITY] :12-118** — 5 standalone pure utility functions at module scope. Generic enough (`sortItems`, `buildDistribution`) to live in shared utility.
+- **[FIXED] [SIZE]** — 95 lines of module-level helpers extracted to `src/logic/cards/deckBuilderHelpers.js`.
+- **[FIXED] [PURITY] :12-118** — 5 standalone pure functions (`formatKeyword`, `extractCardKeywords`, `extractTargetingText`, `sortItems`, `buildDistribution`, `buildKeywordDistribution`) extracted to `src/logic/cards/deckBuilderHelpers.js`.
 - **[EDGE] :292-298** — `typeLimits` computed outside `useMemo` but used in memoized `isDeckValid`. Could be stale relative to `activeShip` changes.
 
 **useShieldAllocation.js (428 lines, 4 issues):**
@@ -1017,7 +1020,7 @@
 
 - **[IMPORT] index.js:7** — Broken barrel export for `QuickDeployEditor` — file does not exist at that path.
 - **[FIXED] [LOG] QuickDeployManager.jsx:132** — Raw `console.error`.
-- **[PURITY] QuickDeployManager.jsx:35-88** — ~50 lines of business logic (mock player states, validation) in useMemo. Should be in logic/service.
+- **[FIXED] [PURITY] QuickDeployManager.jsx:35-88** — Validation logic extracted to `src/logic/quickDeploy/quickDeployValidationHelpers.js` (`validateAllDeployments`).
 - **[PURITY] DeploymentOrderQueue.jsx:9** — Imports `fullDroneCollection` directly. Presentation component should receive image URLs via props.
 
 #### E4: src/components/ui/ (75 files, 27 issues)
@@ -1034,10 +1037,10 @@
 - **[SMELL] GameHeader.jsx:74-145** — 70+ props. Largest prop list in the codebase.
 - **[FIXED] [DUP] GameHeader.jsx:502-551** — Reallocation button groups consolidated during Phase F decomposition.
 - **[SIZE] HexInfoPanel.jsx** — 970 lines. Three render branches (moving, hex-info, waypoint-list) could split.
-- **[PURITY] HexInfoPanel.jsx:362-399** — `getHexPreview()` calls `MovementController`, `DetectionManager`, `SalvageController` directly. Business logic in UI.
+- **[FIXED] [PURITY] HexInfoPanel.jsx:362-399** — `getHexPreview()` extracted to `src/logic/map/hexPreview.js`. Component delegates via `computeHexPreview()`.
 - **[FIXED] [DUP] HexInfoPanel.jsx:420-446,540-562,825-853** — Detection meter block extracted to `DetectionSection`.
 - **[SIZE] HexGridRenderer.jsx** — 958 lines. Decorative hex, pan/zoom, fill/stroke are extraction candidates.
-- **[PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` static data in component file.
+- **[FIXED] [PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` extracted to `src/data/tacticalBackgrounds.js`.
 - **[FIXED] [SMELL] HexGridRenderer.jsx:257-263** — Zoom limits already extracted to named constants at file top (lines 16-23). Inconsistency is by design (button vs wheel ranges).
 
 **Files 400-800 lines (7 files, 5 issues):**
@@ -1170,7 +1173,7 @@
 - **[SIZE] QuickDeployEditorScreen.jsx** — 904 lines.
 - **[FIXED] [LOG] QuickDeployEditorScreen.jsx:451** — Raw `console.error`.
 - **[DUP] QuickDeployEditorScreen.jsx:346-374,392-417** — Deployment order index remapping duplicated.
-- **[PURITY] RepairBayScreen.jsx:33-105** — 5 domain logic functions in component file. `resolveComponentIdForLane` is even exported.
+- **[FIXED] [PURITY] RepairBayScreen.jsx:33-105** — 5 domain logic functions extracted to `src/logic/singlePlayer/repairHelpers.js`. `resolveComponentIdForLane` re-exported for backward compatibility.
 - **[DUP] RepairBayScreen.jsx:384-398** — Header stat bar duplicated from HangarHeader.
 - **[SMELL] RepairBayScreen.jsx:401-416** — IIFE inside JSX for ReputationTrack.
 - **[SMELL] TacticalMapScreen.jsx:47-161** — 40+ useState + 10+ useRef declarations.

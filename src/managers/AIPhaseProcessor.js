@@ -27,7 +27,7 @@ import {
 } from '../logic/ai/AIQuickDeployHandler.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
-import { isSequentialPhase } from '../utils/gameUtils.js';
+import { isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases

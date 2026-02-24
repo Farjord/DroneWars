@@ -11,7 +11,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
-import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../logic/cards/deckExportUtils.js';
 import MissionService from '../../logic/missions/MissionService.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { DeckBuilderTutorialModal } from '../modals/tutorials';

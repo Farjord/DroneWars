@@ -14,7 +14,7 @@ import DeckBuilder from './DeckBuilder/DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import vsDecks from '../../data/vsModeDeckData.js';
-import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../logic/cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';

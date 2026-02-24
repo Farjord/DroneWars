@@ -1,7 +1,7 @@
 // --- AI Simultaneous Phase Strategy ---
 // Handles AI decisions for simultaneous phases: deck selection, drone selection, placement
 
-import { shipComponentsToPlacement } from '../../utils/deckExportUtils.js';
+import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 

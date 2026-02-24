@@ -9,7 +9,7 @@ import React from 'react';
 import { HardDrive, Cpu, Zap, Command } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
-import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
+import { getCardBorderClasses } from '../../logic/cards/cardBorderUtils.js';
 
 /**
  * SHIP SECTION CARD COMPONENT

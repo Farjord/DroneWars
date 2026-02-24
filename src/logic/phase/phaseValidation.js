@@ -4,7 +4,7 @@
 // Validates phase and action combinations for debugging and error prevention
 // Provides warnings about incorrect routing between simultaneous and sequential phases
 
-import { isSimultaneousPhase, isSequentialPhase } from '../../utils/gameUtils.js';
+import { isSimultaneousPhase, isSequentialPhase } from './phaseDisplayUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**

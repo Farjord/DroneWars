@@ -15,9 +15,7 @@ import { RepairBayTutorialModal } from '../modals/tutorials';
 import { useGameState } from '../../hooks/useGameState';
 import DroneCard from '../ui/DroneCard';
 import RepairSectionCard from '../ui/RepairSectionCard';
-import fullDroneCollection from '../../data/droneData';
-import { shipComponentCollection } from '../../data/shipSectionData';
-import { getAllShips, getShipById } from '../../data/shipData';
+import { getShipById } from '../../data/shipData';
 import repairService from '../../logic/economy/RepairService';
 import { resolveShipSectionImage } from '../../logic/cards/shipSectionImageResolver';
 import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
@@ -26,83 +24,16 @@ import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import ReputationTrack from '../ui/ReputationTrack';
+import {
+  getDroneByName,
+  getComponentById,
+  resolveComponentIdForLane,
+  calculateSectionHull,
+  countDamage,
+} from '../../logic/singlePlayer/repairHelpers.js';
 
-/**
- * Get drone data by name
- */
-const getDroneByName = (droneName) => {
-  return fullDroneCollection.find(d => d.name === droneName) || null;
-};
-
-/**
- * Get ship component by ID
- */
-const getComponentById = (componentId) => {
-  return shipComponentCollection.find(c => c.id === componentId) || null;
-};
-
-/**
- * Resolve component ID for a lane, falling back to shipComponents if sectionSlots has null
- * This handles legacy data where sectionSlots may have null componentIds but shipComponents has the data
- * @param {Object} slot - Ship slot object
- * @param {string} lane - Lane identifier ('l', 'm', or 'r')
- * @returns {string|null} Component ID or null if not found
- */
-export const resolveComponentIdForLane = (slot, lane) => {
-  // First try sectionSlots (preferred format)
-  if (slot?.sectionSlots?.[lane]?.componentId) {
-    return slot.sectionSlots[lane].componentId;
-  }
-
-  // Fallback to shipComponents legacy format: { componentId: lane }
-  if (slot?.shipComponents) {
-    const entry = Object.entries(slot.shipComponents).find(([_, l]) => l === lane);
-    if (entry) return entry[0]; // componentId is the key
-  }
-
-  return null;
-};
-
-/**
- * Calculate section hull from ship and component
- */
-const calculateSectionHull = (shipSlot, lane) => {
-  const componentId = resolveComponentIdForLane(shipSlot, lane);
-  if (!componentId) return { current: 0, max: 0 };
-
-  const component = getComponentById(componentId);
-  const sectionSlot = shipSlot?.sectionSlots?.[lane];
-  const ship = getAllShips().find(s => s.id === shipSlot.shipId);
-
-  if (!component || !ship) return { current: 0, max: 0 };
-
-  // Base hull from component + ship bonus
-  const maxHull = (component.stats?.hull || 0) + (ship.baseHull || 0);
-  const damageDealt = sectionSlot.damageDealt || 0;
-  const currentHull = Math.max(0, maxHull - damageDealt);
-
-  return { current: currentHull, max: maxHull };
-};
-
-/**
- * Count damage in a ship slot
- */
-const countDamage = (slot) => {
-  if (!slot || slot.status !== 'active') return { drones: 0, sections: 0, total: 0 };
-
-  const damagedDrones = (slot.droneSlots || []).filter(s => s.slotDamaged && s.assignedDrone).length;
-  const damagedSections = ['l', 'm', 'r'].filter(lane => {
-    const componentId = resolveComponentIdForLane(slot, lane);
-    const sectionSlot = slot.sectionSlots?.[lane];
-    return componentId && (sectionSlot?.damageDealt || 0) > 0;
-  }).length;
-
-  return {
-    drones: damagedDrones,
-    sections: damagedSections,
-    total: damagedDrones + damagedSections
-  };
-};
+// Re-export resolveComponentIdForLane for consumers that imported it from here
+export { resolveComponentIdForLane } from '../../logic/singlePlayer/repairHelpers.js';
 
 /**
  * Drone Slot Display Component

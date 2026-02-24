@@ -10,10 +10,7 @@ import { useGameState } from '../../hooks/useGameState';
 import SoundManager from '../../managers/SoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import QuickDeployService, { MAX_QUICK_DEPLOYMENTS } from '../../logic/quickDeploy/QuickDeployService';
-import { calculateTotalCost, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
-import { shipComponentCollection } from '../../data/shipSectionData';
-import { getAllShips } from '../../data/shipData';
-import { calculateSectionBaseStats } from '../../logic/statsCalculator';
+import { validateAllDeployments } from '../../logic/quickDeploy/quickDeployValidationHelpers.js';
 
 /**
  * QuickDeployManager Component
@@ -33,61 +30,10 @@ const QuickDeployManager = ({ onClose }) => {
   const playerProfile = gameState.singlePlayerProfile || {};
 
   // Calculate validation status for each deployment against all active decks
-  const deploymentsWithValidation = useMemo(() => {
-    return quickDeployments.map(qd => {
-      const validFor = [];
-      const invalidFor = [];
-
-      shipSlots.forEach(slot => {
-        if (slot.status !== 'active' || !slot.droneSlots || slot.droneSlots.filter(s => s.assignedDrone).length === 0) return;
-
-        // Get ship card for stats calculation
-        const shipCard = getAllShips().find(s => s.id === slot.shipId);
-        if (!shipCard) return;
-
-        // Convert shipComponents { sectionId: lane } to ordered array [left, middle, right]
-        const shipComponentsObj = slot.shipComponents || {};
-        const laneOrder = { 'l': 0, 'm': 1, 'r': 2 };
-        const placedSections = Object.entries(shipComponentsObj)
-          .sort((a, b) => laneOrder[a[1]] - laneOrder[b[1]])
-          .map(([sectionId]) => sectionId);
-
-        // Build proper ship sections with hull/thresholds
-        const shipSections = {};
-        for (const sectionId of placedSections) {
-          const sectionTemplate = shipComponentCollection.find(c => c.id === sectionId);
-          if (sectionTemplate) {
-            const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
-            shipSections[sectionId] = {
-              ...JSON.parse(JSON.stringify(sectionTemplate)),
-              hull: baseStats.hull,
-              maxHull: baseStats.maxHull,
-              thresholds: baseStats.thresholds
-            };
-          }
-        }
-
-        const mockPlayerState = { shipSections };
-        const result = validateAgainstDeck(qd, slot, mockPlayerState, placedSections);
-
-        if (result.valid) {
-          validFor.push(slot.name || `Slot ${slot.id}`);
-        } else {
-          invalidFor.push({
-            name: slot.name || `Slot ${slot.id}`,
-            reasons: result.reasons
-          });
-        }
-      });
-
-      return {
-        ...qd,
-        validFor,
-        invalidFor,
-        cost: calculateTotalCost(qd.placements)
-      };
-    });
-  }, [quickDeployments, shipSlots]);
+  const deploymentsWithValidation = useMemo(
+    () => validateAllDeployments(quickDeployments, shipSlots),
+    [quickDeployments, shipSlots],
+  );
 
   const remainingSlots = MAX_QUICK_DEPLOYMENTS - quickDeployments.length;
   const canCreate = remainingSlots > 0;

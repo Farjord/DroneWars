@@ -17,7 +17,7 @@ import RoundManager from '../logic/round/RoundManager.js';
 import EffectRouter from '../logic/EffectRouter.js';
 import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
 import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
-import { performAutomaticDraw } from '../utils/cardDrawUtils.js';
+import { performAutomaticDraw } from '../logic/cards/cardDrawUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class RoundInitializationProcessor {

@@ -15,7 +15,7 @@
  */
 
 import { debugLog } from '../utils/debugLogger.js';
-import { SEQUENTIAL_PHASES } from '../utils/gameUtils.js';
+import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 
 class PhaseManager {
   // Valid phase names - transitions to invalid phases will be rejected

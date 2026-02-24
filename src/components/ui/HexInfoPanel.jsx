@@ -10,6 +10,7 @@ import { Info } from 'lucide-react';
 import MovementController from '../../logic/map/MovementController.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
 import SalvageController from '../../logic/salvage/SalvageController.js';
+import { getHexPreview as computeHexPreview } from '../../logic/map/hexPreview.js';
 import { mapTiers } from '../../data/mapData.js';
 import { packTypes } from '../../data/cardPackData.js';
 import { HEX_INFO_HELP_TEXT } from '../../data/hexInfoHelpText.js';
@@ -386,45 +387,17 @@ function HexInfoPanel({
     return lootedPOIs.some(p => p.q === hex.q && p.r === hex.r);
   };
 
-  // Get movement preview for inspected hex
-  const getHexPreview = () => {
-    if (!inspectedHex || !mapData || !tierConfig) return null;
-
-    // Calculate from last waypoint position or player position
-    const startPosition = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].hex
-      : playerPosition;
-
-    // Get current detection level (end of journey or current)
-    const startDetection = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].cumulativeDetection
-      : currentDetection;
-
-    // Use previewPath from parent if provided (respects pathfinding mode)
-    if (previewPath && previewPath.length > 0) {
-      const detectionCost = previewPath.reduce((cost, hex) => {
-        return cost + DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius);
-      }, 0);
-
-      return {
-        path: previewPath,
-        distance: previewPath.length - 1,
-        cost: detectionCost,
-        newDetection: startDetection + detectionCost,
-        valid: true,
-        reason: '',
-        currentDetection: startDetection
-      };
-    }
-
-    // Fallback: use basic A* when no previewPath provided
-    return MovementController.getMovementPreview(
-      startPosition,
-      inspectedHex,
-      mapData.hexes,
-      tierConfig
-    );
-  };
+  // Get movement preview for inspected hex (delegates to pure logic)
+  const getHexPreview = () => computeHexPreview({
+    inspectedHex,
+    mapData,
+    tierConfig,
+    waypoints,
+    playerPosition,
+    currentDetection,
+    previewPath,
+    mapRadius,
+  });
 
   const preview = inspectedHex ? getHexPreview() : null;
 

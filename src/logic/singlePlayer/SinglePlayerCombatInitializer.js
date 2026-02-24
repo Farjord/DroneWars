@@ -15,7 +15,7 @@ import aiPersonalities from '../../data/aiData.js';
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
-import { shipComponentsToPlacement } from '../../utils/deckExportUtils.js';
+import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/slotDamageUtils.js';

@@ -9,7 +9,7 @@ import { Power, RefreshCw, Cpu, ChevronsUp } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
-import { getCardBorderClasses, getTypeInnerColors } from '../../utils/cardBorderUtils.js';
+import { getCardBorderClasses, getTypeInnerColors } from '../../logic/cards/cardBorderUtils.js';
 
 // Helper function to get type-based colors with rarity-based border
 const getTypeColors = (type, rarity, isDisabled) => {

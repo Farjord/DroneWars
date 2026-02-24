@@ -10,6 +10,7 @@ import { getShipHeadingForWaypoints } from '../../utils/hexHeadingUtils.js';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import tacticalBackgrounds from '../../data/tacticalBackgrounds.js';
 import './HexGridRenderer.css';
 
 // Zoom and pan constants
@@ -29,15 +30,6 @@ const STROKE_WIDTH_DEFAULT = 1.5;
 
 // Transition duration for pan/zoom (seconds)
 const TRANSITION_DURATION = '0.1s';
-
-// Available tactical background images
-const tacticalBackgrounds = [
-  new URL('/Tactical/Tactical1.jpg', import.meta.url).href,
-  new URL('/Tactical/Tactical2.jpg', import.meta.url).href,
-  new URL('/Tactical/Tactical3.jpg', import.meta.url).href,
-  new URL('/Tactical/Tactical4.jpg', import.meta.url).href,
-  new URL('/Tactical/Tactical15.jpg', import.meta.url).href,
-];
 
 /**
  * Calculate dynamic hex size based on viewport and map radius

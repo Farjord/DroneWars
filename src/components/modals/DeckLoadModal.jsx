@@ -1,6 +1,6 @@
 import React from 'react';
 import { Rocket, X } from 'lucide-react';
-import { generateJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import { generateJSObjectLiteral, convertFromAIFormat } from '../../logic/cards/deckExportUtils.js';
 import vsDecks from '../../data/vsModeDeckData.js';
 import aiPersonalities from '../../data/aiData.js';
 

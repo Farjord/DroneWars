@@ -3,6 +3,7 @@ import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderA
 import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { getAbilityHandlerConfig } from '../logic/combat/abilityConfig.js';
 
 // Stateless singleton — safe as module-level (no component state dependency)
 const targetingRouter = new TargetingRouter();
@@ -192,8 +193,10 @@ export default function useClickHandlers({
     if (shipAbilityMode?.ability.id === ability.id) {
         setShipAbilityMode(null);
     } else {
-        // Route to specific ability handlers based on ability name
-        if (ability.name === 'Reallocate Shields') {
+        // Route to specific ability handlers via config lookup
+        const abilityHandlerConfig = getAbilityHandlerConfig(ability);
+
+        if (abilityHandlerConfig?.handler === 'reallocation') {
             // Start reallocation mode without energy deduction
             cancelAllActions();
             setReallocationPhase('removing');
@@ -201,18 +204,14 @@ export default function useClickHandlers({
             setShieldsToAdd(0);
             setOriginalShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
             setReallocationAbility({ ability, sectionName: section.name });
-        } else if (ability.name === 'Recalculate') {
+        } else if (abilityHandlerConfig?.handler === 'confirmation') {
             // Non-targeted ability - show confirmation modal
             cancelAllActions();
-            setShipAbilityConfirmation({ ability, sectionName: section.name, target: null, abilityType: 'recalculate' });
-        } else if (ability.name === 'Recall') {
+            setShipAbilityConfirmation({ ability, sectionName: section.name, target: null, abilityType: abilityHandlerConfig.abilityType });
+        } else if (abilityHandlerConfig?.handler === 'targeting') {
             // Targeted ability - enter targeting mode
             cancelAllActions();
-            setShipAbilityMode({ sectionName: section.name, ability, abilityType: 'recall' });
-        } else if (ability.name === 'Target Lock') {
-            // Targeted ability - enter targeting mode
-            cancelAllActions();
-            setShipAbilityMode({ sectionName: section.name, ability, abilityType: 'targetLock' });
+            setShipAbilityMode({ sectionName: section.name, ability, abilityType: abilityHandlerConfig.abilityType });
         } else {
             // Fallback for any future abilities
             if (!ability.targeting) {

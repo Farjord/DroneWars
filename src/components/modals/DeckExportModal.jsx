@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Download, Copy, X } from 'lucide-react';
-import { generateJSObjectLiteral, convertToAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
+import { generateJSObjectLiteral, convertToAIFormat, downloadDeckFile } from '../../logic/cards/deckExportUtils.js';
 
 const DeckExportModal = ({ deck, selectedDrones, selectedShipComponents, activeShip, preservedFields, onClose }) => {
   const [copySuccess, setCopySuccess] = useState('');

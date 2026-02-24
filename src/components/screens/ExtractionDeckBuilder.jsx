@@ -23,7 +23,7 @@ import {
   addDroneToSlots,
   removeDroneFromSlots
 } from '../../logic/combat/slotDamageUtils.js';
-import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../logic/cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**

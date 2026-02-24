@@ -10,7 +10,7 @@ import CardStatHexagon from './CardStatHexagon.jsx';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import AvailabilityDots from './AvailabilityDots.jsx';
-import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
+import { getCardBorderClasses } from '../../logic/cards/cardBorderUtils.js';
 
 /**
  * DRONE CARD COMPONENT

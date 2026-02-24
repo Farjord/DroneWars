@@ -13,7 +13,7 @@ import { gameEngine } from '../logic/gameLogic.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
-import { SEQUENTIAL_PHASES } from '../utils/gameUtils.js';
+import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
 

@@ -11,7 +11,7 @@ import {
   parseJSObjectLiteral,
   generateJSObjectLiteral,
   downloadDeckFile
-} from '../../utils/deckExportUtils.js';
+} from '../../logic/cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
