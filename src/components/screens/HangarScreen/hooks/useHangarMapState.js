@@ -81,7 +81,7 @@ const useHangarMapState = (hexGridData, mapContainerRef) => {
   const handleMapMouseDown = (e) => {
     if (e.button === 0) {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      setDragStart({ x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y });
     }
   };
 

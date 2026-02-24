@@ -20,7 +20,7 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | Phase | Description | Status |
 |-|-|-|
 | 0 | Documentation Setup | Done |
-| A | Critical Bugs | In Progress |
+| A | Critical Bugs | Done |
 | B | Dead Code & Comment Cleanup | Pending |
 | B2 | Console.log Migration | Pending |
 | C | Deduplication | Pending |
@@ -42,37 +42,37 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 
 ## Phase A: Critical Bugs
 
-**Status: In Progress**
+**Status: Done**
 
 **Goal:** Fix all runtime bugs that affect game behavior. No structural changes.
 
 ### Batch A1 — Crash/corruption bugs (4 items)
-- [ ] `aiData.js:182,216` — `CARD053_Enhanced` wrong casing → broken AI card lookups
-- [ ] `aiLogic.js:799` — empty `positiveActionPool` → crash on `undefined`
-- [ ] `ShipSlotManager.js:362` — fallback `|| 10` should be `|| 200` (pricing bug)
-- [ ] `LootGenerator.js:417` — `this.` on imported function → runtime throw
+- [x] `aiData.js:182,216` — `CARD053_Enhanced` wrong casing → broken AI card lookups
+- [x] `aiLogic.js:799` — empty `positiveActionPool` → crash on `undefined`
+- [x] `ShipSlotManager.js:362` — fallback `|| 10` should be `|| 200` (pricing bug)
+- [x] `LootGenerator.js:417` — `this.` on imported function → runtime throw
 
 ### Batch A2 — Determinism/silent-failure bugs (4 items)
-- [ ] `HighAlertManager.js:21` — `Math.random()` instead of `SeededRandom`
-- [ ] `useTacticalEncounters.js:152-153` — `Math.random()` for credits/RNG
-- [ ] `CommitmentStrategy.js:330` — silent error swallow in AI commitment
-- [ ] `TargetLockAbilityProcessor.js` — spends energy/ends turn on missing target
+- [x] `HighAlertManager.js:21` — `Math.random()` instead of `SeededRandom`
+- [x] `useTacticalEncounters.js:152-153` — `Math.random()` for credits/RNG
+- [x] `CommitmentStrategy.js:330` — silent error swallow in AI commitment
+- [x] `TargetLockAbilityProcessor.js` — spends energy/ends turn on missing target
 
 ### Batch A3 — Medium-severity logic bugs (5 items)
-- [ ] `AssetPreloader.js:97-100` — `.catch()` defeats `Promise.allSettled`
-- [ ] `GameStateManager.js:576-588` — async `initializeTestMode` returns sync
-- [ ] `useShieldAllocation.js:53-71` — over-broad useEffect deps
-- [ ] `useHangarMapState.js:84` — stale closure on pan coordinates
-- [ ] `useTacticalExtraction.js:187` — `|| 1` should be `?? 1`
+- [x] `AssetPreloader.js:97-100` — `.catch()` defeats `Promise.allSettled`
+- [x] `GameStateManager.js:576-588` — async `initializeTestMode` returns sync
+- [x] `useShieldAllocation.js:53-71` — over-broad useEffect deps
+- [x] `useHangarMapState.js:84` — stale closure on pan coordinates
+- [x] `useTacticalExtraction.js:187` — `|| 1` should be `?? 1`
 
 ### Batch A4 — Data integrity (3 items)
-- [ ] `vsModeDeckData.js` — VS_DECK_002/003 identical decklists (copy-paste bug?)
-- [ ] `aiData.js` — card IDs not validated against fullCardCollection
-- [ ] `shipSectionData.js` — verify if `key` properties are still consumed
+- [x] `vsModeDeckData.js` — VS_DECK_002/003 identical decklists → created unique Fortress Command deck
+- [x] `aiData.js` — card IDs validated, all present in fullCardCollection
+- [x] `shipSectionData.js` — `key` properties actively consumed (3 locations), not dead
 
-**Also:** Commit pending deletions (REFACTOR_*.md, PLAN_*.md) and CLAUDE.md updates.
+**Also:** Commit pending deletions (REFACTOR_*.md, PLAN_*.md) and CLAUDE.md updates — done in Phase 0.
 
-**Verification:** `npx vitest run` → 0 failures.
+**Verification:** `npx vitest run` → 3748 passing, 0 failures.
 
 ---
 

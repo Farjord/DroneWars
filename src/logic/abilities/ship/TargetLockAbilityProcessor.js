@@ -81,7 +81,13 @@ class TargetLockAbilityProcessor {
     }
 
     if (!droneFound) {
-      console.warn('⚠️ TargetLockAbilityProcessor: Target drone not found:', targetId);
+      debugLog('SHIP_ABILITY', `⚠️ TargetLockAbilityProcessor: Target drone not found: ${targetId}`);
+      return {
+        newPlayerStates: playerStates, // Return original state (no energy spent)
+        shouldEndTurn: false,
+        animationEvents: [],
+        error: 'Target drone not found'
+      };
     }
 
     // Step 3: Return with shouldEndTurn: true

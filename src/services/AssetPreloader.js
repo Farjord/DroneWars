@@ -112,7 +112,9 @@ class AssetPreloader {
       }
     }
 
-    return Promise.allSettled(results);
+    // Note: individual .catch() handlers above convert rejections to fulfilled (undefined)
+    // so Promise.all is correct here — no promise will reject
+    return Promise.all(results);
   }
 
   /**

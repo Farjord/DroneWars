@@ -184,7 +184,7 @@ export function useTacticalExtraction({
     }
 
     // Get AI for blockade combat
-    const tier = runState.mapData?.tier || 1;
+    const tier = runState.mapData?.tier ?? 1;
     const tierCfg = mapTiers[tier - 1];
     const detection = DetectionManager.getCurrentDetection();
     const aiId = EncounterController.getAIForThreat(tierCfg, detection, null);

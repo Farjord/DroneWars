@@ -329,6 +329,7 @@ export async function handleAICommitment(phase, currentState, ctx) {
 
   } catch (error) {
     debugLog('COMMITMENTS', 'AI commitment error:', error);
+    throw error;
   }
 }
 

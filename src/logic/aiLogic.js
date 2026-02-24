@@ -795,7 +795,12 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
     const actionPool = possibleActions.filter(action => action.score >= topScore - 20);
     const positiveActionPool = actionPool.filter(action => action.score > 0);
-    
+
+    if (positiveActionPool.length === 0) {
+      addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: 'Passed (no positive actions in pool).' }, 'aiActionPass', possibleActions);
+      return { type: 'pass' };
+    }
+
     const chosenAction = positiveActionPool[Math.floor(Math.random() * positiveActionPool.length)];
 
     chosenAction.isChosen = true;

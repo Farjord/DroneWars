@@ -18,6 +18,7 @@ import aiPersonalities from '../../../../data/aiData.js';
 import { generateSalvageItemFromValue } from '../../../../data/salvageItemData.js';
 import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
+import SeededRandom from '../../../../utils/seededRandom.js';
 
 /**
  * Hook that provides all encounter-related handlers for TacticalMapScreen.
@@ -149,8 +150,8 @@ export function useTacticalEncounters({
       let loot;
       if (packType === 'TOKEN_REWARD') {
         // Token reward - guaranteed 1 security token + salvage item (50-100 credits)
-        const creditValue = 50 + Math.floor(Math.random() * 51);
-        const rng = { random: () => Math.random() };
+        const rng = SeededRandom.fromGameState(gameStateManager.getState());
+        const creditValue = 50 + Math.floor(rng.random() * 51);
         const salvageItem = generateSalvageItemFromValue(creditValue, rng);
         loot = {
           cards: [],

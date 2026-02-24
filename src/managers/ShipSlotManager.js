@@ -359,7 +359,7 @@ class ShipSlotManager {
       return { success: false, reason: 'Section is not damaged' };
     }
 
-    const costPerDamage = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10;
+    const costPerDamage = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200;
     const cost = damageDealt * costPerDamage;
     const profile = { ...this.gsm.state.singlePlayerProfile };
 

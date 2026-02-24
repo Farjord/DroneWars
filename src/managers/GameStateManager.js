@@ -569,23 +569,20 @@ class GameStateManager {
    * @param {Object} testConfig - Test configuration from testGameInitializer
    * @returns {boolean} Success status
    */
-  initializeTestMode(testConfig) {
+  async initializeTestMode(testConfig) {
     debugLog('STATE_SYNC', '🧪 TEST MODE: Initializing test game from GameStateManager');
 
     // Import testGameInitializer dynamically to avoid circular dependencies
-    import('../services/testGameInitializer.js').then(module => {
-      const success = module.initializeTestGame(testConfig, this);
+    const module = await import('../services/testGameInitializer.js');
+    const success = module.initializeTestGame(testConfig, this);
 
-      if (success) {
-        debugLog('STATE_SYNC', '✅ TEST MODE: Test game initialized successfully');
-      } else {
-        debugLog('STATE_SYNC', '❌ TEST MODE: Test game initialization failed');
-      }
-    }).catch(error => {
-      debugLog('STATE_SYNC', '🚨 TEST MODE: Error importing testGameInitializer', { error });
-    });
+    if (success) {
+      debugLog('STATE_SYNC', '✅ TEST MODE: Test game initialized successfully');
+    } else {
+      debugLog('STATE_SYNC', '❌ TEST MODE: Test game initialization failed');
+    }
 
-    return true; // Return immediately, actual initialization happens asynchronously
+    return success;
   }
 
   /**

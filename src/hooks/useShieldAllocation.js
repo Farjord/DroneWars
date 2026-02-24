@@ -68,7 +68,9 @@ const useShieldAllocation = ({
         shieldsToAllocate
       });
     }
-  }, [turnPhase, shieldsToAllocate, localPlayerState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- localPlayerState excluded:
+    // effect should only fire on phase entry, not on every state update
+  }, [turnPhase, shieldsToAllocate]);
 
   // --- Derived state ---
 

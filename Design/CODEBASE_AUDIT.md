@@ -205,7 +205,7 @@
 | vsModeDeckData.js | 113 | 3 | NAME, DUP, COMMENT |
 
 **Priority defect:**
-- **aiData.js:182,216** [NAME] `CARD053_Enhanced` uses wrong casing — canonical ID is `CARD053_ENHANCED`. **Runtime bug**: these AI decks (Capital-Class Blockade Fleet, Nemesis boss) will produce broken card lookups.
+- **[FIXED] aiData.js:182,216** [NAME] `CARD053_Enhanced` uses wrong casing — canonical ID is `CARD053_ENHANCED`. **Runtime bug**: these AI decks (Capital-Class Blockade Fleet, Nemesis boss) will produce broken card lookups.
 
 **Purity violations (already tracked in CODE_STANDARDS.md):**
 - aiCoresData.js — `calculateAICoresDrop()`, `getAICoresCost()`
@@ -232,7 +232,7 @@
 - [COMMENT] playerDeckData.js:4 — typo "leightweight" → "lightweight".
 - [COMMENT] vsModeDeckData.js:5 — typo "subtefuge" → "subterfuge".
 - [COMMENT] pointsOfInterestData.js — stale "TBD (placeholder)" comments in tierAIMapping.
-- [DUP] vsModeDeckData.js — VS_DECK_002 and VS_DECK_003 have identical decklists/dronePools/shipComponents. Only names differ. Likely copy-paste placeholder bug.
+- [FIXED] [DUP] vsModeDeckData.js — VS_DECK_002 and VS_DECK_003 have identical decklists/dronePools/shipComponents. Only names differ. Likely copy-paste placeholder bug.
 - [DUP] pointsOfInterestData.js — three drone PoI entries repeat identical boolean config blocks.
 - [DUP] shipSectionData.js — BRIDGE_001 and BRIDGE_HEAVY have identical ability objects.
 - [NAME] vsModeDeckData.js — inconsistent indentation (1-space vs 4-space).
@@ -382,7 +382,7 @@
 
 **Critical findings:**
 
-- **[EDGE] aiLogic.js:799** — `positiveActionPool` can be empty, causing crash. `positiveActionPool[Math.floor(Math.random() * 0)]` returns `undefined`, next line crashes.
+- **[FIXED] [EDGE] aiLogic.js:799** — `positiveActionPool` can be empty, causing crash. `positiveActionPool[Math.floor(Math.random() * 0)]` returns `undefined`, next line crashes.
 - **[SMELL] aiLogic.js** — 4x `Math.random()` instead of `SeededRandom`. Non-deterministic AI decisions.
 - **[SIZE] aiLogic.js (1209)** — `handleOpponentAction` is ~385 lines, `makeInterceptionDecision` ~260 lines. God functions. Should be in `logic/ai/` not root.
 - **[LOG] aiLogic.js:246** — raw `console.error`.
@@ -415,9 +415,9 @@
 **Critical findings:**
 
 - **[TEST] No tests exist for any of these 14 files.** Core game logic with zero test coverage.
-- **[ERROR] CommitmentStrategy.js:330** — `handleAICommitment` silently swallows errors (catch block logs but doesn't rethrow). AI commitment failure appears to succeed.
+- **[FIXED] [ERROR] CommitmentStrategy.js:330** — `handleAICommitment` silently swallows errors (catch block logs but doesn't rethrow). AI commitment failure appears to succeed.
 - **[LOGIC] CommitmentStrategy.js:44** — `clearPhaseCommitments` directly mutates `currentState` before `setState`. Mixed mutation/immutability.
-- **[EDGE] TargetLockAbilityProcessor.js** — spends energy and ends turn even when target drone not found.
+- **[FIXED] [EDGE] TargetLockAbilityProcessor.js** — spends energy and ends turn even when target drone not found.
 - **[LOG] 11x raw `console.warn`** across 5 ability files.
 - **[DUP] CardActionStrategy.js** — `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x.
 - **[DUP] AbilityResolver.js** — `resolveShipRecallEffect` duplicates `RecallAbilityProcessor.process`. Dead code path.
@@ -552,8 +552,8 @@
 
 **Critical findings:**
 
-- **[LOGIC] LootGenerator.js:417** — `this.generateSalvageItemFromValue(100, rng)` calls `this.` but it's an imported function. Will throw at runtime on fallback path.
-- **[LOGIC] HighAlertManager.js:21** — `Math.random()` instead of `SeededRandom`. Breaks determinism.
+- **[FIXED] [LOGIC] LootGenerator.js:417** — `this.generateSalvageItemFromValue(100, rng)` calls `this.` but it's an imported function. Will throw at runtime on fallback path.
+- **[FIXED] [LOGIC] HighAlertManager.js:21** — `Math.random()` instead of `SeededRandom`. Breaks determinism.
 - **[SIZE] CardPlayManager.js (868)** — god class. `resolveCardPlay` is 275 lines. Banned `// NEW:` comments. 2x `console.warn`.
 - **[SIZE] CombatOutcomeProcessor.js (866)** — `processVictory` ~230 lines. Mixed mutation patterns. Should split into Victory/Defeat/LootCollector.
 - **[SIZE] SinglePlayerCombatInitializer.js (810)** — `initiateCombat` ~260 lines, `buildPlayerState` ~170 lines.
@@ -592,7 +592,7 @@
 **Per-file issues:**
 
 - **[NAME] assetManifest.js:76-77,152** — Property `hanger` but UI label says "Hangar Interface". Spelling inconsistency propagates to consumers.
-- **[LOGIC] AssetPreloader.js:97-100** — `.catch()` swallows errors silently, returning `undefined`. This makes `Promise.allSettled` at line 115 report "fulfilled with undefined" instead of "rejected". Defeats the purpose of `allSettled`.
+- **[FIXED] [LOGIC] AssetPreloader.js:97-100** — `.catch()` swallows errors silently, returning `undefined`. This makes `Promise.allSettled` at line 115 report "fulfilled with undefined" instead of "rejected". Defeats the purpose of `allSettled`.
 - **[LOG] AssetPreloader.js:233** — `console.warn('Failed to load assets:')` should use `debugLog`. File already imports `debugLog` elsewhere.
 - **[SMELL] gameDataCache.js:74,76** — Magic numbers `1000` (max cache) and `200` (eviction batch). Should be named constants.
 - **[LOG] GameDataService.js:51** — `console.warn` in constructor should use `debugLog`.
@@ -653,7 +653,7 @@
 **GameStateManager.js (1068 lines, 5 issues):**
 - **[SIZE]** — 1068 lines. Still has ~30 facade one-liners (lines 911-956) despite extracting 5 sub-managers.
 - **[SMELL] :217** — `new Error().stack` on **every** `setState()` for caller detection. Performance concern in hot paths. Should be debug-only.
-- **[LOGIC] :576-588** — `initializeTestMode` calls async `import().then()` but returns `true` synchronously. Caller has no way to know when init completes or fails.
+- **[FIXED] [LOGIC] :576-588** — `initializeTestMode` calls async `import().then()` but returns `true` synchronously. Caller has no way to know when init completes or fails.
 - **[TODO] :136** — `// TODO: Remove facades when GFM/GMQS are updated` — stale TODO.
 - **[IMPORT] :12** — Imports `tacticalMapStateManager` singleton directly, coupling two independent state domains.
 
@@ -747,7 +747,7 @@
 
 #### Phase C — Critical Findings Summary
 
-1. **[LOGIC] ShipSlotManager.js:362** — CRITICAL: Wrong fallback `|| 10` should be `|| 200` (silent pricing bug)
+1. **[FIXED] [LOGIC] ShipSlotManager.js:362** — CRITICAL: Wrong fallback `|| 10` should be `|| 200` (silent pricing bug)
 2. **[FIXED] PhaseManager.js:392-410** — LATENT BUG: `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`, diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition.
 3. **[LOG]** — 22 files have raw console calls. Worst: P2PManager (21), SaveGameService (12), AnimationManager (6), GuestMessageQueueService (5), PhaseManager (5).
 4. **[SIZE]** — 5 files exceed 800 lines: GameFlowManager (1673), GuestMessageQueueService (1125), GameStateManager (1068), RewardManager (1028), ActionProcessor (1006). GuestMessageQueueService's `processStateUpdate` at 388 lines is the worst single method.
@@ -924,7 +924,7 @@
 
 **useHangarMapState.js (122 lines, 2 issues):**
 - **[SMELL] :34** — Magic numbers `3`, `1.2`, `1.5`, `2` for zoom levels. Should be named constants.
-- **[EDGE] :84** — `handleMapMouseDown` reads `pan.x`/`pan.y` from stale closure. Should use `panRef.current`.
+- **[FIXED] [EDGE] :84** — `handleMapMouseDown` reads `pan.x`/`pan.y` from stale closure. Should use `panRef.current`.
 
 **useActionRouting.js (106 lines, 1 issue):**
 - **[SMELL] :71** — `executeDeployment` declared as plain async function, not `useCallback`-wrapped. Recreated every render.
@@ -950,7 +950,7 @@
 6. **[DUP]** — 14 duplication issues. Worst: useMultiplayerSync commitment check block copy-pasted 4 times (~100 lines). Cost reminder arrow logic duplicated between useDragMechanics and useClickHandlers. Friendly-drones calculation duplicated across 3 hooks.
 7. **[TEST]** — `src/hooks/__tests__/` directory does not exist. Zero of 26 hooks have any test coverage. This is 10,413 lines of untested UI interaction logic.
 8. **[PURITY]** — Multiple hooks contain business logic (loot generation, AI selection, combat init, movement state machines) that belongs in logic/ or managers/.
-9. **[LOGIC]** — `Math.random()` in useTacticalEncounters breaks seeded RNG. `Date.now()` for animation IDs risks collision. useShieldAllocation over-broad dependency resets user state.
+9. **[FIXED] [LOGIC]** — `Math.random()` in useTacticalEncounters breaks seeded RNG. `Date.now()` for animation IDs risks collision. useShieldAllocation over-broad dependency resets user state.
 
 ### Phase E — Components (~183 files, reviewed 2026-02-23)
 

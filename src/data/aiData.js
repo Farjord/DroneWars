@@ -179,7 +179,7 @@ const aiPersonalities = [
       { id: 'CARD006', quantity: 4 },
       { id: 'CARD007', quantity: 3 },
       { id: 'CARD008', quantity: 4 },
-      { id: 'CARD053_Enhanced', quantity: 3 },
+      { id: 'CARD053_ENHANCED', quantity: 3 },
       { id: 'CARD012', quantity: 4 },
       { id: 'CARD013', quantity: 2 },
       { id: 'CARD016', quantity: 3 }
@@ -213,7 +213,7 @@ const aiPersonalities = [
       { id: 'CARD006', quantity: 4 },
       { id: 'CARD007_ENHANCED', quantity: 4 },
       { id: 'CARD008', quantity: 4 },
-      { id: 'CARD053_Enhanced', quantity: 3 },
+      { id: 'CARD053_ENHANCED', quantity: 3 },
       { id: 'CARD012_ENHANCED', quantity: 4 },
       { id: 'CARD013', quantity: 3 },
       { id: 'CARD016', quantity: 4 }

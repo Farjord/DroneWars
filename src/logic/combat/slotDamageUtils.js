@@ -142,7 +142,7 @@ export function calculateDroneSlotRepairCost() {
  */
 export function calculateSectionRepairCost(damageDealt) {
   if (damageDealt <= 0) return 0;
-  return damageDealt * (ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10);
+  return damageDealt * (ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200);
 }
 
 /**

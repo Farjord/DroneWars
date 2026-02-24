@@ -16,9 +16,10 @@ class HighAlertManager {
    * Generate a random alert bonus between 5% and 15%
    * @returns {number} Bonus value between 0.05 and 0.15
    */
-  generateAlertBonus() {
+  generateAlertBonus(rng) {
     // Random bonus between 5% (0.05) and 15% (0.15)
-    return 0.05 + (Math.random() * 0.10);
+    const rand = rng ? rng.random() : Math.random();
+    return 0.05 + (rand * 0.10);
   }
 
   /**
@@ -29,7 +30,7 @@ class HighAlertManager {
    * @param {Object} poi - PoI coordinates { q, r }
    * @returns {Object} Updated run state with new highAlertPOIs
    */
-  addHighAlert(runState, poi) {
+  addHighAlert(runState, poi, rng) {
     const highAlertPOIs = runState.highAlertPOIs || [];
 
     // Check if already in high alert
@@ -46,7 +47,7 @@ class HighAlertManager {
     }
 
     // Add new high alert entry
-    const alertBonus = this.generateAlertBonus();
+    const alertBonus = this.generateAlertBonus(rng);
     const newHighAlertPOI = {
       q: poi.q,
       r: poi.r,

@@ -414,7 +414,7 @@ class LootGenerator {
     if (eligibleSalvage.length === 0) {
       // Fallback to any salvage if somehow no items match
       console.warn(`No salvage items found for rarity ${targetSalvageRarity}`);
-      return this.generateSalvageItemFromValue(100, rng);
+      return generateSalvageItemFromValue(100, rng);
     }
 
     // Select random item from eligible pool
