@@ -20,6 +20,8 @@
  * TacticalMapStateManager is NOT touched.
  */
 
+import { debugLog } from '../utils/debugLogger.js';
+
 class CombatStateManager {
   constructor() {
     // State is null when no combat is active
@@ -64,7 +66,7 @@ class CombatStateManager {
       try {
         listener({ type: eventType, state: this.getState() });
       } catch (error) {
-        console.error('[CombatStateManager] Error in listener:', error);
+        debugLog('COMBAT', '❌ [CombatStateManager] Error in listener:', error);
       }
     });
   }

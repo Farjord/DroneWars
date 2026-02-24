@@ -22,6 +22,8 @@
  * It only changes when player explicitly modifies inventory/ships.
  */
 
+import { debugLog } from '../utils/debugLogger.js';
+
 class MetaGameStateManager {
   constructor() {
     // Initialize with default state
@@ -101,7 +103,7 @@ class MetaGameStateManager {
       try {
         listener({ type: eventType, state: this.getState() });
       } catch (error) {
-        console.error('[MetaGameStateManager] Error in listener:', error);
+        debugLog('STATE_SYNC', '❌ [MetaGameStateManager] Error in listener:', error);
       }
     });
   }

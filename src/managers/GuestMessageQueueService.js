@@ -61,7 +61,7 @@ class GuestMessageQueueService {
       try {
         listener({ type, data });
       } catch (error) {
-        console.error('Error in GuestMessageQueueService listener:', error);
+        debugLog('MULTIPLAYER', '❌ Error in GuestMessageQueueService listener:', error);
       }
     });
   }
@@ -514,7 +514,7 @@ class GuestMessageQueueService {
     if (this.p2pManager) {
       this.p2pManager.requestFullSync();
     } else {
-      console.warn('GuestMessageQueueService: Cannot request resync - no P2PManager reference');
+      debugLog('MULTIPLAYER', '⚠️ GuestMessageQueueService: Cannot request resync - no P2PManager reference');
     }
 
     // Emit event for UI (show "Syncing..." indicator)
@@ -623,7 +623,7 @@ class GuestMessageQueueService {
       // etc.
 
       default:
-        console.warn('⚠️ [GUEST QUEUE] Unknown message type:', message.type);
+        debugLog('MULTIPLAYER', '⚠️ [GUEST QUEUE] Unknown message type:', message.type);
     }
   }
 
@@ -950,7 +950,7 @@ class GuestMessageQueueService {
           const phaseCommitments = state.commitments?.[cascadePhase];
           await gameFlowManager.onSimultaneousPhaseComplete(cascadePhase, phaseCommitments);
         } else {
-          console.error(`❌ [${cascadePhase.toUpperCase()} CHECKPOINT] GameFlowManager not available`);
+          debugLog('MULTIPLAYER', `❌ [${cascadePhase.toUpperCase()} CHECKPOINT] GameFlowManager not available`);
         }
       }
 
@@ -964,7 +964,7 @@ class GuestMessageQueueService {
         if (gameFlowManager) {
           await gameFlowManager.processAutomaticPhasesUntilCheckpoint(this.bothPassStartPhase);
         } else {
-          console.error('❌ [BOTH-PASS CASCADE] GameFlowManager not available');
+          debugLog('MULTIPLAYER', '❌ [BOTH-PASS CASCADE] GameFlowManager not available');
         }
       }
 

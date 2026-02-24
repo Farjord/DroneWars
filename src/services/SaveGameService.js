@@ -6,6 +6,7 @@
 
 import { SAVE_VERSION } from '../data/saveGameSchema.js';
 import { validateSaveFile } from '../logic/save/saveGameValidator.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 class SaveGameService {
   constructor() {
@@ -58,7 +59,7 @@ class SaveGameService {
 
     // Check for MIA condition
     if (saveData.currentRunState !== null) {
-      console.warn('Save file has active run state - triggering MIA protocol');
+      debugLog('SAVE', '⚠️ Save file has active run state - triggering MIA protocol');
       saveData = this.triggerMIA(saveData);
     }
 
@@ -96,7 +97,7 @@ class SaveGameService {
     // Find active ship slot
     const activeSlot = saveData.shipSlots.find(slot => slot.id === runState.shipSlotId);
     if (!activeSlot) {
-      console.warn('MIA: Could not find ship slot', runState.shipSlotId);
+      debugLog('SAVE', '⚠️ MIA: Could not find ship slot', runState.shipSlotId);
       return saveData;
     }
 
@@ -104,7 +105,7 @@ class SaveGameService {
     activeSlot.status = 'mia';
 
     // Wipe collected loot (not transferred to inventory)
-    console.log('MIA triggered: Loot lost', runState.collectedLoot);
+    debugLog('SAVE', 'MIA triggered: Loot lost', runState.collectedLoot);
 
     // Clear run state
     saveData.currentRunState = null;
@@ -140,10 +141,10 @@ class SaveGameService {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      console.log('Save file downloaded:', filename);
+      debugLog('SAVE', 'Save file downloaded:', filename);
       return { success: true };
     } catch (error) {
-      console.error('Failed to download save:', error);
+      debugLog('SAVE', '❌ Failed to download save:', error);
       return { success: false, error: error.message };
     }
   }
@@ -165,10 +166,10 @@ class SaveGameService {
           // Deserialize (includes validation and MIA detection)
           const gameState = this.deserialize(saveData);
 
-          console.log('Save file loaded successfully');
+          debugLog('SAVE', 'Save file loaded successfully');
           resolve(gameState);
         } catch (error) {
-          console.error('Failed to parse save file:', error);
+          debugLog('SAVE', '❌ Failed to parse save file:', error);
           reject(error);
         }
       };
@@ -191,10 +192,10 @@ class SaveGameService {
     try {
       const jsonString = JSON.stringify(saveData);
       localStorage.setItem(`eremos_${slotName}`, jsonString);
-      console.log('Quick saved to localStorage:', slotName);
+      debugLog('SAVE', 'Quick saved to localStorage:', slotName);
       return { success: true };
     } catch (error) {
-      console.error('Failed to quick save:', error);
+      debugLog('SAVE', '❌ Failed to quick save:', error);
       return { success: false, error: error.message };
     }
   }
@@ -214,10 +215,10 @@ class SaveGameService {
       const saveData = JSON.parse(jsonString);
       const gameState = this.deserialize(saveData);
 
-      console.log('Quick loaded from localStorage:', slotName);
+      debugLog('SAVE', 'Quick loaded from localStorage:', slotName);
       return gameState;
     } catch (error) {
-      console.error('Failed to quick load:', error);
+      debugLog('SAVE', '❌ Failed to quick load:', error);
       throw error;
     }
   }

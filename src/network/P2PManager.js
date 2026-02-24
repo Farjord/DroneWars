@@ -62,7 +62,7 @@ class P2PManager {
       try {
         listener({ type, data });
       } catch (error) {
-        console.error('Error in P2P listener:', error);
+        debugLog('MULTIPLAYER', '❌ Error in P2P listener:', error);
       }
     });
   }
@@ -123,7 +123,7 @@ class P2PManager {
       if (this.actionProcessor) {
         await this.actionProcessor.processGuestAction(data.action);
       } else {
-        console.error('ActionProcessor not set - cannot process guest action');
+        debugLog('MULTIPLAYER', '❌ ActionProcessor not set - cannot process guest action');
       }
     });
 
@@ -237,7 +237,7 @@ class P2PManager {
         errorMessage: error?.message,
         errorStack: error?.stack
       });
-      console.error('Failed to host game:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to host game:', error);
       this.emit('connection_error', { error: error.message });
       throw error;
     }
@@ -325,7 +325,7 @@ class P2PManager {
         error: error,
         errorMessage: error?.message
       });
-      console.error('Failed to join game:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to join game:', error);
       this.emit('connection_error', { error: error.message });
       throw error;
     }
@@ -336,7 +336,7 @@ class P2PManager {
    */
   sendData(data) {
     if (!this.isConnected || !this.currentPeerId) {
-      console.warn('Attempted to send data but no connection available');
+      debugLog('MULTIPLAYER', '⚠️ Attempted to send data but no connection available');
       return;
     }
 
@@ -349,10 +349,10 @@ class P2PManager {
       } else if (data.type === 'PHASE_COMPLETED') {
         this.actions.phaseCompleted.send(data.data, this.currentPeerId);
       } else {
-        console.warn('Unknown data type for sendData:', data.type);
+        debugLog('MULTIPLAYER', '⚠️ Unknown data type for sendData:', data.type);
       }
     } catch (error) {
-      console.error('Failed to send data:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to send data:', error);
       this.emit('send_error', { error: error.message });
     }
   }
@@ -365,12 +365,12 @@ class P2PManager {
    */
   broadcastState(state, actionAnimations = [], systemAnimations = []) {
     if (!this.isHost) {
-      console.warn('Only host can broadcast state');
+      debugLog('MULTIPLAYER', '⚠️ Only host can broadcast state');
       return;
     }
 
     if (!this.isConnected || !this.currentPeerId) {
-      console.warn('Cannot broadcast state - no connection available');
+      debugLog('MULTIPLAYER', '⚠️ Cannot broadcast state - no connection available');
       return;
     }
 
@@ -406,7 +406,7 @@ class P2PManager {
         systemAnimationCount: systemAnimations.length
       });
     } catch (error) {
-      console.error('Failed to broadcast state:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to broadcast state:', error);
       this.emit('send_error', { error: error.message });
     }
   }
@@ -418,12 +418,12 @@ class P2PManager {
    */
   sendActionToHost(actionType, payload) {
     if (this.isHost) {
-      console.warn('Host should not send actions to itself');
+      debugLog('MULTIPLAYER', '⚠️ Host should not send actions to itself');
       return;
     }
 
     if (!this.isConnected || !this.currentPeerId) {
-      console.warn('Cannot send action - no connection to host');
+      debugLog('MULTIPLAYER', '⚠️ Cannot send action - no connection to host');
       return;
     }
 
@@ -436,7 +436,7 @@ class P2PManager {
       this.actions.guestAction.send(actionData, this.currentPeerId);
       debugLog('MULTIPLAYER', '[P2P GUEST] Sent action to host:', actionType);
     } catch (error) {
-      console.error('Failed to send action to host:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to send action to host:', error);
       this.emit('send_error', { error: error.message });
     }
   }
@@ -447,12 +447,12 @@ class P2PManager {
    */
   requestFullSync() {
     if (this.isHost) {
-      console.warn('Host should not request sync from itself');
+      debugLog('MULTIPLAYER', '⚠️ Host should not request sync from itself');
       return;
     }
 
     if (!this.isConnected || !this.currentPeerId) {
-      console.warn('Cannot request sync - no connection to host');
+      debugLog('MULTIPLAYER', '⚠️ Cannot request sync - no connection to host');
       return;
     }
 
@@ -465,7 +465,7 @@ class P2PManager {
       this.actions.syncRequest.send(requestData, this.currentPeerId);
       debugLog('MULTIPLAYER', '[P2P GUEST] Requested full state sync from host');
     } catch (error) {
-      console.error('Failed to request sync:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to request sync:', error);
       this.emit('send_error', { error: error.message });
     }
   }
@@ -477,12 +477,12 @@ class P2PManager {
    */
   sendFullSyncResponse(state, sequenceId) {
     if (!this.isHost) {
-      console.warn('Only host can send sync response');
+      debugLog('MULTIPLAYER', '⚠️ Only host can send sync response');
       return;
     }
 
     if (!this.isConnected || !this.currentPeerId) {
-      console.warn('Cannot send sync response - no connection available');
+      debugLog('MULTIPLAYER', '⚠️ Cannot send sync response - no connection available');
       return;
     }
 
@@ -504,7 +504,7 @@ class P2PManager {
         sequenceId: this.broadcastSequence
       });
     } catch (error) {
-      console.error('Failed to send sync response:', error);
+      debugLog('MULTIPLAYER', '❌ Failed to send sync response:', error);
       this.emit('send_error', { error: error.message });
     }
   }

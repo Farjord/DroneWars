@@ -443,14 +443,14 @@ class AnimationManager {
               setTimeout(async () => {
                 const animDef = this.animations[seqAnim.type];
                 if (!animDef) {
-                  console.warn(`❌ [SEQUENCE] Unknown animation type: ${seqAnim.type}`);
+                  debugLog('ANIMATIONS', `⚠️ [SEQUENCE] Unknown animation type: ${seqAnim.type}`);
                   resolve();
                   return;
                 }
 
                 const handler = this.visualHandlers.get(animDef.type);
                 if (!handler) {
-                  console.warn(`❌ [SEQUENCE] No visual handler for: ${animDef.type}`);
+                  debugLog('ANIMATIONS', `⚠️ [SEQUENCE] No visual handler for: ${animDef.type}`);
                   resolve();
                   return;
                 }
@@ -491,13 +491,13 @@ class AnimationManager {
           await Promise.all(damageGroup.map(async (dmgEffect) => {
             const animDef = this.animations[dmgEffect.animationName];
             if (!animDef) {
-              console.warn(`❌ [ANIMATION DEBUG] Unknown animation: ${dmgEffect.animationName}`);
+              debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] Unknown animation: ${dmgEffect.animationName}`);
               return;
             }
 
             const handler = this.visualHandlers.get(animDef.type);
             if (!handler) {
-              console.warn(`❌ [ANIMATION DEBUG] No visual handler for: ${animDef.type}`);
+              debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] No visual handler for: ${animDef.type}`);
               return;
             }
 
@@ -521,14 +521,14 @@ class AnimationManager {
 
           const animDef = this.animations[effect.animationName];
           if (!animDef) {
-            console.warn(`❌ [ANIMATION DEBUG] Unknown animation: ${effect.animationName}`);
+            debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] Unknown animation: ${effect.animationName}`);
             i++;
             continue;
           }
 
           const handler = this.visualHandlers.get(animDef.type);
           if (!handler) {
-            console.warn(`❌ [ANIMATION DEBUG] No visual handler for: ${animDef.type}`);
+            debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] No visual handler for: ${animDef.type}`);
             i++;
             continue;
           }

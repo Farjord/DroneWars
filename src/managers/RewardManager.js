@@ -325,7 +325,7 @@ class RewardManager {
 
     const config = packTypes[normalizedPackType];
     if (!config) {
-      console.warn(`Unknown pack type: ${packType}`);
+      debugLog('REWARD_MANAGER', `⚠️ Unknown pack type: ${packType}`);
       return { cards: [], credits: 0, seed };
     }
 
@@ -486,7 +486,7 @@ class RewardManager {
 
     const classBandWeights = CLASS_BAND_WEIGHTS[packType];
     if (!classBandWeights) {
-      console.warn(`Unknown drone blueprint reward type: ${packType}`);
+      debugLog('REWARD_MANAGER', `⚠️ Unknown drone blueprint reward type: ${packType}`);
       return null;
     }
 
@@ -598,7 +598,7 @@ class RewardManager {
     const eligibleSalvage = SALVAGE_ITEMS.filter(item => item.rarity === targetSalvageRarity);
 
     if (eligibleSalvage.length === 0) {
-      console.warn(`No salvage items found for rarity ${targetSalvageRarity}`);
+      debugLog('REWARD_MANAGER', `⚠️ No salvage items found for rarity ${targetSalvageRarity}`);
       return generateSalvageItemFromValue(100, rng);
     }
 
@@ -822,7 +822,7 @@ class RewardManager {
 
     const config = packTypes[packType];
     if (!config) {
-      console.warn(`Unknown shop pack type: ${packType}`);
+      debugLog('REWARD_MANAGER', `⚠️ Unknown shop pack type: ${packType}`);
       return { cards: [], seed };
     }
 

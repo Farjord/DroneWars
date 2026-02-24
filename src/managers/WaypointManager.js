@@ -32,7 +32,7 @@ class WaypointManager {
     const runState = tacticalMapStateManager.getState();
 
     // Diagnostic logging for debugging waypoint restoration issues
-    console.log('[WaypointManager] restorePathAfterCombat:', {
+    debugLog('WAYPOINT_MANAGER', 'restorePathAfterCombat:', {
       pendingPathLength: runState?.pendingPath?.length || 0,
       pendingDestinationsLength: runState?.pendingWaypointDestinations?.length || 0
     });

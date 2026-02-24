@@ -65,7 +65,7 @@ class TacticalMapStateManager {
       try {
         listener({ type: eventType, state: this.getState() });
       } catch (error) {
-        console.error('[TacticalMapStateManager] Error in listener:', error);
+        debugLog('RUN_STATE', '❌ [TacticalMapStateManager] Error in listener:', error);
       }
     });
   }

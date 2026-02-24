@@ -84,12 +84,12 @@ class PhaseManager {
 
     if (actionType === 'pass' && !PhaseManager.SEQUENTIAL_PHASES.includes(currentPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Pass action invalid for simultaneous phase: ${currentPhase}`);
-      console.warn(`PhaseManager: Pass action invalid for phase: ${currentPhase}`);
+      debugLog('PHASE_MANAGER', `⚠️ PhaseManager: Pass action invalid for phase: ${currentPhase}`);
       return false;
     }
     if (actionType === 'commit' && !PhaseManager.SIMULTANEOUS_PHASES.includes(currentPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Commit action invalid for sequential phase: ${currentPhase}`);
-      console.warn(`PhaseManager: Commit action invalid for phase: ${currentPhase}`);
+      debugLog('PHASE_MANAGER', `⚠️ PhaseManager: Commit action invalid for phase: ${currentPhase}`);
       return false;
     }
     return true;
@@ -230,14 +230,14 @@ class PhaseManager {
     // Guard: Validate phase name
     if (!PhaseManager.VALID_PHASES.includes(newPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Invalid phase name: ${newPhase}`);
-      console.error(`PhaseManager: Invalid phase name: ${newPhase}`);
+      debugLog('PHASE_MANAGER', `❌ PhaseManager: Invalid phase name: ${newPhase}`);
       return false;
     }
 
     // Guard: Guest cannot transition
     if (this.gameMode === 'guest') {
       debugLog('PHASE_MANAGER', `🚫 Guest attempted to transition to ${newPhase} - BLOCKED`);
-      console.error('PhaseManager: Guest cannot transition phases!');
+      debugLog('PHASE_MANAGER', '❌ PhaseManager: Guest cannot transition phases!');
       return false;
     }
 
@@ -283,7 +283,7 @@ class PhaseManager {
       return true;
     } catch (error) {
       debugLog('PHASE_MANAGER', `❌ Error during transition: ${error.message}`);
-      console.error('PhaseManager transition error:', error);
+      debugLog('PHASE_MANAGER', '❌ PhaseManager transition error:', error);
       return false;
     } finally {
       this.isTransitioning = false;
