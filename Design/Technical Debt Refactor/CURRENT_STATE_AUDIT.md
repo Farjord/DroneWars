@@ -1,16 +1,18 @@
-# Tech Debt Audit — Post-Codebase Audit (2026-02-23)
+# Tech Debt Audit — Post-Phase K Cleanup (2026-02-24)
 
 ## Summary
 
-| Metric | Pre-Refactoring (Feb 21) | Post-Audit (Feb 23) | Change |
-|-|-|-|-|
-| Files over 800 lines | 46 | 27 | -19 |
-| Files 400-799 lines | 32 | 54 | +22 (extractions added mid-size files) |
-| Tests outside `__tests__/` | 199 of 201 | 0 of 220 | -199 (migration complete) |
-| Data files with logic | 9 | 9 | 0 (not yet addressed) |
-| Source files without tests | 313 of 431 (27%) | ~280 of 500 (56%) | Metric corrected — previous 27% was wrong |
-| Total source lines (non-test) | ~140k (est.) | 122,846 | -17k from refactoring |
-| Audit issues found | — | ~433 | Baseline established |
+| Metric | Pre-Refactoring (Feb 21) | Post-Audit (Feb 23) | Post-Cleanup (Feb 24) | Change |
+|-|-|-|-|-|
+| Files over 800 lines | 46 | 27 | ~25 | -2 (dead code + dedup) |
+| Files 400-799 lines | 32 | 54 | ~52 | -2 (extractions) |
+| Tests outside `__tests__/` | 199 of 201 | 0 of 220 | 0 of 220 | Stable |
+| Data files with logic | 9 | 9 | 5 | -4 (PURITY migration) |
+| Source files without tests | 313 of 431 (27%) | ~280 of 500 (56%) | ~280 of 510 (55%) | Stable (test coverage not in scope) |
+| Total source lines (non-test) | ~140k (est.) | 122,846 | ~121k (est.) | -1.8k from dedup + dead code |
+| Audit issues found | — | ~433 | ~433 | Baseline unchanged |
+| Audit issues [FIXED] | — | 139 | 240 | +101 this session |
+| Phases completed | A-F | A-F | A-K | +5 phases (G,H,I,J,K) |
 
 ## Critical (800+ lines) — 27 files
 

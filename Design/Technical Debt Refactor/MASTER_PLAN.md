@@ -265,7 +265,7 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 
 ## Phase H: Deduplication
 
-**Status: Done (partial — H1+H2+H3c completed)**
+**Status: Done**
 
 **Goal:** Extract shared code from copy-pasted blocks.
 
@@ -273,12 +273,29 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 - [x] ExtractionController custom LCG → SeededRandom
 - [x] AbilityResolver dead resolveShipRecallEffect removed
 - [x] AIPhaseProcessor SEQUENTIAL_PHASES → import from gameUtils
+- [x] Extract shared calculateDamageByType to logic/utils/damageCalculation.js (3 consumers)
+- [x] Consolidate processOverflowDamage with shared damage calc in DamageEffectProcessor
+- [x] Extract applyDestroyCleanup helper in DestroyEffectProcessor (5 sites)
 
 ### H2 — Manager/Service dedup
 - [x] LaneControlCalculator: countLanesControlled → getLanesControlled().length
 - [x] P2PManager: extract _requireConnection() guard
 - [x] ShipSlotManager: extract EMPTY_SLOT_TEMPLATE constant
 - [x] testGameInitializer: extract createShipSectionState() helper
+
+### H3a — Hook dedup
+- [x] useShieldAllocation: handleCancelReallocation delegates to clearReallocationState
+- [x] useTacticalLoot: extract resolveAndResumeJourney helper
+- [x] useTacticalExtraction: extract showExtractionResult helper (3 sites)
+- [x] useTacticalWaypoints: extract findWeightedPath helper
+- [x] useTacticalEncounters: extract initiateBlueprintCombat helper
+- [x] useGameLifecycle: extract clearUIState + commitMandatoryPhase helpers
+
+### H3b — Component dedup
+- [x] Merge HiddenShipCard + HiddenShipSectionCard → HiddenCard with variant prop
+- [x] HealEffect: extract SIZE_CONFIG + getSizeTier helpers
+- [x] ViewDeckModal: unify buildGroups helper (~50 lines eliminated)
+- [x] csvExport: extract shared DECISION_CSV_HEADERS + builders
 
 ### H3c — Misc dedup
 - [x] gameUtils: remove shuffleArray wrapper
@@ -290,11 +307,39 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 
 ---
 
+## Phase I: PURITY Migration
+
+**Status: Done**
+
+**Goal:** Move domain logic out of utils/ and components into logic/.
+
+### I1 — Utils → logic/ migration
+- [x] gameUtils phase functions → logic/phase/phaseDisplayUtils.js (7 consumers)
+- [x] cardDrawUtils → logic/cards/cardDrawUtils.js (1 consumer)
+- [x] cardBorderUtils → logic/cards/cardBorderUtils.js (4 consumers)
+- [x] deckExportUtils → logic/cards/deckExportUtils.js (8 consumers)
+- All backward-compat re-exports in place
+
+### I3 — Component PURITY extraction
+- [x] HexInfoPanel getHexPreview → logic/map/hexPreview.js
+- [x] HexGridRenderer tacticalBackgrounds → data/tacticalBackgrounds.js
+- [x] useDeckBuilderData 6 pure helpers → logic/cards/deckBuilderHelpers.js
+- [x] useClickHandlers ability routing → logic/combat/abilityConfig.js
+- [x] RepairBayScreen 5 domain functions → logic/singlePlayer/repairHelpers.js
+- [x] QuickDeployManager validation → logic/quickDeploy/quickDeployValidationHelpers.js
+
+**Verification:** `npx vitest run` → 3745 passing, 0 failures.
+
+---
+
 ## Phase J: Code Quality — SMELL Fixes
 
-**Status: Done (partial — J1b+J2 completed)**
+**Status: Done**
 
-**Goal:** Gate expensive debug code behind DEV mode, replace alerts, fix misc smells.
+**Goal:** Gate expensive debug code behind DEV mode, replace alerts, extract magic numbers, fix smells.
+
+### J1a — Magic number extraction
+- [x] Extract magic numbers to named constants across 12 files (FlyingDrone, useDragMechanics, useResolvers, useTacticalEscape, useTacticalPostCombat, useTacticalSubscriptions, useHangarData, useHangarMapState, gameDataCache)
 
 ### J1b — Performance
 - [x] Gate new Error().stack behind DEV: GameStateManager, useCardSelection (2x), OptimisticActionService
@@ -305,7 +350,22 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 - [x] devConfig: derive DEV_MODE from import.meta.env.DEV
 - [x] Misc: useDragMechanics stale line number, useMultiplayerSync unused vars, useTacticalEscape shadowing, useShieldAllocation shadowed var, ModalLayer debugLog in render, CardVisualEffect dead keyframes
 
+### J3 — Remaining SMELL
+- [x] RunLifecycleManager.startRun: convert 5 positional params to options object + update all callers
+
 **Verification:** `npx vitest run` → 3745 passing, 0 failures.
+
+---
+
+## Phase K: Documentation + Tracking
+
+**Status: Done**
+
+**Goal:** Track SIZE items, triage TODOs, update standards.
+
+- [x] K1: All 800+ line files added to FUTURE_IMPROVEMENTS.md SIZE tracking section (18 files)
+- [x] K3: CSS strategy added to CODE_STANDARDS.md (STD-CHALLENGE-03)
+- [x] 240 total [FIXED] markers in CODEBASE_AUDIT.md (up from 139 at session start)
 
 ---
 
