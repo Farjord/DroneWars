@@ -28,20 +28,20 @@ export const BACKGROUNDS = [
     path: '/DroneWars/Backgrounds/Nebula_1.jpg'
   },
   {
-    id: 'Orbit_1',
+    id: 'orbit_1',
     name: 'Orbiting',
     type: 'static',
     path: '/DroneWars/Backgrounds/Orbit_1.jpg'
   },
   {
-    id: 'Deep_Space_1',
+    id: 'deep_space_1',
     name: 'Deep Space',
     type: 'static',
     path: '/DroneWars/Backgrounds/Deep_Space_1.png'
   }
 ];
 
-export const DEFAULT_BACKGROUND = 'Orbit_1';
+export const DEFAULT_BACKGROUND = 'orbit_1';
 
 /**
  * Get background configuration by ID

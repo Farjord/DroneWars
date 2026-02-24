@@ -302,7 +302,7 @@
 **Priority findings:**
 
 **debugLogger.js** (5 issues):
-- [DEAD] Line 7: `import { FastForward } from "lucide-react"` — unused React icon import in a logging utility.
+- [FIXED] [DEAD] Line 7: `import { FastForward } from "lucide-react"` — unused React icon import in a logging utility. **Fixed:** Removed in Phase L3.
 - [FIXED] [COMMENT] 35+ stale annotations in category config: `(DISABLED - not needed)`, `(ENABLED for Railgun investigation)`, `(NEW - for refactor)`. Duplicate category keys: `QUICK_DEPLOY`, `EXTRACTION`, `ENCOUNTER` (later keys shadow earlier).
 - [PURITY] Timing utilities (`getTimestamp`, `timingLog`, `getBrowserState`) are separate concerns from logging.
 - [LOG] `setDebugEnabled`/`setDebugCategory` use raw `console.log` for announcements.
@@ -443,7 +443,7 @@
 - **[FIXED] [DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
 - **[FIXED] [DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
 - **[FIXED] [DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
-- **[IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`.
+- **[FIXED] [IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`. **Fixed:** Now imports from `gameEngineUtils.js`.
 
 #### B4: src/logic/effects/ (32 files)
 
@@ -815,10 +815,10 @@
 - **[SIZE]** — 956 lines, exceeds 800-line threshold. 7 distinct handler functions.
 - **[SMELL] :710-944** — `handleCardClick` is 234 lines routing across 8+ card interaction types.
 - **[SMELL] :452-706** — `handleLaneClick` is 254 lines covering 6 interaction modes.
-- **[FIXED] [PURITY] :196-226** — `handleShipAbilityClick` ability routing extracted to `ABILITY_CONFIG` lookup table in `src/logic/combat/abilityConfig.js`.
+- **[FIXED] [PURITY] :196-226** — `handleShipAbilityClick` ability routing extracted to `ABILITY_CONFIG` lookup table (inlined as module-level constant in useClickHandlers.js, Phase L1).
 - **[TODO] :146,898,915** — Three `// TODO: TECHNICAL DEBT` comments for `gameEngine` direct calls.
 - **[FIXED] [DUP] :489-561** — Cost movement destination logic extracted to shared `calculateCostReminderArrow` in `gameUtils.js`.
-- **[IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log.
+- **[FIXED] [IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log. **Fixed:** Import removed during Phase L1 refactor.
 - **[EDGE] :99** — `handleToggleDroneSelection` compares by `drone.name` not `drone.id`. Could mismatch with duplicate-named drones.
 - **[TEST]** — Zero tests.
 
@@ -1040,7 +1040,7 @@
 - **[FIXED] [PURITY] HexInfoPanel.jsx:362-399** — `getHexPreview()` extracted to `src/logic/map/hexPreview.js`. Component delegates via `computeHexPreview()`.
 - **[FIXED] [DUP] HexInfoPanel.jsx:420-446,540-562,825-853** — Detection meter block extracted to `DetectionSection`.
 - **[SIZE] HexGridRenderer.jsx** — 958 lines. Decorative hex, pan/zoom, fill/stroke are extraction candidates.
-- **[FIXED] [PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` extracted to `src/data/tacticalBackgrounds.js`.
+- **[FIXED] [PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` inlined as module-level constant (sole consumer, Phase L1).
 - **[FIXED] [SMELL] HexGridRenderer.jsx:257-263** — Zoom limits already extracted to named constants at file top (lines 16-23). Inconsistency is by design (button vs wheel ranges).
 
 **Files 400-800 lines (7 files, 5 issues):**

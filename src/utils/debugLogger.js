@@ -4,8 +4,6 @@
 // Centralized debug logging system with category-based control
 // Provides consistent logging format and easy enable/disable
 
-import { FastForward } from "lucide-react";
-
 /**
  * Debug configuration - single source of truth for all debug logging
  */
