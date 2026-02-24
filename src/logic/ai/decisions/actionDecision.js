@@ -7,6 +7,7 @@
 import fullDroneCollection from '../../../data/droneData.js';
 import GameDataService from '../../../services/GameDataService.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import SeededRandom from '../../../utils/seededRandom.js';
 
 import {
   hasJammerKeyword,
@@ -494,7 +495,8 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       return { type: 'pass' };
     }
 
-    const chosenAction = positiveActionPool[Math.floor(Math.random() * positiveActionPool.length)];
+    const rng = SeededRandom.fromGameState(gameStateManager.getState());
+    const chosenAction = positiveActionPool[Math.floor(rng.random() * positiveActionPool.length)];
 
     chosenAction.isChosen = true;
 

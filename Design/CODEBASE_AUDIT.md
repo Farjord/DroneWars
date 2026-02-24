@@ -386,7 +386,7 @@
 **Critical findings:**
 
 - **[FIXED] [EDGE] aiLogic.js:799** — `positiveActionPool` can be empty, causing crash. `positiveActionPool[Math.floor(Math.random() * 0)]` returns `undefined`, next line crashes.
-- **[SMELL] aiLogic.js** — 4x `Math.random()` instead of `SeededRandom`. Non-deterministic AI decisions.
+- **[FIXED] [SMELL] aiLogic.js** — 4x `Math.random()` instead of `SeededRandom`. Non-deterministic AI decisions. Fixed in actionDecision.js + deploymentDecision.js (Phase G).
 - **[FIXED] [SIZE] aiLogic.js (1209→14)** — Decomposed and moved to `logic/ai/` in Phase F. God functions split into handler modules.
 - **[FIXED] [LOG] aiLogic.js:246** — raw `console.error`.
 - **[DEAD] adjustmentPasses/index.js** — `applyAllAdjustments` exported but never imported. Uses `require()` in ES module.
@@ -394,7 +394,7 @@
 - **[DEAD] ai/scoring/droneImpact.js, laneScoring.js** — exported functions with zero consumers.
 - **[COMMENT] ai/decisions/*.js** — stale "Future integration" stubs. Track or remove.
 - **[SMELL] cardEvaluators/damageCards.js, movementCards.js, statusEffectCards.js** — magic numbers should be in `aiConstants.js`.
-- **[LOGIC] droneAttack.js:138** — `Math.min` with `INTERCEPTION_COVERAGE_MIN` may have sign mismatch.
+- **[FIXED] [LOGIC] droneAttack.js:138** — `Math.min` with `INTERCEPTION_COVERAGE_MIN` may have sign mismatch. Changed to `Math.max` to properly cap penalty.
 
 #### B2: src/logic/actions/ + abilities/ (14 files)
 
@@ -419,7 +419,7 @@
 
 - **[TEST] No tests exist for any of these 14 files.** Core game logic with zero test coverage.
 - **[FIXED] [ERROR] CommitmentStrategy.js:330** — `handleAICommitment` silently swallows errors (catch block logs but doesn't rethrow). AI commitment failure appears to succeed.
-- **[LOGIC] CommitmentStrategy.js:44** — `clearPhaseCommitments` directly mutates `currentState` before `setState`. Mixed mutation/immutability.
+- **[FIXED] [LOGIC] CommitmentStrategy.js:44** — `clearPhaseCommitments` directly mutates `currentState` before `setState`. Mixed mutation/immutability.
 - **[FIXED] [EDGE] TargetLockAbilityProcessor.js** — spends energy and ends turn even when target drone not found.
 - **[FIXED] [LOG] 11x raw `console.warn`** across 5 ability files.
 - **[DUP] CardActionStrategy.js** — `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x.
@@ -910,8 +910,8 @@
 - **[SMELL] :29-53** — Destructured `data` and `playerId` from event but neither used.
 
 **useInterception.js (247 lines, 2 issues):**
-- **[SMELL] :187-189, :216-218** — `setTimeout(async () => { await resolveAttack(...); }, 400)` — fire-and-forget async. If `resolveAttack` throws, unhandled rejection.
-- **[ERROR] :131-132** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring with `|| []` fallback.
+- **[FIXED] [SMELL] :187-189, :216-218** — `setTimeout(async () => { await resolveAttack(...); }, 400)` — fire-and-forget async. If `resolveAttack` throws, unhandled rejection.
+- **[FIXED] [ERROR] :131-132** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring with `|| []` fallback.
 
 **useGameState.js (241 lines, 3 issues):**
 - **[FIXED] [LOG] :94** — `console.error('CRITICAL - getOpponentPlacedSections')` — raw console.error.
@@ -988,7 +988,7 @@
 - **[LOGIC] FlashEffect.jsx:18-26** — Three `setTimeout` calls with no cleanup. If component unmounts mid-animation, setState fires on unmounted component.
 - **[LOGIC] LaserEffect.jsx:23-27** — Same timer cleanup issue; only 1 of 3 timers is cleared on unmount.
 - **[DEAD] OverflowProjectile.jsx:160-176** — `const styles` template literal assigned but never used.
-- **[LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
+- **[FIXED] [LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
 - **[DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
 - **[SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
 - **[DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config computed identically twice.

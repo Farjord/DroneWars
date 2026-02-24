@@ -39,9 +39,10 @@ const OverflowProjectile = ({
       setPhase('impact-drone');
     }, phaseDuration);
 
-    // Phase 2: Impact at drone (brief pause)
+    // Phase 2: Impact at drone (brief pause), then travel to ship if overflow
     const impactTimer = setTimeout(() => {
       if (hasOverflow) {
+        setPosition(shipPos);
         setPhase('travel-to-ship');
       } else {
         setPhase('complete');
@@ -78,16 +79,9 @@ const OverflowProjectile = ({
   const size = phase === 'impact-drone' ? 40 : 24;
   const glowSize = phase === 'impact-drone' ? 80 : 50;
 
-  // Calculate position based on phase
-  let currentX = position.x;
-  let currentY = position.y;
-
-  if (phase === 'travel-to-ship' && hasOverflow) {
-    // Interpolate between drone and ship
-    const progress = 0.5; // Mid-travel
-    currentX = dronePos.x + (shipPos.x - dronePos.x) * progress;
-    currentY = dronePos.y + (shipPos.y - dronePos.y) * progress;
-  }
+  // Position is driven by state + CSS transitions
+  const currentX = position.x;
+  const currentY = position.y;
 
   return (
     <div

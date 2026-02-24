@@ -6,7 +6,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 
 | # | File | Issue | Source | Date | Priority |
 |-|-|-|-|-|-|
-| 1 | CommitmentStrategy.js | Direct mutation of state from getState() before setState() — should build new commitments object fresh | ActionProcessor code review | 2026-02-22 | Medium |
+| ~~1~~ | ~~CommitmentStrategy.js~~ | ~~Direct mutation of state from getState() before setState()~~ | ~~ActionProcessor code review~~ | ~~2026-02-22~~ | ~~Resolved~~ |
 | 2 | CardActionStrategy.js | 685 lines — could split into core card play vs. completion flows | ActionProcessor code review | 2026-02-22 | Low |
 | 3 | CombatActionStrategy.js | 520 lines — processMove alone is ~220 lines due to keyword/mine/beacon logic | ActionProcessor code review | 2026-02-22 | Low |
 | 4 | ActionProcessor.js | `processFirstPlayerDetermination` registry key has inconsistent naming (includes `process` prefix) | ActionProcessor code review | 2026-02-22 | Low |
@@ -62,3 +62,4 @@ Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). St
 | 28–30 | useResolvers, FlashEffect, LaserEffect | 3 medium-priority bugs: null guards, try/catch, timer cleanup | 2026-02-23 | Direct fix |
 | 31 | BaseEffectProcessor.js | Fragile type detection in createResult | 2026-02-23 | Direct fix |
 | 25 | 10+ utils files with domain logic | Violate "pure utility" standard | 2026-02-24 | Migrated 11 files to `logic/` subdirectories |
+| 1 | CommitmentStrategy.js | Direct mutation of state from getState() before setState() | 2026-02-24 | Built new commitments object in clearPhaseCommitments (Phase G) |

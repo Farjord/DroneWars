@@ -135,7 +135,7 @@ export const evaluateDroneAttack = (attacker, target, context) => {
         const enemyStats = gameDataService.getEffectiveStats(enemy, attacker.lane);
         return sum + (enemyStats.attack || 0) + (enemy.class || 0) * 2;
       }, 0);
-      const interceptPenalty = Math.min(
+      const interceptPenalty = Math.max(
         threatValue * PENALTIES.INTERCEPTION_COVERAGE_MULTIPLIER,
         PENALTIES.INTERCEPTION_COVERAGE_MIN
       );

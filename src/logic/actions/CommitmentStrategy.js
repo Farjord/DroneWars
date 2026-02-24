@@ -40,21 +40,23 @@ export function getPhaseCommitmentStatus(phase, ctx) {
 export function clearPhaseCommitments(phase = null, ctx) {
   const currentState = ctx.getState();
 
+  let newCommitments;
   if (phase) {
-    if (currentState.commitments[phase]) {
-      currentState.commitments[phase] = {
+    newCommitments = {
+      ...currentState.commitments,
+      [phase]: {
         player1: { completed: false },
         player2: { completed: false }
-      };
-    }
+      }
+    };
     debugLog('COMMITMENTS', `🔄 Cleared commitments for phase: ${phase}`);
   } else {
-    currentState.commitments = {};
+    newCommitments = {};
     debugLog('COMMITMENTS', '🔄 Cleared all phase commitments');
   }
 
   ctx.setState({
-    commitments: currentState.commitments
+    commitments: newCommitments
   });
 }
 

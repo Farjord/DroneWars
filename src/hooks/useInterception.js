@@ -128,8 +128,9 @@ const useInterception = ({
     }
 
     if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
-      const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard)
-        .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
+      const laneEntry = Object.entries(localPlayerState.dronesOnBoard)
+        .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id));
+      const attackerLane = laneEntry?.[0];
 
       if (attackerLane) {
         const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane] || [];
@@ -184,8 +185,10 @@ const useInterception = ({
     setSelectedInterceptor(null);
     setPlayerInterceptionChoice(null);
 
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
+    setTimeout(() => {
+      resolveAttack(attackDetails).catch(error => {
+        debugLog('INTERCEPTION_MODE', '❌ Error resolving attack after decline:', error);
+      });
     }, 400);
   }, [playerInterceptionChoice, resolveAttack]);
 
@@ -213,8 +216,10 @@ const useInterception = ({
     setSelectedInterceptor(null);
     setPlayerInterceptionChoice(null);
 
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
+    setTimeout(() => {
+      resolveAttack(attackDetails).catch(error => {
+        debugLog('INTERCEPTION_MODE', '❌ Error resolving attack after confirm:', error);
+      });
     }, 400);
   }, [selectedInterceptor, playerInterceptionChoice, resolveAttack]);
 

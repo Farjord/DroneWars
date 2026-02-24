@@ -6,6 +6,7 @@
 import fullDroneCollection from '../../../data/droneData.js';
 import GameDataService from '../../../services/GameDataService.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import SeededRandom from '../../../utils/seededRandom.js';
 
 import {
   hasThreatOnRoundStart,
@@ -34,6 +35,7 @@ import { calculateLaneScore } from '../scoring/index.js';
 export const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, gameStateManager, addLogEntry }) => {
     // Create GameDataService instance for centralized data computation
     const gameDataService = GameDataService.getInstance(gameStateManager);
+    const rng = SeededRandom.fromGameState(gameStateManager.getState());
     const effectiveStats = gameDataService.getEffectiveShipStats(player2, opponentPlacedSections).totals;
     const totalDrones = Object.values(player2.dronesOnBoard)
   .flat()
@@ -211,12 +213,12 @@ const currentLaneScores = {
 
         let stabilizationBonus = 0;
         if (currentLaneScore < 0 && projectedScore >= 0) {
-          stabilizationBonus = Math.floor(Math.random() * (30 - 10 + 1)) + 10;
+          stabilizationBonus = rng.randomIntInclusive(10, 30);
         }
 
         let dominanceBonus = 0;
         if (projectedScore > 20 && currentLaneScore <= 20) {
-          dominanceBonus = Math.floor(Math.random() * (30 - 10 + 1)) + 10;
+          dominanceBonus = rng.randomIntInclusive(10, 30);
         }
 
         // ON_DEPLOY ability bonuses (Scanner marking)
@@ -303,7 +305,7 @@ const currentLaneScores = {
     }
 
     const bestActions = possibleDeployments.filter(d => d.score === topScore);
-    const chosenAction = bestActions[Math.floor(Math.random() * bestActions.length)];
+    const chosenAction = bestActions[Math.floor(rng.random() * bestActions.length)];
     chosenAction.isChosen = true;
 
     debugLog('AI_DEPLOYMENT', `🤖 AI decides to DEPLOY`, {
