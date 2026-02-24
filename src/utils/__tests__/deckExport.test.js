@@ -5,7 +5,7 @@ import {
   convertToAIFormat,
   convertFromAIFormat,
   shipComponentsToPlacement
-} from '../deckExportUtils.js';
+} from '../../logic/cards/deckExportUtils.js';
 
 // ========================================
 // JS OBJECT LITERAL PARSING TESTS

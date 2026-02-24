@@ -10,8 +10,16 @@ import { getShipHeadingForWaypoints } from '../../utils/hexHeadingUtils.js';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
-import tacticalBackgrounds from '../../data/tacticalBackgrounds.js';
 import './HexGridRenderer.css';
+
+// Tactical map background images (sole consumer — inlined from data/tacticalBackgrounds.js)
+const tacticalBackgrounds = [
+  new URL('/Tactical/Tactical1.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical2.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical3.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical4.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical15.jpg', import.meta.url).href,
+];
 
 // Zoom and pan constants
 const DEFAULT_ZOOM = 4;

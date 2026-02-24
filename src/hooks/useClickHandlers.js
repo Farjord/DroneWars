@@ -3,7 +3,23 @@ import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderA
 import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
-import { getAbilityHandlerConfig } from '../logic/combat/abilityConfig.js';
+
+/**
+ * @typedef {Object} AbilityHandlerConfig
+ * @property {('reallocation'|'confirmation'|'targeting')} handler - Handler type
+ * @property {string} abilityType - Identifier passed to ability mode/confirmation state
+ */
+
+/** @type {Record<string, AbilityHandlerConfig>} */
+const ABILITY_CONFIG = {
+  'Reallocate Shields': { handler: 'reallocation', abilityType: 'reallocateShields' },
+  'Recalculate':        { handler: 'confirmation', abilityType: 'recalculate' },
+  'Recall':             { handler: 'targeting',     abilityType: 'recall' },
+  'Target Lock':        { handler: 'targeting',     abilityType: 'targetLock' },
+};
+
+/** Look up the handler config for a given ability */
+const getAbilityHandlerConfig = (ability) => ABILITY_CONFIG[ability.name] || null;
 
 // Stateless singleton — safe as module-level (no component state dependency)
 const targetingRouter = new TargetingRouter();

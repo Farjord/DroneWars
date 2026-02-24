@@ -46,7 +46,7 @@ vi.mock('../../../logic/gameLogic.js', () => ({
 vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: vi.fn(c => c)
 }));
-vi.mock('../../../utils/deckExportUtils.js', () => ({
+vi.mock('../../../logic/cards/deckExportUtils.js', () => ({
   generateJSObjectLiteral: vi.fn(),
   convertToAIFormat: vi.fn(),
   convertFromAIFormat: vi.fn(() => ({ deck: {}, selectedDrones: {}, selectedShipComponents: {} })),

@@ -6,15 +6,6 @@
 
 import SeededRandom from './seededRandom.js';
 
-// Backward-compat re-exports — canonical location: logic/phase/phaseDisplayUtils.js
-export {
-  getPhaseDisplayName,
-  SIMULTANEOUS_PHASES,
-  SEQUENTIAL_PHASES,
-  isSimultaneousPhase,
-  isSequentialPhase
-} from '../logic/phase/phaseDisplayUtils.js';
-
 /**
  * Get random selection of drones from a collection
  * @param {Array} collection - The collection to select from
