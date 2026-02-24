@@ -26,7 +26,7 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | C | Deduplication | Pending |
 | D | Data File Purity | Pending |
 | E | Structural Moves | Done |
-| F | Large File Decomposition | Pending |
+| F | Large File Decomposition | Done |
 
 ---
 
@@ -209,16 +209,16 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 
 ## Phase F: Large File Decomposition
 
-**Status: Pending**
+**Status: Done**
 
 **Goal:** Address remaining 800+ line files when complexity impedes development.
 
 **Priority targets:**
-- [ ] `InventoryModal.jsx` (1270) — extract tab-specific sub-components
-- [ ] `aiLogic.js` (1209) — decompose god functions after move to `logic/ai/`
-- [ ] `RewardManager.js` (1028) — extract card selection pipeline
-- [ ] `GameHeader.jsx` (983) — extract phase-specific button groups
-- [ ] `useAnimationSetup.js` (899) — split 890-line useEffect into handler registrations
+- [x] `InventoryModal.jsx` (1270→211) — extracted 9 files to `inventory/` subdirectory
+- [x] `aiLogic.js` (1209→14) — moved function bodies into existing decision stubs
+- [x] `RewardManager.js` (1028→863) — extracted CardSelectionPipeline + SeededRNG to `logic/loot/`
+- [x] `GameHeader.jsx` (983→628) — extracted 4 sub-components to `gameheader/` subdirectory
+- [x] `useAnimationSetup.js` (924→90) — split into 4 handler registration modules
 
 **Deferred (rationale in FUTURE_IMPROVEMENTS.md):**
 - `useDragMechanics.js` (1653) — #19, shared state prevents split
