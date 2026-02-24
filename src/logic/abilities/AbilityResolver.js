@@ -18,7 +18,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * - Resolve drone abilities (exhaust, cost payment, effect routing)
  * - Resolve ship abilities (special cases, effect routing)
  * - Route ability effects through EffectRouter
- * - Handle RECALL_DRONE effect (ship-specific)
+ * - Route ship-specific fallback effects (MARK_DRONE handled by MarkingEffectProcessor)
  * - Generate animation events
  *
  * This is a stateless singleton - all methods are pure orchestration functions
@@ -331,9 +331,8 @@ class AbilityResolver {
     }
 
     // Fallback for ship-specific abilities not yet extracted to processors
+    // NOTE: RECALL_DRONE is handled by RecallAbilityProcessor via processRecallAbility action
     switch (effect.type) {
-      case 'RECALL_DRONE':
-        return this.resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId);
       case 'MARK_DRONE':
         // MARK_DRONE is now handled by MarkingEffectProcessor
         debugLog('SHIP_ABILITY', 'MARK_DRONE should be handled by MarkingEffectProcessor');
@@ -390,76 +389,6 @@ class AbilityResolver {
     };
   }
 
-  /**
-   * Resolve RECALL_DRONE ship ability effect
-   *
-   * Removes drone from board, updates deployed counts, updates auras, and generates animation.
-   *
-   * @param {Object} effect - Effect definition
-   * @param {string} sectionName - Ship section name
-   * @param {string} target - Target drone ID
-   * @param {Object} playerStates - { player1, player2 }
-   * @param {Object} placedSections - Placed ship sections
-   * @param {Object} callbacks - Callback functions
-   * @param {string} playerId - 'player1' or 'player2'
-   * @returns {Object} { newPlayerStates, additionalEffects, animationEvents }
-   */
-  resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId) {
-    const newPlayerStates = {
-      player1: JSON.parse(JSON.stringify(playerStates.player1)),
-      player2: JSON.parse(JSON.stringify(playerStates.player2))
-    };
-
-    // Determine opponent for aura updates
-    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-
-    // target is the drone ID string (e.g., "SCOUT_001")
-    const lane = getLaneOfDrone(target, newPlayerStates[playerId]);
-    if (lane) {
-      // Find the actual drone object
-      const droneToRecall = newPlayerStates[playerId].dronesOnBoard[lane].find(d => d.id === target);
-
-      if (!droneToRecall) {
-        debugLog('SHIP_ABILITY', '⚠️ [RECALL DEBUG] Drone not found in lane:', target, 'lane:', lane);
-        return {
-          newPlayerStates,
-          additionalEffects: [],
-          animationEvents: []
-        };
-      }
-
-      // Remove drone from board
-      newPlayerStates[playerId].dronesOnBoard[lane] = newPlayerStates[playerId].dronesOnBoard[lane].filter(d => d.id !== target);
-
-      // Update deployed drone count (increment available drones)
-      // onDroneRecalled expects drone object with .name property
-      Object.assign(newPlayerStates[playerId], onDroneRecalled(newPlayerStates[playerId], droneToRecall));
-
-      // Update auras with correct player order
-      newPlayerStates[playerId].dronesOnBoard = updateAuras(newPlayerStates[playerId], newPlayerStates[opponentId], placedSections);
-
-      // Create recall animation event
-      const animationEvents = [{
-        type: 'TELEPORT_OUT',
-        targetId: target,
-        laneId: lane,
-        playerId: playerId,
-        timestamp: Date.now()
-      }];
-
-      return {
-        newPlayerStates,
-        additionalEffects: [],
-        animationEvents
-      };
-    }
-
-    return {
-      newPlayerStates,
-      additionalEffects: [],
-      animationEvents: []
-    };
-  }
 }
 
 // Export singleton instance

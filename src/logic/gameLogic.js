@@ -86,7 +86,6 @@ export const gameEngine = {
   resolveShipAbility: AbilityResolver.resolveShipAbility.bind(AbilityResolver),
   resolveDroneAbilityEffect: AbilityResolver.resolveDroneAbilityEffect.bind(AbilityResolver),
   resolveShipAbilityEffect: AbilityResolver.resolveShipAbilityEffect.bind(AbilityResolver),
-  resolveShipRecallEffect: AbilityResolver.resolveShipRecallEffect.bind(AbilityResolver),
 
   // --- COMBAT SYSTEM ---
   // Attack resolution and interception (AttackProcessor, InterceptionProcessor)

@@ -11,6 +11,7 @@ import DetectionManager from '../detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 import ReputationService from '../reputation/ReputationService.js';
 import MissionService from '../missions/MissionService.js';
 
@@ -351,22 +352,13 @@ class ExtractionController {
 
   /**
    * Create seeded random number generator
-   * Uses linear congruential generator for reproducible results
+   * Delegates to SeededRandom utility (mulberry32 algorithm)
    * @param {number} seed - Initial seed value
-   * @returns {Object} RNG with random() method
+   * @returns {SeededRandom} RNG with random(), randomIntInclusive() methods
    */
   createRNG(seed) {
-    let s = typeof seed === 'number' ? seed : Date.now();
-    return {
-      random: () => {
-        // Linear congruential generator (same as LootGenerator)
-        s = (s * 9301 + 49297) % 233280;
-        return s / 233280;
-      },
-      randomIntInclusive: function(min, max) {
-        return Math.floor(this.random() * (max - min + 1)) + min;
-      }
-    };
+    const s = typeof seed === 'number' ? seed : Date.now();
+    return new SeededRandom(s);
   }
 
   /**

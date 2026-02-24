@@ -27,6 +27,7 @@ import {
 } from '../logic/ai/AIQuickDeployHandler.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { isSequentialPhase } from '../utils/gameUtils.js';
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
@@ -206,8 +207,7 @@ class AIPhaseProcessor {
     }
 
     // Only trigger for sequential phases where AI needs to act
-    const sequentialPhases = ['deployment', 'action'];
-    if (!sequentialPhases.includes(state.turnPhase)) {
+    if (!isSequentialPhase(state.turnPhase)) {
       return;
     }
 
@@ -256,8 +256,7 @@ class AIPhaseProcessor {
     }
 
     // Validate phase is still sequential
-    const sequentialPhases = ['deployment', 'action'];
-    if (!sequentialPhases.includes(state.turnPhase)) {
+    if (!isSequentialPhase(state.turnPhase)) {
       debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Phase changed to non-sequential, cancelling turn');
       return;
     }
