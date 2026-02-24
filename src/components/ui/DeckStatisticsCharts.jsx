@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { CHART_COLORS, renderCustomizedLabel } from '../../utils/chartUtils.jsx';
+import { CHART_COLORS, renderCustomizedLabel } from './ChartUtils.jsx';
 
 // --- Reusable Chart Primitives ---
 

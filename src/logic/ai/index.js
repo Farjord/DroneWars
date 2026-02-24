@@ -15,7 +15,7 @@
 
 // Re-export aiBrain for backward compatibility
 // This maintains the original API while allowing modular imports
-export { aiBrain } from '../aiLogic.js';
+export { aiBrain } from './aiLogic.js';
 
 // Constants - centralized scoring weights and thresholds
 export * from './aiConstants.js';

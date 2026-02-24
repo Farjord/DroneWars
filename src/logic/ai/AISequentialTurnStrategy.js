@@ -52,7 +52,7 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
     return;
   }
 
-  const { aiBrain } = await import('../aiLogic.js');
+  const { aiBrain } = await import('./aiLogic.js');
   const { gameEngine } = await import('../gameLogic.js');
 
   const aiDecision = aiBrain.handleOpponentTurn({
@@ -130,7 +130,7 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
     return;
   }
 
-  const { aiBrain } = await import('../aiLogic.js');
+  const { aiBrain } = await import('./aiLogic.js');
   const { gameEngine } = await import('../gameLogic.js');
   const TargetingRouter = (await import('../TargetingRouter.js')).default;
 

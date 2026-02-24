@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { aiBrain } from '../aiLogic.js';
+import { aiBrain } from '../ai/aiLogic.js';
 import GameDataService from '../../services/GameDataService.js';
 
 /**

@@ -4,17 +4,17 @@
 // Handles SINGLE_MOVE and MULTI_MOVE card effects
 // Extracted from gameLogic.js Phase 7B
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { countDroneTypeInLane } from '../../utils/gameEngineUtils.js';
-import { applyOnMoveEffects } from '../../utils/abilityHelpers.js';
-import { updateAuras } from '../../utils/auraManager.js';
-import { calculateEffectiveStats } from '../../statsCalculator.js';
-import fullDroneCollection from '../../../data/droneData.js';
-import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnimation.js';
-import { debugLog } from '../../../utils/debugLogger.js';
-import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
-import { checkRallyBeaconGoAgain } from '../../utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from '../MineTriggeredEffectProcessor.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { countDroneTypeInLane } from '../utils/gameEngineUtils.js';
+import { applyOnMoveEffects } from '../utils/abilityHelpers.js';
+import { updateAuras } from '../utils/auraManager.js';
+import { calculateEffectiveStats } from '../statsCalculator.js';
+import fullDroneCollection from '../../data/droneData.js';
+import { buildDefaultMovementAnimation } from './movement/animations/DefaultMovementAnimation.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
+import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
+import { processTrigger as processMineTrigger } from './MineTriggeredEffectProcessor.js';
 
 /**
  * MovementEffectProcessor

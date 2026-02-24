@@ -14,7 +14,7 @@ import HullHealProcessor from './effects/healing/HullHealProcessor.js';
 import ShieldHealProcessor from './effects/healing/ShieldHealProcessor.js';
 import ShipShieldRestoreProcessor from './effects/healing/ShipShieldRestoreProcessor.js';
 import DamageEffectProcessor from './effects/damage/DamageEffectProcessor.js';
-import DestroyEffectProcessor from './effects/destroy/DestroyEffectProcessor.js';
+import DestroyEffectProcessor from './effects/DestroyEffectProcessor.js';
 import ModifyStatEffectProcessor from './effects/ModifyStatEffectProcessor.js';
 import ModifyDroneBaseEffectProcessor from './effects/upgrades/ModifyDroneBaseEffectProcessor.js';
 import DestroyUpgradeEffectProcessor from './effects/upgrades/DestroyUpgradeEffectProcessor.js';
@@ -23,7 +23,7 @@ import CompositeEffectProcessor from './effects/meta/CompositeEffectProcessor.js
 import TokenCreationProcessor from './effects/TokenCreationProcessor.js';
 import SearchAndDrawProcessor from './effects/cards/SearchAndDrawProcessor.js';
 import DrawThenDiscardProcessor from './effects/cards/DrawThenDiscardProcessor.js';
-import MovementEffectProcessor from './effects/movement/MovementEffectProcessor.js';
+import MovementEffectProcessor from './effects/MovementEffectProcessor.js';
 import MarkingEffectProcessor from './effects/MarkingEffectProcessor.js';
 import IncreaseThreatEffectProcessor from './effects/IncreaseThreatEffectProcessor.js';
 import DiscardEffectProcessor from './effects/cards/DiscardEffectProcessor.js';

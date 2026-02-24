@@ -1,6 +1,6 @@
-import fullDroneCollection from '../data/droneData.js';
-import GameDataService from '../services/GameDataService.js';
-import { debugLog } from '../utils/debugLogger.js';
+import fullDroneCollection from '../../data/droneData.js';
+import GameDataService from '../../services/GameDataService.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // Import extracted helpers
 import {
@@ -10,9 +10,9 @@ import {
   countDroneTypeInLane,
   hasDogfightKeyword,
   hasThreatOnRoundStart,
-} from './ai/helpers/index.js';
+} from './helpers/index.js';
 
-import { INTERCEPTION, THREAT_DRONES, DRONE_PACING, THRUSTER_INHIBITOR } from './ai/aiConstants.js';
+import { INTERCEPTION, THREAT_DRONES, DRONE_PACING, THRUSTER_INHIBITOR } from './aiConstants.js';
 
 // Import extracted scoring functions
 import {
@@ -20,26 +20,26 @@ import {
   calculateDroneImpact,
   analyzeInterceptionInLane,
   calculateThreatsKeptInCheck,
-} from './ai/scoring/index.js';
+} from './scoring/index.js';
 
 // Import card evaluators
-import { evaluateCardPlay } from './ai/cardEvaluators/index.js';
+import { evaluateCardPlay } from './cardEvaluators/index.js';
 
 // Import attack evaluators
-import { evaluateDroneAttack, evaluateShipAttack } from './ai/attackEvaluators/index.js';
+import { evaluateDroneAttack, evaluateShipAttack } from './attackEvaluators/index.js';
 
 // Import move evaluator
-import { evaluateMove } from './ai/moveEvaluator.js';
+import { evaluateMove } from './moveEvaluator.js';
 
 // Import adjustment passes
-import { applyJammerAdjustments } from './ai/adjustmentPasses/jammerAdjustment.js';
-import { applyInterceptionAdjustments } from './ai/adjustmentPasses/interceptionAdjustment.js';
-import { applyAntiShipAdjustments } from './ai/adjustmentPasses/antiShipAdjustment.js';
-import { applyMovementInhibitorAdjustments } from './ai/adjustmentPasses/movementInhibitorAdjustment.js';
+import { applyJammerAdjustments } from './adjustmentPasses/jammerAdjustment.js';
+import { applyInterceptionAdjustments } from './adjustmentPasses/interceptionAdjustment.js';
+import { applyAntiShipAdjustments } from './adjustmentPasses/antiShipAdjustment.js';
+import { applyMovementInhibitorAdjustments } from './adjustmentPasses/movementInhibitorAdjustment.js';
 
 // Import card validators
-import { isCardConditionMet } from './targeting/CardConditionValidator.js';
-import { isLaneControlCardPlayable } from './targeting/LaneControlValidator.js';
+import { isCardConditionMet } from '../targeting/CardConditionValidator.js';
+import { isLaneControlCardPlayable } from '../targeting/LaneControlValidator.js';
 
 // ========================================
 // ACTIVE ABILITY TARGET HELPER

@@ -22,7 +22,7 @@ vi.mock('../animations/NukeAnimation.js', () => ({
 }));
 
 // Now import the processor
-import DestroyEffectProcessor from '../DestroyEffectProcessor.js';
+import DestroyEffectProcessor from '../../DestroyEffectProcessor.js';
 import { gameEngine } from '../../../gameLogic.js';
 
 describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {

@@ -10,7 +10,7 @@
 // - Use constants from ./aiConstants.js
 
 // Re-export from original location for now
-export { makeInterceptionDecision } from '../../aiLogic.js';
+export { makeInterceptionDecision } from '../aiLogic.js';
 
 /**
  * Interception decision factors:

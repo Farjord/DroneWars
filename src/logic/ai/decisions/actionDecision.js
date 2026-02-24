@@ -12,7 +12,7 @@
 // - Use constants from ./aiConstants.js
 
 // Re-export from original location for now
-export { handleOpponentAction } from '../../aiLogic.js';
+export { handleOpponentAction } from '../aiLogic.js';
 
 /**
  * Action decision flow:

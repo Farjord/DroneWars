@@ -1,5 +1,5 @@
 import EffectRouter from '../EffectRouter.js';
-import MovementEffectProcessor from '../effects/movement/MovementEffectProcessor.js';
+import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**

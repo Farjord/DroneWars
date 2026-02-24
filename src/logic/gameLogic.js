@@ -47,7 +47,7 @@ import { resolveAttack } from './combat/AttackProcessor.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from './combat/InterceptionProcessor.js';
 import RoundManager from './round/RoundManager.js';
 import ShieldManager from './shields/ShieldManager.js';
-import MovementEffectProcessor from './effects/movement/MovementEffectProcessor.js';
+import MovementEffectProcessor from './effects/MovementEffectProcessor.js';
 
 // ========================================
 // PROCESSOR SINGLETON INSTANCES

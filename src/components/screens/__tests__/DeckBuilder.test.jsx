@@ -36,7 +36,7 @@ vi.mock('../../../logic/cards/cardTypeStyles.js', () => ({
   getTypeTextClass: vi.fn(() => ''),
   getRarityDisplay: vi.fn((item) => ({ text: item?.rarity || 'Common', color: '#888' }))
 }));
-vi.mock('../../../utils/chartUtils.jsx', () => ({
+vi.mock('../../ui/ChartUtils.jsx', () => ({
   CHART_COLORS: ['#0088FE'],
   renderCustomizedLabel: vi.fn(() => null)
 }));

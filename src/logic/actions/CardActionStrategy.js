@@ -5,7 +5,7 @@
 
 import { gameEngine } from '../gameLogic.js';
 import CardPlayManager from '../cards/CardPlayManager.js';
-import MovementEffectProcessor from '../effects/movement/MovementEffectProcessor.js';
+import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import EffectRouter from '../EffectRouter.js';
 import SeededRandom from '../../utils/seededRandom.js';

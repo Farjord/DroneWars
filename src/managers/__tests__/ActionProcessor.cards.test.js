@@ -26,7 +26,7 @@ vi.mock('../../logic/combat/InterceptionProcessor.js', () => ({
   calculatePotentialInterceptors: vi.fn(),
   calculateAiInterception: vi.fn(() => ({ hasInterceptors: false }))
 }));
-vi.mock('../../logic/effects/movement/MovementEffectProcessor.js', () => ({
+vi.mock('../../logic/effects/MovementEffectProcessor.js', () => ({
   default: class {
     executeSingleMove() {
       return { newPlayerStates: { player1: {}, player2: {} }, shouldEndTurn: true, effectResult: {} };

@@ -573,7 +573,7 @@ class GameStateManager {
     debugLog('STATE_SYNC', '🧪 TEST MODE: Initializing test game from GameStateManager');
 
     // Import testGameInitializer dynamically to avoid circular dependencies
-    const module = await import('../services/testGameInitializer.js');
+    const module = await import('../test/helpers/testGameInitializer.js');
     const success = module.initializeTestGame(testConfig, this);
 
     if (success) {

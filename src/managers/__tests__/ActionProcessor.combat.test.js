@@ -35,7 +35,7 @@ vi.mock('../../logic/combat/InterceptionProcessor.js', () => ({
   calculatePotentialInterceptors: vi.fn(),
   calculateAiInterception: vi.fn(() => ({ hasInterceptors: false }))
 }));
-vi.mock('../../logic/effects/movement/MovementEffectProcessor.js', () => ({ default: class {} }));
+vi.mock('../../logic/effects/MovementEffectProcessor.js', () => ({ default: class {} }));
 vi.mock('../../logic/effects/conditional/ConditionalEffectProcessor.js', () => ({ default: class {} }));
 vi.mock('../../logic/EffectRouter.js', () => ({ default: class {} }));
 vi.mock('../../logic/deployment/DeploymentProcessor.js', () => ({ default: class {} }));

@@ -4,15 +4,15 @@
 // Service for initializing game state directly for testing purposes
 // Bypasses normal game flow and allows direct setup of game scenarios
 
-import { gameEngine } from '../logic/gameLogic.js';
-import { calculateEffectiveShipStats } from '../logic/statsCalculator.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import fullCardCollection from '../data/cardData.js';
-import fullDroneCollection from '../data/droneData.js';
-import aiPersonalities from '../data/aiData.js';
-import aiPhaseProcessor from '../managers/AIPhaseProcessor.js';
-import { debugLog } from '../utils/debugLogger.js';
-import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
+import { gameEngine } from '../../logic/gameLogic.js';
+import { calculateEffectiveShipStats } from '../../logic/statsCalculator.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import aiPersonalities from '../../data/aiData.js';
+import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import { initializeForCombat as initializeDroneAvailability } from '../../logic/availability/DroneAvailabilityManager.js';
 
 /**
  * Initialize a drone instance for placement in a lane

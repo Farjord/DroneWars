@@ -4,7 +4,7 @@
 // TDD: Tests for cannotMove restriction in SINGLE_MOVE and MULTI_MOVE effects
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import MovementEffectProcessor from '../MovementEffectProcessor.js';
+import MovementEffectProcessor from '../../MovementEffectProcessor.js';
 
 describe('MovementEffectProcessor - cannotMove restriction', () => {
   let processor;

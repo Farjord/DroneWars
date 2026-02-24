@@ -9,7 +9,7 @@ import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState.js';
 import fullDroneCollection from '../../data/droneData.js';
 import fullCardCollection from '../../data/cardData.js';
-import { initializeTestGame, createDefaultTestConfig } from '../../services/testGameInitializer.js';
+import { initializeTestGame, createDefaultTestConfig } from '../../test/helpers/testGameInitializer.js';
 import { startingDecklist } from '../../logic/gameLogic.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DroneSelectionModal from '../modals/DroneSelectionModal.jsx';

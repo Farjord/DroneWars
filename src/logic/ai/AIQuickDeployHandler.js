@@ -27,7 +27,7 @@ export async function executeSingleDeployment(gameStateManager, effectiveShipSta
     return null;
   }
 
-  const { aiBrain } = await import('../aiLogic.js');
+  const { aiBrain } = await import('./aiLogic.js');
   const { gameEngine } = await import('../gameLogic.js');
   const { default: DeploymentProcessor } = await import('../deployment/DeploymentProcessor.js');
 

@@ -7,13 +7,13 @@
 //
 // REFACTORED: Animation logic extracted to animations/ builders
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
-import { gameEngine } from '../../gameLogic.js';
-import { calculateEffectiveStats } from '../../statsCalculator.js';
-import { buildDefaultDestroyAnimation } from './animations/DefaultDestroyAnimation.js';
-import { buildNukeAnimation } from './animations/NukeAnimation.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
+import { gameEngine } from '../gameLogic.js';
+import { calculateEffectiveStats } from '../statsCalculator.js';
+import { buildDefaultDestroyAnimation } from './destroy/animations/DefaultDestroyAnimation.js';
+import { buildNukeAnimation } from './destroy/animations/NukeAnimation.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Processor for DESTROY effect type

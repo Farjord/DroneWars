@@ -338,7 +338,7 @@ class AIPhaseProcessor {
       targetType: attackDetails.targetType
     });
 
-    const { aiBrain } = await import('../logic/aiLogic.js');
+    const { aiBrain } = await import('../logic/ai/aiLogic.js');
 
     const result = aiBrain.makeInterceptionDecision(
       interceptors,

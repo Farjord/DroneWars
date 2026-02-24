@@ -10,7 +10,7 @@
 // - Move logic here from aiLogic.js
 
 // Re-export from original location for now
-export { handleOpponentTurn } from '../../aiLogic.js';
+export { handleOpponentTurn } from '../aiLogic.js';
 
 /**
  * Deployment decision context needed:
