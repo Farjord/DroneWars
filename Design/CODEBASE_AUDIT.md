@@ -393,7 +393,7 @@
 - **[FIXED] [SIZE] aiLogic.js (1209→14)** — Decomposed and moved to `logic/ai/` in Phase F. God functions split into handler modules.
 - **[FIXED] [LOG] aiLogic.js:246** — raw `console.error`.
 - **[FIXED] [DEAD] adjustmentPasses/index.js** — `applyAllAdjustments` exported but never imported. Uses `require()` in ES module.
-- **[DEAD] ai/helpers/droneHelpers.js** — entire file unused (zero external consumers).
+- **[INCORRECT] [DEAD] ai/helpers/droneHelpers.js** — Finding was wrong: `countDroneTypeInLane` is imported by deploymentDecision.js and actionDecision.js via `helpers/index.js` barrel. File has active consumers.
 - **[FIXED] [DEAD] ai/scoring/droneImpact.js, laneScoring.js** — exported functions with zero consumers.
 - **[FIXED] [COMMENT] ai/decisions/*.js** — stale "Future integration" stubs. Track or remove.
 - **[SMELL] cardEvaluators/damageCards.js, movementCards.js, statusEffectCards.js** — magic numbers should be in `aiConstants.js`.
@@ -563,7 +563,7 @@
 - **[SIZE] CardPlayManager.js (868)** — god class. `resolveCardPlay` is 275 lines. Banned `// NEW:` comments. 2x `console.warn`.
 - **[SIZE] CombatOutcomeProcessor.js (866)** — `processVictory` ~230 lines. Mixed mutation patterns. Should split into Victory/Defeat/LootCollector.
 - **[SIZE] SinglePlayerCombatInitializer.js (810)** — `initiateCombat` ~260 lines, `buildPlayerState` ~170 lines.
-- **[ERROR] CommitmentStrategy.js:330** — silently swallows AI commitment errors.
+- **[FIXED] [ERROR] CommitmentStrategy.js:330** — silently swallows AI commitment errors. **Fixed:** Duplicate of line 424 (already marked [FIXED]).
 - **[FIXED] [DEAD] ShieldResetUtils.js:65** — `calculateReallocationDisplayShields` documented as "CURRENT BUG: not called". Dead code with known bug.
 - **[FIXED] [DEAD] MovementController.js** — `handleHexArrival` and `movePlayer` appear to be dead code.
 - **[FIXED] [DEAD] tickerConfig.js** — `MESSAGE_TEMPLATES` (100 lines) never imported by any generator.
@@ -686,7 +686,7 @@
 
 **ShipSlotManager.js (577 lines, 3 issues):**
 - **[SIZE]** — 577 lines (400+ threshold). Repair operations and instance operations are two sub-concerns.
-- **[LOGIC] :362** — **CRITICAL BUG:** Fallback `ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10` uses `10`, but the constant is `200`. Line 425 correctly uses `|| 200`. Inconsistent fallback would silently use wrong repair cost if constant removed.
+- **[FIXED] [LOGIC] :362** — **CRITICAL BUG:** Fallback `ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10` uses `10`, but the constant is `200`. Line 425 correctly uses `|| 200`. Inconsistent fallback would silently use wrong repair cost if constant removed. **Fixed:** Both lines now use `|| 200`.
 - **[FIXED] [DUP] :194-216** — Empty slot template in `deleteShipSlotDeck` is a structural constant that likely duplicates `saveGameSchema.js` shape.
 
 **RunLifecycleManager.js (494 lines, 3 issues):**
@@ -857,7 +857,7 @@
 
 **useGameLifecycle.js (606 lines, 7 issues):**
 - **[SIZE]** — 606 lines (400+ threshold). Bundles reset, exit, pass, mandatory discard/removal, debug tools, footer toggle, modals — a grab-bag of unrelated concerns.
-- **[LOGIC] :461-473** — **BUG:** `downloadLogAsCSV` headers have 8 columns but row mapping writes 7 values (skips `TimestampUTC`). Produces misaligned CSV output.
+- **[FIXED] [LOGIC] :461-473** — **BUG:** `downloadLogAsCSV` headers have 8 columns but row mapping writes 7 values (skips `TimestampUTC`). Produces misaligned CSV output. **Fixed:** Row mapping now includes `timestampUTC`.
 - **[FIXED] [DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
 - **[FIXED] [DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
 - **[FIXED] [DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
@@ -1018,7 +1018,7 @@
 | DeploymentOrderQueue.jsx | 170 | 1 | Reviewed |
 | index.js | 9 | 1 | Reviewed |
 
-- **[IMPORT] index.js:7** — Broken barrel export for `QuickDeployEditor` — file does not exist at that path.
+- **[FIXED] [IMPORT] index.js:7** — Broken barrel export for `QuickDeployEditor` — file does not exist at that path. **Fixed:** Export removed.
 - **[FIXED] [LOG] QuickDeployManager.jsx:132** — Raw `console.error`.
 - **[FIXED] [PURITY] QuickDeployManager.jsx:35-88** — Validation logic extracted to `src/logic/quickDeploy/quickDeployValidationHelpers.js` (`validateAllDeployments`).
 - **[PURITY] DeploymentOrderQueue.jsx:9** — Imports `fullDroneCollection` directly. Presentation component should receive image URLs via props.
