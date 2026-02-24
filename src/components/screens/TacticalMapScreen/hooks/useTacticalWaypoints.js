@@ -72,8 +72,7 @@ export function useTacticalWaypoints({
 
   const handlePathModeChange = useCallback((newMode) => {
     setPathfindingMode(newMode);
-    // TODO: If we want to recalculate existing waypoints with new mode,
-    // that would be done here. For now, mode only affects new waypoints.
+    // Mode only affects new waypoints — existing waypoints keep their original pathfinding mode
   }, [setPathfindingMode]);
 
   // --- Utility helpers (use post-early-return values when available) ---

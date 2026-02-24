@@ -506,13 +506,13 @@ describe('Slot-Based Damage Model', () => {
       });
 
       // Start a run with this slot
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       const runState = tacticalMapStateManager.getState();
       // SHIP_001 has baseHull = 10, standard components have hullModifier = 0
@@ -568,13 +568,13 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should persist section damage to sectionSlots.damageDealt', () => {
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Simulate combat damage (keys are lowercase camelCase)
       const runState = tacticalMapStateManager.getState();
@@ -597,13 +597,13 @@ describe('Slot-Based Damage Model', () => {
         singlePlayerShipSlots: [starterSlot]
       });
 
-      gameStateManager.startRun(0, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Simulate damage (keys are lowercase camelCase)
       const runState = tacticalMapStateManager.getState();

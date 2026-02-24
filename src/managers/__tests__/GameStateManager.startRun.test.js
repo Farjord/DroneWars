@@ -86,7 +86,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
 
       // Act: Start new run
       const mockMap = createMockMap();
-      gameStateManager.startRun(0, 1, 0, mockMap, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap });
 
       // Assert: Flag should be cleared
       expect(gameStateManager.get('runAbandoning')).toBe(false);
@@ -102,7 +102,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
 
       // Act: Start new run
       const mockMap = createMockMap();
-      gameStateManager.startRun(0, 1, 0, mockMap, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap });
 
       // Assert: Flag should still be cleared
       expect(gameStateManager.get('runAbandoning')).toBe(false);
@@ -124,7 +124,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
 
       // Act: Start new run
       const mockMap = createMockMap();
-      gameStateManager.startRun(0, 1, 0, mockMap, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap });
 
       // Assert: Blockade flag should be explicitly false
       const runState = tacticalMapStateManager.getState();
@@ -145,7 +145,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
 
       // Act: Start new run
       const mockMap = createMockMap();
-      gameStateManager.startRun(0, 1, 0, mockMap, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap });
 
       // Assert: Blockade flag should be explicitly false
       const runState = tacticalMapStateManager.getState();
@@ -179,7 +179,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       tacticalMapStateManager.getState.mockReturnValue(newRunState);
 
       const mockMap = createMockMap();
-      gameStateManager.startRun(0, 1, 0, mockMap, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap });
 
       // Assert: New runState should have fresh flags
       const runState = tacticalMapStateManager.getState();
@@ -201,7 +201,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState1);
 
       const mockMap1 = createMockMap('Map 1');
-      gameStateManager.startRun(0, 1, 0, mockMap1, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap1 });
       expect(tacticalMapStateManager.isRunActive()).toBe(true);
 
       // Abandon the run (sets runAbandoning: true)
@@ -227,7 +227,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState2);
 
       const mockMap2 = createMockMap('Map 2');
-      gameStateManager.startRun(0, 1, 0, mockMap2, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap2 });
 
       // Assert: Should have clean state
       expect(gameStateManager.get('runAbandoning')).toBe(false);
@@ -247,7 +247,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState1);
 
       const mockMap1 = createMockMap('Map 1');
-      gameStateManager.startRun(0, 1, 0, mockMap1, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap1 });
 
       // Abandon the run through normal flow
       ExtractionController.abandonRun();
@@ -268,7 +268,7 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState2);
 
       const mockMap2 = createMockMap('Map 2');
-      gameStateManager.startRun(0, 1, 0, mockMap2, null);
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: mockMap2 });
 
       // Assert: Should have clean state
       expect(gameStateManager.get('runAbandoning')).toBe(false);

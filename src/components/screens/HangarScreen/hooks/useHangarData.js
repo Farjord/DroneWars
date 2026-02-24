@@ -7,6 +7,11 @@ import MusicManager from '../../../../managers/MusicManager.js';
 import MissionService from '../../../../logic/missions/MissionService';
 import { debugLog } from '../../../../utils/debugLogger.js';
 
+// Number of procedural maps generated for deployment selection
+const MAP_COUNT = 6;
+// Seed multiplier to separate map seeds across different deployment counts
+const DEPLOYMENT_SEED_MULTIPLIER = 1000;
+
 /**
  * Hook managing derived data for the Hangar screen:
  * hex grid generation, procedural maps, boss placement, tutorial checks, music override.
@@ -62,8 +67,8 @@ const useHangarData = (singlePlayerProfile, mapContainerRef, showDeployingScreen
     const totalDeployments = (stats.runsCompleted || 0) + (stats.runsLost || 0);
     const maps = [];
 
-    for (let i = 0; i < 6; i++) {
-      const mapSeed = gameSeed + i + (totalDeployments * 1000);
+    for (let i = 0; i < MAP_COUNT; i++) {
+      const mapSeed = gameSeed + i + (totalDeployments * DEPLOYMENT_SEED_MULTIPLIER);
       const mapData = generateMapData(mapSeed, 1, 'GENERIC');
       maps.push({ id: i + 1, ...mapData });
     }

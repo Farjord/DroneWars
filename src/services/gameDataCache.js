@@ -6,6 +6,11 @@
 
 import { debugLog } from '../utils/debugLogger.js';
 
+// Maximum number of entries before triggering eviction
+const MAX_CACHE_SIZE = 1000;
+// Number of oldest entries to evict when cache exceeds max size
+const EVICTION_BATCH_SIZE = 200;
+
 /**
  * GameDataCache - Caching implementation for game data calculations
  *
@@ -71,9 +76,9 @@ class GameDataCache {
    */
   set(key, value) {
     // Prevent cache from growing too large
-    if (this.cache.size > 1000) {
+    if (this.cache.size > MAX_CACHE_SIZE) {
       // Clear oldest entries (Map maintains insertion order)
-      const keysToDelete = Array.from(this.cache.keys()).slice(0, 200);
+      const keysToDelete = Array.from(this.cache.keys()).slice(0, EVICTION_BATCH_SIZE);
       keysToDelete.forEach(k => this.cache.delete(k));
     }
 

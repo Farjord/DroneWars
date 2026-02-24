@@ -28,7 +28,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 20 | ModalLayer.jsx | Prop relay pattern (430 lines, 60+ props). Similar to TacticalMapModals (#17). Future refactor could use modal context or modal manager. | App.jsx Session 4 | 2026-02-23 | Low |
 | 21 | App.jsx | At 1,331 lines after Session 6 (11 hooks, 3 sub-components). Remaining: ~40 useState declarations, 4 useEffects, cancelAllActions, handleConfirmDeployment, JSX return (~385 lines). Pure orchestration/composition root — no further extraction warranted. | App.jsx Session 6 | 2026-02-23 | Resolved |
 | 22 | useClickHandlers.js | At 956 lines (above 800-line threshold). Contains 7 click handlers + module-level TargetingRouter. Potential split: useCardInteractions (handleCardClick, handleTargetClick) vs useUnitInteractions (handleTokenClick, handleLaneClick, handleAbilityIconClick, handleShipAbilityClick). Deferred because handlers share many params. | App.jsx Session 5 | 2026-02-23 | Low |
-| 32 | CSS strategy | Hybrid approach: 12 global files in `styles/`, 28 co-located component CSS, 2 CSS Module files. No documented standard in CODE_STANDARDS.md. Decide: (a) co-located plain CSS for components, (b) `styles/` for shared/global, (c) CSS Modules policy. STD-CHALLENGE-03. | Codebase audit | 2026-02-24 | Medium |
+| ~~32~~ | ~~CSS strategy~~ | ~~Hybrid approach documented in CODE_STANDARDS.md. STD-CHALLENGE-03 resolved.~~ | ~~Codebase audit~~ | ~~2026-02-24~~ | ~~Resolved~~ |
 | 33 | EncounterController.js:405 | POI looting not persisted to `currentRunState.lootedPOIs` — encounter completes but save/resume may re-trigger POIs | TODO triage (Phase E3) | 2026-02-24 | Medium |
 | 34 | ActionProcessor.js:453,458 | Shield allocation/reset return placeholder success messages — functional via useShieldAllocation hook but gameEngine-level integration pending | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 35 | RewardManager.js:460 | Reputation returns hardcoded 0 — full reputation system exists (ReputationService, MetaGameStateManager) but loot reward integration incomplete | TODO triage (Phase E3) | 2026-02-24 | Low |
@@ -36,6 +36,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 37 | RunLifecycleManager.js:67-68 | Seed uses `Date.now()` (should use profile-based seed) and map type hardcoded to `'GENERIC'` (should support selection) | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 38 | useClickHandlers.js:146,864,881 | 3 `TECHNICAL DEBT` TODOs: `getLaneOfDrone` utility extraction, `getValidTargets` for special/upgrade cards | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 39 | useAnimationSetup.js | 33 positional parameters — refactor to a single deps/config object for readability and maintainability | Architect review (W1) | 2026-02-24 | Medium |
+| 40 | ShipPlacementScreen.jsx:186,245,256 | 3 error paths log failures but show no user-facing UI feedback (empty sections, submission failure, exception) | TODO triage (Phase K) | 2026-02-24 | Low |
 
 ## Audit Findings (2026-02-23)
 
@@ -88,3 +89,4 @@ Files over 800 lines — decomposition candidates. Items already tracked above a
 | 31 | BaseEffectProcessor.js | Fragile type detection in createResult | 2026-02-23 | Direct fix |
 | 25 | 10+ utils files with domain logic | Violate "pure utility" standard | 2026-02-24 | Migrated 11 files to `logic/` subdirectories |
 | 1 | CommitmentStrategy.js | Direct mutation of state from getState() before setState() | 2026-02-24 | Built new commitments object in clearPhaseCommitments (Phase G) |
+| 32 | CSS strategy | No documented CSS standard (STD-CHALLENGE-03) | 2026-02-24 | Documented in CODE_STANDARDS.md: co-located plain CSS, styles/ for shared, CSS Modules optional |

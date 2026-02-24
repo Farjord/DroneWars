@@ -7,6 +7,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 
+// Delay before resolving move/card action to let UI settle (ms)
+const MOVE_RESOLUTION_DELAY = 400;
+
 const useResolvers = ({
   // --- Core action routing ---
   processActionWithGuestRouting,
@@ -453,7 +456,7 @@ const useResolvers = ({
         });
         setSelectedDrone(null);
       }
-    }, 400);
+    }, MOVE_RESOLUTION_DELAY);
   };
 
   const handleConfirmAttack = async () => {

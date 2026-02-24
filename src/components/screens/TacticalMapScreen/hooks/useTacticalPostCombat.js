@@ -14,6 +14,9 @@ import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
 import { isBlueprintRewardType } from './useTacticalSubscriptions.js';
 
+// Default threat increase applied when collecting POI loot
+const DEFAULT_POI_THREAT_INCREASE = 10;
+
 /**
  * Runs once on mount to restore tactical map state after returning from combat.
  * Processes pending waypoints, POI combat loot, and salvage restoration.
@@ -201,12 +204,12 @@ export function useTacticalPostCombat({
         setPendingBlueprintReward(poiLoot.blueprint);
         setShowBlueprintRewardModal(true);
         setPendingLootEncounter({
-          poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+          poi: { q, r, poiData: { name: poiName, threatIncrease: DEFAULT_POI_THREAT_INCREASE } }
         });
       } else {
         // Use generic loot modal (for mixed loot or non-blueprint)
         setPendingLootEncounter({
-          poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+          poi: { q, r, poiData: { name: poiName, threatIncrease: DEFAULT_POI_THREAT_INCREASE } }
         });
         setPoiLootToReveal(poiLoot);
       }

@@ -133,7 +133,7 @@ class GameStateManager {
 
   // --- GUEST SYNC FACADES ---
   // GFM and GMQS access these via this.gameStateManager — thin delegation to guestSyncManager
-  // TODO: Remove facades when GFM/GMQS are updated to receive guestSyncManager directly
+  // See FUTURE_IMPROVEMENTS #9 — remove facades when GFM/GMQS receive guestSyncManager directly
 
   setupP2PIntegration(p2pManager) { this.guestSyncManager.setupP2PIntegration(p2pManager); }
   startValidation(targetPhase, guestState) { this.guestSyncManager.startValidation(targetPhase, guestState); }

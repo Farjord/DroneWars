@@ -38,10 +38,7 @@ export const mapTypes = {
       Upgrade: 10
     }
   },
-  // TODO: Add more map types as game design develops
-  // NEBULA: { id: 'NEBULA', name: 'Nebula', icon: '☁', color: '#9333EA', poiDistribution: {...} },
-  // ASTEROID: { id: 'ASTEROID', name: 'Asteroid Field', icon: '◆', color: '#78716C', poiDistribution: {...} },
-  // STATION: { id: 'STATION', name: 'Space Station', icon: '⬢', color: '#3B82F6', poiDistribution: {...} },
+  // Additional map types: NEBULA, ASTEROID, STATION — to be designed when map variety is prioritized
 };
 
 /**

@@ -143,7 +143,7 @@ export default function useClickHandlers({
 
     // Check for self-targeting lane abilities
     if (ability.targeting?.type === 'LANE' && ability.targeting?.location === 'SAME_LANE') {
-        // TODO: TECHNICAL DEBT - getLaneOfDrone gets lane of drone for ability targeting - utility function needed for UI logic
+        // See FUTURE_IMPROVEMENTS #38 — getLaneOfDrone utility extraction
         const laneId = gameEngine.getLaneOfDrone(drone.id, localPlayerState);
         if (laneId) {
             // Immediately open the confirmation modal since the target is known
@@ -861,7 +861,7 @@ export default function useClickHandlers({
       cancelCardSelection('card-click-deselect');
     } else if (card.name === 'System Sabotage') {
         debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
-        // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
+        // See FUTURE_IMPROVEMENTS #38 — getValidTargets for special card targeting
         // Ensure player states are always passed in correct order (player1, player2)
         const localPlayerId = getLocalPlayerId();
         const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
@@ -878,7 +878,7 @@ export default function useClickHandlers({
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
     } else if (card.type === 'Upgrade') {
         debugLog('CARD_PLAY', `✅ Upgrade card - getting targets: ${card.name}`);
-        // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for upgrade cards - required for upgrade targeting UI
+        // See FUTURE_IMPROVEMENTS #38 — getValidTargets for upgrade card targeting
         // Ensure player states are always passed in correct order (player1, player2)
         const localPlayerId = getLocalPlayerId();
         const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;

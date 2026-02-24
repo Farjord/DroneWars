@@ -36,7 +36,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Function} setHoveredTarget - Function to set hovered target
  * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
-const renderDronesOnBoard = (
+const renderDronesOnBoard = ({
   drones,
   isPlayer,
   lane,
@@ -72,8 +72,8 @@ const renderDronesOnBoard = (
   abilityMode,
   additionalCostState,
   selectedCard,
-  hoveredLane
-) => {
+  hoveredLane,
+}) => {
   return (
     <div
       className="flex flex-wrap gap-8 justify-center items-center"
@@ -462,8 +462,8 @@ const DroneLanesDisplay = ({
             )}
             {/* Drone content wrapper - sits above pulse overlay */}
             <div className="relative">
-            {renderDronesOnBoard(
-              player.dronesOnBoard[lane],
+            {renderDronesOnBoard({
+              drones: player.dronesOnBoard[lane],
               isPlayer,
               lane,
               localPlayerState,
@@ -498,8 +498,8 @@ const DroneLanesDisplay = ({
               abilityMode,
               additionalCostState,
               selectedCard,
-              hoveredLane
-            )}
+              hoveredLane,
+            })}
             </div>
           </div>
         );

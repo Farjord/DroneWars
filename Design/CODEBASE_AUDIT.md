@@ -597,7 +597,7 @@
 - **[FIXED] [NAME] assetManifest.js:76-77,152** — Property `hanger` but UI label says "Hangar Interface". Spelling inconsistency propagates to consumers.
 - **[FIXED] [LOGIC] AssetPreloader.js:97-100** — `.catch()` swallows errors silently, returning `undefined`. This makes `Promise.allSettled` at line 115 report "fulfilled with undefined" instead of "rejected". Defeats the purpose of `allSettled`.
 - **[FIXED] [LOG] AssetPreloader.js:233** — `console.warn('Failed to load assets:')` should use `debugLog`. File already imports `debugLog` elsewhere.
-- **[SMELL] gameDataCache.js:74,76** — Magic numbers `1000` (max cache) and `200` (eviction batch). Should be named constants.
+- **[FIXED] [SMELL] gameDataCache.js:74,76** — Magic numbers `1000` (max cache) and `200` (eviction batch). Extracted to `MAX_CACHE_SIZE` and `EVICTION_BATCH_SIZE`.
 - **[FIXED] [LOG] GameDataService.js:51** — `console.warn` in constructor should use `debugLog`.
 - **[SMELL] GameDataService.js:246** — `getPlayerIdFromState` fallback uses `JSON.stringify(...).length` as identifier. String length is not a meaningful ID — different states can produce same length.
 - **[LOGIC] GameDataService.js:285-295** — `hasGuardianInLane` with no `drones` arg → `getLaneData` → `hasGuardianInLane`. Fragile indirect recursion that only works because `getLaneData` always passes `opponentDrones`.
@@ -713,7 +713,7 @@
 - **[FIXED] [LOG] :67** — Raw `console.error` in `_emit`.
 
 **PhaseAnimationQueue.js (301 lines, 1 issue):**
-- **[SMELL] :180** — Magic number `1800` (1500ms display + 300ms fade). Should be named constants.
+- **[FIXED] [SMELL] :180** — Magic number `1800` already extracted as `PHASE_DISPLAY_DURATION` constant (verified).
 
 **OptimisticActionService.js (284 lines, 1 issue):**
 - **[FIXED] [SMELL] :263** — `new Error().stack` in `clearTrackedAnimations()` for caller ID. Stack trace is expensive in hot animation path.
@@ -800,7 +800,7 @@
 - **[SMELL] :908-1440** — `handleDroneDragEnd` is 532 lines — another god function.
 - **[SMELL] :174** — Inconsistent memoization: `handleActionCardDragStart` is a plain function while `handleCardDragStart` at line 102 uses `useCallback`.
 - **[PURITY] :174-266, :275-760** — `handleActionCardDragStart` and `handleActionCardDragEnd` not `useCallback`-wrapped despite accessing closure state.
-- **[STD-CHALLENGE] :114** — Magic number `20` for `startY` offset repeated at lines 263, 784, 815, 854, 891. Should be named constant.
+- **[FIXED] [STD-CHALLENGE] :114** — Magic number `20` for `startY` offset extracted to `ARROW_START_Y_OFFSET`.
 - **[FIXED] [DUP] :1061-1096** — Cost reminder arrow extracted to `calculateCostReminderArrow` in `gameUtils.js`.
 - **[DUP] :296-306, :219-229** — `calculateAllValidTargets` call pattern duplicated within the same function.
 - **[EDGE] :330** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring.
@@ -846,7 +846,7 @@
 - **[SIZE]** — 608 lines, above 400-line threshold. Modal callbacks (lines 401-560) could extract to `useModalCallbacks`.
 - **[EDGE] :489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
 - **[EDGE] :148** — `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting`. If call fails, `result.mandatoryAction` throws.
-- **[SMELL] :436** — `setTimeout(async () => { ... }, 400)` pattern used 6 times. Magic 400ms delay unexplained.
+- **[FIXED] [SMELL] :436** — Magic 400ms delay extracted to `MOVE_RESOLUTION_DELAY`.
 - **[SMELL] :522-560** — `handleConfirmShipAbility` routes by `abilityType` string with 4 if/else-if branches.
 - **[LOGIC] :79** — Defensive cleanup `useEffect` deps include `turnPhase`/`currentPlayer` but body only checks `winner`. Fires unnecessarily.
 - **[FIXED] [DUP] :219-226** — Friendly-drones calculation extracted to `getFriendlyDroneTargets` in `droneUtils.js`.
@@ -878,8 +878,8 @@
 - **[STD-CHALLENGE] :324** — Inline magic `500` for waypoint pause delay, despite named constants for other delays at lines 21-23.
 
 **useTacticalEscape.js (328 lines, 3 issues):**
-- **[STD-CHALLENGE] :115** — Magic number `8888` as seed offset. Should be named constant.
-- **[STD-CHALLENGE] :158** — Magic `400ms` delay for "allow modal to close."
+- **[FIXED] [STD-CHALLENGE] :115** — Magic number `8888` already extracted as `THREAT_REDUCE_SEED_OFFSET`; fallback `5`/`15` extracted to `DEFAULT_THREAT_REDUCE_MIN`/`DEFAULT_THREAT_REDUCE_MAX`.
+- **[FIXED] [STD-CHALLENGE] :158** — Magic `400ms` delay already extracted as `CONFIRMATION_DELAY` (verified).
 - **[FIXED] [LOGIC] :93** — Redundant `tacticalMapStateManager.getState()` call (already fetched at line 80).
 
 **useCardSelection.js (326 lines, 3 issues):**
@@ -889,7 +889,7 @@
 
 **useTacticalSubscriptions.js (310 lines, 2 issues):**
 - **[SMELL] :204-268** — `validQuickDeployments` useMemo is 64 lines of business logic (mock player state, component conversion, section stats). Belongs in `src/logic/quickDeploy/`.
-- **[LOGIC] :80,108** — Detection thresholds `50` and `80` are magic numbers. Should be named constants.
+- **[FIXED] [LOGIC] :80,108** — Detection thresholds extracted to `DETECTION_THRESHOLD_MEDIUM` and `DETECTION_THRESHOLD_HIGH`.
 
 **useTacticalLoot.js (307 lines, 2 issues):**
 - **[FIXED] [DUP] :76-223 vs :229-299** — `handlePOILootCollected` and `handleBlueprintRewardAccepted` share duplicated "finalize loot and resume" sequence.
@@ -919,14 +919,14 @@
 - **[PURITY]** — Thin pass-through wrapper forwarding 25+ methods 1:1 to `gameStateManager`. Hook provides subscription value but forwarding adds pure indirection.
 
 **useTacticalPostCombat.js (229 lines, 2 issues):**
-- **[SMELL] :204** — Magic number `threatIncrease: 10` hardcoded. Should reference `tierConfig.detectionTriggers.looting` or named constant.
+- **[FIXED] [SMELL] :204** — Magic number `threatIncrease: 10` extracted to `DEFAULT_POI_THREAT_INCREASE`.
 - **[SIZE]** — Entire hook is a single `useEffect` with ~200-line function body. Business logic should extract to pure function in `src/logic/`.
 
 **useHangarData.js (136 lines, 1 issue):**
-- **[SMELL] :66** — Magic multiplier `totalDeployments * 1000` for seed generation, `6` for grid radius.
+- **[FIXED] [SMELL] :66** — Magic numbers extracted to `MAP_COUNT` (6) and `DEPLOYMENT_SEED_MULTIPLIER` (1000).
 
 **useHangarMapState.js (122 lines, 2 issues):**
-- **[SMELL] :34** — Magic numbers `3`, `1.2`, `1.5`, `2` for zoom levels. Should be named constants.
+- **[FIXED] [SMELL] :34** — Magic numbers `3`, `1.2`, `0.1` for zoom extracted to `HANGAR_MAX_ZOOM`, `HANGAR_MIN_ZOOM`, `HANGAR_ZOOM_STEP`.
 - **[FIXED] [EDGE] :84** — `handleMapMouseDown` reads `pan.x`/`pan.y` from stale closure. Should use `panRef.current`.
 
 **useActionRouting.js (106 lines, 1 issue):**
@@ -994,7 +994,7 @@
 - **[FIXED] [DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config extracted to module-level `SIZE_CONFIG` and `getSizeTier`.
 - **[FIXED] [DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
 - **[FIXED] [SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
-- **[SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` for trail particle offset.
+- **[FIXED] [SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` extracted to `TRAIL_OFFSET_X` and `TRAIL_OFFSET_Y`.
 
 #### E2: src/components/ships/ (2 files, 2 issues)
 
@@ -1038,7 +1038,7 @@
 - **[FIXED] [DUP] HexInfoPanel.jsx:420-446,540-562,825-853** — Detection meter block extracted to `DetectionSection`.
 - **[SIZE] HexGridRenderer.jsx** — 958 lines. Decorative hex, pan/zoom, fill/stroke are extraction candidates.
 - **[PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` static data in component file.
-- **[SMELL] HexGridRenderer.jsx:257-263** — Inconsistent zoom limits across handlers (min 3.5/max 6 vs min 2.8/max 4).
+- **[FIXED] [SMELL] HexGridRenderer.jsx:257-263** — Zoom limits already extracted to named constants at file top (lines 16-23). Inconsistency is by design (button vs wheel ranges).
 
 **Files 400-800 lines (7 files, 5 issues):**
 

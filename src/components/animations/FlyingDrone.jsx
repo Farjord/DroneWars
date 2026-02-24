@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Pixel offsets to center the trail particle relative to the drone sprite
+const TRAIL_OFFSET_X = 35;
+const TRAIL_OFFSET_Y = 60;
+
 const FlyingDrone = ({ droneData, startPos, endPos, config, onComplete }) => {
   const [position, setPosition] = useState(startPos);
   const [trail, setTrail] = useState([]);
@@ -48,8 +52,8 @@ const FlyingDrone = ({ droneData, startPos, endPos, config, onComplete }) => {
           key={particle.id}
           style={{
             position: 'fixed',
-            left: particle.x + 35,
-            top: particle.y + 60,
+            left: particle.x + TRAIL_OFFSET_X,
+            top: particle.y + TRAIL_OFFSET_Y,
             width: '10px',
             height: '10px',
             borderRadius: '50%',

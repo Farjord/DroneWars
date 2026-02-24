@@ -10,6 +10,9 @@ import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTarge
 import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
 import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 
+// Vertical pixel offset from card top to arrow start point
+const ARROW_START_Y_OFFSET = 20;
+
 const useDragMechanics = ({
   gameAreaRef,
   turnPhase,
@@ -112,7 +115,7 @@ const useDragMechanics = ({
       const cardRect = cardElement.getBoundingClientRect();
 
       const startX = cardRect.left + cardRect.width / 2 - gameAreaRect.left;
-      const startY = cardRect.top - gameAreaRect.top + 20;
+      const startY = cardRect.top - gameAreaRect.top + ARROW_START_Y_OFFSET;
 
       debugLog('DRAG_DROP_DEPLOY', '🎯 Arrow state set', {
         visible: true,

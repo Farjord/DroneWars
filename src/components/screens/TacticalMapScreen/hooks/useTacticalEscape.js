@@ -20,6 +20,10 @@ import { debugLog } from '../../../../utils/debugLogger.js';
 const CONFIRMATION_DELAY = 400;
 const THREAT_REDUCE_SEED_OFFSET = 8888;
 
+// Fallback min/max detection reduction when item data is missing
+const DEFAULT_THREAT_REDUCE_MIN = 5;
+const DEFAULT_THREAT_REDUCE_MAX = 15;
+
 /**
  * Hook that provides all escape, evade, and tactical item handlers for TacticalMapScreen.
  *
@@ -110,8 +114,8 @@ export function useTacticalEscape({
 
     // Get the item data for effect range
     const item = getTacticalItemById('ITEM_THREAT_REDUCE');
-    const min = item?.effectValueMin ?? 5;
-    const max = item?.effectValueMax ?? 15;
+    const min = item?.effectValueMin ?? DEFAULT_THREAT_REDUCE_MIN;
+    const max = item?.effectValueMax ?? DEFAULT_THREAT_REDUCE_MAX;
 
     // Use seeded random for determinism (offset by remaining item count for unique rolls)
     const remainingCount = gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE');

@@ -183,7 +183,7 @@ function ShipPlacementScreen() {
     const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
     if (hasEmptySections) {
       debugLog('PLACEMENT', '⚠️ Cannot confirm placement: All ship sections must be placed');
-      // TODO: Add error UI handling if needed
+      // See FUTURE_IMPROVEMENTS #40 — error UI for placement failures
       return;
     }
 
@@ -242,7 +242,7 @@ function ShipPlacementScreen() {
 
       if (!submissionResult.success) {
         debugLog('PLACEMENT', '❌ Placement submission failed:', submissionResult.error);
-        // TODO: Add error UI handling if needed
+        // See FUTURE_IMPROVEMENTS #40 — error UI for placement failures
         return;
       }
 
@@ -253,7 +253,7 @@ function ShipPlacementScreen() {
 
     } catch (error) {
       debugLog('PLACEMENT', '❌ Error submitting placement:', error);
-      // TODO: Add error UI handling if needed
+      // See FUTURE_IMPROVEMENTS #40 — error UI for placement failures
     }
   };
 

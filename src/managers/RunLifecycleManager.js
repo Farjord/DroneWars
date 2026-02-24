@@ -25,13 +25,14 @@ class RunLifecycleManager {
 
   /**
    * Start extraction run
-   * @param {number} shipSlotId - Ship slot ID to use (0-5)
-   * @param {number} mapTier - Map tier (1-3)
-   * @param {number} entryGateId - Selected entry gate ID (0-indexed)
-   * @param {Object} preGeneratedMap - Optional pre-generated map data from Hangar preview
-   * @param {Object} quickDeploy - Optional quick deploy template to use for first combat
+   * @param {Object} options
+   * @param {number} options.shipSlotId - Ship slot ID to use (0-5)
+   * @param {number} options.mapTier - Map tier (1-3)
+   * @param {number} [options.entryGateId=0] - Selected entry gate ID (0-indexed)
+   * @param {Object} [options.preGeneratedMap=null] - Optional pre-generated map data from Hangar preview
+   * @param {Object} [options.quickDeploy=null] - Optional quick deploy template to use for first combat
    */
-  startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null, quickDeploy = null) {
+  startRun({ shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null, quickDeploy = null }) {
     debugLog('EXTRACTION', '=== START RUN ===', {
       shipSlotId,
       mapTier,
@@ -64,8 +65,8 @@ class RunLifecycleManager {
       mapData = preGeneratedMap;
     } else {
       // Fallback: Generate map using deterministic seed
-      const seed = Date.now(); // TODO: Use profile-based seed for reproducibility
-      const mapType = 'GENERIC'; // TODO: Support map type selection in Phase 4+
+      const seed = Date.now(); // See FUTURE_IMPROVEMENTS #37 — profile-based seed for reproducibility
+      const mapType = 'GENERIC'; // See FUTURE_IMPROVEMENTS #37 — map type selection
       mapData = generateMapData(seed, mapTier, mapType);
     }
 

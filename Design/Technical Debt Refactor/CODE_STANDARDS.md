@@ -135,7 +135,18 @@ Do not use `Date.now()` or `Math.random()` for IDs — collision risk in same-mi
 
 ## CSS Strategy
 
-> Pending — requires dedicated discussion. See FUTURE_IMPROVEMENTS.md.
+> Resolves STD-CHALLENGE-03.
+
+The project uses a hybrid CSS approach:
+
+1. **Co-located plain CSS** for component-specific styles. Each component has its own `.css` file alongside the `.jsx` file (e.g., `TacticalMapScreen.css` next to `TacticalMapScreen.jsx`). This is the default for all new components.
+2. **`src/styles/` directory** for shared and global CSS — resets, typography, layout utilities, and cross-cutting visual themes used by multiple components.
+3. **CSS Modules** (`.module.css`) are optional for new components where class name isolation is desired. Not required — plain CSS with BEM-style naming is acceptable.
+
+**Guidelines:**
+- New components: co-locate a plain `.css` file. Use CSS Modules only if name collisions are a real concern.
+- Shared styles (colors, spacing, animations used by 3+ components): add to `src/styles/`.
+- Never import component-specific CSS from `src/styles/` — keep it co-located.
 
 ## Test Convention
 

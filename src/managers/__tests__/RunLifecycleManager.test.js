@@ -132,7 +132,7 @@ describe('RunLifecycleManager', () => {
         name: 'Pre Map', poiCount: 1, gateCount: 1, baseDetection: 0,
       };
 
-      rlm.startRun(0, 1, 0, preMap);
+      rlm.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: preMap });
 
       expect(tacticalMapStateManager.startRun).toHaveBeenCalledOnce();
       expect(transitionManager.forceReset).toHaveBeenCalledOnce();
@@ -141,12 +141,12 @@ describe('RunLifecycleManager', () => {
     });
 
     it('throws for an invalid (non-existent) ship slot', () => {
-      expect(() => rlm.startRun(99, 1)).toThrow('Invalid ship slot ID');
+      expect(() => rlm.startRun({ shipSlotId: 99, mapTier: 1 })).toThrow('Invalid ship slot ID');
     });
 
     it('throws for a non-active ship slot', () => {
       gsm.state.singlePlayerShipSlots[1].status = 'mia';
-      expect(() => rlm.startRun(1, 1)).toThrow(/not active/);
+      expect(() => rlm.startRun({ shipSlotId: 1, mapTier: 1 })).toThrow(/not active/);
     });
 
     it('deducts a security token when map requires one', () => {
@@ -156,7 +156,7 @@ describe('RunLifecycleManager', () => {
         requiresToken: true,
       };
 
-      rlm.startRun(0, 2, 0, tokenMap);
+      rlm.startRun({ shipSlotId: 0, mapTier: 2, entryGateId: 0, preGeneratedMap: tokenMap });
 
       // setState is called multiple times; the first call should deduct the token
       const tokenCall = gsm.setState.mock.calls.find(
@@ -174,7 +174,7 @@ describe('RunLifecycleManager', () => {
         requiresToken: true,
       };
 
-      rlm.startRun(0, 2, 0, tokenMap);
+      rlm.startRun({ shipSlotId: 0, mapTier: 2, entryGateId: 0, preGeneratedMap: tokenMap });
 
       expect(tacticalMapStateManager.startRun).not.toHaveBeenCalled();
     });
@@ -187,7 +187,7 @@ describe('RunLifecycleManager', () => {
         name: 'Test', poiCount: 1, gateCount: 1, baseDetection: 0,
       };
 
-      rlm.startRun(1, 1, 0, preMap);
+      rlm.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: preMap });
 
       const startRunArg = tacticalMapStateManager.startRun.mock.calls[0][0];
       const sections = startRunArg.shipSections;
@@ -205,7 +205,7 @@ describe('RunLifecycleManager', () => {
         name: 'Test', poiCount: 1, gateCount: 1, baseDetection: 0,
       };
 
-      rlm.startRun(0, 1, 0, preMap);
+      rlm.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: preMap });
 
       const startRunArg = tacticalMapStateManager.startRun.mock.calls[0][0];
       const sections = startRunArg.shipSections;
@@ -223,7 +223,7 @@ describe('RunLifecycleManager', () => {
         name: 'Test', poiCount: 1, gateCount: 1, baseDetection: 0,
       };
 
-      rlm.startRun(0, 1, 0, preMap);
+      rlm.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: preMap });
 
       const startRunArg = tacticalMapStateManager.startRun.mock.calls[0][0];
       const sections = startRunArg.shipSections;

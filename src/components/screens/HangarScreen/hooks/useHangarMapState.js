@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { clampPan } from '../../../../logic/singlePlayer/hexGrid.js';
 
+// Zoom constraints for the hangar hex grid map
+const HANGAR_MIN_ZOOM = 1.2;
+const HANGAR_MAX_ZOOM = 3;
+const HANGAR_ZOOM_STEP = 0.1;
+
 /**
  * Hook managing pan/zoom interaction state for the Hangar hex grid map.
  * Receives mapContainerRef from caller (shared with useHangarData).
@@ -29,9 +34,9 @@ const useHangarMapState = (hexGridData, mapContainerRef) => {
 
     const handleWheel = (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const delta = e.deltaY > 0 ? -HANGAR_ZOOM_STEP : HANGAR_ZOOM_STEP;
       setZoom(prevZoom => {
-        const newZoom = Math.min(3, Math.max(1.2, prevZoom + delta));
+        const newZoom = Math.min(HANGAR_MAX_ZOOM, Math.max(HANGAR_MIN_ZOOM, prevZoom + delta));
         setPan(p => {
           if (!mapContainerRef.current || newZoom <= 1) return { x: 0, y: 0 };
           const { width, height } = mapContainerRef.current.getBoundingClientRect();

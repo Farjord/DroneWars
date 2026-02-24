@@ -21,6 +21,10 @@ import { getValidDeploymentsForDeck } from '../../../../logic/quickDeploy/QuickD
 // Delay before clearing threat alert animation (ms)
 const THREAT_ALERT_CLEAR_DELAY = 3000;
 
+// Detection thresholds for threat-based music overrides
+const DETECTION_THRESHOLD_MEDIUM = 50;
+const DETECTION_THRESHOLD_HIGH = 80;
+
 // --- Helper ---
 
 export const isBlueprintRewardType = (rewardType) => {
@@ -80,7 +84,7 @@ export const useTacticalSubscriptions = ({
   const applyThreatMusic = useCallback((detection) => {
     if (detection == null) return;
     const musicManager = MusicManager.getInstance();
-    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
+    const threshold = detection < DETECTION_THRESHOLD_MEDIUM ? 'low' : detection < DETECTION_THRESHOLD_HIGH ? 'medium' : 'high';
 
     if (threshold === 'low') {
       musicManager.clearOverride();
@@ -108,7 +112,7 @@ export const useTacticalSubscriptions = ({
     const detection = tacticalMapRunState?.detection;
     if (detection == null) return;
 
-    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
+    const threshold = detection < DETECTION_THRESHOLD_MEDIUM ? 'low' : detection < DETECTION_THRESHOLD_HIGH ? 'medium' : 'high';
     const prev = prevThresholdRef.current;
     prevThresholdRef.current = threshold;
 

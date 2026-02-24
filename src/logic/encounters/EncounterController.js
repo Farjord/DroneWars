@@ -401,8 +401,7 @@ class EncounterController {
       debugLog('ENCOUNTER', 'Salvage item awarded', { item: reward.salvageItem.name, creditValue, total: newCredits });
     }
 
-    // Mark POI as looted (prevent re-looting)
-    // TODO: Track looted POIs in currentRunState
+    // Mark POI as looted (prevent re-looting) — see FUTURE_IMPROVEMENTS #33
 
     debugLog('ENCOUNTER', 'Encounter complete');
   }

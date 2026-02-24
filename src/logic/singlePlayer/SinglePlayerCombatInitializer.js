@@ -669,7 +669,7 @@ class SinglePlayerCombatInitializer {
     }
 
     // Initialize drone availability system (all copies start ready)
-    const appliedUpgrades = {}; // TODO: Load from ship slot if upgrades are supported
+    const appliedUpgrades = {}; // See FUTURE_IMPROVEMENTS #36 — ship slot upgrades not yet designed
     const droneAvailability = initializeDroneAvailability(activeDronePool, appliedUpgrades);
     debugLog('SP_COMBAT', 'Initialized drone availability:', Object.keys(droneAvailability));
 

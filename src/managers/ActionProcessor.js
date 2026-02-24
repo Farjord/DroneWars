@@ -450,12 +450,12 @@ setAnimationManager(animationManager) {
     if (currentState.turnPhase === 'allocateShields') {
       if (type === 'allocateShield') {
         debugLog('STATE_SYNC', `🛡️ Processing allocateShield action`);
-        // TODO: Implement shield allocation via gameEngine
+        // See FUTURE_IMPROVEMENTS #34 — shield allocation via gameEngine
         return { success: true, message: 'Shield allocation not yet implemented in new system' };
       }
       if (type === 'resetShieldAllocation') {
         debugLog('STATE_SYNC', `🔄 Processing resetShieldAllocation action`);
-        // TODO: Implement shield reset via gameEngine
+        // See FUTURE_IMPROVEMENTS #34 — shield reset via gameEngine
         return { success: true, message: 'Shield reset not yet implemented in new system' };
       }
       if (type === 'endShieldAllocation') {

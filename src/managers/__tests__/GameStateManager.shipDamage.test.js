@@ -210,13 +210,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Act: Start a new run with slot 1
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Assert: Run state should have pre-damaged hull values
       const runState = tacticalMapStateManager.getState();
@@ -249,13 +249,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Act
-      gameStateManager.startRun(0, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 0, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Assert: Slot 0 should always have full hull
       const runState = tacticalMapStateManager.getState();
@@ -283,13 +283,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.isRunActive.mockReturnValue(true);
       tacticalMapStateManager.getState.mockReturnValue(initialRunState);
 
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Section keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
       const bridgeSection = tacticalMapStateManager.getState().shipSections['bridge'];
@@ -342,13 +342,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.isRunActive.mockReturnValue(true);
       tacticalMapStateManager.getState.mockReturnValue(newRunState);
 
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map 2',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Assert: New run should start with damaged hull from previous run
       const newBridgeSection = tacticalMapStateManager.getState().shipSections['bridge'];
@@ -386,13 +386,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Setup: Start a run
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Assert: Keys should be lowercase camelCase to match CombatOutcomeProcessor expectations
       const shipSections = tacticalMapStateManager.getState().shipSections;
@@ -445,13 +445,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Setup: Start a run
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Assert: Each section should have thresholds for extraction limit calculation
       const shipSections = tacticalMapStateManager.getState().shipSections;
@@ -485,13 +485,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Setup: Start a run
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       const shipSections = tacticalMapStateManager.getState().shipSections;
 

@@ -428,7 +428,7 @@ const HangarScreen = () => {
       const { slotId, map, entryGateId, quickDeploy } = deployingData;
       debugLog('EXTRACTION', 'Deploying complete, starting run', { slotId, mapName: map.name });
 
-      gameStateManager.startRun(slotId, map.tier, entryGateId, map, quickDeploy);
+      gameStateManager.startRun({ shipSlotId: slotId, mapTier: map.tier, entryGateId, preGeneratedMap: map, quickDeploy });
     }
     setShowDeployingScreen(false);
     setDeployingData(null);

@@ -301,7 +301,7 @@ class RewardManager {
       salvageItem,
       aiCores,
       blueprint: null,  // Blueprints generated separately
-      reputation: 0,    // TODO: Calculate reputation
+      reputation: 0,    // See FUTURE_IMPROVEMENTS #35 — reputation integration pending
       seed
     };
   }

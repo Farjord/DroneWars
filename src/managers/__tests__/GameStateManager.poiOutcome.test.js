@@ -91,7 +91,7 @@ describe('GameStateManager - POI Outcome State Tracking', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // ACT: Start a new run
-      gameStateManager.startRun(1, 1);
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1 });
 
       // ASSERT: fledPOIs should be an empty array
       const runState = tacticalMapStateManager.getState();
@@ -114,7 +114,7 @@ describe('GameStateManager - POI Outcome State Tracking', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // ACT: Start a new run
-      gameStateManager.startRun(1, 1);
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1 });
 
       // ASSERT: lootedPOIs should be an empty array
       const runState = tacticalMapStateManager.getState();
@@ -136,7 +136,7 @@ describe('GameStateManager - POI Outcome State Tracking', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // ACT: Start a new run
-      gameStateManager.startRun(1, 1);
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1 });
 
       // ASSERT: highAlertPOIs should be an empty array
       const runState = tacticalMapStateManager.getState();
@@ -160,7 +160,7 @@ describe('GameStateManager - POI Outcome State Tracking', () => {
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
       // Start a run for these tests
-      gameStateManager.startRun(1, 1);
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1 });
     });
 
     it('should allow adding POI to lootedPOIs (successful salvage)', () => {
@@ -265,7 +265,7 @@ describe('GameStateManager - POI Outcome State Tracking', () => {
       tacticalMapStateManager.isRunActive.mockReturnValue(true);
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
-      gameStateManager.startRun(1, 1);
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1 });
     });
 
     it('should be able to check if POI is in fledPOIs', () => {

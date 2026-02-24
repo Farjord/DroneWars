@@ -5,7 +5,7 @@
 // - Lane Control/Guardian (limit 2): 1.0 (standard)
 // - Investment/Scaling (limit 2-3): 1.0 (standard)
 // - Mythic/Siege (limit 1): 0.5 (slow recovery)
-// - TODO : Recovery rate of 0. (Cannot recover - needs cards to do so)
+// - Recovery rate of 0 (cannot recover — needs cards to do so) is a potential future class trait
 
 const fullDroneCollection = [
   { name: 'Dart', class: 1, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },

@@ -163,13 +163,13 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       expect(damageState['Dart']).toBe(true);
 
       // Step 3: Start a run (drone damage should still be accessible)
-      gameStateManager.startRun(1, 1, 0, {
+      gameStateManager.startRun({ shipSlotId: 1, mapTier: 1, entryGateId: 0, preGeneratedMap: {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
         gates: [{ q: 0, r: 0 }],
         poiCount: 1,
         gateCount: 1
-      });
+      }});
 
       // Verify damage state is still available during run
       const damageStateDuringRun = gameStateManager.getDroneDamageStateForSlot(1);
