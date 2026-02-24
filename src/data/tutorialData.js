@@ -227,36 +227,9 @@ export const TUTORIALS = {
 };
 
 // ========================================
-// HELPER FUNCTIONS
+// RE-EXPORTS: Logic functions moved to src/logic/tutorial/tutorialHelpers.js
+// Kept here for backward compatibility
 // ========================================
-
-/**
- * Get tutorial content by screen ID
- * @param {string} screenId - Screen ID from TUTORIAL_SCREENS
- * @returns {Object|undefined} Tutorial content or undefined if not found
- */
-export function getTutorialByScreen(screenId) {
-  return TUTORIALS[screenId];
-}
-
-/**
- * Get all tutorial screen IDs
- * @returns {Array} Array of screen IDs
- */
-export function getAllTutorialScreenIds() {
-  return Object.values(TUTORIAL_SCREENS);
-}
-
-/**
- * Create default tutorial dismissal state (all false)
- * @returns {Object} Default dismissal state object
- */
-export function createDefaultTutorialDismissals() {
-  const dismissals = {};
-  Object.values(TUTORIAL_SCREENS).forEach(screenId => {
-    dismissals[screenId] = false;
-  });
-  return dismissals;
-}
+export { getTutorialByScreen, getAllTutorialScreenIds, createDefaultTutorialDismissals } from '../logic/tutorial/tutorialHelpers.js';
 
 export default TUTORIALS;
