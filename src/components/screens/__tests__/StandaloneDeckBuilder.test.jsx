@@ -9,7 +9,7 @@ vi.mock('../../../data/ships.js', () => ({
   getDefaultShip: vi.fn(() => ({ id: 'test-ship', name: 'Test Ship' })),
   getShipById: vi.fn()
 }));
-vi.mock('../DeckBuilder.jsx', () => ({
+vi.mock('../DeckBuilder/DeckBuilder.jsx', () => ({
   default: ({ deck }) => <div data-testid="deck-builder" data-deck={JSON.stringify(deck)} />
 }));
 
