@@ -454,7 +454,7 @@ export default function useGameLifecycle({
 
   const downloadLogAsCSV = () => {
     if (gameLog.length === 0) {
-      alert("The game log is empty.");
+      debugLog('GAME_LOG', 'Download skipped: game log is empty');
       return;
     }
 

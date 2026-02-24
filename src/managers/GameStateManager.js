@@ -213,34 +213,38 @@ class GameStateManager {
       });
     }
 
-    // Extract caller information from stack trace for detailed logging
-    const stack = new Error().stack;
-    const stackLines = stack ? stack.split('\n') : [];
-    const callerInfo = this.stateValidationService.extractCallerInfo(stackLines);
+    // Extract caller information from stack trace for detailed logging (dev only - expensive)
+    let callerInfo = 'production';
+    if (import.meta.env.DEV) {
+      const stack = new Error().stack;
+      const stackLines = stack ? stack.split('\n') : [];
+      callerInfo = this.stateValidationService.extractCallerInfo(stackLines);
 
-    // Check for architecture violations - App.jsx should NEVER directly update GameStateManager
-    // However, App.jsx can call ActionProcessor/PhaseManager/ExtractionController which then update GameStateManager
-    const isAppJsxCaller = stackLines.some(line => line.includes('App.jsx'));
-    const isViaActionProcessor = stackLines.some(line => line.includes('ActionProcessor'));
-    const isViaPhaseManager = stackLines.some(line => line.includes('PhaseManager'));
-    const isViaExtractionController = stackLines.some(line => line.includes('ExtractionController'));
-    const isLegitimateCall = isViaActionProcessor || isViaPhaseManager || isViaExtractionController;
+      // Check for architecture violations - App.jsx should NEVER directly update GameStateManager
+      // However, App.jsx can call ActionProcessor/PhaseManager/ExtractionController which then update GameStateManager
+      const isAppJsxCaller = stackLines.some(line => line.includes('App.jsx'));
+      const isViaActionProcessor = stackLines.some(line => line.includes('ActionProcessor'));
+      const isViaPhaseManager = stackLines.some(line => line.includes('PhaseManager'));
+      const isViaExtractionController = stackLines.some(line => line.includes('ExtractionController'));
+      const isLegitimateCall = isViaActionProcessor || isViaPhaseManager || isViaExtractionController;
 
-    if (isAppJsxCaller && !isLegitimateCall) {
-      debugLog('VALIDATION', '🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!', {
-        recommendation: 'App.jsx should only call ActionProcessor, PhaseManager, or ExtractionController methods',
-        stack
-      });
+      if (isAppJsxCaller && !isLegitimateCall) {
+        debugLog('VALIDATION', '🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!', {
+          recommendation: 'App.jsx should only call ActionProcessor, PhaseManager, or ExtractionController methods',
+          stack
+        });
+      }
     }
 
     // Comprehensive state change logging
     const updateKeys = Object.keys(updates);
-    const caller = `${callerInfo.primaryCaller} in ${callerInfo.primaryFile}`;
+    const caller = import.meta.env.DEV
+      ? `${callerInfo.primaryCaller} in ${callerInfo.primaryFile}`
+      : 'production';
 
     debugLog('STATE_SYNC', `🔍 GAMESTATE CHANGE [${eventType}] from ${caller}:`, {
       changedKeys: updateKeys,
-      allUpdates: updates,
-      architectureViolation: isAppJsxCaller && !isLegitimateCall
+      allUpdates: updates
     });
 
     // Special detailed logging for player state changes (skip during initialization)

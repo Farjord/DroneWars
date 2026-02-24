@@ -25,55 +25,65 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
   // Detect browser state on mount
   if (!mountTimeRef.current) {
     mountTimeRef.current = getTimestamp();
-    performance.mark(`${markId}-component-mount`);
+    if (import.meta.env.DEV) {
+      performance.mark(`${markId}-component-mount`);
+    }
   }
 
-  const browserState = {
-    hasFocus: document.hasFocus(),
-    visibilityState: document.visibilityState,
-    hidden: document.hidden
-  };
+  if (import.meta.env.DEV) {
+    const browserState = {
+      hasFocus: document.hasFocus(),
+      visibilityState: document.visibilityState,
+      hidden: document.hidden
+    };
 
-  timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
-    phaseText,
-    subtitle,
-    isVisible,
-    browserState,
-    blockingReason: 'component_function_executing'
-  });
+    timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
+      phaseText,
+      subtitle,
+      isVisible,
+      browserState,
+      blockingReason: 'component_function_executing'
+    });
+  }
 
   useEffect(() => {
-    performance.mark(`${markId}-useEffect-start`);
+    if (import.meta.env.DEV) {
+      performance.mark(`${markId}-useEffect-start`);
 
-    timingLog('[MODAL COMPONENT] useEffect triggered', {
-      phaseText,
-      browserState: {
-        hasFocus: document.hasFocus(),
-        visibilityState: document.visibilityState,
-        hidden: document.hidden
-      },
-      blockingReason: 'requesting_animation_frame'
-    });
+      timingLog('[MODAL COMPONENT] useEffect triggered', {
+        phaseText,
+        browserState: {
+          hasFocus: document.hasFocus(),
+          visibilityState: document.visibilityState,
+          hidden: document.hidden
+        },
+        blockingReason: 'requesting_animation_frame'
+      });
+    }
 
     // Trigger fade-in immediately
     requestAnimationFrame(() => {
-      performance.mark(`${markId}-raf-callback`);
+      if (import.meta.env.DEV) {
+        performance.mark(`${markId}-raf-callback`);
 
-      timingLog('[MODAL COMPONENT] requestAnimationFrame callback', {
-        phaseText,
-        blockingReason: 'setting_isVisible_true'
-      });
+        timingLog('[MODAL COMPONENT] requestAnimationFrame callback', {
+          phaseText,
+          blockingReason: 'setting_isVisible_true'
+        });
+      }
 
       setIsVisible(true);
 
       // Schedule another rAF to detect when browser has actually painted
       requestAnimationFrame(() => {
-        performance.mark(`${markId}-second-raf`);
+        if (import.meta.env.DEV) {
+          performance.mark(`${markId}-second-raf`);
 
-        timingLog('[MODAL COMPONENT] Second rAF (post-paint)', {
-          phaseText,
-          blockingReason: 'browser_should_have_painted'
-        });
+          timingLog('[MODAL COMPONENT] Second rAF (post-paint)', {
+            phaseText,
+            blockingReason: 'browser_should_have_painted'
+          });
+        }
       });
     });
 
@@ -94,7 +104,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
 
   // Log when isVisible actually changes (React has applied the state update)
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && import.meta.env.DEV) {
       performance.mark(`${markId}-visible-true`);
 
       // Measure timing from component mount to visible

@@ -79,8 +79,9 @@ const NewsTicker = ({ maps = [], messages: propMessages = null, scrollDuration, 
   // Animation state is tracked after isReady is determined
   const isReady = calculatedDuration !== null && scrollDistance !== null;
 
-  // Diagnostic logging - track actual animation position and speed
+  // Diagnostic logging - track actual animation position and speed (dev only)
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     if (!contentRef.current || !isReady) return;
 
     let lastTranslateX = null;

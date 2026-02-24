@@ -254,7 +254,7 @@
 - [FIXED] [NAME] backgrounds.js — inconsistent ID casing: `nebula_1` (snake_case) vs `Orbit_1`, `Deep_Space_1` (Pascal_Snake). Normalize to snake_case.
 - [FIXED] [COMMENT] backgrounds.js — scaffolding "Add more backgrounds here" comment. Remove.
 - [DEAD] backgrounds.js — `getBackgroundById` fallback chain could return undefined despite JSDoc contract.
-- [SMELL] devConfig.js — `DEV_MODE = true` is hardcoded. Should derive from `import.meta.env.DEV` or warn about manual toggle.
+- [FIXED] [SMELL] devConfig.js — `DEV_MODE = true` is hardcoded. Should derive from `import.meta.env.DEV` or warn about manual toggle.
 - [FIXED] [DEAD] devConfig.js — redundant dual export (named + default). Pick one convention.
 - [FIXED] [COMMENT] soundConfig.js — commented-out "Phase 2 (future)" railgun sounds. Track in FUTURE_IMPROVEMENTS.md or delete.
 - [FIXED] [DEAD] soundConfig.js — `getSoundManifest()` is a trivial getter for `SOUND_MANIFEST`. Only one consumer; consider removing.
@@ -716,7 +716,7 @@
 - **[SMELL] :180** — Magic number `1800` (1500ms display + 300ms fade). Should be named constants.
 
 **OptimisticActionService.js (284 lines, 1 issue):**
-- **[SMELL] :263** — `new Error().stack` in `clearTrackedAnimations()` for caller ID. Stack trace is expensive in hot animation path.
+- **[FIXED] [SMELL] :263** — `new Error().stack` in `clearTrackedAnimations()` for caller ID. Stack trace is expensive in hot animation path.
 
 **TacticalMapStateManager.js (209 lines, 1 issue):**
 - **[FIXED] [LOG] :68** — Raw `console.error` in `_emit()`.
@@ -756,7 +756,7 @@
 4. **[SIZE]** — 5 files exceed 800 lines: GameFlowManager (1673), GuestMessageQueueService (1125), GameStateManager (1068), RewardManager (1028), ActionProcessor (1006). GuestMessageQueueService's `processStateUpdate` at 388 lines is the worst single method.
 5. **[FIXED] [DUP] `sequentialPhases`** — Unified to single `SEQUENTIAL_PHASES` in `gameUtils.js`, imported by PhaseManager + GameFlowManager.
 6. **[FIXED] [DUP] `addTeleportingFlags`** — Extracted to `utils/teleportUtils.js`, both consumers updated.
-7. **[SMELL] GameStateManager.js:217** — `new Error().stack` on every `setState()` is expensive. Should be debug-only.
+7. **[FIXED] [SMELL] GameStateManager.js:217** — `new Error().stack` on every `setState()` is expensive. Should be debug-only.
 
 ### Phase D — Hooks (26 files, reviewed 2026-02-23)
 
@@ -804,7 +804,7 @@
 - **[FIXED] [DUP] :1061-1096** — Cost reminder arrow extracted to `calculateCostReminderArrow` in `gameUtils.js`.
 - **[DUP] :296-306, :219-229** — `calculateAllValidTargets` call pattern duplicated within the same function.
 - **[EDGE] :330** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring.
-- **[LOGIC] :1134-1136** — Hardcoded `lineNumber: 4106` and `lineNumber: 3641` are stale App.jsx references.
+- **[FIXED] [LOGIC] :1134-1136** — Hardcoded `lineNumber: 4106` and `lineNumber: 3641` are stale App.jsx references.
 - **[TODO] :34** — Architectural smell (hoisted to App.jsx for circular dependency) not tracked in FUTURE_IMPROVEMENTS.md.
 - **[TEST]** — Zero tests for the most complex hook in the codebase.
 
@@ -858,7 +858,7 @@
 - **[FIXED] [DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
 - **[DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
 - **[DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
-- **[SMELL] :457** — Raw browser `alert()` call. Should use project's modal/toast system.
+- **[FIXED] [SMELL] :457** — Raw browser `alert()` call. Should use project's modal/toast system.
 - **[STD-CHALLENGE] :168** — `Date.now()` + `Math.random()` for instance IDs. Non-deterministic, could desync multiplayer.
 
 **useDeckBuilderData.js (454 lines, 3 issues):**
@@ -870,7 +870,7 @@
 - **[SIZE]** — 428 lines (400+ threshold).
 - **[DUP] :246-255 vs :379-388** — `handleCancelReallocation` and `clearReallocationState` perform same 8 state resets.
 - **[LOGIC] :53-71** — `useEffect` depends on entire `localPlayerState` object. Any unrelated change resets user's in-progress allocation.
-- **[SMELL] :140** — `const { turnPhase } = gameState` shadows the `turnPhase` already destructured at line 33.
+- **[FIXED] [SMELL] :140** — `const { turnPhase } = gameState` shadows the `turnPhase` already destructured at line 33.
 
 **useTacticalMovement.js (390 lines, 3 issues):**
 - **[PURITY] :138-365** — `handleCommenceJourney` is 227 lines. Business logic (waypoint iteration, encounter pauses, path trimming) should live in `src/logic/`.
@@ -880,11 +880,11 @@
 **useTacticalEscape.js (328 lines, 3 issues):**
 - **[STD-CHALLENGE] :115** — Magic number `8888` as seed offset. Should be named constant.
 - **[STD-CHALLENGE] :158** — Magic `400ms` delay for "allow modal to close."
-- **[LOGIC] :93** — Redundant `tacticalMapStateManager.getState()` call (already fetched at line 80).
+- **[FIXED] [LOGIC] :93** — Redundant `tacticalMapStateManager.getState()` call (already fetched at line 80).
 
 **useCardSelection.js (326 lines, 3 issues):**
-- **[SMELL] :43-55** — `new Error().stack` on every `setMultiSelectState` call. Expensive for debugging only.
-- **[SMELL] :92** — Same stack trace capture in `cancelCardSelection`, slicing 10 frames.
+- **[FIXED] [SMELL] :43-55** — `new Error().stack` on every `setMultiSelectState` call. Expensive for debugging only.
+- **[FIXED] [SMELL] :92** — Same stack trace capture in `cancelCardSelection`, slicing 10 frames.
 - **[LOGIC] :267** — `useEffect` deps include `additionalCostState` but early-returns skip recalculation for certain phases. Fires unnecessarily.
 
 **useTacticalSubscriptions.js (310 lines, 2 issues):**
@@ -907,7 +907,7 @@
 **useMultiplayerSync.js (261 lines, 3 issues):**
 - **[FIXED] [DUP] :142-243** — Simultaneous-phase commitment check collapsed from 4 copy-pasted blocks to a loop.
 - **[EDGE] :249-253** — `gameStateManager.emit('render_complete')` fires on every `gameState` change (entire object dependency). Excessive fire rate.
-- **[SMELL] :29-53** — Destructured `data` and `playerId` from event but neither used.
+- **[FIXED] [SMELL] :29-53** — Destructured `data` and `playerId` from event but neither used.
 
 **useInterception.js (247 lines, 2 issues):**
 - **[FIXED] [SMELL] :187-189, :216-218** — `setTimeout(async () => { await resolveAttack(...); }, 400)` — fire-and-forget async. If `resolveAttack` throws, unhandled rejection.
@@ -933,7 +933,7 @@
 - **[SMELL] :71** — `executeDeployment` declared as plain async function, not `useCallback`-wrapped. Recreated every render.
 
 **useGameData.js (104 lines, 1 issue):**
-- **[SMELL] :44** — `setInterval(updateStats, 5000)` polls cache stats unconditionally in production. Should be debug-only.
+- **[FIXED] [SMELL] :44** — `setInterval(updateStats, 5000)` polls cache stats unconditionally in production. Should be debug-only.
 
 **useSoundSetup.js (82 lines):** Clean. No issues.
 
@@ -990,10 +990,10 @@
 - **[FIXED] [DEAD] OverflowProjectile.jsx:160-176** — `const styles` template literal assigned but never used.
 - **[FIXED] [LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
 - **[FIXED] [DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
-- **[SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
+- **[FIXED] [SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
 - **[DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config computed identically twice.
 - **[FIXED] [DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
-- **[SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
+- **[FIXED] [SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
 - **[SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` for trail particle offset.
 
 #### E2: src/components/ships/ (2 files, 2 issues)
@@ -1056,7 +1056,7 @@
 - **[SIZE] DeckBuilderLeftPanel.jsx** — 632 lines (400+ threshold).
 - **[SMELL] DroneLanesDisplay.jsx:39-76** — `renderDronesOnBoard` standalone function with 28 positional parameters.
 - **[SIZE] DroneLanesDisplay.jsx** — 510 lines (400+ threshold).
-- **[LOGIC] ModalLayer.jsx:206-218** — Debug IIFE calls `debugLog` during render (side effect).
+- **[FIXED] [LOGIC] ModalLayer.jsx:206-218** — Debug IIFE calls `debugLog` during render (side effect).
 - **[FIXED] [COMMENT] AvailabilityDots.jsx:92** — Banned `// NEW MODEL:` temporal comment.
 
 **Files under 350 lines (~65 files, 13 issues):**
@@ -1087,7 +1087,7 @@
 - **[PURITY] ShipConfigurationTab.jsx** — Directly imports data collections.
 - **[PURITY] TacticalMapModals.jsx:283-303** — Imports and calls logic singletons inline (`DetectionManager`, `ExtractionController`, `aiPersonalities`).
 - **[PURITY] TacticalItemsPanel.jsx:12-14** — Module-level data fetches.
-- **[SMELL] NewsTicker.jsx:83-131** — Diagnostic logging interval runs every 1s parsing CSS transforms. Dev code in production.
+- **[FIXED] [SMELL] NewsTicker.jsx:83-131** — Diagnostic logging interval runs every 1s parsing CSS transforms. Dev code in production.
 - **[FIXED] [NAME] AngularBandsBackground.jsx** — File exports `MorphingBackground` but filename says `AngularBandsBackground`.
 - **[FIXED] [LOG] ActionCard.jsx:77-83** — `debugLog` runs on every render of every card. Performance concern.
 - **[DUP] HiddenShipCard.jsx + HiddenShipSectionCard.jsx** — Nearly identical to `HiddenCard.jsx`, only icon differs.
@@ -1199,7 +1199,7 @@
 - **[SIZE] ExtractionDeckBuilder.jsx** — 425 lines (400+ threshold).
 - **[FIXED] [LOG] LobbyScreen.jsx:59,66,73** — 3 raw `console.error`.
 - **[FIXED] [COMMENT] LobbyScreen.jsx:379** — Banned comment: `{/* FIXED: Properly closed the wrapper div here */}`.
-- **[SMELL] LobbyScreen.jsx:60,67,74** — `alert()` for error display.
+- **[FIXED] [SMELL] LobbyScreen.jsx:60,67,74** — `alert()` for error display.
 - **[PURITY] LobbyScreen.jsx:81-113** — Game initialization logic in component.
 - **[FIXED] [LOG] MultiplayerLobby.jsx:78,98,111** — 3 raw `console.error`.
 - **[LOG] ModalShowcaseScreen.jsx:126-142,208** — Raw `console.log`/`console.warn` in dev tool.

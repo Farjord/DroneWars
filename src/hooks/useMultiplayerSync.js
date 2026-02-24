@@ -26,7 +26,7 @@ const useMultiplayerSync = ({
     if (gameState.gameMode === 'guest') return;
 
     const handlePhaseEvent = (event) => {
-      const { type, phase, playerId, data } = event;
+      const { type, phase, playerId } = event;
 
       debugLog('PHASE_TRANSITIONS', `🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
 
@@ -41,7 +41,7 @@ const useMultiplayerSync = ({
       }
 
       if (type === 'phaseTransition') {
-        const { newPhase, previousPhase, firstPlayerResult } = event;
+        const { newPhase, previousPhase } = event;
         debugLog('PHASE_TRANSITIONS', `🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
 
         debugLog('PHASE_TRANSITIONS', `🔍 Waiting overlay check: waitingForPlayerPhase="${waitingForPlayerPhase}", previousPhase="${previousPhase}", match=${waitingForPlayerPhase === previousPhase}`);

@@ -28,11 +28,12 @@ export const useGameData = () => {
     return GameDataService.getInstance(gameStateManager);
   }, [gameStateManager]);
 
-  // Track cache stats for debugging/optimization
+  // Track cache stats for debugging/optimization (dev only)
   const [cacheStats, setCacheStats] = useState(null);
 
   // Update cache stats periodically
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     if (!gameDataService) return;
 
     const updateStats = () => {

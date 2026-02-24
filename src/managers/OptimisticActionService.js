@@ -259,9 +259,11 @@ class OptimisticActionService {
         systemCount: this.trackedAnimations.systemAnimations.length
       });
 
-      // Capture stack trace to identify caller
-      const stack = new Error().stack;
-      debugLog('OPTIMISTIC', '🧹 [CLEAR] Stack trace:', stack);
+      // Capture stack trace to identify caller (dev only - expensive)
+      if (import.meta.env.DEV) {
+        const stack = new Error().stack;
+        debugLog('OPTIMISTIC', '🧹 [CLEAR] Stack trace:', stack);
+      }
     }
 
     this.trackedAnimations = {

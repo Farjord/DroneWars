@@ -139,8 +139,6 @@ const useShieldAllocation = ({
   }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations, setWaitingForPlayerPhase]);
 
   const handleAllocateShield = async (sectionName) => {
-    const { turnPhase } = gameState;
-
     debugLog('SHIELD_CLICKS', `🟢 handleAllocateShield called`, {
       sectionName,
       turnPhase,

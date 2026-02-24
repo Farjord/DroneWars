@@ -1141,7 +1141,6 @@ const useDragMechanics = ({
 
       debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - single-move drag]', {
         location: 'handleDroneDragEnd - single-move drag',
-        lineNumber: 3641,
         dataStructure: {
           hasDroneId: 'droneId' in moveConfData,
           hasDrone: 'drone' in moveConfData,

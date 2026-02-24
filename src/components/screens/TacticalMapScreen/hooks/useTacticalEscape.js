@@ -94,8 +94,8 @@ export function useTacticalEscape({
     setCurrentEncounter(null);
 
     // Resume movement if waypoints remain
-    const runState = tacticalMapStateManager.getState();
-    if (runState?.waypoints && runState.waypoints.length > 0) {
+    const currentRunState = tacticalMapStateManager.getState();
+    if (currentRunState?.waypoints && currentRunState.waypoints.length > 0) {
       debugLog('MOVEMENT', 'Resuming movement after evade');
       setIsMoving(true);
     }

@@ -4,7 +4,7 @@
 // Central control for all development-only features
 // Set DEV_MODE to false for production builds
 
-const DEV_MODE = true; // Master toggle - change this to false for production
+const DEV_MODE = import.meta.env.DEV ?? false; // Derived from Vite env - auto-false in production
 
 const DEV_CONFIG = {
   // Master dev mode flag

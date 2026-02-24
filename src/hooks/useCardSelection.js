@@ -40,16 +40,18 @@ const useCardSelection = ({
   const [multiSelectStateRaw, setMultiSelectStateRaw] = useState(null);
   const multiSelectState = multiSelectStateRaw;
   const setMultiSelectState = useCallback((value) => {
-    const timestamp = performance.now();
-    const isFunction = typeof value === 'function';
+    if (import.meta.env.DEV) {
+      const timestamp = performance.now();
+      const isFunction = typeof value === 'function';
 
-    debugLog('BUTTON_CLICKS', '🔴 setMultiSelectState CALLED', {
-      timestamp,
-      valueType: typeof value,
-      isUpdaterFunction: isFunction,
-      directValue: isFunction ? 'UPDATER_FUNCTION' : value,
-      callStack: new Error().stack.split('\n').slice(2, 4).join('\n')
-    });
+      debugLog('BUTTON_CLICKS', '🔴 setMultiSelectState CALLED', {
+        timestamp,
+        valueType: typeof value,
+        isUpdaterFunction: isFunction,
+        directValue: isFunction ? 'UPDATER_FUNCTION' : value,
+        callStack: new Error().stack.split('\n').slice(2, 4).join('\n')
+      });
+    }
 
     setMultiSelectStateRaw(value);
   }, []);
@@ -79,18 +81,20 @@ const useCardSelection = ({
   }, [additionalCostFlowInProgress, setCostReminderArrowState]);
 
   const cancelCardSelection = useCallback((callerInfo = 'unknown') => {
-    debugLog('BUTTON_CLICKS', '🚨 cancelCardSelection CALLED', {
-      timestamp: performance.now(),
-      caller: callerInfo,
-      additionalCostFlowRef: additionalCostFlowInProgress.current,
-      multiSelectFlowRef: multiSelectFlowInProgress.current,
-      multiSelectStateExists: multiSelectState !== null,
-      selectedCardExists: selectedCard !== null,
-      singleMoveModeExists: singleMoveMode !== null,
-      additionalCostStateExists: additionalCostState !== null,
-      additionalCostPhase: additionalCostState?.phase || 'none',
-      callStack: new Error().stack.split('\n').slice(0, 10).join('\n')
-    });
+    if (import.meta.env.DEV) {
+      debugLog('BUTTON_CLICKS', '🚨 cancelCardSelection CALLED', {
+        timestamp: performance.now(),
+        caller: callerInfo,
+        additionalCostFlowRef: additionalCostFlowInProgress.current,
+        multiSelectFlowRef: multiSelectFlowInProgress.current,
+        multiSelectStateExists: multiSelectState !== null,
+        selectedCardExists: selectedCard !== null,
+        singleMoveModeExists: singleMoveMode !== null,
+        additionalCostStateExists: additionalCostState !== null,
+        additionalCostPhase: additionalCostState?.phase || 'none',
+        callStack: new Error().stack.split('\n').slice(0, 10).join('\n')
+      });
+    }
 
     // Don't clear state if we're in additional cost flow (unless explicitly intended)
     if (additionalCostFlowInProgress.current && callerInfo !== 'user-cancel' && callerInfo !== 'confirm') {

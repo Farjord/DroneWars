@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 // --- Modal Component Imports ---
 import LogModal from '../modals/LogModal.jsx';
@@ -167,6 +167,22 @@ function ModalLayer({
         ? { type: 'destroy', count: excessDrones }
         : null;
 
+  // CHECKPOINT 7: Log when move confirmation modal is displayed
+  useEffect(() => {
+    if (moveConfirmation) {
+      debugLog('SINGLE_MOVE_FLOW', '🪟 CHECKPOINT 7: Modal displayed', {
+        moveConfirmation: moveConfirmation,
+        droneId: moveConfirmation.droneId,
+        owner: moveConfirmation.owner,
+        from: moveConfirmation.from,
+        to: moveConfirmation.to,
+        hasCard: !!moveConfirmation.card,
+        cardName: moveConfirmation.card?.name,
+        hasAllRequiredFields: !!(moveConfirmation.droneId && moveConfirmation.owner && moveConfirmation.from && moveConfirmation.to)
+      });
+    }
+  }, [moveConfirmation]);
+
   return (
     <>
       <LogModal
@@ -202,20 +218,7 @@ function ModalLayer({
         onConfirm={onConfirmDeployment}
       />
 
-      {/* CHECKPOINT 7: Modal Displayed */}
-      {moveConfirmation && (() => {
-        debugLog('SINGLE_MOVE_FLOW', '🪟 CHECKPOINT 7: Modal displayed', {
-          moveConfirmation: moveConfirmation,
-          droneId: moveConfirmation.droneId,
-          owner: moveConfirmation.owner,
-          from: moveConfirmation.from,
-          to: moveConfirmation.to,
-          hasCard: !!moveConfirmation.card,
-          cardName: moveConfirmation.card?.name,
-          hasAllRequiredFields: !!(moveConfirmation.droneId && moveConfirmation.owner && moveConfirmation.from && moveConfirmation.to)
-        });
-        return null;
-      })()}
+      {/* CHECKPOINT 7: Modal Displayed - logged via useEffect below */}
 
       <MoveConfirmationModal
         moveConfirmation={moveConfirmation}

@@ -128,31 +128,3 @@ const NukeBlastEffect = ({ endPos, duration }) => {
 };
 
 export default CardVisualEffect;
-
-// Add CSS animations to your stylesheet:
-/*
-@keyframes laserFade {
-  0% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes energyPulse {
-  0% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(2); opacity: 0.5; }
-  100% { transform: scale(3); opacity: 0; }
-}
-
-@keyframes nukeExpand {
-  0% { transform: scale(0.1); opacity: 1; }
-  50% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-@keyframes nukeFlash {
-  0% { opacity: 0.8; transform: scale(0.5); }
-  10% { opacity: 1; transform: scale(1); }
-  40% { opacity: 0.6; transform: scale(1.2); }
-  100% { opacity: 0; transform: scale(1.5); }
-}
-*/
