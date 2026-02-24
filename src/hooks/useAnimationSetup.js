@@ -103,7 +103,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const startPos = getElementCenter(droneEl, gameAreaRef.current);
       const endPos = getElementCenter(targetEl, gameAreaRef.current);
 
-      const laserId = `laser-${droneId}-${Date.now()}`;
+      const laserId = `laser-${droneId}-${crypto.randomUUID()}`;
 
       setLaserEffects(prev => [...prev, {
         id: laserId,
@@ -158,7 +158,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Calculate position from target element
       const targetRect = targetEl.getBoundingClientRect();
-      const flashId = `flash-${targetId}-${Date.now()}`;
+      const flashId = `flash-${targetId}-${crypto.randomUUID()}`;
 
       setFlashEffects(prev => [...prev, {
         id: flashId,
@@ -207,7 +207,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Calculate position from target element
       const targetRect = targetEl.getBoundingClientRect();
-      const healId = `heal-${targetId}-${Date.now()}`;
+      const healId = `heal-${targetId}-${crypto.randomUUID()}`;
 
       setHealEffects(prev => [...prev, {
         id: healId,
@@ -316,7 +316,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         };
       }
 
-      const visualId = `cardvisual-${Date.now()}`;
+      const visualId = `cardvisual-${crypto.randomUUID()}`;
 
       setCardVisuals(prev => [...prev, {
         id: visualId,
@@ -342,7 +342,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const localPlayerId = gameStateManager.getLocalPlayerId();
       const isLocalPlayer = targetPlayer === localPlayerId;
 
-      const revealId = `cardreveal-${Date.now()}`;
+      const revealId = `cardreveal-${crypto.randomUUID()}`;
 
       setCardReveals(prev => [...prev, {
         id: revealId,
@@ -366,7 +366,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         ? `You Removed ${statusLabel} Effect From ${droneName} in Lane ${laneNumber}`
         : `Opponent Removed ${statusLabel} Effect From ${droneName} in Lane ${laneNumber}`;
 
-      const consumptionId = `statusconsumption-${Date.now()}`;
+      const consumptionId = `statusconsumption-${crypto.randomUUID()}`;
 
       setStatusConsumptions(prev => [...prev, {
         id: consumptionId,
@@ -394,7 +394,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Only show to opponent
       if (!isLocalPlayer) {
-        const revealId = `shipability-${Date.now()}`;
+        const revealId = `shipability-${crypto.randomUUID()}`;
 
         setShipAbilityReveals(prev => [...prev, {
           id: revealId,
@@ -444,7 +444,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         calculatedSubtitle: subtitle
       });
 
-      const announcementId = `phaseannouncement-${Date.now()}`;
+      const announcementId = `phaseannouncement-${crypto.randomUUID()}`;
 
       timingLog('[VISUAL HANDLER] Setting React state', {
         phaseName,
@@ -479,7 +479,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const localPlayerId = gameStateManager.getLocalPlayerId();
       const isLocalPlayer = passingPlayerId === localPlayerId;
 
-      const notificationId = `passnotif-${Date.now()}`;
+      const notificationId = `passnotif-${crypto.randomUUID()}`;
 
       setPassNotifications(prev => [...prev, {
         id: notificationId,
@@ -497,7 +497,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const localPlayerId = gameStateManager.getLocalPlayerId();
       const isLocalPlayer = actingPlayerId === localPlayerId;
 
-      const notificationId = `goagain-${Date.now()}`;
+      const notificationId = `goagain-${crypto.randomUUID()}`;
 
       setGoAgainNotifications(prev => [...prev, {
         id: notificationId,
@@ -550,7 +550,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         const isLocalPlayer = targetPlayer === localPlayerId;
         const teleportColor = isLocalPlayer ? '#00ffff' : '#ef4444'; // Cyan for player, red for opponent
 
-        const teleportId = `teleport-${targetId}-${Date.now()}`;
+        const teleportId = `teleport-${targetId}-${crypto.randomUUID()}`;
 
         setTeleportEffects(prev => [...prev, {
           id: teleportId,
@@ -630,7 +630,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         }
       }
 
-      const projectileId = `overflow-${targetId}-${Date.now()}`;
+      const projectileId = `overflow-${targetId}-${crypto.randomUUID()}`;
 
       // DEBUG: Log projectile timing calculation
       const calculatedPhaseDuration = hasOverflow ? OVERFLOW_PROJECTILE_DURATION / 3 : OVERFLOW_PROJECTILE_DURATION / 2;
@@ -674,7 +674,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       }
 
       const centerPos = getElementCenter(droneEl, gameAreaRef.current);
-      const splashId = `splash-${primaryTargetId}-${Date.now()}`;
+      const splashId = `splash-${primaryTargetId}-${crypto.randomUUID()}`;
 
       setSplashEffects(prev => [...prev, {
         id: splashId,
@@ -724,7 +724,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         const randomY = Math.random() * (droneRect.height - impactSize);
 
         impacts.push({
-          id: `barrage-${targetId}-${Date.now()}-${i}`,
+          id: `barrage-${targetId}-${crypto.randomUUID()}`,
           position: {
             left: droneRect.left - gameAreaRect.left + randomX,
             top: droneRect.top - gameAreaRect.top + randomY
@@ -803,7 +803,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         });
       }
 
-      const turretId = `railgun-turret-${Date.now()}`;
+      const turretId = `railgun-turret-${crypto.randomUUID()}`;
 
       setRailgunTurrets(prev => [...prev, {
         id: turretId,
@@ -896,7 +896,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         });
       }
 
-      const beamId = `railgun-beam-${Date.now()}`;
+      const beamId = `railgun-beam-${crypto.randomUUID()}`;
 
       setRailgunBeams(prev => [...prev, {
         id: beamId,

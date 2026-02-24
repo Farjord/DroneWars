@@ -33,7 +33,7 @@ export const createCopyStarterDeckSlot = (
   (starterDeck.droneSlots || []).forEach(slot => {
     if (slot.assignedDrone) {
       newDroneInstances.push({
-        id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `DRONE_${crypto.randomUUID()}`,
         droneName: slot.assignedDrone,
         shipSlotId: slotId,
         isDamaged: false,
@@ -45,7 +45,7 @@ export const createCopyStarterDeckSlot = (
   const newComponentInstances = [...(singlePlayerShipComponentInstances || [])];
   Object.keys(starterDeck.shipComponents || {}).forEach(compId => {
     newComponentInstances.push({
-      id: `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `COMP_${crypto.randomUUID()}`,
       componentId: compId,
       shipSlotId: slotId,
       currentHull: 10,

@@ -471,7 +471,7 @@ class ShipSlotManager {
       return null;
     }
 
-    const instanceId = `DRONE_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const instanceId = `DRONE_${crypto.randomUUID()}`;
     const instance = {
       instanceId,
       droneName,
@@ -557,7 +557,7 @@ class ShipSlotManager {
       throw new Error(`Component ${componentId} not found`);
     }
 
-    const instanceId = `COMP_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const instanceId = `COMP_${crypto.randomUUID()}`;
     const instance = {
       instanceId,
       componentId,

@@ -93,7 +93,7 @@ export const clamp = (value, min, max) => {
  * @returns {string} Unique ID
  */
 export const generateId = (prefix = 'id') => {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `${prefix}-${crypto.randomUUID()}`;
 };
 
 /**

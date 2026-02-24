@@ -57,7 +57,7 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
     // Generate unique instance ID for this upgrade (needed for DESTROY_UPGRADE targeting)
     // Store card ID and slots for tracking and validation
     const newUpgrade = {
-      instanceId: `upgrade-${Date.now()}-${Math.random()}`,
+      instanceId: `upgrade-${crypto.randomUUID()}`,
       cardId: card?.id,
       slots: card?.slots || 1,
       mod: effect.mod

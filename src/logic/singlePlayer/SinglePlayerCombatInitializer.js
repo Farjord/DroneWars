@@ -588,7 +588,7 @@ class SinglePlayerCombatInitializer {
         for (let i = 0; i < item.quantity; i++) {
           const cardTemplate = fullCardCollection.find(c => c.id === item.id);
           if (cardTemplate) {
-            deck.push(gameEngine.createCard(cardTemplate, `sp-card-${Date.now()}-${instanceCounter++}`));
+            deck.push(gameEngine.createCard(cardTemplate, `sp-card-${crypto.randomUUID()}`));
           }
         }
       });
@@ -598,7 +598,7 @@ class SinglePlayerCombatInitializer {
         for (let i = 0; i < quantity; i++) {
           const cardTemplate = fullCardCollection.find(c => c.id === cardId);
           if (cardTemplate) {
-            deck.push(gameEngine.createCard(cardTemplate, `sp-card-${Date.now()}-${instanceCounter++}`));
+            deck.push(gameEngine.createCard(cardTemplate, `sp-card-${crypto.randomUUID()}`));
           }
         }
       });
@@ -730,7 +730,7 @@ class SinglePlayerCombatInitializer {
         for (let i = 0; i < item.quantity; i++) {
           const cardTemplate = fullCardCollection.find(c => c.id === item.id);
           if (cardTemplate) {
-            deck.push(gameEngine.createCard(cardTemplate, `ai-card-${Date.now()}-${instanceCounter++}`));
+            deck.push(gameEngine.createCard(cardTemplate, `ai-card-${crypto.randomUUID()}`));
           }
         }
       });

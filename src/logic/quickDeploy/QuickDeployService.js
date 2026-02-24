@@ -10,7 +10,7 @@ const MAX_QUICK_DEPLOYMENTS = 5;
  * @returns {string} Unique ID
  */
 const generateId = () => {
-  return `qd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `qd_${crypto.randomUUID()}`;
 };
 
 /**

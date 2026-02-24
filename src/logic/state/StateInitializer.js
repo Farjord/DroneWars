@@ -81,7 +81,7 @@ class StateInitializer {
       if (cardTemplate) {
         // Add the specified quantity of that card
         for (let i = 0; i < item.quantity; i++) {
-          deck.push(this.createCard(cardTemplate, `card-${Date.now()}-${instanceCounter++}`));
+          deck.push(this.createCard(cardTemplate, `card-${crypto.randomUUID()}`));
         }
       }
     });

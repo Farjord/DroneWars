@@ -40,7 +40,7 @@ export const useExplosions = (droneRefs, gameAreaRef) => {
     debugLog('ANIMATIONS', '🔥 [EXPLOSION] Position calculated:', pos);
 
     if (pos) {
-      const explosionId = `${explosionEffect.timestamp}-${Math.random()}`;
+      const explosionId = `explosion-${crypto.randomUUID()}`;
       debugLog('ANIMATIONS', '🔥 [EXPLOSION] Adding explosion to state:', { explosionId, top: pos.y, left: pos.x, size });
       setExplosions(prev => [...prev, { id: explosionId, top: pos.y, left: pos.x, size }]);
       setTimeout(() => {

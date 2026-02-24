@@ -57,7 +57,7 @@ class PhaseAnimationQueue {
     }
 
     const animation = {
-      id: `phase-anim-${Date.now()}-${Math.random()}`,
+      id: `phase-anim-${crypto.randomUUID()}`,
       phaseName,
       phaseText,
       subtitle,

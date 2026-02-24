@@ -165,7 +165,7 @@ export default function useGameLifecycle({
       }
 
       for (let i = 0; i < quantity; i++) {
-        const instanceId = `${playerId}-${cardId}-${Date.now()}-${Math.random()}`;
+        const instanceId = `${playerId}-${cardId}-${crypto.randomUUID()}`;
         cardInstances.push({ ...cardTemplate, instanceId });
       }
     });
