@@ -23,8 +23,8 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | A | Critical Bugs | Done |
 | B | Dead Code & Comment Cleanup | Done |
 | B2 | Console.log Migration | Done |
-| C | Deduplication | Pending |
-| D | Data File Purity | Pending |
+| C | Deduplication | Done |
+| D | Data File Purity | Done |
 | E | Structural Moves | Done |
 | F | Large File Decomposition | Done |
 

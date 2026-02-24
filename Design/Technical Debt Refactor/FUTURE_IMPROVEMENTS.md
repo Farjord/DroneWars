@@ -35,6 +35,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 36 | SinglePlayerCombatInitializer.js:672 | `appliedUpgrades = {}` hardcoded — ship slot upgrades feature not yet designed | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 37 | RunLifecycleManager.js:67-68 | Seed uses `Date.now()` (should use profile-based seed) and map type hardcoded to `'GENERIC'` (should support selection) | TODO triage (Phase E3) | 2026-02-24 | Low |
 | 38 | useClickHandlers.js:146,864,881 | 3 `TECHNICAL DEBT` TODOs: `getLaneOfDrone` utility extraction, `getValidTargets` for special/upgrade cards | TODO triage (Phase E3) | 2026-02-24 | Low |
+| 39 | useAnimationSetup.js | 33 positional parameters — refactor to a single deps/config object for readability and maintainability | Architect review (W1) | 2026-02-24 | Medium |
 
 ## Audit Findings (2026-02-23)
 
