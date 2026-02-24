@@ -52,6 +52,31 @@ Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). St
 | 27 | useGameLifecycle.js:293,316,356 | 3 `const result = await processActionWithGuestRouting(...)` assigned but never read. Dead code. | Low |
 | 28 | 23 actionable TODOs in production code | Spread across ActionProcessor, RunLifecycleManager, ShipPlacementScreen, useClickHandlers, MovementController, PhaseManager, RewardManager, GSM. | Low |
 
+## SIZE Tracking (Phase K)
+
+Files over 800 lines — decomposition candidates. Items already tracked above are listed with their existing `#` for cross-reference.
+
+| File | Lines | Notes | Priority |
+|-|-|-|-|
+| GameFlowManager.js | 1673 | Cohesive orchestration — deferred #11 | Low |
+| useDragMechanics.js | 1653 | Shared state prevents split — deferred #19 | Medium |
+| App.jsx | 1333 | Orchestration root — resolved #21 | Resolved |
+| TestingSetupScreen.jsx | 1111 | Dev/test screen, extract LaneControlSection | Low |
+| modalShowcaseHelpers.js | 1113 | Dev-only helpers | Low |
+| GameStateManager.js | 1068 | Post-extraction residual — deferred #6 | Low |
+| GuestMessageQueueService.js | 981 | Stateful queue processor | Low |
+| HexGridRenderer.jsx | 973 | Large renderer | Medium |
+| ActionProcessor.js | 953 | Strategy pattern host | Low |
+| HexInfoPanel.jsx | 933 | Extract getHexPreview | Medium |
+| useClickHandlers.js | 922 | Shared params prevent split — deferred #22 | Low |
+| QuickDeployEditorScreen.jsx | 904 | Extract remapping helper | Low |
+| useTacticalEncounters.js | 871 | Circular deps prevent split — deferred #15 | Medium |
+| CardPlayManager.js | 868 | Extract UI-coupled code | Medium |
+| CombatOutcomeProcessor.js | 866 | Combat resolution | Low |
+| GlossaryModal.jsx | 851 | Pure reference content | Low |
+| SinglePlayerCombatInitializer.js | 810 | Initialization | Low |
+| AttackProcessor.js | 809 | resolveAttack god function | Medium |
+
 ## Resolved Items
 
 | # | File | Issue | Resolved | How |

@@ -27,6 +27,10 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | D | Data File Purity | Done |
 | E | Structural Moves | Done |
 | F | Large File Decomposition | Done |
+| G | Bugs + Quick Wins | Done |
+| H | Deduplication (Round 2) | Done (partial) |
+| J | Code Quality / SMELL Fixes | Done (partial) |
+| K | Documentation + SIZE Tracking | In Progress |
 
 ---
 
@@ -227,6 +231,81 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 - `useClickHandlers.js` (956) — #22, shared params
 - `useTacticalEncounters.js` (931) — #15, circular deps
 - `GameStateManager.js` (1068) — #6, post-extraction residual
+
+---
+
+## Phase G: Bugs + Quick Wins
+
+**Status: Done**
+
+**Goal:** Fix remaining bugs, dead code, comments, naming, edge cases, and import issues.
+
+### G1 — Critical & High-Severity Bugs (7 items)
+- [x] AI determinism: 4x Math.random() → SeededRandom in actionDecision.js + deploymentDecision.js
+- [x] State mutation: CommitmentStrategy.clearPhaseCommitments builds new object
+- [x] Animation: OverflowProjectile hardcoded progress=0.5 → CSS transition
+- [x] Error handling: useInterception fire-and-forget async + fragile destructuring
+- [x] Logic: droneAttack.js Math.min→Math.max for penalty cap
+
+### G2 — Dead Code + Comments + Names (~35 items)
+- [x] AI dead code: adjustmentPasses/index.js, keywordHelpers 7 exports, droneImpact 2 exports, laneScoring 1 export
+- [x] Logic dead code: ShieldResetUtils function, MovementController 2 methods
+- [x] Component dead code: 5 files (unused styles, params, props, imports, constants)
+- [x] App/hooks/config: App.jsx breadcrumbs, useGameLifecycle 3x unused results, devConfig dual export, soundConfig wrapper
+- [x] Comments: debugLogger 35+ stale annotations, pointsOfInterestData TBD, AI decision stubs, banned comments
+- [x] Names: hanger→hangar, AngularBandsBackground→MorphingBackground
+
+### G3 — Edge Cases + Import Fixes (9 items)
+- [x] 6 edge case guards: useDragMechanics, useClickHandlers name→id, useTacticalEncounters, useDeckBuilderData useMemo, testGameInitializer, useMultiplayerSync throttle
+- [x] 3 import fixes: InterceptionProcessor gameLogic→gameEngineUtils, useClickHandlers dead import, quickDeploy barrel (already clean)
+
+**Verification:** `npx vitest run` → 3745 passing (3 tests removed with dead function), 0 failures.
+
+---
+
+## Phase H: Deduplication
+
+**Status: Done (partial — H1+H2+H3c completed)**
+
+**Goal:** Extract shared code from copy-pasted blocks.
+
+### H1 — Logic-layer dedup
+- [x] ExtractionController custom LCG → SeededRandom
+- [x] AbilityResolver dead resolveShipRecallEffect removed
+- [x] AIPhaseProcessor SEQUENTIAL_PHASES → import from gameUtils
+
+### H2 — Manager/Service dedup
+- [x] LaneControlCalculator: countLanesControlled → getLanesControlled().length
+- [x] P2PManager: extract _requireConnection() guard
+- [x] ShipSlotManager: extract EMPTY_SLOT_TEMPLATE constant
+- [x] testGameInitializer: extract createShipSectionState() helper
+
+### H3c — Misc dedup
+- [x] gameUtils: remove shuffleArray wrapper
+- [x] cardBorderUtils: import from cardTypeStyles (eliminate duplicate mapping)
+- [x] cardDrawUtils: consolidate player 1/2 blocks
+- [x] AttackProcessor: cache getLaneOfDrone result
+
+**Verification:** `npx vitest run` → 3745 passing, 0 failures.
+
+---
+
+## Phase J: Code Quality — SMELL Fixes
+
+**Status: Done (partial — J1b+J2 completed)**
+
+**Goal:** Gate expensive debug code behind DEV mode, replace alerts, fix misc smells.
+
+### J1b — Performance
+- [x] Gate new Error().stack behind DEV: GameStateManager, useCardSelection (2x), OptimisticActionService
+- [x] Gate debug intervals behind DEV: useGameData, NewsTicker, PhaseAnnouncementOverlay
+
+### J2 — Quality fixes
+- [x] Replace alert(): LobbyScreen (3x), useGameLifecycle (1x)
+- [x] devConfig: derive DEV_MODE from import.meta.env.DEV
+- [x] Misc: useDragMechanics stale line number, useMultiplayerSync unused vars, useTacticalEscape shadowing, useShieldAllocation shadowed var, ModalLayer debugLog in render, CardVisualEffect dead keyframes
+
+**Verification:** `npx vitest run` → 3745 passing, 0 failures.
 
 ---
 
