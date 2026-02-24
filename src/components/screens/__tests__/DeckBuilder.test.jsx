@@ -59,7 +59,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 vi.mock('../../../config/devConfig.js', () => ({
-  DEV_CONFIG: { FEATURES: {} }
+  default: { enabled: false, features: {} }
 }));
 vi.mock('../../../data/vsModeDeckData.js', () => ({ default: [] }));
 vi.mock('../../../data/aiData.js', () => ({ default: [] }));

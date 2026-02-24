@@ -6,7 +6,7 @@
 
 const DEV_MODE = true; // Master toggle - change this to false for production
 
-export const DEV_CONFIG = {
+const DEV_CONFIG = {
   // Master dev mode flag
   enabled: DEV_MODE,
 

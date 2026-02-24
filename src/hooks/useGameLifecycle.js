@@ -290,7 +290,7 @@ export default function useGameLifecycle({
     debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Player completing optional discard phase');
     setOptionalDiscardCount(0);
 
-    const result = await processActionWithGuestRouting('commitment', {
+    await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'optionalDiscard',
       actionData: { completed: true }
@@ -313,7 +313,7 @@ export default function useGameLifecycle({
   const handleMandatoryDiscardContinue = async () => {
     debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Player completing mandatory discard phase');
 
-    const result = await processActionWithGuestRouting('commitment', {
+    await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'mandatoryDiscard',
       actionData: { completed: true }
@@ -353,7 +353,7 @@ export default function useGameLifecycle({
   const handleMandatoryDroneRemovalContinue = async () => {
     debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Player completing mandatory drone removal phase');
 
-    const result = await processActionWithGuestRouting('commitment', {
+    await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'mandatoryDroneRemoval',
       actionData: { completed: true }

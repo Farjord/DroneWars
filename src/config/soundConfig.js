@@ -96,10 +96,6 @@ export const SOUND_MANIFEST = {
   shield_hit:      { path: `${BASE_PATH}shield-hit.wav`,      channel: 'sfx', volume: 0.4 },
   explosion_small: { path: `${BASE_PATH}explosion-small.wav`, channel: 'sfx', volume: 0.4 },
   explosion_large: { path: `${BASE_PATH}explosion-large.wav`, channel: 'sfx', volume: 0.4 },
-  // Phase 2 (future): railgun sounds
-  // railgun_charge: { path: `${BASE_PATH}railgun-charge.mp3`, channel: 'sfx', volume: 0.7 },
-  // railgun_fire: { path: `${BASE_PATH}railgun-fire.mp3`, channel: 'sfx', volume: 0.9 },
-
   // Music tracks (looping, managed by MusicManager)
   music_menu:      { path: `${MUSIC_BASE_PATH}menu.ogg`,      channel: 'music', volume: 0.4 },
   music_hangar:    { path: `${MUSIC_BASE_PATH}hangar.ogg`,    channel: 'music', volume: 0.35 },
@@ -164,14 +160,6 @@ export const SOUND_EVENT_MAP = {
     COMBAT_ENDED: 'combat_end',
   },
 };
-
-/**
- * Get the full sound manifest for preloading
- * @returns {Object} Map of soundId → { path, channel, volume }
- */
-export function getSoundManifest() {
-  return SOUND_MANIFEST;
-}
 
 /**
  * Look up which sound to play for a given event

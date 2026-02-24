@@ -39,14 +39,6 @@ export const BACKGROUNDS = [
     type: 'static',
     path: '/DroneWars/Backgrounds/Deep_Space_1.png'
   }
-  // Add more backgrounds here as needed
-  // Example:
-  // {
-  //   id: 'nebula_2',
-  //   name: 'Blue Nebula',
-  //   type: 'static',
-  //   path: '/Backgrounds/Nebula_2.jpg'
-  // }
 ];
 
 export const DEFAULT_BACKGROUND = 'Orbit_1';

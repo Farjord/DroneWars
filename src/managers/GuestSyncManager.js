@@ -58,13 +58,9 @@ class GuestSyncManager {
           }
           break;
         case 'state_update_received':
-          if (this.gsm.state.gameMode === 'guest') {
-            if (this.guestQueueService) {
-              // Queue service handles this — already subscribed to P2P events
-            } else {
-              debugLog('STATE_SYNC', '⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
-              this.applyHostState(event.data.state);
-            }
+          if (this.gsm.state.gameMode === 'guest' && !this.guestQueueService) {
+            debugLog('STATE_SYNC', '⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
+            this.applyHostState(event.data.state);
           }
           break;
         case 'state_sync_requested': {

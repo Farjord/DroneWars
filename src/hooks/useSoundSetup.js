@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import SoundManager from '../managers/SoundManager.js';
 import SoundEventBridge from '../managers/SoundEventBridge.js';
 import combatStateManager from '../managers/CombatStateManager.js';
-import { getSoundManifest } from '../config/soundConfig.js';
+import { SOUND_MANIFEST } from '../config/soundConfig.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -26,7 +26,7 @@ export function useSoundSetup(gameStateManager, phaseAnimationQueue) {
     const bridge = new SoundEventBridge();
 
     // Set manifest for preloading
-    soundManager.setManifest(getSoundManifest());
+    soundManager.setManifest(SOUND_MANIFEST);
 
     // Autoplay unlock handler - called on first user interaction
     let unlocked = false;

@@ -156,9 +156,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
-  // Combat and attack state — potentialGuardians moved to useInterception
-
-  // AI behavior and reporting state — aiCardPlayReport moved to useResolvers
   const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
 
   // UI and visual effects state
@@ -201,7 +198,6 @@ const App = ({ phaseAnimationQueue }) => {
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
-  // footerPreviousPhaseRef moved to useGameLifecycle
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
@@ -370,8 +366,6 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [gameState.player1?.dronesOnBoard, gameState.player2?.dronesOnBoard]);
 
-  // addLogEntry is now provided by useGameState hook
-
   // --- 5.3 PERFORMANCE OPTIMIZED COMPUTED VALUES ---
   // Ship stats now use GameDataService for consistent caching with drone stats
   const localPlayerEffectiveStats = localPlayerState ? getEffectiveShipStats(localPlayerState, localPlacedSections) : null;
@@ -438,17 +432,6 @@ const App = ({ phaseAnimationQueue }) => {
   const excessDrones = localPlayerState && localPlayerEffectiveStats
     ? totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit
     : 0;
-
-  // DISABLED: Render-based logging causes excessive noise on every App render
-  // debugLog('HAND_VIEW', '🔍 mandatoryAction calculation:', {
-  //   turnPhase,
-  //   isInMandatoryDiscardPhase,
-  //   localPlayerId,
-  //   commitments: gameState.commitments,
-  //   hasCommittedDiscard,
-  //   excessCards,
-  //   willSetMandatoryAction: isInMandatoryDiscardPhase && !hasCommittedDiscard
-  // });
 
   // UI flags for mandatory actions
   const shouldShowDiscardUI = isInMandatoryDiscardPhase && !hasCommittedDiscard && excessCards > 0;
@@ -613,9 +596,6 @@ const App = ({ phaseAnimationQueue }) => {
     if (deploymentConfirmation) setDeploymentConfirmation(null);
   };
 
-  // resolveAttack, resolveAbility, resolveShipAbility, resolveCardPlay,
-  // handleCardSelection, resolveMultiMove, resolveSingleMove — all in useResolvers
-
   // --- INTERCEPTION HOOK ---
   const {
     playerInterceptionChoice,
@@ -714,12 +694,7 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
 
-  // All resolve functions (resolveAbility, resolveShipAbility, resolveCardPlay,
-  // handleCardSelection, resolveMultiMove, resolveSingleMove) extracted to useResolvers
 
-
-
-  // Footer view handlers (handleFooterViewToggle, handleFooterButtonClick) moved to useGameLifecycle
 
   // ========================================
   // SECTION 8: EFFECT HOOKS
@@ -774,20 +749,6 @@ const App = ({ phaseAnimationQueue }) => {
       setShowWinnerModal(true);
     }
   }, [winner, showWinnerModal]);
-
-  // Effects 8.5 (guardian highlighting), hoveredTarget clear, and arrow state
-  // moved to useInterception and useDragMechanics hooks
-
-  // Defensive state cleanup moved to useResolvers
-
-  // --- 8.6 GUEST RENDER NOTIFICATION ---
-  // Note: Guest render notification removed - no longer needed after animation timing fix
-  // Animations now play BEFORE state updates (while entities still exist in DOM)
-  // See GuestMessageQueueService.js for details
-
-  // Guest render completion effect moved to useMultiplayerSync
-
-  // Mandatory action init + footer state on phase transitions moved to useGameLifecycle
 
   // ========================================
   // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
