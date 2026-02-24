@@ -75,7 +75,7 @@ const shipCollection = [
     name: 'Scout',
     rarity: 'Common',
     faction: null,
-    description: 'Leightweight reconnocence craft.',
+    description: 'Lightweight reconnaissance craft.',
     image: '/DroneWars/Ships/Scout.png',
 
     // BASELINE COMBAT VALUES

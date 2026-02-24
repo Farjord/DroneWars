@@ -21,7 +21,7 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 |-|-|-|
 | 0 | Documentation Setup | Done |
 | A | Critical Bugs | Done |
-| B | Dead Code & Comment Cleanup | Pending |
+| B | Dead Code & Comment Cleanup | Done |
 | B2 | Console.log Migration | Pending |
 | C | Deduplication | Pending |
 | D | Data File Purity | Pending |
@@ -78,25 +78,24 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 
 ## Phase B: Dead Code & Comment Cleanup
 
-**Status: Pending**
+**Status: Done**
 
 **Goal:** Remove dead code and fix comments/naming across the codebase.
 
-### Sweep B1 — Dead code removal (~29 items)
-- [ ] **Entire files:** `theme/theme.js`, `ai/helpers/droneHelpers.js`, `ships/CorvetteIcon.jsx`
-- [ ] **Dead exports:** `droneImpact.js`, `laneScoring.js`, `LaneControlCalculator.getLanesNotControlled`, `cardDrawUtils.calculateHandLimit`, `ShieldResetUtils.calculateReallocationDisplayShields`, `RewardManager.DEFAULT_STATE`, `P2PManager.syncGameState`
-- [ ] **Dead imports/props:** `cardPackData.fullCardCollection`, `useAnimationSetup FlashEffect/CardVisualEffect`, `ReputationRewardModal.getLevelData`, `useClickHandlers.extractDroneNameFromId`
-- [ ] **Dead code blocks:** `App.jsx` breadcrumb comments + WaitingOverlay, `csvExport.js` IE10 compat, `seededRandom.js` orphaned JSDoc, `tickerConfig.js MESSAGE_TEMPLATES`
+### Sweep B1 — Dead code removal
+- [x] **Entire files:** `theme/theme.js`, `CorvetteIcon.jsx` deleted. `droneHelpers.js` kept (5 consumers).
+- [x] **Dead exports:** `getLanesNotControlled`, `calculateHandLimit`, `DEFAULT_STATE`, `syncGameState` removed. `droneImpact.js`, `laneScoring.js` kept (active). `calculateReallocationDisplayShields` kept (test-validated).
+- [x] **Dead imports:** `cardPackData.fullCardCollection` removed. Others kept (active consumers).
+- [x] **Dead code blocks:** `WaitingOverlay` import+usage, `csvExport.js` IE10, `seededRandom.js` orphaned JSDoc, `tickerConfig.js MESSAGE_TEMPLATES` — all removed.
 
-### Sweep B2 — Comment & naming cleanup (~18 items)
-- [ ] Fix 9 spelling errors in `tutorialData.js` user-facing text
-- [ ] Fix typos in `shipData.js`, `playerDeckData.js`, `vsModeDeckData.js`
-- [ ] Remove banned `// NEW:`, `// FIXED:`, `// CHANGED` comments across 5 files
-- [ ] Remove stale scaffolding/debug comments
-- [ ] Fix `backgrounds.js` inconsistent ID casing
-- [ ] Fix `vsModeDeckData.js` indentation
+### Sweep B2 — Comment & naming cleanup
+- [x] Fixed 10 spelling errors in `tutorialData.js`
+- [x] Fixed typos in `shipData.js`, `playerDeckData.js`, `vsModeDeckData.js`
+- [x] Removed 16 banned `// NEW:` comments across 8 production files
+- [x] Fixed `backgrounds.js` indentation + display name
+- [x] Fixed `vsModeDeckData.js` indentation
 
-**Verification:** `npx vitest run` → 0 failures. `npx vite build` → clean.
+**Verification:** `npx vitest run` → 3748 passing. `npx vite build` → clean.
 
 ---
 

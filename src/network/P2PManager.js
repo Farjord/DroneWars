@@ -510,22 +510,6 @@ class P2PManager {
   }
 
   /**
-   * Sync game state with peer (deprecated - use ActionProcessor for state changes)
-   */
-  syncGameState(state = null) {
-    console.warn('syncGameState is deprecated - use ActionProcessor for state changes');
-
-    if (state) {
-      // Log received state sync but don't apply directly
-      debugLog('MULTIPLAYER', 'Received state sync (not applied):', state);
-      this.emit('state_sync_received', { state });
-    } else {
-      // Send current state for initial sync only - emit event to get state
-      this.emit('state_sync_requested', {});
-    }
-  }
-
-  /**
    * Send ping to measure latency
    */
   ping() {

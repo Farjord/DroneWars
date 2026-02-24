@@ -43,7 +43,7 @@ export const TUTORIALS = {
       },
       {
         heading: 'Exploring the Eremos',
-        content: 'The vast waypoint networks that once connected the facilities of the Eremos are now in a state of flux and dissarray. Prospectors are constantly hacking in to the Waypoint subsystems, looking for ways in. However, the defence protocals are constatly adapting, making the landscape ever changing. On top of this, once sucessfully within a subsector, the automated threat detection protocols kick in. Each move escaltes the threat level of the subsector until ultiamately the area goes on full lockdown, shutting down all Waypoints and making extraction impossible.',
+        content: 'The vast waypoint networks that once connected the facilities of the Eremos are now in a state of flux and disarray. Prospectors are constantly hacking in to the Waypoint subsystems, looking for ways in. However, the defence protocols are constantly adapting, making the landscape ever changing. On top of this, once successfully within a subsector, the automated threat detection protocols kick in. Each move escalates the threat level of the subsector until ultimately the area goes on full lockdown, shutting down all Waypoints and making extraction impossible.',
       },
       {
         heading: 'The Hangar',
@@ -84,11 +84,11 @@ export const TUTORIALS = {
     sections: [
       {
         heading: 'Crafting System',
-        content: 'The Replicator allows you to clone any cards that you currently own. This is useful for creating multiple copies of powerful cards to include in your deck. NOTE: Starter Cards are not shown hear, as you can equip unlimited copies of these in your deck without needing to replicate them.',
+        content: 'The Replicator allows you to clone any cards that you currently own. This is useful for creating multiple copies of powerful cards to include in your deck. NOTE: Starter Cards are not shown here, as you can equip unlimited copies of these in your deck without needing to replicate them.',
       },
       {
         heading: 'Requirements',
-        content: 'To replicate a card you must currently own at least one copy of it. Cards that you have previosuly owned, but have gone \'MIA\' during a run, cannot be replicated. You also need sufficient credits to cover the replication cost.',
+        content: 'To replicate a card you must currently own at least one copy of it. Cards that you have previously owned, but have gone \'MIA\' during a run, cannot be replicated. You also need sufficient credits to cover the replication cost.',
       },
       {
         heading: 'Replicated Cards',
@@ -124,7 +124,7 @@ export const TUTORIALS = {
     sections: [
       {
         heading: 'Card Packs',
-        content: 'The shop offers card packs containing random cards of various types and rarities. Different pack types focus on different card categories - ordnance for weapons, support for utility, tactical for special abilities, and upgrades for Done upgrade cards.',
+        content: 'The shop offers card packs containing random cards of various types and rarities. Different pack types focus on different card categories - ordnance for weapons, support for utility, tactical for special abilities, and upgrades for Drone upgrade cards.',
       },
       {
         heading: 'Tactical Items',
@@ -208,7 +208,7 @@ export const TUTORIALS = {
     sections: [
       {
         heading: 'Ship Slots',
-        content: 'The standard Ship is always avaialbel to you. However, it does not gain reputation and cannot be modified. Additional slots be purchased, allowing you to create and customise your own load out and include Cards, Drones even Ships and Ship Sections. These loadouts then earn you reputation, based off the rarity of the items in your loadout. However, if you fail to extract from a run, your loadout will be classed as MIA - requiring you to pay for salvage costs.',
+        content: 'The standard Ship is always available to you. However, it does not gain reputation and cannot be modified. Additional slots be purchased, allowing you to create and customise your own load out and include Cards, Drones even Ships and Ship Sections. These loadouts then earn you reputation, based off the rarity of the items in your loadout. However, if you fail to extract from a run, your loadout will be classed as MIA - requiring you to pay for salvage costs.',
       },
       {
         heading: 'Deck Construction',

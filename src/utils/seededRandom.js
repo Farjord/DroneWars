@@ -123,14 +123,6 @@ export class SeededRandom {
   }
 
   /**
-   * Create SeededRandom for card shuffling operations
-   * Uses base game seed + unique offset for deterministic but varying shuffles
-   *
-   * @param {Object} gameState - Current game state
-   * @param {string} playerId - Player performing shuffle ('player1' or 'player2')
-   * @returns {SeededRandom} New seeded RNG instance
-   */
-  /**
    * Create SeededRandom for drone selection shuffling
    * Uses base game seed + unique offset per player for deterministic but unique pools
    *

@@ -163,7 +163,7 @@ function HandView({
         hasTargeting: !!card.targeting
       });
 
-      // NEW: Check for additional cost cards first
+      // Check for additional cost cards first
       if (card.additionalCost) {
         debugLog('ADDITIONAL_COST_VALIDATION', '💰 Card has additional cost - checking cost targets', {
           cardName: card.name,

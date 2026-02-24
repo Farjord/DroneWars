@@ -128,7 +128,7 @@ class CardPlayManager {
       });
     }
 
-    // NEW: Check if this card has additional costs requiring selection
+    // Check if this card has additional costs requiring selection
     const hasAdditionalCost = card.additionalCost && actingPlayerId === localPlayerId;
 
     if (hasAdditionalCost) {

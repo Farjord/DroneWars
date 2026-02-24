@@ -4,8 +4,6 @@
  * Used by LootGenerator to create rewards
  */
 
-import fullCardCollection from './cardData.js';
-
 /**
  * Rarity color constants
  */

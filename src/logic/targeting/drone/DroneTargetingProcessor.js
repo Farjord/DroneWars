@@ -290,7 +290,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
       return passes;
     }
 
-    // NEW: Cost-based location filtering
+    // Cost-based location filtering
     if (location === 'SAME_LANE_AS_COST') {
       if (!costContext || !costContext.lane) {
         debugLog('ADDITIONAL_COST_TARGETING', '❌ SAME_LANE_AS_COST fails - missing cost context', {

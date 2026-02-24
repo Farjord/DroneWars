@@ -1,7 +1,7 @@
 export const starterDeck = {
   id: 'STARTER_001',
   name: 'Reconnaissance Corvette',
-  description: 'A leightweight configuration designed for reconnaissance operations in The Shallows. Emphasizes versatility and survivability.',
+  description: 'A lightweight configuration designed for reconnaissance operations in The Shallows. Emphasizes versatility and survivability.',
   isImmutable: true,
   shipId: 'SHIP_001',
   decklist: [

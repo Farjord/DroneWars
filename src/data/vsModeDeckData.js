@@ -2,10 +2,10 @@ const vsDecks = [
   {
     id: 'VS_DECK_001',
     name: 'Mobile Assault',
-    description: 'Use movement tricks and subtefuge to outwit your opponent.',
+    description: 'Use movement tricks and subterfuge to outwit your opponent.',
     imagePath: '/Menu/Deck.png',
-  shipId: 'SHIP_001',
- decklist: [
+    shipId: 'SHIP_001',
+    decklist: [
     { id: 'LANE_CONTROL_DAMAGE', quantity: 2 },
     { id: 'CARD010', quantity: 2 },
     { id: 'CARD028', quantity: 2 },

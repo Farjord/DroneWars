@@ -108,28 +108,6 @@ export class LaneControlCalculator {
   }
 
   /**
-   * Get array of lane IDs that a player does NOT control
-   * (includes lanes controlled by opponent AND contested/tied lanes)
-   * @param {string} playerId - 'player1' or 'player2'
-   * @param {Object} player1State - Player 1 game state
-   * @param {Object} player2State - Player 2 game state
-   * @returns {Array<string>} Array of lane IDs not controlled
-   */
-  static getLanesNotControlled(playerId, player1State, player2State) {
-    const laneControl = this.calculateLaneControl(player1State, player2State);
-    const notControlled = [];
-
-    for (const lane of ['lane1', 'lane2', 'lane3']) {
-      if (laneControl[lane] !== playerId) {
-        notControlled.push(lane);
-      }
-    }
-
-    debugLog('LANE_CONTROL', `${playerId} does NOT control lanes: [${notControlled.join(', ')}]`);
-    return notControlled;
-  }
-
-  /**
    * Check if a lane is controlled by a player AND has no enemy drones
    * Used by the "Overrun" card
    * @param {string} playerId - 'player1' or 'player2'

@@ -21,7 +21,6 @@ import HandView from './components/ui/footer/HandView.jsx';
 import DronesView from './components/ui/footer/DronesView.jsx';
 import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import ModalLayer from './components/ui/ModalLayer.jsx';
-import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
 
@@ -1313,17 +1312,6 @@ const App = ({ phaseAnimationQueue }) => {
         />
       )}
 
-      {/* Waiting Overlay for multiplayer */}
-      <WaitingOverlay
-        isVisible={false} // NOTE: Currently disabled - using transparent overlay instead (see lines 2406-2415)
-        currentPlayer={currentPlayer}
-        gameMode={gameState.gameMode}
-        roomCode={p2pManager.roomCode}
-        lastAction={null} // NOTE: lastAction not tracked in current implementation
-        localPlayerState={localPlayerState}
-        opponentPlayerState={opponentPlayerState}
-        getLocalPlayerId={getLocalPlayerId}
-      />
     </div>
   );
 

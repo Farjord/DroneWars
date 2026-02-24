@@ -265,19 +265,19 @@ class EncounterController {
         );
       }
 
-      // NEW: Check if this PoI requires confirmation modal before combat
+      // Check if this PoI requires confirmation modal before combat
       if (poi.poiData.requiresEncounterConfirmation) {
         return {
           poi,
-          outcome: 'encounterPending',  // NEW: Pending user decision
+          outcome: 'encounterPending',  // Pending user decision
           aiId: guardianName,
           aiData,
           reward,
           detection,
           threatLevel: DetectionManager.getThreshold(),
           isGuaranteedCombat: true,
-          requiresConfirmation: true,  // NEW: Flag for UI to show modal
-          potentialReputation  // NEW: Potential reputation
+          requiresConfirmation: true,  // Flag for UI to show modal
+          potentialReputation
         };
       }
 
@@ -291,7 +291,7 @@ class EncounterController {
         detection,
         threatLevel: DetectionManager.getThreshold(),
         isGuaranteedCombat: true,  // Flag for UI
-        potentialReputation  // NEW: Potential reputation
+        potentialReputation
       };
     }
 
@@ -343,7 +343,7 @@ class EncounterController {
       reward,            // Credits and reward info
       detection,         // Detection at time of encounter
       threatLevel: DetectionManager.getThreshold(),  // 'low', 'medium', 'high'
-      potentialReputation  // NEW: Potential reputation from combat
+      potentialReputation
     };
 
     debugLog('ENCOUNTER', 'Encounter result', encounter);

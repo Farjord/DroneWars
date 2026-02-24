@@ -89,7 +89,7 @@ const AvailabilityDots = ({
     });
   }
 
-  // NEW MODEL: Calculate deployment availability
+  // Calculate deployment availability
   const availableSlots = Math.max(0, limit - inPlayCount); // How many MORE can be deployed
   let deployablePips = Math.min(readyCount, availableSlots);
   let blockedOutlines = Math.max(0, readyCount - deployablePips); // Ready but can't deploy

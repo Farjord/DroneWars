@@ -27,7 +27,7 @@ export const BACKGROUNDS = [
     type: 'static',
     path: '/DroneWars/Backgrounds/Nebula_1.jpg'
   },
-    {
+  {
     id: 'Orbit_1',
     name: 'Orbiting',
     type: 'static',
@@ -35,7 +35,7 @@ export const BACKGROUNDS = [
   },
   {
     id: 'Deep_Space_1',
-    name: 'Deep_Space',
+    name: 'Deep Space',
     type: 'static',
     path: '/DroneWars/Backgrounds/Deep_Space_1.png'
   }

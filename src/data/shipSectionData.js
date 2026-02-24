@@ -16,7 +16,7 @@ const shipComponentCollection = [
     key: 'bridge', // Legacy key for backward compatibility
     rarity: 'Common',
 
-    // NEW: Modifier fields (applied to Ship Card baselines)
+    // Modifier fields (applied to Ship Card baselines)
     hullModifier: 0,
     shieldsModifier: 0,
     thresholdModifiers: { damaged: 0, critical: 0 },
@@ -50,7 +50,7 @@ const shipComponentCollection = [
     key: 'armoredBridge',
     rarity: 'Rare',
 
-    // NEW: Modifier fields (applied to Ship Card baselines)
+    // Modifier fields (applied to Ship Card baselines)
     hullModifier: 2,  // +2 hull to the lane
     shieldsModifier: 0,
     thresholdModifiers: { damaged: 0, critical: 0 },
@@ -84,7 +84,7 @@ const shipComponentCollection = [
     key: 'tacticalBridge',
     rarity: 'Uncommon',
 
-    // NEW: Modifier fields (applied to Ship Card baselines)
+    // Modifier fields (applied to Ship Card baselines)
     hullModifier: 0,
     shieldsModifier: 0,
     thresholdModifiers: { damaged: 0, critical: 0 },
@@ -123,7 +123,7 @@ const shipComponentCollection = [
     key: 'powerCell', // Legacy key for backward compatibility
     rarity: 'Common',
 
-    // NEW: Modifier fields (applied to Ship Card baselines)
+    // Modifier fields (applied to Ship Card baselines)
     hullModifier: 0,
     shieldsModifier: 0,
     thresholdModifiers: { damaged: 0, critical: 0 },
@@ -157,7 +157,7 @@ const shipComponentCollection = [
     key: 'droneControlHub', // Legacy key for backward compatibility
     rarity: 'Common',
 
-    // NEW: Modifier fields (applied to Ship Card baselines)
+    // Modifier fields (applied to Ship Card baselines)
     hullModifier: 0,
     shieldsModifier: 0,
     thresholdModifiers: { damaged: 0, critical: 0 },

@@ -14,15 +14,6 @@ import SeededRandom from './seededRandom.js';
  * @param {Object} shipStats - Effective ship stats (from ship sections)
  * @returns {number} Maximum number of cards the player can hold
  */
-export const calculateHandLimit = (playerState, shipStats) => {
-  // Default hand limit is typically based on bridge stats
-  // Ship stats should include 'Draw' property for hand limit
-  const baseHandLimit = shipStats?.totals?.Draw || 5; // Default to 5 if not specified
-
-  debugLog('CARDS', `📋 Calculated hand limit: ${baseHandLimit} for player ${playerState.name}`);
-  return baseHandLimit;
-};
-
 /**
  * Reshuffle discard pile into deck when deck is empty
  * Uses seeded RNG for deterministic multiplayer synchronization

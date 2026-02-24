@@ -209,20 +209,15 @@ export const downloadCsv = (csvContent, filename) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
 
-  if (navigator.msSaveBlob) {
-    // IE 10+
-    navigator.msSaveBlob(blob, fullFilename);
-  } else {
-    link.href = URL.createObjectURL(blob);
-    link.download = fullFilename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  link.href = URL.createObjectURL(blob);
+  link.download = fullFilename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 
-    // Clean up object URL
-    setTimeout(() => URL.revokeObjectURL(link.href), 100);
-  }
+  // Clean up object URL
+  setTimeout(() => URL.revokeObjectURL(link.href), 100);
 
   console.log(`[CSV Export] Downloaded: ${fullFilename}`);
 };

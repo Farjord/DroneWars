@@ -79,14 +79,6 @@ function transformCardForLoot(card) {
   };
 }
 
-const DEFAULT_STATE = {
-  // Reward history (for auditing/debugging)
-  rewardHistory: [],
-
-  // Active rewards pending finalization
-  pendingRewards: null
-};
-
 class RewardManager {
   constructor() {
     this.state = {

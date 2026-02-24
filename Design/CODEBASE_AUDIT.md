@@ -32,7 +32,7 @@
 
 - `network/` contains a single file (`P2PManager.js`). Could live in `services/` given it's an external interface.
 - `contexts/` contains a single file (`EditorStatsContext.jsx`). Lightweight; fine for now but could merge into `hooks/` or co-locate with its consumer if it stays solo.
-- `theme/` contains a single file (`theme.js`). Could merge into `config/` or `styles/`.
+- [FIXED] `theme/` contains a single file (`theme.js`). Could merge into `config/` or `styles/`.
 - `assets/` exists but wasn't listed in CODE_STANDARDS.md directory structure — contains static assets.
 
 **Recommendation:** No renames needed. Single-file directories (`network/`, `contexts/`, `theme/`) are acceptable as organizational anchors unless they're known dead-ends.
@@ -219,23 +219,23 @@
 - saveGameSchema.js — `defaultPlayerProfile` calls `Date.now()` and derives arrays via `.map`/`.filter` at import time; this is a factory function, not static data. Not in CODE_STANDARDS known violations list.
 
 **Other findings:**
-- [DEAD] cardPackData.js: `fullCardCollection` import on line 7 is unused. Remove.
+- [FIXED] [DEAD] cardPackData.js: `fullCardCollection` import on line 7 is unused. Remove.
 - [DUP] cardPackData.js: `RARITY_COLORS` (lines 12-17) is an exact duplicate of `src/data/rarityColors.js`. Remove and redirect consumers to canonical source.
 - [SIZE] cardData.js (1821), droneData.js (993) exceed 800 lines but are cohesive flat data arrays — low urgency.
 - [SIZE] aiStrategyDescriptions.js (678), codePatternDescriptions.js (402) — pure text data, acceptable.
 - [TODO] droneData.js:8 — "Recovery rate of 0. (Cannot recover - needs cards to do so)" — triage needed.
 - [TODO] mapMetaData.js:41 — "Add more map types as game design develops" — triage needed.
-- [COMMENT] shipSectionData.js — banned `// NEW: Modifier fields` pattern on 5 lines. Also `// DEPRECATED:` on 5 lines — verify if `key` properties are still consumed or remove.
+- [FIXED] [COMMENT] shipSectionData.js — banned `// NEW: Modifier fields` pattern on 5 lines. Also `// DEPRECATED:` on 5 lines — verify if `key` properties are still consumed or remove.
 - [DEAD] shipSectionData.js — `key` property on each component labeled "Legacy key for backward compatibility" — verify if still consumed.
-- [COMMENT] tutorialData.js — multiple spelling errors in user-facing text ("dissarray", "protocals", "constatly", "sucessfully", "ultiamately", "escaltes", "hear"→"here", "previosuly", "avaialbel").
-- [COMMENT] shipData.js:78 — typo "Leightweight reconnocence" → "Lightweight reconnaissance".
+- [FIXED] [COMMENT] tutorialData.js — multiple spelling errors in user-facing text ("dissarray", "protocals", "constatly", "sucessfully", "ultiamately", "escaltes", "hear"→"here", "previosuly", "avaialbel").
+- [FIXED] [COMMENT] shipData.js:78 — typo "Leightweight reconnocence" → "Lightweight reconnaissance".
 - [COMMENT] playerDeckData.js:4 — typo "leightweight" → "lightweight".
 - [COMMENT] vsModeDeckData.js:5 — typo "subtefuge" → "subterfuge".
 - [COMMENT] pointsOfInterestData.js — stale "TBD (placeholder)" comments in tierAIMapping.
 - [FIXED] [DUP] vsModeDeckData.js — VS_DECK_002 and VS_DECK_003 have identical decklists/dronePools/shipComponents. Only names differ. Likely copy-paste placeholder bug.
 - [DUP] pointsOfInterestData.js — three drone PoI entries repeat identical boolean config blocks.
 - [DUP] shipSectionData.js — BRIDGE_001 and BRIDGE_HEAVY have identical ability objects.
-- [NAME] vsModeDeckData.js — inconsistent indentation (1-space vs 4-space).
+- [FIXED] [NAME] vsModeDeckData.js — inconsistent indentation (1-space vs 4-space).
 - [EDGE] aiData.js — no validation that card IDs in AI decklists exist in `fullCardCollection`.
 
 #### A2: src/config/ (4 files)
@@ -248,7 +248,7 @@
 | soundConfig.js | 210 | 2 | COMMENT, DEAD |
 
 **Findings:**
-- [NAME] backgrounds.js — inconsistent ID casing: `nebula_1` (snake_case) vs `Orbit_1`, `Deep_Space_1` (Pascal_Snake). Normalize to snake_case.
+- [FIXED] [NAME] backgrounds.js — inconsistent ID casing: `nebula_1` (snake_case) vs `Orbit_1`, `Deep_Space_1` (Pascal_Snake). Normalize to snake_case.
 - [COMMENT] backgrounds.js — scaffolding "Add more backgrounds here" comment. Remove.
 - [DEAD] backgrounds.js — `getBackgroundById` fallback chain could return undefined despite JSDoc contract.
 - [SMELL] devConfig.js — `DEV_MODE = true` is hardcoded. Should derive from `import.meta.env.DEV` or warn about manual toggle.
@@ -260,7 +260,7 @@
 
 | File | Lines | Issues | Tags |
 |-|-|-|-|
-| theme.js | 71 | 1 | DEAD |
+| theme.js | 71 | 1 | [FIXED] DEAD |
 
 **Findings:**
 - [DEAD] **Entire file is dead code** — zero imports found across the codebase. `tailwindTheme`, `theme`, `getCSSCustomProperty`, `setCSSCustomProperty` are all unused. Delete or integrate.
@@ -318,8 +318,8 @@
 - [LOG] cardDrawUtils.js — 6x `console.warn` instead of debugLog.
 - [LOG] mapGenerator.js:76,80 — raw `console.log` in production code.
 - [LOG] phaseValidation.js — 6x `console.warn` instead of debugLog.
-- [DEAD] cardDrawUtils.js — `calculateHandLimit` exported but never imported.
-- [DEAD] csvExport.js — `navigator.msSaveBlob` IE10 compat code is dead in 2026.
+- [FIXED] [DEAD] cardDrawUtils.js — `calculateHandLimit` exported but never imported.
+- [FIXED] [DEAD] csvExport.js — `navigator.msSaveBlob` IE10 compat code is dead in 2026.
 - [DEAD] seededRandom.js — orphaned JSDoc block for deleted `forCardShuffle` factory.
 - [DUP] cardDrawUtils.js — player 1/player 2 processing blocks are near-identical copy-paste (~30 lines each).
 - [DUP] csvExport.js — `convertDecisionsToCsv` and `convertFullHistoryToCsv` share identical header/row logic.
@@ -435,7 +435,7 @@
 
 - **[SIZE] AttackProcessor.js (809)** — `resolveAttack` is ~524 lines. God function with 6x duplicate "find drone in lanes" pattern.
 - **[DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
-- **[DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
+- **[FIXED] [DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
 - **[DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
 - **[IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`.
 
@@ -560,7 +560,7 @@
 - **[ERROR] CommitmentStrategy.js:330** — silently swallows AI commitment errors.
 - **[DEAD] ShieldResetUtils.js:65** — `calculateReallocationDisplayShields` documented as "CURRENT BUG: not called". Dead code with known bug.
 - **[DEAD] MovementController.js** — `handleHexArrival` and `movePlayer` appear to be dead code.
-- **[DEAD] tickerConfig.js** — `MESSAGE_TEMPLATES` (100 lines) never imported by any generator.
+- **[FIXED] [DEAD] tickerConfig.js** — `MESSAGE_TEMPLATES` (100 lines) never imported by any generator.
 - **[LOG] DetectionManager.js** — 4x raw `console.log`/`console.warn` including on every hex move.
 - **[LOG] MovementController.js** — 7x raw `console.log`/`console.error`.
 - **[LOG] LootGenerator.js** — 4x `console.warn`.
@@ -660,7 +660,7 @@
 **RewardManager.js (1028 lines, 5 issues):**
 - **[SIZE]** — 1028 lines. Card selection pipeline (`selectCard`, `rollRarity`, `rollCardType`, `weightedRoll`, `shuffleArray`, `createRNG`) is a natural extraction seam.
 - **[LOG] :336,497,609,833** — 4 `console.warn` calls.
-- **[DEAD] :82-88** — `DEFAULT_STATE` constant defined but never referenced. Constructor creates same structure inline.
+- **[FIXED] [DEAD] :82-88** — `DEFAULT_STATE` constant defined but never referenced. Constructor creates same structure inline.
 - **[TODO] :468** — `reputation: 0, // TODO: Calculate reputation` not tracked in FUTURE_IMPROVEMENTS.md.
 - **[COMMENT]** — Test file `__tests__/RewardManager.test.js` contains banned `// NEW` comments (5 occurrences).
 
@@ -742,7 +742,7 @@
 - **[LOG] P2PManager.js** — 21 raw `console.error`/`console.warn` calls throughout (lines 65, 126, 240, 328, 339, 352, 355, 368, 373, 409, 421, 426, 439, 450, 455, 468, 480, 485, 507, 516). Worst logging violation in the codebase.
 - **[SIZE]** — 593 lines (400+ threshold). Three sub-concerns: connection lifecycle (~170 lines), message sending (~150 lines), action handler setup (~85 lines).
 - **[DUP]** — Guard pattern `if (!this.isConnected || !this.currentPeerId) { console.warn(...); return; }` copy-pasted in 5 methods. Extract `_requireConnection(context)`.
-- **[DEAD] :515-526** — `syncGameState()` is deprecated with `console.warn`. Remove or fix callers.
+- **[FIXED] [DEAD] :515-526** — `syncGameState()` is deprecated with `console.warn`. Remove or fix callers.
 - **[TEST]** — No test file. 593 lines of WebRTC lifecycle with no coverage is a significant gap.
 
 #### Phase C — Critical Findings Summary
@@ -997,10 +997,10 @@
 
 | File | Lines | Issues | Status |
 |-|-|-|-|
-| CorvetteIcon.jsx | 126 | 1 | Reviewed |
+| CorvetteIcon.jsx | 126 | 1 | [FIXED] Reviewed |
 | ShipIconRenderer.jsx | 118 | 1 | Reviewed |
 
-- **[DEAD] CorvetteIcon.jsx** — Orphaned component. Only imported by commented-out code in ShipIconRenderer (uses PNG instead).
+- **[FIXED] [DEAD] CorvetteIcon.jsx** — Orphaned component. Only imported by commented-out code in ShipIconRenderer (uses PNG instead).
 - **[DEAD] ShipIconRenderer.jsx:22-26** — `FACTION_COLORS` constant only referenced in commented-out code.
 
 #### E3: src/components/quickDeploy/ (4 files, 4 issues)
@@ -1072,12 +1072,12 @@
 | ActionCard.jsx | 224 | 1 | Reviewed |
 | AngularBandsBackground.jsx | 127 | 1 | Reviewed |
 | TacticalTicker.jsx | 78 | 1 | Reviewed |
-| WaitingOverlay.jsx | 36 | 1 | Reviewed |
+| WaitingOverlay.jsx | 36 | 1 | [FIXED] Reviewed |
 | ~52 other files | varies | 0 | Reviewed |
 
 - **[LOG] InterceptionTargetLine.jsx:32-57** — 5 raw `console.log` calls.
 - **[LOGIC] TacticalTicker.jsx:49** — **BUG:** useEffect has `[]` deps but reads `isMoving` and `currentRunState` — stale closure bug.
-- **[DEAD] WaitingOverlay.jsx** — 6 props destructured but never used.
+- **[FIXED] [DEAD] WaitingOverlay.jsx** — 6 props destructured but never used.
 - **[DUP] ShipSection.jsx + ShipSectionCompact.jsx** — Both define identical `ShipAbilityIcon` inner component.
 - **[PURITY] ResourceCard.jsx:16-52** — Inline `RESOURCE_CONFIG` data object.
 - **[PURITY] CardBackPlaceholder.jsx:10-51** — Inline color config objects.
@@ -1230,7 +1230,7 @@
 - **[SIZE]** — 1333 lines. Despite heavy hook extraction, still owns ~50 useState, ~10 refs, ~10 hooks, and a 400-line render prop-pass. Animation state cluster (lines 127-146, ~20 setters) could extract to `useAnimationState`. ModalLayer prop-pass could collapse into a context.
 - **[DEAD] :160,162,205,723,780,782,789,791** — Eight "moved to..." breadcrumb comments (e.g., `// Combat and attack state -- potentialGuardians moved to useInterception`). Banned per comment standards.
 - **[DEAD] :443-452** — Commented-out debugLog block.
-- **[DEAD] :1317-1326** — `WaitingOverlay` rendered with `isVisible={false}` and `lastAction={null}`. Inert dead code.
+- **[FIXED] [DEAD] :1317-1326** — `WaitingOverlay` rendered with `isVisible={false}` and `lastAction={null}`. Inert dead code.
 - **[DEAD] :374** — `// addLogEntry is now provided by useGameState hook` — stale breadcrumb.
 - **[SMELL] :215-242** — `useAnimationSetup` receives 18 individual setter functions as arguments. Brittle call signature.
 - **[SMELL] :601-615** — `cancelAllActions` is a plain function (not `useCallback`) but passed as dependency to `useDragMechanics`. New reference every render defeats memoization.

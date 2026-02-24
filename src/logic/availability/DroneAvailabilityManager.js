@@ -87,7 +87,7 @@ export const processRebuildProgress = (droneAvailability) => {
         newState.readyCount += 1;
       }
 
-      // NEW MODEL INVARIANT: readyCount + rebuildingCount = copyLimit (production slots)
+      // Model invariant: readyCount + rebuildingCount = copyLimit (production slots)
       // inPlayCount is tracked separately and represents drones on the board
       // No cap needed since we only move units between ready and rebuilding
     }
@@ -102,7 +102,7 @@ export const processRebuildProgress = (droneAvailability) => {
  * Handle drone deployment
  * Decrements readyCount, increments inPlayCount AND starts rebuilding immediately
  *
- * NEW MODEL: When a drone deploys, its production slot immediately starts rebuilding
+ * When a drone deploys, its production slot immediately starts rebuilding
  * This maintains invariant: readyCount + rebuildingCount = copyLimit
  *
  * @param {Object} droneAvailability - Current availability state
@@ -127,7 +127,7 @@ export const onDroneDeployed = (droneAvailability, droneName) => {
   if (updated[droneName].readyCount > 0) {
     updated[droneName].readyCount -= 1;
     updated[droneName].inPlayCount += 1;
-    updated[droneName].rebuildingCount += 1; // NEW: Start rebuilding immediately
+    updated[droneName].rebuildingCount += 1; // Start rebuilding immediately
     debugLog('AVAILABILITY', `[${droneName}] Deployed - new state:`, updated[droneName]);
   } else {
     debugLog('AVAILABILITY', `[${droneName}] Cannot deploy - no ready copies`);
