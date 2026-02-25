@@ -199,6 +199,65 @@ class EffectChainProcessor {
       timestamp: Date.now(),
     });
 
+    // CARD_VISUAL animation (if card has visualEffect and a board target)
+    if (card.visualEffect && selections[0]?.target) {
+      const sel0 = selections[0];
+      const t = sel0.target;
+      let targetPlayer = null;
+      let targetLane = null;
+      let targetType = null;
+
+      if (t.id?.startsWith('lane')) {
+        const affinity = effects[0]?.targeting?.affinity || 'ANY';
+        if (affinity === 'ENEMY') {
+          targetPlayer = playerId === 'player1' ? 'player2' : 'player1';
+        } else if (affinity === 'ANY') {
+          targetPlayer = 'center';
+        }
+        targetLane = t.id;
+        targetType = 'lane';
+      } else {
+        for (const pid of ['player1', 'player2']) {
+          const board = currentStates[pid]?.dronesOnBoard || {};
+          for (const lane of ['lane1', 'lane2', 'lane3']) {
+            if ((board[lane] || []).some(d => d.id === t.id)) {
+              targetPlayer = pid;
+              targetLane = lane;
+              targetType = 'drone';
+              break;
+            }
+          }
+          if (targetPlayer) break;
+        }
+        if (!targetPlayer) {
+          for (const pid of ['player1', 'player2']) {
+            const sections = currentStates[pid]?.shipSections || {};
+            if (sections[t.name] || sections[t.id]) {
+              targetPlayer = pid;
+              targetType = 'section';
+              break;
+            }
+          }
+        }
+      }
+
+      if (targetPlayer && targetType) {
+        allAnimationEvents.push({
+          type: 'CARD_VISUAL',
+          cardId: card.id,
+          cardName: card.name,
+          visualType: card.visualEffect.type,
+          sourceId: playerId === 'player1' ? 'player1-hand' : 'player2-hand',
+          sourcePlayer: playerId,
+          targetId: t.id,
+          targetPlayer,
+          targetLane,
+          targetType,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
     // 2. Process each effect in order
     for (let i = 0; i < effects.length; i++) {
       const chainEffect = effects[i];

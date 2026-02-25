@@ -5,11 +5,106 @@
 
 import { gameEngine } from '../gameLogic.js';
 import CardPlayManager from '../cards/CardPlayManager.js';
+import EffectChainProcessor from '../cards/EffectChainProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import EffectRouter from '../EffectRouter.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
+
+// --- Chain Engine Card Processing ---
+// Used for cards with native effects[] (migrated from legacy schema).
+// Replaces gameEngine.resolveCardPlay with EffectChainProcessor.processEffectChain.
+
+let _chainProcessor = null;
+function getChainProcessor() {
+  if (!_chainProcessor) _chainProcessor = new EffectChainProcessor();
+  return _chainProcessor;
+}
+
+function _findTargetLane(target, playerStates) {
+  if (!target || !target.id) return null;
+  if (target.id.startsWith('lane')) return target.id;
+  for (const pid of ['player1', 'player2']) {
+    const board = playerStates[pid]?.dronesOnBoard || {};
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      if ((board[lane] || []).some(d => d.id === target.id)) return lane;
+    }
+  }
+  return null;
+}
+
+function _generateOutcome(card, target) {
+  const effect = card.effect;
+  const targetName = target ? (target.name || target.id) : 'N/A';
+  if (!effect) return 'Card effect applied.';
+  if (effect.type === 'DRAW') return `Drew ${effect.value} card(s).`;
+  if (effect.type === 'GAIN_ENERGY') return `Gained ${effect.value} energy.`;
+  if (effect.type === 'HEAL_HULL') return `Healed ${effect.value} hull on ${targetName}.`;
+  if (effect.type === 'HEAL_SHIELDS') return `Healed ${effect.value} shields on ${targetName}.`;
+  if (effect.type === 'READY_DRONE') return `Readied ${targetName}.`;
+  if (effect.type === 'DAMAGE') {
+    if (card.targeting?.affectedFilter) return `Dealt ${effect.value} damage to filtered targets in ${targetName}.`;
+    return `Dealt ${effect.value} damage to ${targetName}.`;
+  }
+  if (effect.type === 'MODIFY_STAT') {
+    const mod = effect.mod;
+    const durationText = mod.type === 'temporary' ? ' until the end of the turn' : ' permanently';
+    return `Gave ${targetName} a ${mod.value > 0 ? '+' : ''}${mod.value} ${mod.stat} bonus${durationText}.`;
+  }
+  return 'Card effect applied.';
+}
+
+async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx) {
+  debugLog('EFFECT_CHAIN', `⚡ Chain engine processing: ${card.name}`, { playerId, targetId: target?.id });
+
+  const callbacks = {
+    logCallback: (entry) => ctx.addLogEntry(entry),
+    resolveAttackCallback: async (attackPayload) => ctx.processAttack(attackPayload),
+    applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+    updateAurasCallback: gameEngine.updateAuras,
+    actionsTakenThisTurn: currentState.actionsTakenThisTurn || 0
+  };
+
+  // Log the card play
+  const outcome = _generateOutcome(card, target);
+  callbacks.logCallback({
+    player: playerStates[playerId].name,
+    actionType: 'PLAY_CARD',
+    source: card.name,
+    target: target ? (target.name || target.id) : 'N/A',
+    outcome,
+  });
+
+  // Build selection for single-effect cards
+  const lane = _findTargetLane(target, playerStates);
+  const selections = [{ target, lane }];
+
+  const result = getChainProcessor().processEffectChain(card, selections, playerId, {
+    playerStates,
+    placedSections,
+    callbacks,
+    localPlayerId: ctx.getLocalPlayerId(),
+    gameMode: currentState.gameMode || 'local',
+  });
+
+  debugLog('CARDS', '[ANIMATION EVENTS] Chain card play events:', result.animationEvents);
+
+  const animations = ctx.mapAnimationEvents(result.animationEvents);
+  ctx.captureAnimationsForBroadcast(animations);
+  await ctx.executeAnimationPhase(animations, result.newPlayerStates);
+
+  ctx.checkWinCondition();
+
+  if (!result.shouldEndTurn) {
+    await ctx.executeGoAgainAnimation(playerId);
+  }
+
+  return {
+    ...result,
+    animations: { actionAnimations: animations, systemAnimations: [] }
+  };
+}
 
 /**
  * Process card play action
@@ -73,6 +168,12 @@ export async function processCardPlay(payload, ctx) {
     }
   }
 
+  // --- Chain engine path for cards with native effects[] ---
+  if (card._chainEnabled) {
+    return _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx);
+  }
+
+  // --- Legacy path ---
   const callbacks = {
     logCallback: (entry) => ctx.addLogEntry(entry),
     resolveAttackCallback: async (attackPayload) => {

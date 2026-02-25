@@ -203,10 +203,44 @@ function buildEffectsFromLegacy(card) {
   return buildSimpleEffect(card);
 }
 
+// --- Backward-Compat Derivation ---
+// For cards with native effects[] that lack legacy fields (effect, targeting),
+// derive them from effects[0] so existing code continues to work during migration.
+
+const CHAIN_ONLY_FIELDS = new Set(['targeting', 'conditionals', 'prompt', 'destination']);
+
+function deriveBackwardCompat(enriched, effects) {
+  const primary = effects[0];
+  if (!primary) return;
+
+  // Derive card.effect from effects[0] (strip chain-only fields)
+  const effectFields = {};
+  for (const key of Object.keys(primary)) {
+    if (!CHAIN_ONLY_FIELDS.has(key)) effectFields[key] = primary[key];
+  }
+  enriched.effect = effectFields;
+
+  // Derive card.targeting from effects[0].targeting
+  if (primary.targeting) enriched.targeting = primary.targeting;
+
+  // Derive card.conditionalEffects from effects[0].conditionals
+  if (primary.conditionals) enriched.conditionalEffects = primary.conditionals;
+
+  // Mark as chain-enabled for routing in processCardPlay
+  Object.defineProperty(enriched, '_chainEnabled', { value: true, enumerable: false });
+}
+
 function enrichCardsWithEffects(cards) {
   return cards.map(card => {
+    const hasNativeEffects = !!card.effects;
     const effects = buildEffectsFromLegacy(card);
-    return { ...card, effects };
+    const enriched = { ...card, effects };
+
+    if (hasNativeEffects && !card.effect && effects.length > 0) {
+      deriveBackwardCompat(enriched, effects);
+    }
+
+    return enriched;
   });
 }
 
