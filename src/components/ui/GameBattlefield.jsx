@@ -64,6 +64,7 @@ function GameBattlefield({
   multiSelectState,
   secondaryTargetingState,
   additionalCostState,
+  effectChainState,
   turnPhase,
   reallocationPhase,
   pendingShieldAllocations,
@@ -152,6 +153,7 @@ function GameBattlefield({
           multiSelectState={multiSelectState}
           secondaryTargetingState={secondaryTargetingState}
           additionalCostState={additionalCostState}
+          effectChainState={effectChainState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}
@@ -195,6 +197,7 @@ function GameBattlefield({
           multiSelectState={multiSelectState}
           secondaryTargetingState={secondaryTargetingState}
           additionalCostState={additionalCostState}
+          effectChainState={effectChainState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}

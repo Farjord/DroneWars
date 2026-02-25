@@ -32,12 +32,16 @@ function ActionPhaseButtons({
   handleResetInterception,
   handleConfirmInterception,
   handleCancelSecondaryTargeting,
-  handleCancelAdditionalCost
+  handleCancelAdditionalCost,
+  // Effect chain multi-target props
+  effectChainState,
+  handleConfirmChainMultiSelect,
+  handleCancelEffectChain
 }) {
   return (
     <>
       {/* Pass Button - Hide during reallocation */}
-      {isMyTurn() && !mandatoryAction && !multiSelectState && !secondaryTargetingState && !additionalCostState && !reallocationPhase && (
+      {isMyTurn() && !mandatoryAction && !multiSelectState && !secondaryTargetingState && !additionalCostState && !reallocationPhase && !effectChainState && (
         <button
           onClick={handlePlayerPass}
           disabled={passInfo[`${getLocalPlayerId()}Passed`]}
@@ -131,6 +135,29 @@ function ActionPhaseButtons({
               Confirm Drones
             </button>
           )}
+        </>
+      )}
+
+      {/* Effect Chain Multi-Target Controls */}
+      {effectChainState?.subPhase === 'multi-target' && !multiSelectState && (
+        <>
+          <button
+            onClick={handleCancelEffectChain}
+            className="dw-btn dw-btn-danger dw-btn--sm"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleConfirmChainMultiSelect();
+            }}
+            disabled={!effectChainState.pendingMultiTargets?.length}
+            className="dw-btn dw-btn-confirm dw-btn--sm"
+          >
+            Confirm Drones
+          </button>
         </>
       )}
 

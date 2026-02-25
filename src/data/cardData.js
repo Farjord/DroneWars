@@ -1143,13 +1143,9 @@ const fullCardCollection = [
     momentumCost: 1,
     image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
-    effect: {
-      type: 'MULTI_MOVE',
-      count: 3,
-      source: { location: 'SAME_LANE', affinity: 'FRIENDLY' },
-      destination: { affinity: 'FRIENDLY' },
-      properties: ['DO_NOT_EXHAUST'],
-    },
+    effects: [
+      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'SAME_LANE', maxTargets: 3 }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+    ],
   },
   {
     id: 'CARD023',

@@ -74,6 +74,7 @@ export default function useClickHandlers({
   effectChainState,
   selectChainTarget,
   selectChainDestination,
+  selectChainMultiTarget,
 
   // --- From useShieldAllocation ---
   shipAbilityMode,
@@ -465,10 +466,12 @@ export default function useClickHandlers({
           return;
       }
 
-      // 1.5. Effect chain drone selection — route to chain target/destination
+      // 1.5. Effect chain drone selection — route to chain target/destination/multi-target
       if (effectChainState && !effectChainState.complete) {
           const tokenOwnerChain = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-          const isValidChainTarget = validCardTargets.some(t => t.id === token.id && t.owner === tokenOwnerChain);
+          // For multi-target, also check already-selected drones (for toggle-off)
+          const isValidChainTarget = validCardTargets.some(t => t.id === token.id && t.owner === tokenOwnerChain)
+              || (effectChainState.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === token.id));
           if (isValidChainTarget) {
               const droneState = tokenOwnerChain === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
               const droneLane = Object.entries(droneState.dronesOnBoard).find(([_, drones]) =>
@@ -477,7 +480,11 @@ export default function useClickHandlers({
               debugLog('EFFECT_CHAIN', '🎯 Chain drone click', {
                   tokenId: token.id, droneLane, subPhase: effectChainState.subPhase,
               });
-              selectChainTarget(token, droneLane);
+              if (effectChainState.subPhase === 'multi-target') {
+                  selectChainMultiTarget(token, droneLane);
+              } else {
+                  selectChainTarget(token, droneLane);
+              }
               return;
           }
       }

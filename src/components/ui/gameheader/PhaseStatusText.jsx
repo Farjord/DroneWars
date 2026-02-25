@@ -27,7 +27,8 @@ function PhaseStatusText({
   multiSelectState,
   interceptionModeActive,
   secondaryTargetingState,
-  additionalCostState
+  additionalCostState,
+  effectChainState
 }) {
   return (
     <h2
@@ -106,6 +107,19 @@ function PhaseStatusText({
           {additionalCostState.phase === 'select_cost' && `(Select ${additionalCostState.card.additionalCost.description || 'cost'})`}
           {additionalCostState.phase === 'select_cost_movement_destination' && `(Moving ${extractDroneNameFromId(additionalCostState.costSelection.drone.id)} - select destination)`}
           {additionalCostState.phase === 'select_effect' && `(Select target for ${additionalCostState.card.name})`}
+        </span>
+      )}
+      {/* Effect Chain Status Text */}
+      {effectChainState && !effectChainState.complete && (
+        <span className="text-base font-semibold text-cyan-300 ml-2">
+          {effectChainState.prompt
+            ? `(${effectChainState.prompt})`
+            : effectChainState.subPhase === 'multi-target'
+              ? `(${effectChainState.pendingMultiTargets?.length || 0} drones selected)`
+              : effectChainState.subPhase === 'destination'
+                ? '(Select destination lane)'
+                : `(Step ${effectChainState.currentIndex + 1} of ${effectChainState.effects.length})`
+          }
         </span>
       )}
     </h2>

@@ -523,7 +523,8 @@ const App = ({ phaseAnimationQueue }) => {
     secondaryTargetingState, setSecondaryTargetingState,
     enterSecondaryTargeting, cancelSecondaryTargeting,
     // Effect chain (unified sequential effect selection)
-    effectChainState, startEffectChain, selectChainTarget, selectChainDestination, cancelEffectChain,
+    effectChainState, startEffectChain, selectChainTarget, selectChainDestination,
+    selectChainMultiTarget, confirmChainMultiSelect, cancelEffectChain,
   } = useCardSelection({
     processActionWithGuestRouting,
     getLocalPlayerId,
@@ -871,6 +872,7 @@ const App = ({ phaseAnimationQueue }) => {
     secondaryTargetingState, cancelSecondaryTargeting,
     // From useCardSelection — effect chain
     effectChainState, selectChainTarget, selectChainDestination,
+    selectChainMultiTarget,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
     setReallocationPhase, setShieldsToRemove, setShieldsToAdd,
@@ -1033,6 +1035,10 @@ const App = ({ phaseAnimationQueue }) => {
         // Additional cost mode props
         additionalCostState={additionalCostState}
         handleCancelAdditionalCost={cancelAdditionalCostMode}
+        // Effect chain props
+        effectChainState={effectChainState}
+        handleConfirmChainMultiSelect={confirmChainMultiSelect}
+        handleCancelEffectChain={cancelEffectChain}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
         isExtractionMode={tacticalMapStateManager.isRunActive()}
@@ -1054,6 +1060,7 @@ const App = ({ phaseAnimationQueue }) => {
         multiSelectState={multiSelectState}
         secondaryTargetingState={secondaryTargetingState}
         additionalCostState={additionalCostState}
+        effectChainState={effectChainState}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
         pendingShieldAllocations={pendingShieldAllocations}

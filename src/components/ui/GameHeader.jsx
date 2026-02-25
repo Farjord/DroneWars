@@ -136,6 +136,10 @@ function GameHeader({
   // Additional cost mode props
   additionalCostState,
   handleCancelAdditionalCost,
+  // Effect chain props
+  effectChainState,
+  handleConfirmChainMultiSelect,
+  handleCancelEffectChain,
   // Extraction mode props
   currentRunState,
   isExtractionMode,
@@ -379,6 +383,7 @@ function GameHeader({
           interceptionModeActive={interceptionModeActive}
           secondaryTargetingState={secondaryTargetingState}
           additionalCostState={additionalCostState}
+          effectChainState={effectChainState}
         />
 
         {/* Turn Indicator - Always show */}
@@ -446,6 +451,9 @@ function GameHeader({
               handleConfirmInterception={handleConfirmInterception}
               handleCancelSecondaryTargeting={handleCancelSecondaryTargeting}
               handleCancelAdditionalCost={handleCancelAdditionalCost}
+              effectChainState={effectChainState}
+              handleConfirmChainMultiSelect={handleConfirmChainMultiSelect}
+              handleCancelEffectChain={handleCancelEffectChain}
             />
             </>
           ) : (

@@ -71,6 +71,7 @@ const renderDronesOnBoard = ({
   getOpponentPlayerId,
   abilityMode,
   additionalCostState,
+  effectChainState,
   selectedCard,
   hoveredLane,
 }) => {
@@ -160,7 +161,10 @@ const renderDronesOnBoard = ({
                 (additionalCostState?.costSelection?.drone?.id === drone.id) ||
                 (secondaryTargetingState?.primaryTarget?.id === drone.id)
               }
-              isSelectedForMove={multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)}
+              isSelectedForMove={
+                (multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)) ||
+                (effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id))
+              }
               isHit={recentlyHitDrones.includes(drone.id)}
               isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
               isPotentialGuardian={potentialGuardians.includes(drone.id)}
@@ -195,7 +199,8 @@ const renderDronesOnBoard = ({
               isHovered={
                 hoveredTarget?.target?.id === drone.id &&
                 !(selectedDrone && selectedDrone.id === drone.id) &&
-                !(multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id))
+                !(multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)) &&
+                !(effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id))
               }
               draggedActionCard={draggedActionCard}
               onActionCardDrop={handleActionCardDragEnd}
@@ -272,6 +277,7 @@ const DroneLanesDisplay = ({
   multiSelectState,
   secondaryTargetingState,
   additionalCostState,
+  effectChainState,
   turnPhase,
   localPlayerState,
   opponentPlayerState,
@@ -497,6 +503,7 @@ const DroneLanesDisplay = ({
               getOpponentPlayerId,
               abilityMode,
               additionalCostState,
+              effectChainState,
               selectedCard,
               hoveredLane,
             })}
