@@ -63,7 +63,6 @@ describe('DroneLanesDisplay action card drop', () => {
       { id: 'lane2', owner: 'player2' },
       { id: 'lane3', owner: 'player2' }
     ],
-    multiSelectState: null,
     turnPhase: 'action',
     localPlayerState: { energy: 5 },
     opponentPlayerState: { energy: 5 },

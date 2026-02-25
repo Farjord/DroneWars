@@ -25,7 +25,6 @@ function GameFooter({
   gameLog,
   footerView,
   isFooterOpen,
-  multiSelectState,
   selectedCard,
   turnPhase,
   mandatoryAction,
@@ -61,7 +60,6 @@ function GameFooter({
   draggedCard,
   handleActionCardDragStart,
   draggedActionCard,
-  additionalCostState,
   actionsTakenThisTurn = 0,
   onCardPlayWarning,
   onCardPlayWarningClear
@@ -155,7 +153,6 @@ function GameFooter({
                 opponentPlayerState={opponentPlayerState}
                 handleActionCardDragStart={handleActionCardDragStart}
                 draggedActionCard={draggedActionCard}
-                additionalCostState={additionalCostState}
                 actionsTakenThisTurn={actionsTakenThisTurn}
                 onCardPlayWarning={onCardPlayWarning}
                 onCardPlayWarningClear={onCardPlayWarningClear}

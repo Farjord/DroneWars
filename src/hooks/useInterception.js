@@ -13,7 +13,6 @@ import { calculatePotentialInterceptors } from '../logic/combat/InterceptionProc
  * @param {Object} deps.opponentPlayerState - Opponent player's state
  * @param {Object|null} deps.selectedDrone - Currently selected drone (click-selected)
  * @param {Object|null} deps.draggedDrone - Currently dragged drone
- * @param {Object|null} deps.secondaryTargetingState - Active secondary targeting flow
  * @param {Object|null} deps.abilityMode - Active ability targeting mode
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
  * @param {Function} deps.getPlacedSectionsForEngine - Returns placed sections for engine
@@ -25,7 +24,6 @@ const useInterception = ({
   opponentPlayerState,
   selectedDrone,
   draggedDrone,
-  secondaryTargetingState,
   abilityMode,
   getLocalPlayerId,
   getPlacedSectionsForEngine,
@@ -54,12 +52,6 @@ const useInterception = ({
       return;
     }
 
-    // Skip interception calculations during SINGLE_MOVE card flow
-    if (secondaryTargetingState) {
-      setPotentialInterceptors([]);
-      return;
-    }
-
     // Skip interception calculations during ability targeting (abilities can't be intercepted)
     if (abilityMode) {
       setPotentialInterceptors([]);
@@ -79,7 +71,7 @@ const useInterception = ({
     } else {
       setPotentialInterceptors([]);
     }
-  }, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine, interceptionModeActive, playerInterceptionChoice, secondaryTargetingState, abilityMode]);
+  }, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine, interceptionModeActive, playerInterceptionChoice, abilityMode]);
 
   // Monitor unified interceptionPending state for both AI and human defenders
   useEffect(() => {
@@ -122,11 +114,6 @@ const useInterception = ({
   // Calculate potential guardian blockers when drone is selected
   // Highlights opponent drones with GUARDIAN keyword in the same lane
   useEffect(() => {
-    if (secondaryTargetingState) {
-      setPotentialGuardians([]);
-      return;
-    }
-
     if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
       const laneEntry = Object.entries(localPlayerState.dronesOnBoard)
         .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id));
@@ -147,7 +134,7 @@ const useInterception = ({
     } else {
       setPotentialGuardians([]);
     }
-  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats, secondaryTargetingState]);
+  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats]);
 
   // --- Handlers ---
 

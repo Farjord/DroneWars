@@ -55,7 +55,6 @@ describe('DroneLanesDisplay lane targeting styles', () => {
     selectedCard: null,
     validCardTargets: [],
     affectedDroneIds: [],
-    multiSelectState: null,
     turnPhase: 'action',
     localPlayerState: mockPlayerState,
     opponentPlayerState: mockPlayerState,

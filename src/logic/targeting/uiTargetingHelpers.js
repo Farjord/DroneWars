@@ -1,13 +1,12 @@
 // ========================================
 // UI TARGETING HELPERS
 // ========================================
-// Multi-step targeting calculations for UI components.
+// Targeting calculations for UI components.
 // Pure calculation functions with no state changes - used by App.jsx for highlighting valid targets.
 //
 // WHAT THIS FILE CONTAINS:
-// 1. calculateMultiSelectTargets - Phased selection for SINGLE_MOVE and MULTI_MOVE cards
-// 2. calculateUpgradeTargets - Drone upgrade slot validation
-// 3. calculateAllValidTargets - Central coordinator routing to appropriate calculation
+// 1. calculateUpgradeTargets - Drone upgrade slot validation
+// 2. calculateAllValidTargets - Central coordinator routing to appropriate calculation
 //
 // USAGE:
 // - Import from this file in UI components (App.jsx, etc.)
@@ -15,123 +14,9 @@
 
 import fullDroneCollection from '../../data/droneData.js';
 import TargetingRouter from '../TargetingRouter.js';
-import { debugLog } from '../../utils/debugLogger.js';
 
 // Initialize TargetingRouter for ability/card targeting
 const targetingRouter = new TargetingRouter();
-
-/**
- * Calculate valid targets for multi-select card effects
- *
- * Handles phased selection for SINGLE_MOVE and MULTI_MOVE cards:
- * - SINGLE_MOVE: select_drone → select_destination
- * - MULTI_MOVE: select_source_lane → select_drones → select_destination_lane
- *
- * @param {Object} multiSelectState - Current selection state { phase, sourceLane, card }
- * @param {Object} player1 - Player 1 state
- * @param {Object} player2 - Player 2 state
- * @param {string} actingPlayerId - 'player1' or 'player2'
- * @returns {Array} List of valid target objects
- */
-export const calculateMultiSelectTargets = (multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn = null) => {
-    const { phase, sourceLane, card } = multiSelectState;
-
-    // Determine which player state to target based on card affinity
-    const targetAffinity = card.targeting?.affinity || 'FRIENDLY';
-    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-
-    let targetPlayerId;
-    let targetPlayerState;
-
-    if (targetAffinity === 'ENEMY') {
-        targetPlayerId = opponentPlayerId;
-        targetPlayerState = opponentPlayerId === 'player1' ? player1 : player2;
-    } else {
-        // Default to friendly (acting player)
-        targetPlayerId = actingPlayerId;
-        targetPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-    }
-
-    // For phases that need acting player state (non-targeting phases)
-    const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-
-    let targets = [];
-
-    if (card.effect.type === 'SINGLE_MOVE') {
-        if (phase === 'select_drone') {
-            // Target drones based on card affinity (ENEMY or FRIENDLY)
-            const opponentState = targetPlayerId === 'player1' ? player2 : player1;
-            Object.entries(targetPlayerState.dronesOnBoard).forEach(([lane, drones]) => {
-                drones.forEach(drone => {
-                    if (drone.isExhausted) return;
-                    // Filter out INERT drones
-                    if (getEffectiveStatsFn) {
-                        const stats = getEffectiveStatsFn(drone, lane);
-                        if (stats.keywords.has('INERT')) return;
-                    }
-                    targets.push({ ...drone, lane, owner: targetPlayerId });
-                });
-            });
-        } else if (phase === 'select_destination') {
-            // Target adjacent lanes
-            const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
-
-            debugLog('TARGETING_PROCESSING', '🎯 PHASE: select_destination detected', {
-                sourceLane,
-                sourceLaneIndex,
-                willCalculateAdjacent: true
-            });
-
-            ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-                const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
-                const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
-                if (isAdjacent) {
-                    targets.push({ id: laneId, owner: actingPlayerId });
-
-                    debugLog('TARGETING_PROCESSING', `✅ Adding adjacent lane: ${laneId}`, {
-                        sourceLaneIndex,
-                        targetLaneIndex,
-                        distance: Math.abs(sourceLaneIndex - targetLaneIndex)
-                    });
-                }
-            });
-        }
-    } else if (phase === 'select_source_lane') {
-        // Target friendly lanes that have at least one drone
-        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-            if (actingPlayerState.dronesOnBoard[laneId].length > 0) {
-                targets.push({ id: laneId, owner: actingPlayerId });
-            }
-        });
-    } else if (phase === 'select_drones') {
-        // Target non-exhausted drones within the selected source lane
-        actingPlayerState.dronesOnBoard[sourceLane]
-            .filter(drone => {
-                if (drone.isExhausted) return false;
-                // Filter out INERT drones
-                if (getEffectiveStatsFn) {
-                    const stats = getEffectiveStatsFn(drone, sourceLane);
-                    if (stats.keywords.has('INERT')) return false;
-                }
-                return true;
-            })
-            .forEach(drone => {
-                targets.push({ ...drone, lane: sourceLane, owner: actingPlayerId });
-            });
-    } else if (phase === 'select_destination_lane') {
-        // Target ADJACENT friendly lanes
-        const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
-        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-            const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
-            const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
-            if (isAdjacent) {
-                targets.push({ id: laneId, owner: actingPlayerId });
-            }
-        });
-    }
-
-    return targets;
-};
 
 /**
  * Calculate valid targets for upgrade card application
@@ -172,19 +57,17 @@ export const calculateUpgradeTargets = (selectedCard, playerState) => {
  * Calculate all valid targets for current player action
  *
  * Central UI targeting coordinator that routes to appropriate target calculation
- * based on current action mode (ability, ship ability, card play, or multi-select).
+ * based on current action mode (ability, ship ability, or card play).
  *
  * @param {Object} abilityMode - Drone ability being used (if any)
  * @param {Object} shipAbilityMode - Ship ability being used (if any)
- * @param {Object} multiSelectState - Multi-step selection state (if any)
  * @param {Object} selectedCard - Card being played (if any)
  * @param {Object} player1 - Player 1 state
  * @param {Object} player2 - Player 2 state
  * @param {string} localPlayerId - 'player1' or 'player2'
- * @param {Object} _singleMoveMode - Deprecated, unused (secondary targeting handles this)
  * @returns {Object} { validAbilityTargets, validCardTargets }
  */
-export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, _singleMoveMode = null, getEffectiveStatsFn = null) => {
+export const calculateAllValidTargets = (abilityMode, shipAbilityMode, selectedCard, player1, player2, localPlayerId, getEffectiveStatsFn = null) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
 
@@ -206,56 +89,10 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
             player2,
             getEffectiveStats: getEffectiveStatsFn
         });
-    } else if (multiSelectState) {
-        // Determine which player state to use based on who is acting
-        const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
             const localPlayer = localPlayerId === 'player1' ? player1 : player2;
             validCardTargets = calculateUpgradeTargets(selectedCard, localPlayer);
-        } else if (selectedCard.effect.type === 'MULTI_MOVE') {
-            // MULTI_MOVE cards use multiSelectState for targeting via calculateMultiSelectTargets
-            if (multiSelectState) {
-                const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
-            } else {
-                validCardTargets = [];
-            }
-        } else if (selectedCard.effect.type === 'SINGLE_MOVE') {
-            // Prioritize multiSelectState when it exists (for multi-step targeting phases)
-            if (multiSelectState) {
-                // Use multiSelectState for all SINGLE_MOVE cards when in multi-select flow
-                // This handles 'select_destination' phase where we need lane targets, not drone targets
-                debugLog('TARGETING_PROCESSING', '✅ Taking multiSelectState branch (SINGLE_MOVE)', {
-                    phase: multiSelectState.phase,
-                    actingPlayerId: multiSelectState.actingPlayerId,
-                    sourceLane: multiSelectState.sourceLane,
-                    timestamp: performance.now()
-                });
-
-                const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
-
-                debugLog('TARGETING_PROCESSING', '📋 calculateMultiSelectTargets result', {
-                    phase: multiSelectState.phase,
-                    targetCount: validCardTargets.length,
-                    targets: validCardTargets.map(t => ({ id: t.id, owner: t.owner })),
-                    timestamp: performance.now()
-                });
-            } else if (selectedCard.targeting) {
-                // Use TargetingRouter for initial targeting (before multiSelectState is set)
-                validCardTargets = targetingRouter.routeTargeting({
-                    actingPlayerId: localPlayerId,
-                    source: null,
-                    definition: selectedCard,
-                    player1,
-                    player2,
-                    getEffectiveStats: getEffectiveStatsFn
-                });
-            } else {
-                validCardTargets = [];
-            }
         } else {
             validCardTargets = targetingRouter.routeTargeting({
                 actingPlayerId: localPlayerId,
@@ -389,299 +226,3 @@ export const calculateAffectedDroneIds = (
     return affectedIds;
 };
 
-/**
- * Calculate valid cost targets for additional cost cards
- *
- * This is called at card drag start to determine which targets are valid
- * for the COST selection (before any cost selection has been made).
- * For example: which drones can be exhausted, which cards can be discarded.
- *
- * @param {Object} additionalCost - The additionalCost object from card definition
- * @param {Object} player1 - Player 1 state
- * @param {Object} player2 - Player 2 state
- * @param {string} actingPlayerId - Player playing the card
- * @param {string} playingCardId - ID of the card being played (to exclude from hand selection)
- * @returns {Array} Valid cost targets
- */
-export function calculateCostTargets(additionalCost, player1, player2, actingPlayerId, playingCardId, getEffectiveStatsFn = null) {
-  debugLog('ADDITIONAL_COST_TARGETING', '🎯 calculateCostTargets called', {
-    costType: additionalCost.type,
-    costTargeting: additionalCost.targeting,
-    actingPlayerId
-  });
-
-  // Special case: CARD_IN_HAND costs (discard card)
-  if (additionalCost.targeting?.type === 'CARD_IN_HAND') {
-    const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-
-    // Return all cards in hand except the one being played
-    const validCards = actingPlayerState.hand
-      .filter(c => c.id !== playingCardId)
-      .map(c => ({
-        ...c,
-        owner: actingPlayerId,
-        type: 'card'
-      }));
-
-    debugLog('ADDITIONAL_COST_TARGETING', '✅ CARD_IN_HAND cost targets calculated', {
-      handSize: actingPlayerState.hand.length,
-      validTargetCount: validCards.length,
-      excludedCardId: playingCardId
-    });
-
-    return validCards;
-  }
-
-  // General case: Use targeting router with cost targeting definition
-  // This handles DRONE costs (exhaust drone, move drone, etc.)
-  const context = {
-    actingPlayerId,
-    player1,
-    player2,
-    definition: {
-      targeting: additionalCost.targeting,
-      effect: { type: additionalCost.type },
-      name: `Additional Cost (${additionalCost.type})`
-    },
-    isCostTargeting: true,
-    playingCardId,
-    getEffectiveStats: getEffectiveStatsFn
-  };
-
-  debugLog('ADDITIONAL_COST_TARGETING', '📦 Context prepared for cost targeting router', {
-    targetingType: additionalCost.targeting?.type,
-    targetingAffinity: additionalCost.targeting?.affinity,
-    targetingLocation: additionalCost.targeting?.location
-  });
-
-  const validTargets = targetingRouter.routeTargeting(context);
-
-  debugLog('ADDITIONAL_COST_TARGETING', '✅ Cost targeting router returned results', {
-    costType: additionalCost.type,
-    validTargetCount: validTargets.length,
-    validTargets: validTargets.map(t => ({
-      id: t.id,
-      name: t.name,
-      owner: t.owner,
-      lane: t.lane
-    }))
-  });
-
-  return validTargets;
-}
-
-/**
- * Calculate valid effect targets with cost context
- *
- * This is used for cards with additional costs where the effect targeting
- * depends on the cost selection (e.g., "enemy drone in same lane as cost")
- *
- * @param {Object} card - Card with additionalCost and targeting
- * @param {Object} costSelection - Selected cost target(s)
- * @param {Object} player1 - Player 1 state
- * @param {Object} player2 - Player 2 state
- * @param {string} actingPlayerId - Player playing the card
- * @returns {Array} Valid effect targets
- */
-export function calculateEffectTargetsWithCostContext(card, costSelection, player1, player2, actingPlayerId, getEffectiveStatsFn = null) {
-  debugLog('ADDITIONAL_COST_TARGETING', '🔧 calculateEffectTargetsWithCostContext called', {
-    cardName: card.name,
-    cardTargeting: card.targeting,
-    costSelection,
-    actingPlayerId
-  });
-
-  const context = {
-    actingPlayerId,
-    player1,
-    player2,
-    definition: card,
-    costSelection,  // Pass cost context
-    playingCardId: card.id,
-    getEffectiveStats: getEffectiveStatsFn
-  };
-
-  debugLog('ADDITIONAL_COST_TARGETING', '📦 Context prepared for targeting router', {
-    hasPlayer1: !!context.player1,
-    hasPlayer2: !!context.player2,
-    hasCostSelection: !!context.costSelection,
-    costSelectionLane: context.costSelection?.lane,
-    costSelectionTarget: context.costSelection?.target?.id,
-    targetingType: card.targeting?.type,
-    targetingLocation: card.targeting?.location,
-    targetingAffinity: card.targeting?.affinity,
-    restrictions: card.targeting?.restrictions
-  });
-
-  const validTargets = targetingRouter.routeTargeting(context);
-
-  debugLog('ADDITIONAL_COST_TARGETING', '✅ Targeting router returned results', {
-    cardName: card.name,
-    costSelection,
-    validTargetCount: validTargets.length,
-    validTargets: validTargets.map(t => ({
-      id: t.id,
-      name: t.name,
-      owner: t.owner,
-      lane: t.lane
-    }))
-  });
-
-  return validTargets;
-}
-
-/**
- * Resolve valid secondary targets for a card with secondaryTargeting.
- *
- * Called after the primary target is selected. Uses the primary result
- * to compute which entities are valid for the second DnD step.
- *
- * @param {Object} primaryResult - { target, lane, owner } from primary selection
- * @param {Object} secondaryTargetingDef - card.secondaryTargeting definition
- * @param {Object} context - { actingPlayerId, player1, player2, getEffectiveStats }
- * @returns {Array} Valid secondary targets
- */
-export function resolveSecondaryTargets(primaryResult, secondaryTargetingDef, context) {
-  const { actingPlayerId, player1, player2 } = context;
-  const { type, location, affinity, restrictions } = secondaryTargetingDef;
-
-  debugLog('SECONDARY_TARGETING', '🎯 resolveSecondaryTargets called', {
-    primaryTargetId: primaryResult.target?.id,
-    primaryLane: primaryResult.lane,
-    secondaryType: type,
-    secondaryLocation: location,
-    secondaryAffinity: affinity
-  });
-
-  // --- LANE secondary targets (movement destination) ---
-  if (type === 'LANE') {
-    if (location === 'ADJACENT_TO_PRIMARY') {
-      const sourceLaneIndex = parseInt(primaryResult.lane.replace('lane', ''), 10);
-      const targets = [];
-
-      ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-        const laneIndex = parseInt(laneId.replace('lane', ''), 10);
-        if (Math.abs(sourceLaneIndex - laneIndex) === 1) {
-          targets.push({ id: laneId, owner: actingPlayerId, type: 'lane' });
-        }
-      });
-
-      debugLog('SECONDARY_TARGETING', '✅ ADJACENT_TO_PRIMARY lanes resolved', {
-        sourceLane: primaryResult.lane,
-        adjacentLanes: targets.map(t => t.id)
-      });
-      return targets;
-    }
-  }
-
-  // --- DRONE secondary targets (Feint, Forced Repositioning) ---
-  if (type === 'DRONE') {
-    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-
-    // Determine which lane to search
-    let searchLane = null;
-    if (location === 'PRIMARY_SOURCE_LANE') {
-      searchLane = primaryResult.lane;
-    }
-
-    const targets = [];
-    const lanesToSearch = searchLane ? [searchLane] : ['lane1', 'lane2', 'lane3'];
-
-    // Build list of player states to search based on affinity
-    const playerEntries = [];
-    if (affinity === 'ANY' || affinity === 'FRIENDLY') {
-      const friendlyState = actingPlayerId === 'player1' ? player1 : player2;
-      playerEntries.push({ state: friendlyState, id: actingPlayerId });
-    }
-    if (affinity === 'ANY' || affinity === 'ENEMY') {
-      const enemyState = opponentId === 'player1' ? player1 : player2;
-      playerEntries.push({ state: enemyState, id: opponentId });
-    }
-
-    for (const { state: pState, id: pId } of playerEntries) {
-      for (const lane of lanesToSearch) {
-        const drones = pState.dronesOnBoard[lane] || [];
-        for (const drone of drones) {
-          if (passesSecondaryRestrictions(drone, restrictions, primaryResult, lane, context)) {
-            targets.push({ ...drone, lane, owner: pId });
-          }
-        }
-      }
-    }
-
-    debugLog('SECONDARY_TARGETING', '✅ DRONE secondary targets resolved', {
-      location,
-      searchLane,
-      targetCount: targets.length,
-      targets: targets.map(t => ({ id: t.id, name: t.name, lane: t.lane }))
-    });
-    return targets;
-  }
-
-  debugLog('SECONDARY_TARGETING', '⚠️ Unhandled secondary targeting type', { type, location });
-  return [];
-}
-
-/**
- * Check if a drone passes secondary targeting restrictions.
- * Supports PRIMARY_TARGET reference for stat comparisons.
- */
-function passesSecondaryRestrictions(drone, restrictions, primaryResult, lane, context) {
-  if (!restrictions || restrictions.length === 0) return true;
-
-  for (const criterion of restrictions) {
-    if (typeof criterion === 'string') {
-      if (criterion === 'MARKED' && !drone.isMarked) return false;
-      if (criterion === 'NOT_MARKED' && drone.isMarked) return false;
-      if (criterion === 'EXHAUSTED' && !drone.isExhausted) return false;
-      continue;
-    }
-
-    if (criterion.type === 'STAT_COMPARISON' && criterion.reference === 'PRIMARY_TARGET') {
-      const primaryTarget = primaryResult.target;
-      if (!primaryTarget) return false;
-
-      const droneStat = criterion.stat;
-      const refStat = criterion.referenceStat || criterion.stat;
-
-      let droneValue = drone[droneStat] || 0;
-      let refValue = primaryTarget[refStat] || 0;
-
-      if (context.getEffectiveStats) {
-        try {
-          const droneStats = context.getEffectiveStats(drone, lane);
-          droneValue = droneStats[droneStat] ?? droneValue;
-          const primaryStats = context.getEffectiveStats(primaryTarget, primaryResult.lane);
-          refValue = primaryStats[refStat] ?? refValue;
-        } catch { /* fall back to base stats */ }
-      }
-
-      let passes = true;
-      switch (criterion.comparison) {
-        case 'GT': passes = droneValue > refValue; break;
-        case 'GTE': passes = droneValue >= refValue; break;
-        case 'LT': passes = droneValue < refValue; break;
-        case 'LTE': passes = droneValue <= refValue; break;
-        case 'EQ': passes = droneValue === refValue; break;
-      }
-      if (!passes) return false;
-      continue;
-    }
-
-    // Simple stat comparison (no reference)
-    if (criterion.stat && criterion.comparison && criterion.value !== undefined) {
-      const droneValue = drone[criterion.stat] || 0;
-      let passes = true;
-      switch (criterion.comparison) {
-        case 'GT': passes = droneValue > criterion.value; break;
-        case 'GTE': passes = droneValue >= criterion.value; break;
-        case 'LT': passes = droneValue < criterion.value; break;
-        case 'LTE': passes = droneValue <= criterion.value; break;
-        case 'EQ': passes = droneValue === criterion.value; break;
-      }
-      if (!passes) return false;
-    }
-  }
-
-  return true;
-}

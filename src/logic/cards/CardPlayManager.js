@@ -6,7 +6,6 @@
 
 import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
-import AdditionalCostProcessor from '../costs/AdditionalCostProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -27,7 +26,6 @@ class CardPlayManager {
   constructor() {
     this.effectRouter = new EffectRouter();
     this.conditionalProcessor = new ConditionalEffectProcessor();
-    this.additionalCostProcessor = new AdditionalCostProcessor();
   }
 
   /**
@@ -128,26 +126,7 @@ class CardPlayManager {
       });
     }
 
-    // Check if this card has additional costs requiring selection
-    const hasAdditionalCost = card.additionalCost && actingPlayerId === localPlayerId;
 
-    if (hasAdditionalCost) {
-      debugLog('CARD_PLAY', '💰 Card has additional cost - entering multi-step flow', {
-        cardName: card.name,
-        costType: card.additionalCost.type
-      });
-
-      return {
-        newPlayerStates: playerStates,  // No state changes yet
-        needsAdditionalCostSelection: {
-          card,
-          phase: 'select_cost',
-          costDefinition: card.additionalCost
-        },
-        shouldEndTurn: false,
-        animationEvents: []
-      };
-    }
 
     // Check if this card will need player selection (local human player only)
     // For these cards, costs will be paid after selection in the completion handler
@@ -428,20 +407,8 @@ class CardPlayManager {
    * Resolve card effect
    *
    * Simple router that delegates to resolveSingleEffect.
-   *
-   * @param {Object} effect - Effect definition
-   * @param {Object} target - Target drone/lane/section
-   * @param {string} actingPlayerId - 'player1' or 'player2'
-   * @param {Object} playerStates - { player1, player2 }
-   * @param {Object} placedSections - Placed ship sections
-   * @param {Object} callbacks - Callback functions
-   * @param {Object} card - Card being played (optional)
-   * @param {string} localPlayerId - Local player ID (default 'player1')
-   * @param {string} gameMode - 'local' or 'multiplayer' (default 'local')
-   * @returns {Object} { newPlayerStates, animationEvents, needsCardSelection }
    */
   resolveCardEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') {
-    // All effects now route through resolveSingleEffect (which delegates to EffectRouter)
     return this.resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
   }
 
@@ -449,28 +416,14 @@ class CardPlayManager {
    * Resolve single effect
    *
    * Routes effect through EffectRouter with fallback for non-extracted effects.
-   * This is the main delegation point to effect processors.
-   *
-   * @param {Object} effect - Effect definition
-   * @param {Object} target - Target drone/lane/section
-   * @param {string} actingPlayerId - 'player1' or 'player2'
-   * @param {Object} playerStates - { player1, player2 }
-   * @param {Object} placedSections - Placed ship sections
-   * @param {Object} callbacks - Callback functions
-   * @param {Object} card - Card being played (optional)
-   * @param {string} localPlayerId - Local player ID (default 'player1')
-   * @param {string} gameMode - 'local' or 'multiplayer' (default 'local')
-   * @returns {Object} { newPlayerStates, animationEvents, additionalEffects, needsCardSelection }
    */
   resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') {
-    // Phase 1 & Phase 3 Refactoring: Try modular processor first
     const context = { actingPlayerId, playerStates, placedSections, target, callbacks, card, localPlayerId, gameMode };
     const modularResult = this.effectRouter.routeEffect(effect, context);
     if (modularResult !== null) {
-      return modularResult; // Effect handled by modular processor
+      return modularResult;
     }
 
-    // Fallback to monolithic switch for non-extracted effects
     debugLog('EFFECT_FALLBACK', `⚠️ Falling back to monolithic switch for ${effect.type}`, {
       effectType: effect.type,
       actingPlayer: actingPlayerId,
@@ -481,386 +434,12 @@ class CardPlayManager {
     switch (effect.type) {
       case 'SINGLE_MOVE':
       case 'MULTI_MOVE':
-        // Note: These movement effects reference resolveMovementEffect which should be
-        // imported from gameLogic.js if still needed, or handled by MovementEffectProcessor
         debugLog('CARD_PLAY', `Movement effect ${effect.type} reached fallback - should be handled by MovementEffectProcessor`);
         return { newPlayerStates: playerStates, additionalEffects: [] };
       default:
         debugLog('CARD_PLAY', `Unknown effect type: ${effect.type}`);
         return { newPlayerStates: playerStates, additionalEffects: [] };
     }
-  }
-
-  /**
-   * Complete a card with additional cost after selections are made
-   *
-   * @param {Object} card - Card being played
-   * @param {Object} costSelection - Selected cost target(s)
-   * @param {Object} effectTarget - Selected effect target
-   * @param {string} actingPlayerId - Player playing the card
-   * @param {Object} playerStates - Current game state
-   * @param {Object} placedSections - Ship sections
-   * @param {Object} callbacks - Game callbacks
-   * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents }
-   */
-  processAdditionalCostCardCompletion(card, costSelection, effectTarget, actingPlayerId, playerStates, placedSections, callbacks) {
-    debugLog('ADDITIONAL_COST', '🎯 CardPlayManager: processAdditionalCostCardCompletion started', {
-      cardName: card.name,
-      costSelection,
-      effectTargetId: effectTarget.id,
-      actingPlayerId
-    });
-
-    let currentStates = playerStates;
-    let allAnimationEvents = [];
-
-    // Add CARD_REVEAL animation at the start
-    allAnimationEvents.push({
-      type: 'CARD_REVEAL',
-      cardId: card.id,
-      cardName: card.name,
-      cardData: card,
-      targetPlayer: actingPlayerId,
-      timestamp: Date.now()
-    });
-
-    // Step 1: Pay energy cost
-    debugLog('ADDITIONAL_COST', '💵 Step 1: Paying energy cost', {
-      cardCost: card.cost,
-      currentEnergy: currentStates[actingPlayerId].energy
-    });
-
-    if (card.cost) {
-      currentStates = this.payCardCosts(card, actingPlayerId, currentStates);
-      debugLog('ADDITIONAL_COST', '✅ Energy cost paid', {
-        newEnergy: currentStates[actingPlayerId].energy
-      });
-    }
-
-    // Step 2: Execute additional cost
-    debugLog('ADDITIONAL_COST', '💰 Step 2: Executing additional cost', {
-      costType: card.additionalCost.type,
-      costSelection
-    });
-
-    const costResult = this.additionalCostProcessor.executeCost(
-      card.additionalCost,
-      costSelection,
-      actingPlayerId,
-      currentStates,
-      callbacks,
-      placedSections
-    );
-
-    debugLog('ADDITIONAL_COST', '✅ Additional cost executed', {
-      stateChanged: costResult.newPlayerStates !== currentStates,
-      animationEventCount: costResult.animationEvents.length
-    });
-
-    currentStates = costResult.newPlayerStates;
-    allAnimationEvents.push(...costResult.animationEvents);
-
-    // Step 3: Execute primary effect with cost context
-    debugLog('ADDITIONAL_COST', '⚡ Step 3: Executing primary effect', {
-      effectType: card.effect.type,
-      effectTargetId: effectTarget?.id,
-      hasCostContext: true
-    });
-
-    const costContext = {
-      costSelection,
-      costValue: this.additionalCostProcessor.getCostValue(costSelection)
-    };
-
-    // Replace dynamic value tokens with actual values
-    let effectToProcess = card.effect;
-    if (effectToProcess.mod && effectToProcess.mod.value === 'COST_CARD_VALUE') {
-      effectToProcess = {
-        ...effectToProcess,
-        mod: {
-          ...effectToProcess.mod,
-          value: costContext.costValue
-        }
-      };
-      debugLog('ADDITIONAL_COST', '🔄 Replaced COST_CARD_VALUE with actual value', {
-        value: costContext.costValue
-      });
-    }
-
-    const effectContext = {
-      target: effectTarget,
-      actingPlayerId,
-      playerStates: currentStates,
-      placedSections,
-      callbacks,
-      card,
-      costSelection: costContext  // Pass cost context to effects
-    };
-
-    // Initialize effectResult outside if/else so it's available to code below
-    let effectResult = null;
-
-    // SPECIAL CASE: SINGLE_MOVE effects where effectTarget and destination are both known
-    // For cards like "Forced Repositioning", the effect moves the selected enemy drone to the SAME lane as the cost destination
-    if (effectToProcess.type === 'SINGLE_MOVE' && effectTarget && costSelection.toLane) {
-      debugLog('ADDITIONAL_COST', '✅ Effect target and destination both known, executing movement directly', {
-        drone: effectTarget.id,
-        droneName: effectTarget.name,
-        fromLane: costSelection.sourceLane,  // Effect drone comes from cost source lane
-        toLane: costSelection.toLane         // Effect drone goes to cost destination lane
-      });
-
-      // Build context for movement execution
-      const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-      const moveContext = {
-        callbacks,
-        placedSections
-      };
-
-      // Create card object with processed effect
-      const cardWithProcessedEffect = {
-        ...card,
-        effect: effectToProcess
-      };
-
-      // Execute the movement directly
-      const moveResult = this.additionalCostProcessor.movementProcessor.executeSingleMove(
-        cardWithProcessedEffect,
-        effectTarget,
-        costSelection.sourceLane,  // Source: where cost drone was
-        costSelection.toLane,      // Destination: where cost drone moved to
-        actingPlayerId,
-        currentStates,
-        opponentPlayerId,
-        moveContext
-      );
-
-      debugLog('ADDITIONAL_COST', '✅ Effect movement executed', {
-        stateChanged: moveResult.newPlayerStates !== currentStates,
-        animationEventCount: 0  // moveResult doesn't have animationEvents
-      });
-
-      currentStates = moveResult.newPlayerStates;
-      // Note: moveResult doesn't have animationEvents property, so don't push it
-
-      // Create effectResult compatible structure for code below
-      effectResult = {
-        newPlayerStates: moveResult.newPlayerStates,
-        animationEvents: [],  // Movement doesn't generate animation events
-        effectResult: moveResult.effectResult,  // Pass through for POST conditionals
-        goAgain: card.effect.goAgain || false  // Check card effect for goAgain
-      };
-    } else {
-      // Normal effect execution (for effects that don't have all info yet)
-      effectResult = this.resolveCardEffect(effectToProcess, effectTarget, actingPlayerId, currentStates, placedSections, callbacks, card);
-
-      debugLog('ADDITIONAL_COST', '✅ Primary effect executed', {
-        stateChanged: effectResult.newPlayerStates !== currentStates,
-        animationEventCount: effectResult.animationEvents?.length || 0,
-        needsSelection: !!effectResult.needsCardSelection
-      });
-
-      // If effect needs card selection (e.g., movement without full info), return selection requirement
-      if (effectResult.needsCardSelection) {
-        debugLog('ADDITIONAL_COST', '🔄 Effect needs card selection - returning to UI', {
-          selectionType: effectResult.needsCardSelection.type,
-          phase: effectResult.needsCardSelection.phase
-        });
-
-        return {
-          needsEffectSelection: {
-            card,
-            costSelection,
-            effect: effectToProcess,
-            effectTarget,
-            selectionData: effectResult.needsCardSelection,
-            currentStates: currentStates,  // Preserve state from cost execution
-            allAnimationEvents: allAnimationEvents,  // Preserve animations so far
-            placedSections  // Preserve placed sections
-          },
-          success: false,  // Not complete yet
-          shouldContinue: true  // Signal caller to handle multi-step
-        };
-      }
-
-      currentStates = effectResult.newPlayerStates;
-      allAnimationEvents.push(...(effectResult.animationEvents || []));
-    }
-
-    // Step 4: Process POST conditionals
-    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
-      debugLog('ADDITIONAL_COST', '🔀 Step 4: Processing POST conditionals', {
-        conditionalCount: card.conditionalEffects.length
-      });
-
-      const postResult = this.conditionalProcessor.processPostConditionals(
-        card.conditionalEffects,
-        effectContext,
-        effectResult.effectResult || null
-      );
-
-      debugLog('ADDITIONAL_COST', '✅ POST conditionals processed', {
-        stateChanged: postResult.newPlayerStates !== currentStates
-      });
-
-      currentStates = postResult.newPlayerStates;
-      allAnimationEvents.push(...(postResult.animationEvents || []));
-    }
-
-    // Step 5: Finish card play
-    debugLog('ADDITIONAL_COST', '🏁 Step 5: Finishing card play', {
-      goAgain: effectResult.goAgain || false
-    });
-
-    const finishResult = this.finishCardPlay(card, actingPlayerId, currentStates, effectResult.goAgain || false);
-
-    debugLog('ADDITIONAL_COST', '✅ Card play finished', {
-      shouldEndTurn: finishResult.shouldEndTurn,
-      totalAnimationEvents: allAnimationEvents.length
-    });
-
-    return {
-      newPlayerStates: finishResult.newPlayerStates,
-      shouldEndTurn: finishResult.shouldEndTurn,
-      animationEvents: allAnimationEvents
-    };
-  }
-
-  /**
-   * Complete additional cost card effect selection
-   *
-   * Called when user has completed selecting the target for an additional cost card's
-   * primary effect (e.g., selecting which drone to move for Forced Repositioning)
-   *
-   * @param {Object} selectionContext - Context from needsEffectSelection
-   * @param {Object} effectSelection - User's selection (e.g., { drone, fromLane, toLane })
-   * @param {Object} callbacks - UI callbacks
-   * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents }
-   */
-  completeAdditionalCostEffectSelection(selectionContext, effectSelection, callbacks) {
-    const { card, costSelection, effect, currentStates, allAnimationEvents, placedSections } = selectionContext;
-    const actingPlayerId = effectSelection.playerId;
-    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 CardPlayManager: completeAdditionalCostEffectSelection ENTRY', {
-      cardName: card.name,
-      effectType: effect.type,
-      selectionType: effectSelection.type,
-      droneId: effectSelection.drone?.id,
-      fromLane: effectSelection.fromLane,
-      toLane: effectSelection.toLane
-    });
-
-    debugLog('ADDITIONAL_COST', '🎯 Completing effect selection', {
-      cardName: card.name,
-      effectType: effect.type,
-      selectionType: effectSelection.type
-    });
-
-    let finalStates = currentStates;
-
-    // Build context object for movement methods
-    const context = {
-      callbacks,
-      placedSections
-    };
-
-    // Execute the effect with the user's selection
-    if (effect.type === 'SINGLE_MOVE') {
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Executing SINGLE_MOVE effect', {
-        droneId: effectSelection.drone.id,
-        fromLane: effectSelection.fromLane,
-        toLane: effectSelection.toLane
-      });
-
-      const moveResult = this.movementProcessor.executeSingleMove(
-        card,  // Pass full card object
-        effectSelection.drone,
-        effectSelection.fromLane,
-        effectSelection.toLane,
-        actingPlayerId,
-        finalStates,
-        opponentPlayerId,
-        context
-      );
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Movement executed', {
-        stateChanged: moveResult.newPlayerStates !== finalStates,
-        animationCount: moveResult.animationEvents?.length || 0
-      });
-
-      finalStates = moveResult.newPlayerStates;
-      allAnimationEvents.push(...(moveResult.animationEvents || []));
-    } else if (effect.type === 'MULTI_MOVE') {
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Executing MULTI_MOVE effect', {
-        droneCount: effectSelection.drones?.length,
-        fromLane: effectSelection.fromLane,
-        toLane: effectSelection.toLane
-      });
-
-      const moveResult = this.movementProcessor.executeMultiMove(
-        card,  // Pass full card object
-        effectSelection.drones,
-        effectSelection.fromLane,
-        effectSelection.toLane,
-        actingPlayerId,
-        finalStates,
-        opponentPlayerId,
-        context
-      );
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Movement executed', {
-        stateChanged: moveResult.newPlayerStates !== finalStates,
-        animationCount: moveResult.animationEvents?.length || 0
-      });
-
-      finalStates = moveResult.newPlayerStates;
-      allAnimationEvents.push(...(moveResult.animationEvents || []));
-    }
-    // Add other effect types as needed
-
-    // Process POST conditionals if present
-    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔀 Processing POST conditionals');
-      debugLog('ADDITIONAL_COST', '🔀 Processing POST conditionals after effect selection');
-
-      const effectContext = {
-        target: effectSelection.target || effectSelection.drone,
-        actingPlayerId,
-        playerStates: finalStates,
-        placedSections: placedSections || {},
-        callbacks,
-        card,
-        costSelection: { costSelection, costValue: this.additionalCostProcessor.getCostValue(costSelection) }
-      };
-
-      const postResult = this.conditionalProcessor.processPostConditionals(
-        card.conditionalEffects,
-        effectContext,
-        null  // effectResult from primary effect
-      );
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ POST conditionals processed');
-
-      finalStates = postResult.newPlayerStates;
-      allAnimationEvents.push(...(postResult.animationEvents || []));
-    }
-
-    // Finish card play
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🏁 Finishing card play');
-    debugLog('ADDITIONAL_COST', '🏁 Finishing card play after effect selection');
-    const finishResult = this.finishCardPlay(card, actingPlayerId, finalStates, false);
-
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ CardPlayManager complete', {
-      shouldEndTurn: finishResult.shouldEndTurn,
-      totalAnimations: allAnimationEvents.length
-    });
-
-    return {
-      newPlayerStates: finishResult.newPlayerStates,
-      shouldEndTurn: finishResult.shouldEndTurn,
-      animationEvents: allAnimationEvents
-    };
   }
 }
 

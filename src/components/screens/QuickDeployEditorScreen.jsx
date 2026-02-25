@@ -685,7 +685,6 @@ const QuickDeployEditorScreen = () => {
                   validAbilityTargets={[]}
                   selectedCard={null}
                   validCardTargets={[]}
-                  multiSelectState={null}
                   turnPhase={selectedDrone || draggedDrone ? 'deployment' : 'action'}
                   localPlayerState={mockPlayerState}
                   opponentPlayerState={emptyOpponentState}

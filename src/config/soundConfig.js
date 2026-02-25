@@ -135,7 +135,6 @@ export const SOUND_EVENT_MAP = {
   // ActionProcessor 'action_completed' events (keyed by actionType)
   actionCompleted: {
     cardPlay: 'card_play',
-    additionalCostCardPlay: 'card_play',
   },
 
   // AnimationManager animation-start events (keyed by animationType)

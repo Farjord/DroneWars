@@ -109,17 +109,18 @@ export const calculateLaneDestinationPoint = (fromLane, toLane, dronePos, gameAr
  * Calculate cost reminder arrow state for Forced Repositioning cards.
  * Returns arrow state object if arrow can be shown, null otherwise.
  *
- * @param {Object} additionalCostState - Cost state with card, costSelection
+ * @param {string} cardId - Card ID (arrow only shown for FORCED_REPOSITION)
+ * @param {Object} costSelection - Cost selection with drone and sourceLane
  * @param {string} toLane - Target lane for the effect
  * @param {Object} droneRefs - Ref object mapping drone IDs to DOM elements
  * @param {HTMLElement} gameAreaElement - Game area DOM element
  * @returns {{ visible: boolean, start: Object, end: Object } | null}
  */
-export const calculateCostReminderArrow = (additionalCostState, toLane, droneRefs, gameAreaElement) => {
-  if (additionalCostState.card.id !== 'FORCED_REPOSITION') return null;
+export const calculateCostReminderArrow = (cardId, costSelection, toLane, droneRefs, gameAreaElement) => {
+  if (cardId !== 'FORCED_REPOSITION') return null;
 
-  const costDrone = additionalCostState.costSelection?.drone;
-  const fromLane = additionalCostState.costSelection?.sourceLane;
+  const costDrone = costSelection?.drone;
+  const fromLane = costSelection?.sourceLane;
 
   if (!costDrone || !droneRefs[costDrone.id]) return null;
 

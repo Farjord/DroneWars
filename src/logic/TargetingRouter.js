@@ -18,7 +18,7 @@ import { debugLog } from '../utils/debugLogger.js';
  *  - LANE (lane area targeting)
  *  - SHIP_SECTION (ship section targeting)
  *  - NONE (no target selection — handled before processor lookup)
- *  - CARD_IN_HAND (hand card targeting, used by additionalCost)
+ *  - CARD_IN_HAND (hand card targeting)
  *
  * Usage:
  *   const router = new TargetingRouter();

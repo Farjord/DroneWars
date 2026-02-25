@@ -77,7 +77,6 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
     selectedCard: null,
     validCardTargets: [],
     affectedDroneIds: [],
-    multiSelectState: null,
     turnPhase: 'action',
     localPlayerState: mockPlayerState,
     opponentPlayerState: mockPlayerState,

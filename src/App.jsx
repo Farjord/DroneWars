@@ -200,8 +200,6 @@ const App = ({ phaseAnimationQueue }) => {
   const isResolvingAttackRef = useRef(false);
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
-  const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
-  const additionalCostFlowInProgress = useRef(false); // Track additional cost flow to prevent premature cleanup
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -510,18 +508,13 @@ const App = ({ phaseAnimationQueue }) => {
   // --- CARD SELECTION HOOK ---
   const {
     selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds,
-    hoveredLane, cardConfirmation, multiSelectState,
-    additionalCostState, additionalCostConfirmation, additionalCostSelectionContext,
+    hoveredLane, cardConfirmation,
     destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal,
     setSelectedCard, setValidCardTargets, setValidAbilityTargets, setAffectedDroneIds,
-    setHoveredLane, setCardConfirmation, setMultiSelectState,
-    setAdditionalCostState, setAdditionalCostConfirmation, setAdditionalCostSelectionContext,
+    setHoveredLane, setCardConfirmation,
     setDestroyUpgradeModal, setUpgradeSelectionModal, setViewUpgradesModal,
-    cancelCardSelection, cancelAdditionalCostMode,
-    confirmAdditionalCostCard, handleCancelMultiMove, handleConfirmMultiMoveDrones,
+    cancelCardSelection,
     cancelCardState,
-    secondaryTargetingState, setSecondaryTargetingState,
-    enterSecondaryTargeting, cancelSecondaryTargeting,
     // Effect chain (unified sequential effect selection)
     effectChainState, startEffectChain, selectChainTarget, selectChainDestination,
     selectChainMultiTarget, confirmChainMultiSelect, cancelEffectChain,
@@ -535,9 +528,6 @@ const App = ({ phaseAnimationQueue }) => {
     shipAbilityMode,
     setShipAbilityMode,
     setSelectedDrone,
-    setCostReminderArrowState,
-    multiSelectFlowInProgress,
-    additionalCostFlowInProgress,
   });
 
   // --- 6.2 UI EVENT HANDLERS ---
@@ -570,7 +560,7 @@ const App = ({ phaseAnimationQueue }) => {
     clearConfirmations,
   } = useResolvers({
     processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId,
-    isResolvingAttackRef, multiSelectFlowInProgress, additionalCostFlowInProgress,
+    isResolvingAttackRef,
     interceptionRef,
     localPlayerState, opponentPlayerState, winner, turnPhase, currentPlayer,
     gameStateManager,
@@ -578,10 +568,9 @@ const App = ({ phaseAnimationQueue }) => {
     setFooterView, setIsFooterOpen, setShipAbilityMode, setDraggedDrone,
     setCardSelectionModal, setShipAbilityConfirmation,
     cancelCardSelection, setSelectedCard, setValidCardTargets,
-    setMultiSelectState, setAdditionalCostState, setAdditionalCostConfirmation,
-    setAdditionalCostSelectionContext, setCostReminderArrowState, setCardConfirmation,
-    setAffectedDroneIds, confirmAdditionalCostCard,
-    additionalCostSelectionContext, cardConfirmation,
+    setCostReminderArrowState, setCardConfirmation,
+    setAffectedDroneIds,
+    cardConfirmation,
     pendingShieldChanges, clearReallocationState,
   });
 
@@ -625,7 +614,6 @@ const App = ({ phaseAnimationQueue }) => {
     opponentPlayerState,
     selectedDrone,
     draggedDrone,
-    secondaryTargetingState,
     abilityMode,
     getLocalPlayerId,
     getPlacedSectionsForEngine,
@@ -656,13 +644,11 @@ const App = ({ phaseAnimationQueue }) => {
     roundNumber, totalLocalPlayerDrones, localPlayerState, localPlayerEffectiveStats,
     gameEngine, setSelectedDrone, setModalContent, executeDeployment,
     // From useCardSelection
-    setAffectedDroneIds, setHoveredLane, setSelectedCard, setMultiSelectState,
+    setAffectedDroneIds, setHoveredLane, setSelectedCard,
     cancelCardSelection, setCardConfirmation,
-    setUpgradeSelectionModal, setDestroyUpgradeModal, setAdditionalCostState,
-    setAdditionalCostConfirmation, setValidCardTargets, validCardTargets,
-    additionalCostState, selectedCard, multiSelectState,
-    // From useCardSelection — secondary targeting
-    enterSecondaryTargeting, secondaryTargetingState,
+    setUpgradeSelectionModal, setDestroyUpgradeModal,
+    setValidCardTargets, validCardTargets,
+    selectedCard,
     // From useCardSelection — effect chain
     startEffectChain,
     // From useInterception
@@ -672,7 +658,7 @@ const App = ({ phaseAnimationQueue }) => {
     costReminderArrowState, setCostReminderArrowState,
     // From App.jsx scope
     cancelAllActions, opponentPlayerState, gameState, gameDataService,
-    getPlacedSectionsForEngine, multiSelectFlowInProgress, additionalCostFlowInProgress,
+    getPlacedSectionsForEngine,
     droneRefs, setMoveConfirmation, resolveAttack, getEffectiveStats, selectedDrone,
     abilityMode,
   });
@@ -861,15 +847,12 @@ const App = ({ phaseAnimationQueue }) => {
     // Modal state setters
     setModalContent, setConfirmationModal, setDetailedDroneInfo,
     setAbilityConfirmation, setMoveConfirmation, setCardConfirmation,
-    setAdditionalCostConfirmation, setShipAbilityConfirmation,
+    setShipAbilityConfirmation,
     setDestroyUpgradeModal, setUpgradeSelectionModal,
     // From useCardSelection
     selectedCard, setSelectedCard, validCardTargets, setValidCardTargets,
-    validAbilityTargets, multiSelectState, setMultiSelectState,
-    cancelCardSelection, multiSelectFlowInProgress,
-    additionalCostState, setAdditionalCostState,
-    additionalCostFlowInProgress, additionalCostSelectionContext,
-    secondaryTargetingState, cancelSecondaryTargeting,
+    validAbilityTargets,
+    cancelCardSelection,
     // From useCardSelection — effect chain
     effectChainState, selectChainTarget, selectChainDestination,
     selectChainMultiTarget,
@@ -877,8 +860,6 @@ const App = ({ phaseAnimationQueue }) => {
     shipAbilityMode, setShipAbilityMode,
     setReallocationPhase, setShieldsToRemove, setShieldsToAdd,
     setOriginalShieldAllocation, setReallocationAbility,
-    // Hoisted state
-    setCostReminderArrowState,
     // App.jsx functions
     cancelAllActions, cancelAbilityMode, isActionInProgress, isMyTurn,
     getLocalPlayerId, getOpponentPlayerId,
@@ -919,10 +900,7 @@ const App = ({ phaseAnimationQueue }) => {
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => {
       cancelAbilityMode();
-      // Don't cancel card selection if we're in a multi-select flow or secondary targeting
-      if (!multiSelectFlowInProgress.current && !secondaryTargetingState) {
-        cancelCardSelection('game-area-click');
-      }
+      cancelCardSelection('game-area-click');
     }}>
      {currentBackground.type === 'animated' ? (
        <SpaceBackground />
@@ -1010,7 +988,6 @@ const App = ({ phaseAnimationQueue }) => {
         mandatoryAction={mandatoryAction}
         excessCards={excessCards}
         excessDrones={excessDrones}
-        multiSelectState={multiSelectState}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
@@ -1020,8 +997,6 @@ const App = ({ phaseAnimationQueue }) => {
         onShowAddCardModal={handleOpenAddCardModal}
         onForceWin={handleForceWin}
         testMode={testMode}
-        handleCancelMultiMove={handleCancelMultiMove}
-        handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
         selectedBackground={selectedBackground}
         onBackgroundChange={handleBackgroundChange}
         interceptionModeActive={interceptionModeActive}
@@ -1029,12 +1004,6 @@ const App = ({ phaseAnimationQueue }) => {
         handleShowInterceptionDialog={handleShowInterceptionDialog}
         handleResetInterception={handleResetInterception}
         handleConfirmInterception={handleConfirmInterception}
-        // Secondary targeting mode props
-        secondaryTargetingState={secondaryTargetingState}
-        handleCancelSecondaryTargeting={cancelSecondaryTargeting}
-        // Additional cost mode props
-        additionalCostState={additionalCostState}
-        handleCancelAdditionalCost={cancelAdditionalCostMode}
         // Effect chain props
         effectChainState={effectChainState}
         handleConfirmChainMultiSelect={confirmChainMultiSelect}
@@ -1057,9 +1026,6 @@ const App = ({ phaseAnimationQueue }) => {
         affectedDroneIds={affectedDroneIds}
         abilityMode={abilityMode}
         validAbilityTargets={validAbilityTargets}
-        multiSelectState={multiSelectState}
-        secondaryTargetingState={secondaryTargetingState}
-        additionalCostState={additionalCostState}
         effectChainState={effectChainState}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
@@ -1111,7 +1077,6 @@ const App = ({ phaseAnimationQueue }) => {
         gameLog={gameLog}
         footerView={footerView}
         isFooterOpen={isFooterOpen}
-        multiSelectState={multiSelectState}
         selectedCard={selectedCard}
         turnPhase={turnPhase}
         mandatoryAction={
@@ -1155,7 +1120,6 @@ const App = ({ phaseAnimationQueue }) => {
         draggedCard={draggedCard}
         handleActionCardDragStart={handleActionCardDragStart}
         draggedActionCard={draggedActionCard}
-        additionalCostState={additionalCostState}
         actionsTakenThisTurn={gameState.actionsTakenThisTurn || 0}
         onCardPlayWarning={showCardPlayWarning}
         onCardPlayWarningClear={clearCardPlayWarning}
@@ -1196,7 +1160,6 @@ const App = ({ phaseAnimationQueue }) => {
         destroyUpgradeModal={destroyUpgradeModal}
         upgradeSelectionModal={upgradeSelectionModal}
         cardConfirmation={cardConfirmation}
-        additionalCostConfirmation={additionalCostConfirmation}
         abilityConfirmation={abilityConfirmation}
         showAiHandModal={showAiHandModal}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}

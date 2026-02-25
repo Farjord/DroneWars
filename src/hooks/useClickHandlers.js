@@ -1,5 +1,3 @@
-import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
-import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -47,29 +45,15 @@ export default function useClickHandlers({
   setConfirmationModal,
   setDetailedDroneInfo,
   setAbilityConfirmation,
-  setMoveConfirmation,
   setCardConfirmation,
-  setAdditionalCostConfirmation,
   setShipAbilityConfirmation,
-  setDestroyUpgradeModal,
-  setUpgradeSelectionModal,
 
   // --- From useCardSelection ---
   selectedCard,
   setSelectedCard,
   validCardTargets,
-  setValidCardTargets,
   validAbilityTargets,
-  multiSelectState,
-  setMultiSelectState,
   cancelCardSelection,
-  multiSelectFlowInProgress,
-  additionalCostState,
-  setAdditionalCostState,
-  additionalCostFlowInProgress,
-  additionalCostSelectionContext,
-  secondaryTargetingState,
-  cancelSecondaryTargeting,
   // --- From useCardSelection — effect chain ---
   effectChainState,
   selectChainTarget,
@@ -85,9 +69,6 @@ export default function useClickHandlers({
   setOriginalShieldAllocation,
   setReallocationAbility,
 
-  // --- Hoisted state from App.jsx ---
-  setCostReminderArrowState,
-
   // --- App.jsx functions ---
   cancelAllActions,
   cancelAbilityMode,
@@ -96,20 +77,10 @@ export default function useClickHandlers({
   getLocalPlayerId,
   getOpponentPlayerId,
   resolveAbility,
-  resolveSingleMove,
-  resolveMultiMove,
   handleConfirmMandatoryDestroy,
-
-  // --- Action dispatching ---
-  processActionWithGuestRouting,
 
   // --- External services ---
   gameEngine,
-  gameDataService,
-
-  // --- Refs ---
-  droneRefs,
-  gameAreaRef,
 }) {
 
   // --- handleToggleDroneSelection ---
@@ -266,77 +237,6 @@ export default function useClickHandlers({
       if (selectedCard) {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
 
-        // Additional cost card handling
-        if (additionalCostState) {
-          if (additionalCostState.phase === 'select_cost') {
-            // Cost selection (e.g., card in hand)
-            debugLog('ADDITIONAL_COST_UI', '🎯 Cost selected', { target });
-
-            const costSelection = {
-              type: selectedCard.additionalCost.type,
-              card: target  // For DISCARD_CARD cost
-            };
-
-            // Calculate valid effect targets
-            const effectTargets = calculateEffectTargetsWithCostContext(
-              selectedCard,
-              costSelection,
-              gameState.player1,
-              gameState.player2,
-              getLocalPlayerId(),
-              gameDataService.getEffectiveStats.bind(gameDataService)
-            );
-
-            setAdditionalCostState({
-              ...additionalCostState,
-              phase: 'select_effect',
-              costSelection
-            });
-            additionalCostFlowInProgress.current = true;
-            setValidCardTargets(effectTargets);
-            return;
-          }
-
-          if (additionalCostState.phase === 'select_effect') {
-            // Effect target selected - show confirmation modal
-            debugLog('ADDITIONAL_COST_UI', '✅ Effect target selected, showing confirmation', { target });
-
-            setAdditionalCostConfirmation({
-              card: selectedCard,
-              costSelection: additionalCostState.costSelection,
-              effectTarget: { ...target, owner }
-            });
-            return;
-          }
-        }
-
-        // Secondary DRONE targeting (e.g., Feint — select enemy drone as secondary target)
-        if (secondaryTargetingState?.phase === 'secondary' &&
-            secondaryTargetingState.card?.secondaryTargeting?.type === 'DRONE') {
-          const matchedTarget = validCardTargets.find(t => t.id === target.id && t.owner === owner);
-          if (matchedTarget) {
-            debugLog('SECONDARY_TARGETING', '🎯 Secondary drone target selected', {
-              targetId: target.id,
-              targetName: target.name,
-              owner,
-              lane: matchedTarget.lane,
-              cardName: secondaryTargetingState.card.name
-            });
-
-            processActionWithGuestRouting('secondaryTargetingCardPlay', {
-              card: secondaryTargetingState.card,
-              primaryTarget: secondaryTargetingState.primaryTarget,
-              primaryLane: secondaryTargetingState.primaryLane,
-              secondaryTarget: { ...target, owner },
-              secondaryLane: matchedTarget.lane,
-              playerId: getLocalPlayerId()
-            });
-
-            cancelSecondaryTargeting();
-            return;
-          }
-        }
-
         // Standard card confirmation
         if (validCardTargets.some(t => t.id === target.id && t.owner === owner)) {
           setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
@@ -355,116 +255,6 @@ export default function useClickHandlers({
   const handleTokenClick = (e, token, isPlayer) => {
       e.stopPropagation();
       debugLog('COMBAT', `--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
-
-      // Multi-move selection takes priority over other click handlers
-      if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
-          // Validate drone is a valid target (includes exhaustion check + any future filters)
-          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
-              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
-              return;
-          }
-
-          debugLog('COMBAT', "Action: Multi-move drone selection.");
-          const { selectedDrones, maxDrones } = multiSelectState;
-          const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
-          if (isAlreadySelected) {
-              setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
-          } else if (selectedDrones.length < maxDrones) {
-              setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
-          }
-          return;
-      }
-
-      // 1. Handle single-move drone selection (SINGLE_MOVE cards like Maneuver)
-      // IMPORTANT: This must come BEFORE generic validCardTargets check to prevent interception
-      // PHASE 9 FIX: Support both friendly and enemy drone selection
-      // Check validCardTargets instead of isPlayer to support enemy drone selection
-      if (multiSelectState && multiSelectState.phase === 'select_drone') {
-          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 Drone click during select_drone phase', {
-              droneName: token.name,
-              droneId: token.id,
-              isPlayer,
-              multiSelectPhase: multiSelectState.phase,
-              multiSelectCard: multiSelectState.card?.name,
-              hasAdditionalCostContext: !!additionalCostSelectionContext
-          });
-
-          // Check if this drone is a valid target
-          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-
-          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔍 Checking if drone is valid target', {
-              tokenOwner,
-              validCardTargetCount: validCardTargets.length,
-              validCardTargetIds: validCardTargets.map(t => t.id),
-              isValidTarget: validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)
-          });
-
-          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
-              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ❌ Drone is not a valid target - ABORTING');
-              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
-              return;
-          }
-
-          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Drone is valid target - proceeding');
-          debugLog('COMBAT', "Action: Single-move drone selection.");
-
-          // Find the drone's current lane
-          // For enemy drones, search in opponent state; for friendly, search in local state
-          const droneOwnerState = tokenOwner === getLocalPlayerId()
-              ? localPlayerState
-              : opponentPlayerState;
-
-          const droneLane = Object.entries(droneOwnerState.dronesOnBoard).find(([_, drones]) =>
-              drones.some(d => d.id === token.id)
-          )?.[0];
-
-          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔍 Found drone lane', {
-              droneLane,
-              tokenOwner
-          });
-
-          if (droneLane) {
-              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, tokenOwner: ${tokenOwner}`);
-
-              // Calculate adjacent lanes
-              const currentLaneIndex = parseInt(droneLane.replace('lane', ''));
-              const adjacentLanes = [];
-
-              if (currentLaneIndex > 1) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: tokenOwner, type: 'lane' });
-              }
-              if (currentLaneIndex < 3) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: tokenOwner, type: 'lane' });
-              }
-
-              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Transitioning to select_destination phase', {
-                  selectedDrone: token.name,
-                  selectedDroneId: token.id,
-                  sourceLane: droneLane,
-                  adjacentLanes: adjacentLanes.map(l => l.id),
-                  willSetValidCardTargets: true
-              });
-
-              debugLog('MOVEMENT_LANES', `Adjacent lanes with owner:`, adjacentLanes);
-
-              // Set valid targets to highlight available lanes
-              setValidCardTargets(adjacentLanes);
-
-              // Update multiSelectState with selected drone and transition to destination selection
-              setMultiSelectState(prev => ({
-                  ...prev,
-                  selectedDrone: token,
-                  sourceLane: droneLane,
-                  phase: 'select_destination'
-              }));
-
-              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ State updated - drone click handler complete');
-          } else {
-              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ❌ Could not find drone lane - ABORTING');
-          }
-          return;
-      }
 
       // 1.5. Effect chain drone selection — route to chain target/destination/multi-target
       if (effectChainState && !effectChainState.complete) {
@@ -526,19 +316,9 @@ export default function useClickHandlers({
       lane: lane,
       isPlayer: isPlayer,
       selectedDrone: selectedDrone,
-      additionalCostState: additionalCostState,
-      additionalCostPhase: additionalCostState?.phase,
       turnPhase: turnPhase,
       timestamp: Date.now()
     });
-
-    // Debug logging for MULTI_MOVE
-    if (multiSelectState) {
-      debugLog('CARD_PLAY', '🔵 MULTI_MOVE: handleLaneClick called');
-      debugLog('CARD_PLAY', '   Lane:', lane, '| isPlayer:', isPlayer);
-      debugLog('CARD_PLAY', '   multiSelectState:', multiSelectState);
-      debugLog('CARD_PLAY', '   validCardTargets:', validCardTargets);
-    }
 
     // --- 9.1 HANDLE ABILITY TARGETING ---
     if (abilityMode && abilityMode.ability.targeting.type === 'LANE') {
@@ -571,139 +351,6 @@ export default function useClickHandlers({
       }
     }
 
-    // --- 9.1.5 HANDLE ADDITIONAL COST MOVEMENT DESTINATION ---
-    if (additionalCostState && additionalCostState.phase === 'select_cost_movement_destination' && isPlayer && validCardTargets.some(t => t.id === lane)) {
-      debugLog('ADDITIONAL_COST_UI', '🚚 Cost movement destination selected', {
-        toLane: lane,
-        additionalCostPhase: additionalCostState.phase,
-        selectedDrone: selectedDrone,
-        validCardTargets: validCardTargets,
-        aboutToTransitionToSelectEffect: true
-      });
-
-      // Update cost selection with destination
-      const updatedCostSelection = {
-        ...additionalCostState.costSelection,
-        toLane: lane
-      };
-
-      // Calculate valid effect targets (e.g., enemy drones in SOURCE lane)
-      const effectTargets = calculateEffectTargetsWithCostContext(
-        additionalCostState.card,
-        updatedCostSelection,
-        gameState.player1,
-        gameState.player2,
-        getLocalPlayerId(),
-        gameDataService.getEffectiveStats.bind(gameDataService)
-      );
-
-      // Proceed to effect selection
-      setAdditionalCostState({
-        phase: 'select_effect',
-        card: additionalCostState.card,
-        costSelection: updatedCostSelection,
-        validTargets: effectTargets
-      });
-      additionalCostFlowInProgress.current = true;
-      setValidCardTargets(effectTargets);
-
-      // Show cost reminder arrow for Forced Repositioning
-      const arrowState = calculateCostReminderArrow(additionalCostState, lane, droneRefs.current, gameAreaRef.current);
-      if (arrowState) {
-        setCostReminderArrowState(arrowState);
-        debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown', arrowState);
-      }
-
-      return;
-    }
-
-    // --- 9.1.7 HANDLE SECONDARY TARGETING LANE SELECTION ---
-    if (secondaryTargetingState?.phase === 'secondary' &&
-        secondaryTargetingState.card?.secondaryTargeting?.type === 'LANE') {
-      const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-      if (validCardTargets.some(t => t.id === lane && t.owner === owner)) {
-        debugLog('SECONDARY_TARGETING', '🎯 Secondary lane target selected', {
-          lane,
-          owner,
-          cardName: secondaryTargetingState.card.name,
-          primaryTargetId: secondaryTargetingState.primaryTarget?.id
-        });
-
-        processActionWithGuestRouting('secondaryTargetingCardPlay', {
-          card: secondaryTargetingState.card,
-          primaryTarget: secondaryTargetingState.primaryTarget,
-          primaryLane: secondaryTargetingState.primaryLane,
-          secondaryTarget: { id: lane, owner },
-          secondaryLane: lane,
-          playerId: getLocalPlayerId()
-        });
-
-        cancelSecondaryTargeting();
-        return;
-      }
-    }
-
-    if (multiSelectState && isPlayer && validCardTargets.some(t => t.id === lane)) {
-        const { phase, sourceLane, selectedDrones } = multiSelectState;
-
-        debugLog('CARD_PLAY', '🔵 MULTI_MOVE: Lane clicked during multiSelectState');
-        debugLog('CARD_PLAY', '   Phase:', phase);
-        debugLog('CARD_PLAY', '   Lane:', lane);
-        debugLog('CARD_PLAY', '   Source lane:', sourceLane);
-        debugLog('CARD_PLAY', '   Selected drones:', selectedDrones?.length);
-
-        if (phase === 'select_source_lane') {
-            debugLog('CARD_PLAY', '   ✅ Transitioning to select_drones phase with source lane:', lane);
-            setMultiSelectState(prev => ({ ...prev, phase: 'select_drones', sourceLane: lane }));
-            return;
-        }
-
-        if (phase === 'select_destination') {
-            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 Lane click during select_destination phase', {
-                lane,
-                sourceLane,
-                card: multiSelectState.card?.name,
-                selectedDrone: multiSelectState.selectedDrone?.name,
-                selectedDroneId: multiSelectState.selectedDrone?.id,
-                hasAdditionalCostContext: !!additionalCostSelectionContext
-            });
-
-            // Handle single-move destination selection (for additional cost effects)
-            debugLog('CARD_PLAY', '   ✅ Destination lane selected (single-move), calling resolveSingleMove');
-            debugLog('CARD_PLAY', '   Card:', multiSelectState.card?.name);
-            debugLog('CARD_PLAY', '   From lane:', sourceLane, '→ To lane:', lane);
-
-            const selectedDrone = multiSelectState.selectedDrone;
-
-            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Calling resolveSingleMove', {
-                cardId: multiSelectState.card?.id,
-                droneId: selectedDrone.id,
-                droneOwner: selectedDrone.owner || getLocalPlayerId(),
-                fromLane: sourceLane,
-                toLane: lane
-            });
-
-            resolveSingleMove(
-                multiSelectState.card,
-                selectedDrone.id,
-                selectedDrone.owner || getLocalPlayerId(),
-                sourceLane,
-                lane
-            );
-
-            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ resolveSingleMove called - lane click handler complete');
-            return;
-        }
-
-        if (phase === 'select_destination_lane') {
-            debugLog('CARD_PLAY', '   ✅ Destination lane selected, calling resolveMultiMove');
-            debugLog('CARD_PLAY', '   Card:', multiSelectState.card?.name);
-            debugLog('CARD_PLAY', '   From lane:', sourceLane, '→ To lane:', lane);
-            resolveMultiMove(multiSelectState.card, selectedDrones, sourceLane, lane);
-            return;
-        }
-    }
-
     if (selectedCard && selectedCard.targeting.type === 'LANE') {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         if (validCardTargets.some(t => t.id === lane && t.owner === owner)) {
@@ -712,18 +359,7 @@ export default function useClickHandlers({
         }
     }
 
-    debugLog('BUTTON_CLICKS', '🔍 onLaneClick LANE SELECTION CHECK', {
-      timestamp: performance.now(),
-      location: 'handleLaneClick - checking if should cancel',
-      lane: lane,
-      isPlayer: isPlayer,
-      hasSelectedCard: !!selectedCard,
-      refValue: multiSelectFlowInProgress.current,
-      willCallCancel: !!selectedCard && !multiSelectFlowInProgress.current
-    });
-
-    // Don't cancel if in multi-select flow, secondary targeting, or additional cost flow
-    if (selectedCard && !multiSelectFlowInProgress.current && !secondaryTargetingState && !additionalCostFlowInProgress.current) {
+    if (selectedCard) {
       cancelCardSelection('lane-click-cleanup');
       return;
     }
@@ -752,59 +388,11 @@ export default function useClickHandlers({
       playerPassed,
       playerEnergy: localPlayerState.energy,
       hasEnoughEnergy: localPlayerState.energy >= card.cost,
-      additionalCostPhase: additionalCostState?.phase
     });
 
     if (turnPhase !== 'action') {
       debugLog('CARD_PLAY', `🚫 Card click rejected - wrong phase: ${turnPhase}`, { card: card.name });
       return;
-    }
-
-    // Handle cost selection clicks (card-in-hand as cost)
-    if (additionalCostState?.phase === 'select_cost') {
-      // Verify this card is a valid cost target
-      const isValidCostTarget = additionalCostState.validTargets?.some(
-        t => t.instanceId === card.instanceId
-      );
-
-      if (isValidCostTarget) {
-        debugLog('ADDITIONAL_COST', '🎯 Cost card selected from hand', {
-          selectedCard: card.name,
-          cardInstanceId: card.instanceId,
-          costingCard: additionalCostState.card?.name
-        });
-
-        const costSelection = {
-          type: additionalCostState.card.additionalCost.type,
-          card: card  // The card being discarded as cost
-        };
-
-        // Calculate valid effect targets
-        const effectTargets = calculateEffectTargetsWithCostContext(
-          additionalCostState.card,  // The card being played (e.g., Sacrifice for Power)
-          costSelection,
-          gameState.player1,
-          gameState.player2,
-          getLocalPlayerId(),
-          gameDataService.getEffectiveStats.bind(gameDataService)
-        );
-
-        setAdditionalCostState({
-          ...additionalCostState,
-          phase: 'select_effect',
-          costSelection
-        });
-        additionalCostFlowInProgress.current = true;
-        setValidCardTargets(effectTargets);
-        return;
-      } else {
-        debugLog('ADDITIONAL_COST', '🚫 Card is not a valid cost target', {
-          card: card.name,
-          cardInstanceId: card.instanceId,
-          validTargetIds: additionalCostState.validTargets?.map(t => t.instanceId)
-        });
-        return;
-      }
     }
 
     // Action cards (non-Drone) use drag-only during action phase
@@ -851,44 +439,9 @@ export default function useClickHandlers({
       return;
     }
 
-    // Movement cards - Set up UI state directly (don't call ActionProcessor until selection complete)
-    // MULTI_MOVE cards — click-based multi-select setup (3+ step flow stays)
-    // SINGLE_MOVE cards now use DnD + secondaryTargeting, so they fall through to generic selection
-    if (card.effect.type === 'MULTI_MOVE') {
-      debugLog('CARD_PLAY', `✅ MULTI_MOVE card - setting up UI: ${card.name}`);
-
-      if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
-        debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Toggle off movement card', {
-          timestamp: performance.now(),
-          refValue: multiSelectFlowInProgress.current,
-          cardName: card.name,
-          cardInstanceId: card.instanceId
-        });
-        cancelCardSelection('card-click-toggle-off');
-      } else {
-        cancelAllActions();
-        setSelectedCard(card);
-        setMultiSelectState({
-          card: card,
-          phase: 'select_source_lane',
-          selectedDrones: [],
-          sourceLane: null,
-          maxDrones: card.effect.count || 3,
-          actingPlayerId: getLocalPlayerId()
-        });
-      }
-      return;
-    }
-
     // Deselect if clicking the already-selected card
     if (selectedCard?.instanceId === card.instanceId) {
       debugLog('CARD_PLAY', `✅ Card deselected: ${card.name}`);
-      debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Deselect card', {
-        timestamp: performance.now(),
-        refValue: multiSelectFlowInProgress.current,
-        cardName: card.name,
-        cardInstanceId: card.instanceId
-      });
       cancelCardSelection('card-click-deselect');
     } else {
         // All other cards: click selects (shows valid targets), DnD plays

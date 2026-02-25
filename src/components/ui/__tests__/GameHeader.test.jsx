@@ -69,7 +69,6 @@ describe('GameHeader - Interception Mode', () => {
     mandatoryAction: null,
     excessCards: 0,
     excessDrones: 0,
-    multiSelectState: null,
     AI_HAND_DEBUG_MODE: false,
     setShowAiHandModal: vi.fn(),
     onShowDebugModal: vi.fn(),

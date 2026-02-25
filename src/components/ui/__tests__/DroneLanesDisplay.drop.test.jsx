@@ -43,7 +43,6 @@ describe('DroneLanesDisplay drag-and-drop', () => {
     validAbilityTargets: [],
     selectedCard: null,
     validCardTargets: [],
-    multiSelectState: null,
     turnPhase: 'deployment',
     localPlayerState: { energy: 5 },
     opponentPlayerState: { energy: 5 },

@@ -5,7 +5,6 @@
 // Extracted from GameHeader.jsx
 
 import React from 'react';
-import { debugLog } from '../../../utils/debugLogger.js';
 
 /**
  * ActionPhaseButtons - Renders all action-phase button groups:
@@ -14,9 +13,6 @@ import { debugLog } from '../../../utils/debugLogger.js';
 function ActionPhaseButtons({
   isMyTurn,
   mandatoryAction,
-  multiSelectState,
-  secondaryTargetingState,
-  additionalCostState,
   reallocationPhase,
   passInfo,
   getLocalPlayerId,
@@ -25,14 +21,10 @@ function ActionPhaseButtons({
   handleResetReallocation,
   handleContinueToAddPhase,
   handleConfirmReallocation,
-  handleCancelMultiMove,
-  handleConfirmMultiMoveDrones,
   interceptionModeActive,
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
-  handleCancelSecondaryTargeting,
-  handleCancelAdditionalCost,
   // Effect chain multi-target props
   effectChainState,
   handleConfirmChainMultiSelect,
@@ -41,7 +33,7 @@ function ActionPhaseButtons({
   return (
     <>
       {/* Pass Button - Hide during reallocation */}
-      {isMyTurn() && !mandatoryAction && !multiSelectState && !secondaryTargetingState && !additionalCostState && !reallocationPhase && !effectChainState && (
+      {isMyTurn() && !mandatoryAction && !reallocationPhase && !effectChainState && (
         <button
           onClick={handlePlayerPass}
           disabled={passInfo[`${getLocalPlayerId()}Passed`]}
@@ -103,43 +95,8 @@ function ActionPhaseButtons({
         </>
       )}
 
-      {/* MULTI_MOVE Controls */}
-      {multiSelectState && (
-        <>
-          {/* Cancel button - visible for ALL phases */}
-          <button
-            onClick={handleCancelMultiMove}
-            className="dw-btn dw-btn-danger dw-btn--sm"
-          >
-            Cancel
-          </button>
-
-          {/* Confirm button - only during select_drones phase */}
-          {multiSelectState.phase === 'select_drones' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent click from bubbling to game area div
-                debugLog('BUTTON_CLICKS', '🖱️ CONFIRM DRONES button clicked', {
-                  timestamp: performance.now(),
-                  selectedDrones: multiSelectState.selectedDrones.length,
-                  sourceLane: multiSelectState.sourceLane
-                });
-                handleConfirmMultiMoveDrones();
-                debugLog('BUTTON_CLICKS', '✅ handleConfirmMultiMoveDrones returned', {
-                  timestamp: performance.now()
-                });
-              }}
-              disabled={multiSelectState.selectedDrones.length === 0}
-              className="dw-btn dw-btn-confirm dw-btn--sm"
-            >
-              Confirm Drones
-            </button>
-          )}
-        </>
-      )}
-
       {/* Effect Chain Multi-Target Controls */}
-      {effectChainState?.subPhase === 'multi-target' && !multiSelectState && (
+      {effectChainState?.subPhase === 'multi-target' && (
         <>
           <button
             onClick={handleCancelEffectChain}
@@ -187,25 +144,6 @@ function ActionPhaseButtons({
         </>
       )}
 
-      {/* Secondary Targeting Mode Controls */}
-      {secondaryTargetingState && (
-        <button
-          onClick={handleCancelSecondaryTargeting}
-          className="dw-btn dw-btn-danger dw-btn--sm"
-        >
-          Cancel
-        </button>
-      )}
-
-      {/* Additional Cost Mode Controls */}
-      {additionalCostState && !multiSelectState && (
-        <button
-          onClick={handleCancelAdditionalCost}
-          className="dw-btn dw-btn-danger dw-btn--sm"
-        >
-          Cancel
-        </button>
-      )}
     </>
   );
 }

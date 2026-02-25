@@ -20,7 +20,7 @@ import AttackConfirmationModal from '../modals/AttackConfirmationModal.jsx';
 import InterceptionOpportunityModal from '../modals/InterceptionOpportunityModal.jsx';
 import OpponentDecidingInterceptionModal from '../modals/OpponentDecidingInterceptionModal.jsx';
 import CardConfirmationModal from '../modals/CardConfirmationModal.jsx';
-import AdditionalCostConfirmationModal from '../modals/AdditionalCostConfirmationModal.jsx';
+
 import DroneAbilityConfirmationModal from '../modals/DroneAbilityConfirmationModal.jsx';
 import ShipAbilityConfirmationModal from '../modals/ShipAbilityConfirmationModal.jsx';
 import AIHandDebugModal from '../modals/AIHandDebugModal.jsx';
@@ -69,7 +69,6 @@ function ModalLayer({
   destroyUpgradeModal,
   upgradeSelectionModal,
   cardConfirmation,
-  additionalCostConfirmation,
   abilityConfirmation,
   showAiHandModal,
   AI_HAND_DEBUG_MODE,
@@ -110,8 +109,6 @@ function ModalLayer({
   onCloseMandatoryActionModal,
   onCancelCardConfirmation,
   onConfirmCardPlay,
-  onConfirmAdditionalCost,
-  onCancelAdditionalCost,
   onCancelDroneAbility,
   onConfirmDroneAbility,
   onCloseAiHandModal,
@@ -340,16 +337,6 @@ function ModalLayer({
         onCancel={onCancelCardConfirmation}
         onConfirm={onConfirmCardPlay}
       />
-
-      {additionalCostConfirmation && (
-        <AdditionalCostConfirmationModal
-          card={additionalCostConfirmation.card}
-          costSelection={additionalCostConfirmation.costSelection}
-          effectTarget={additionalCostConfirmation.effectTarget}
-          onConfirm={onConfirmAdditionalCost}
-          onCancel={onCancelAdditionalCost}
-        />
-      )}
 
       <DroneAbilityConfirmationModal
         abilityConfirmation={abilityConfirmation}

@@ -18,8 +18,6 @@ const useResolvers = ({
 
   // --- Refs ---
   isResolvingAttackRef,
-  multiSelectFlowInProgress,
-  additionalCostFlowInProgress,
 
   // --- Circular dep ref (populated after useInterception returns) ---
   interceptionRef,
@@ -48,15 +46,9 @@ const useResolvers = ({
   cancelCardSelection,
   setSelectedCard,
   setValidCardTargets,
-  setMultiSelectState,
-  setAdditionalCostState,
-  setAdditionalCostConfirmation,
-  setAdditionalCostSelectionContext,
   setCostReminderArrowState,
   setCardConfirmation,
   setAffectedDroneIds,
-  confirmAdditionalCostCard,
-  additionalCostSelectionContext,
   cardConfirmation,
 
   // --- From useShieldAllocation ---
@@ -231,14 +223,6 @@ const useResolvers = ({
           setValidCardTargets(friendlyDrones);
         }
 
-        setMultiSelectState({
-          card: result.needsCardSelection.card,
-          phase: result.needsCardSelection.phase,
-          selectedDrones: [],
-          sourceLane: null,
-          maxDrones: result.needsCardSelection.maxDrones,
-          actingPlayerId: actingPlayerId
-        });
         return;
       }
 
@@ -294,23 +278,15 @@ const useResolvers = ({
       playerId: getLocalPlayerId()
     });
 
-    setMultiSelectState(null);
     cancelCardSelection('confirm-multi-move');
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- Resolve Single Move ---
   const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', 'resolveSingleMove ENTRY', {
-      cardName: card.name, cardId: card.id, droneId, droneOwner, fromLane, toLane,
-      hasAdditionalCostContext: !!additionalCostSelectionContext,
-      contextCardId: additionalCostSelectionContext?.card?.id
-    });
-
     debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 10: Inside resolveSingleMove', {
       receivedCard: card?.name, receivedDroneId: droneId, receivedDroneOwner: droneOwner,
       receivedFromLane: fromLane, receivedToLane: toLane,
-      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane),
-      hasAdditionalCostContext: !!additionalCostSelectionContext
+      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane)
     });
 
     const currentState = gameStateManager.getState();
@@ -328,7 +304,6 @@ const useResolvers = ({
       debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 10c: Drone NOT FOUND', {
         droneId, fromLane, droneOwner, availableDrones: ownerState?.dronesOnBoard?.[fromLane]
       });
-      setMultiSelectState(null);
       cancelCardSelection('error-single-move-drone-not-found');
       return;
     }
@@ -336,38 +311,6 @@ const useResolvers = ({
     debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 10d: Drone FOUND, proceeding with move', {
       foundDrone: { id: currentDrone.id, name: currentDrone.name }, fromLane, toLane
     });
-
-    // Additional cost effect selection path
-    if (additionalCostSelectionContext && additionalCostSelectionContext.card.id === card.id) {
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', 'Additional cost effect selection detected', {
-        cardName: card.name, contextCard: additionalCostSelectionContext.card.name
-      });
-
-      const result = await processActionWithGuestRouting('additionalCostEffectSelectionComplete', {
-        selectionContext: additionalCostSelectionContext,
-        effectSelection: {
-          type: 'single_move',
-          drone: { ...currentDrone, owner: droneOwner },
-          fromLane, toLane,
-          playerId: getLocalPlayerId()
-        },
-        playerId: getLocalPlayerId()
-      });
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', 'Action dispatched, clearing state', {
-        resultSuccess: result?.success
-      });
-
-      setAdditionalCostSelectionContext(null);
-      setMultiSelectState(null);
-      setAdditionalCostState(null);
-      setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-      setSelectedCard(null);
-      setValidCardTargets([]);
-      setAffectedDroneIds([]);
-      additionalCostFlowInProgress.current = false;
-      return;
-    }
 
     // Normal movement completion
     await processActionWithGuestRouting('movementCompletion', {
@@ -382,9 +325,8 @@ const useResolvers = ({
       drone: currentDrone.name, from: fromLane, to: toLane, card: card.name
     });
 
-    setMultiSelectState(null);
     cancelCardSelection('confirm-single-move');
-  }, [processActionWithGuestRouting, getLocalPlayerId, additionalCostSelectionContext]);
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- Handle Close AI Card Report ---
   const handleCloseAiCardReport = useCallback(async () => {
@@ -497,21 +439,6 @@ const useResolvers = ({
     }, 400);
   };
 
-  const handleConfirmAdditionalCost = async () => {
-    if (!additionalCostConfirmation) return;
-    const card = additionalCostConfirmation.card;
-    const costSelection = additionalCostConfirmation.costSelection;
-    const effectTarget = additionalCostConfirmation.effectTarget;
-    setAdditionalCostConfirmation(null);
-    setTimeout(async () => {
-      await confirmAdditionalCostCard(card, costSelection, effectTarget);
-    }, 400);
-  };
-
-  const handleCancelAdditionalCost = () => {
-    setAdditionalCostConfirmation(null);
-  };
-
   const handleConfirmDroneAbility = () => {
     if (!abilityConfirmation) return;
     const ability = abilityConfirmation.ability;
@@ -600,8 +527,6 @@ const useResolvers = ({
     handleConfirmIntercept,
     handleDeclineIntercept,
     handleConfirmCardPlay,
-    handleConfirmAdditionalCost,
-    handleCancelAdditionalCost,
     handleConfirmDroneAbility,
     handleConfirmShipAbility,
 

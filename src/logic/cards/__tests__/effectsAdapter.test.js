@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import fullCardCollection from '../../../data/cardData';
-import { buildEffectsFromLegacy } from '../effectsAdapter';
 
 // --- Structural Tests: Every card produces valid effects[] ---
 
@@ -152,7 +151,7 @@ describe('effectsAdapter — multi-step cards', () => {
     const card = findCard('FORCED_REPOSITION');
     expect(card.effects).toHaveLength(2);
 
-    // Effect 0: move friendly drone (from additionalCost)
+    // Effect 0: move friendly drone
     expect(card.effects[0].type).toBe('SINGLE_MOVE');
     expect(card.effects[0].targeting.affinity).toBe('FRIENDLY');
     expect(card.effects[0].destination).toEqual({ type: 'LANE', location: 'ADJACENT_TO_PRIMARY' });
@@ -170,7 +169,7 @@ describe('effectsAdapter — multi-step cards', () => {
     const card = findCard('SACRIFICE_FOR_POWER');
     expect(card.effects).toHaveLength(2);
 
-    // Effect 0: discard a card (from additionalCost)
+    // Effect 0: discard a card
     expect(card.effects[0].type).toBe('DISCARD_CARD');
     expect(card.effects[0].targeting.type).toBe('CARD_IN_HAND');
     expect(card.effects[0].prompt).toBeDefined();
@@ -204,14 +203,6 @@ describe('effectsAdapter — composite and special effects', () => {
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('REPEATING_EFFECT');
     expect(card.effects[0].targeting.type).toBe('NONE');
-  });
-});
-
-describe('effectsAdapter — idempotency', () => {
-  it('buildEffectsFromLegacy returns existing effects[] if already present', () => {
-    const nativeEffects = [{ type: 'DAMAGE', value: 1, targeting: { type: 'DRONE' } }];
-    const card = { effects: nativeEffects, effect: { type: 'DRAW', value: 2 } };
-    expect(buildEffectsFromLegacy(card)).toBe(nativeEffects);
   });
 });
 

@@ -6,7 +6,6 @@
 
 import React from 'react';
 import { getPhaseDisplayName } from '../../../logic/phase/phaseDisplayUtils.js';
-import { extractDroneNameFromId } from '../../../logic/droneUtils.js';
 
 /**
  * PhaseStatusText - Shows the current phase display name with contextual
@@ -24,10 +23,7 @@ function PhaseStatusText({
   excessDrones,
   optionalDiscardCount,
   localPlayerEffectiveStats,
-  multiSelectState,
   interceptionModeActive,
-  secondaryTargetingState,
-  additionalCostState,
   effectChainState
 }) {
   return (
@@ -68,45 +64,10 @@ function PhaseStatusText({
           ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount} {(localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount) === 1 ? 'card' : 'cards'} to discard)
         </span>
       )}
-      {/* MULTI_MOVE Status Text */}
-      {multiSelectState?.phase === 'select_source_lane' && (
-        <span className="text-base font-semibold text-cyan-300 ml-2">
-          (Select source lane)
-        </span>
-      )}
-      {multiSelectState?.phase === 'select_drone' && (
-        <span className="text-base font-semibold text-cyan-300 ml-2">
-          (Select drone to move)
-        </span>
-      )}
-      {multiSelectState?.phase === 'select_drones' && (
-        <span className="text-base font-semibold text-cyan-300 ml-2">
-          ({multiSelectState.selectedDrones.length} / {multiSelectState.maxDrones} drones selected)
-        </span>
-      )}
-      {multiSelectState?.phase === 'select_destination_lane' && (
-        <span className="text-base font-semibold text-green-300 ml-2">
-          (Select destination lane)
-        </span>
-      )}
       {/* Interception Mode Status Text */}
       {interceptionModeActive && (
         <span className="text-base font-semibold text-cyan-300 ml-2">
           (Intercepting - select interceptor)
-        </span>
-      )}
-      {/* Secondary Targeting Mode Status Text */}
-      {secondaryTargetingState && (
-        <span className="text-base font-semibold text-cyan-300 ml-2">
-          (Moving {secondaryTargetingState.primaryTarget?.name || 'drone'} - select adjacent lane)
-        </span>
-      )}
-      {/* Additional Cost Mode Status Text */}
-      {additionalCostState && (
-        <span className="text-base font-semibold text-cyan-300 ml-2">
-          {additionalCostState.phase === 'select_cost' && `(Select ${additionalCostState.card.additionalCost.description || 'cost'})`}
-          {additionalCostState.phase === 'select_cost_movement_destination' && `(Moving ${extractDroneNameFromId(additionalCostState.costSelection.drone.id)} - select destination)`}
-          {additionalCostState.phase === 'select_effect' && `(Select target for ${additionalCostState.card.name})`}
         </span>
       )}
       {/* Effect Chain Status Text */}

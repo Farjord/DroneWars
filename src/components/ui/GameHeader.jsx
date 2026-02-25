@@ -110,7 +110,6 @@ function GameHeader({
   mandatoryAction,
   excessCards,
   excessDrones,
-  multiSelectState,
   AI_HAND_DEBUG_MODE,
   setShowAiHandModal,
   onShowDebugModal,
@@ -120,8 +119,6 @@ function GameHeader({
   onShowAddCardModal,
   onForceWin,
   testMode,
-  handleCancelMultiMove,
-  handleConfirmMultiMoveDrones,
   selectedBackground,
   onBackgroundChange,
   // Interception mode props
@@ -130,12 +127,6 @@ function GameHeader({
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
-  // Secondary targeting mode props
-  secondaryTargetingState,
-  handleCancelSecondaryTargeting,
-  // Additional cost mode props
-  additionalCostState,
-  handleCancelAdditionalCost,
   // Effect chain props
   effectChainState,
   handleConfirmChainMultiSelect,
@@ -379,10 +370,7 @@ function GameHeader({
           excessDrones={excessDrones}
           optionalDiscardCount={optionalDiscardCount}
           localPlayerEffectiveStats={localPlayerEffectiveStats}
-          multiSelectState={multiSelectState}
           interceptionModeActive={interceptionModeActive}
-          secondaryTargetingState={secondaryTargetingState}
-          additionalCostState={additionalCostState}
           effectChainState={effectChainState}
         />
 
@@ -432,9 +420,6 @@ function GameHeader({
             <ActionPhaseButtons
               isMyTurn={isMyTurn}
               mandatoryAction={mandatoryAction}
-              multiSelectState={multiSelectState}
-              secondaryTargetingState={secondaryTargetingState}
-              additionalCostState={additionalCostState}
               reallocationPhase={reallocationPhase}
               passInfo={passInfo}
               getLocalPlayerId={getLocalPlayerId}
@@ -443,14 +428,10 @@ function GameHeader({
               handleResetReallocation={handleResetReallocation}
               handleContinueToAddPhase={handleContinueToAddPhase}
               handleConfirmReallocation={handleConfirmReallocation}
-              handleCancelMultiMove={handleCancelMultiMove}
-              handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
               interceptionModeActive={interceptionModeActive}
               handleShowInterceptionDialog={handleShowInterceptionDialog}
               handleResetInterception={handleResetInterception}
               handleConfirmInterception={handleConfirmInterception}
-              handleCancelSecondaryTargeting={handleCancelSecondaryTargeting}
-              handleCancelAdditionalCost={handleCancelAdditionalCost}
               effectChainState={effectChainState}
               handleConfirmChainMultiSelect={handleConfirmChainMultiSelect}
               handleCancelEffectChain={handleCancelEffectChain}

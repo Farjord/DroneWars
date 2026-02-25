@@ -27,7 +27,6 @@ import { applyMovementInhibitorAdjustments } from '../adjustmentPasses/movementI
 
 import { isCardConditionMet } from '../../targeting/CardConditionValidator.js';
 import { isLaneControlCardPlayable } from '../../targeting/LaneControlValidator.js';
-import { resolveSecondaryTargets } from '../../targeting/uiTargetingHelpers.js';
 
 // ========================================
 // ACTIVE ABILITY TARGET HELPER
@@ -185,49 +184,8 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       return true;
     });
     for (const card of playableCards) {
-      // SINGLE_MOVE with secondaryTargeting — use primary targets + secondary lane resolution
-      if (card.effect?.type === 'SINGLE_MOVE' && card.secondaryTargeting) {
-        const primaryTargets = card.targeting
-          ? getValidTargets('player2', null, card, player1, player2)
-          : readyAiDrones.map(d => ({ ...d, owner: 'player2' }));
-
-        for (const primaryTarget of primaryTargets) {
-          const primaryLane = primaryTarget.lane;
-          const secondaryTargets = resolveSecondaryTargets(
-            { target: primaryTarget, lane: primaryLane, owner: primaryTarget.owner },
-            card.secondaryTargeting,
-            { actingPlayerId: 'player2', player1, player2, getEffectiveStats: null }
-          );
-
-          for (const secTarget of secondaryTargets) {
-            const toLane = secTarget.id;
-            const fromLane = primaryLane;
-
-            // Check maxPerLane restriction for friendly drone movements
-            if (primaryTarget.owner === 'player2') {
-              const baseDrone = fullDroneCollection.find(d => d.name === primaryTarget.name);
-              if (baseDrone?.maxPerLane) {
-                const currentCount = countDroneTypeInLane(player2, primaryTarget.name, toLane);
-                if (currentCount >= baseDrone.maxPerLane) continue;
-              }
-            }
-
-            const uniqueKey = `card-${card.id}-${primaryTarget.id}-${fromLane}-${toLane}`;
-            if (!uniqueCardPlays.has(uniqueKey)) {
-              possibleActions.push({
-                type: 'play_card',
-                card,
-                target: null,
-                moveData: { drone: primaryTarget, fromLane, toLane },
-                score: 0
-              });
-              uniqueCardPlays.add(uniqueKey);
-            }
-          }
-        }
-      }
       // Normal targeted cards (DRONE, LANE, SHIP_SECTION — not SINGLE_MOVE or NONE)
-      else if (card.targeting && card.effect?.type !== 'SINGLE_MOVE' && card.targeting.type !== 'NONE') {
+      if (card.targeting && card.effect?.type !== 'SINGLE_MOVE' && card.targeting.type !== 'NONE') {
         let targets = getValidTargets('player2', null, card, player1, player2);
 
         if (card.effect.type === 'HEAL_SHIELDS') {
@@ -249,7 +207,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
           }
         }
       }
-      // Legacy SINGLE_MOVE without secondaryTargeting (fallback)
+      // SINGLE_MOVE
       else if (card.effect?.type === 'SINGLE_MOVE') {
         for (const drone of readyAiDrones) {
           const fromLaneIndex = parseInt(drone.lane.slice(-1));

@@ -291,7 +291,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
       return passes;
     }
 
-    // Cost-based location filtering (used by additionalCost cards like Forced Repositioning)
+    // Cost-based location filtering (used by multi-effect cards like Forced Repositioning)
     if (location === 'COST_SOURCE_LANE') {
       if (!costContext || !costContext.sourceLane) {
         debugLog('ADDITIONAL_COST_TARGETING', '❌ COST_SOURCE_LANE fails - missing cost source lane', {

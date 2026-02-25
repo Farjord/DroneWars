@@ -20,7 +20,6 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Array} props.validCardTargets - Valid targets for selected card
  * @param {Object} props.abilityMode - Current ability mode state
  * @param {Array} props.validAbilityTargets - Valid targets for ability
- * @param {Object} props.multiSelectState - Multi-select state
  * @param {string} props.turnPhase - Current turn phase
  * @param {string} props.reallocationPhase - Current reallocation phase
  * @param {Object} props.shipAbilityMode - Ship ability mode state
@@ -61,9 +60,6 @@ function GameBattlefield({
   affectedDroneIds = [],
   abilityMode,
   validAbilityTargets,
-  multiSelectState,
-  secondaryTargetingState,
-  additionalCostState,
   effectChainState,
   turnPhase,
   reallocationPhase,
@@ -150,9 +146,6 @@ function GameBattlefield({
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
           affectedDroneIds={affectedDroneIds}
-          multiSelectState={multiSelectState}
-          secondaryTargetingState={secondaryTargetingState}
-          additionalCostState={additionalCostState}
           effectChainState={effectChainState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
@@ -194,9 +187,6 @@ function GameBattlefield({
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
           affectedDroneIds={affectedDroneIds}
-          multiSelectState={multiSelectState}
-          secondaryTargetingState={secondaryTargetingState}
-          additionalCostState={additionalCostState}
           effectChainState={effectChainState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}

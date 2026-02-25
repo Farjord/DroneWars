@@ -54,8 +54,6 @@ function HandView({
   // Action card drag-and-drop props
   handleActionCardDragStart,
   draggedActionCard,
-  // Additional cost selection state
-  additionalCostState,
   // Momentum tracking for glow effects
   actionsTakenThisTurn = 0,
   // Warning callback for unplayable card attempts
@@ -66,14 +64,6 @@ function HandView({
   const localPlayerId = getLocalPlayerId();
   const myTurn = isMyTurn();
   const playerPassed = passInfo[`${localPlayerId}Passed`];
-
-  // Debug: Log additionalCostState when it changes
-  debugLog('ADDITIONAL_COST', '🎴 HandView additionalCostState:', {
-    phase: additionalCostState?.phase,
-    cardName: additionalCostState?.card?.name,
-    validTargetsCount: additionalCostState?.validTargets?.length,
-    validTargetIds: additionalCostState?.validTargets?.map(t => t.instanceId)
-  });
 
   // Calculate lanes controlled for dynamic helper text on LANES_CONTROLLED cards
   const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
@@ -159,38 +149,10 @@ function HandView({
       debugLog('ADDITIONAL_COST_VALIDATION', '🔍 Checking card playability', {
         cardName: card.name,
         cardId: card.id,
-        hasAdditionalCost: !!card.additionalCost,
         hasTargeting: !!card.targeting
       });
 
-      // Check for additional cost cards first
-      if (card.additionalCost) {
-        debugLog('ADDITIONAL_COST_VALIDATION', '💰 Card has additional cost - checking cost targets', {
-          cardName: card.name,
-          costType: card.additionalCost.type,
-          costTargeting: card.additionalCost.targeting
-        });
-
-        // Card has additional cost - check for valid COST targets
-        const hasCostTargets = targetingRouter.routeTargeting({
-          actingPlayerId: localPlayerId,
-          source: null,
-          definition: { targeting: card.additionalCost.targeting },  // Use cost targeting
-          player1: player1State,
-          player2: player2State
-        }).length > 0;
-
-        debugLog('ADDITIONAL_COST_VALIDATION',
-          hasCostTargets ? '✅ Card is PLAYABLE (has cost targets)' : '❌ Card is UNPLAYABLE (no cost targets)',
-          {
-            cardName: card.name,
-            hasCostTargets,
-            costTargeting: card.additionalCost.targeting
-          }
-        );
-
-        targetMap.set(card.instanceId, hasCostTargets);
-      } else if (!card.targeting) {
+      if (!card.targeting) {
         debugLog('ADDITIONAL_COST_VALIDATION', '✅ Card is PLAYABLE (no targeting)', {
           cardName: card.name
         });
@@ -312,34 +274,9 @@ function HandView({
                 cardConditionMet = isCardConditionMet(card, localPlayerId, playerStates);
               }
 
-              // Check if this card is a valid cost target for additional cost selection
-              // Use additionalCostState.validTargets directly to ensure sync with phase
-              const isCostSelectionTarget = additionalCostState?.phase === 'select_cost' &&
-                additionalCostState?.validTargets?.some(t => t.instanceId === card.instanceId);
-
-              // Debug: Log cost selection evaluation for each card
-              if (additionalCostState?.phase === 'select_cost') {
-                debugLog('ADDITIONAL_COST', `🃏 Card "${card.name}" cost selection check:`, {
-                  cardInstanceId: card.instanceId,
-                  phase: additionalCostState?.phase,
-                  validTargets: additionalCostState?.validTargets?.map(t => ({ id: t.id, instanceId: t.instanceId, name: t.name })),
-                  isCostSelectionTarget,
-                  cardIsPlayable: isCostSelectionTarget ||
-                    (turnPhase === 'action'
-                      ? (isActionPhasePlayable && laneControlPlayable)
-                      : isOptionalDiscardPlayable)
-                });
-              }
-
-              // Check if this card is the selected cost card (should appear highlighted during select_effect)
-              const isSelectedCostCard = additionalCostState?.phase === 'select_effect' &&
-                additionalCostState?.costSelection?.card?.instanceId === card.instanceId;
-
               // Combine all playability checks
               // Lane control validation only applies during action phase, not discard phase
-              const cardIsPlayable = isCostSelectionTarget ||
-                isSelectedCostCard ||  // Cost card stays highlighted during effect selection
-                (turnPhase === 'action'
+              const cardIsPlayable = (turnPhase === 'action'
                   ? (isActionPhasePlayable && laneControlPlayable && cardConditionMet)
                   : isOptionalDiscardPlayable);
 
@@ -384,8 +321,7 @@ function HandView({
               // Apply pulse effect during mandatory discard (all cards), optional discard (only selectable cards),
               // or cost selection (valid cost targets). Applied to wrapper div to avoid CSS conflicts with rarity animations.
               const shouldPulse = mandatoryAction?.type === 'discard' ||
-                (turnPhase === 'optionalDiscard' && cardIsPlayable) ||
-                isCostSelectionTarget;
+                (turnPhase === 'optionalDiscard' && cardIsPlayable);
 
               return (
                 <div
@@ -412,7 +348,7 @@ function HandView({
                       onCardPlayWarning(["Not in the Action Phase"]);
                     }
                     // Show warning overlay on hover for unplayable cards during action phase
-                    else if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard && onCardPlayWarning) {
+                    else if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && onCardPlayWarning) {
                       const reasons = getUnplayableReasons();
                       if (reasons.length > 0) {
                         onCardPlayWarning(reasons);
@@ -424,7 +360,7 @@ function HandView({
                     // Initiate drag for playable cards during action phase (not during mandatory action or cost selection)
                     // Uses threshold detection to distinguish click from drag
                     // Cost selection targets use click, not drag, so exclude them
-                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && handleActionCardDragStart) {
+                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && handleActionCardDragStart) {
                       e.preventDefault();
 
                       // Store start position and card rect immediately (before React nullifies event)
@@ -463,21 +399,15 @@ function HandView({
                     card={card}
                     isSelected={selectedCard?.instanceId === card.instanceId}
                     isDimmed={selectedCard &&
-                      selectedCard.instanceId !== card.instanceId &&
-                      !isCostSelectionTarget &&
-                      additionalCostState?.costSelection?.card?.instanceId !== card.instanceId}
+                      selectedCard.instanceId !== card.instanceId}
                     isDragging={draggedActionCard?.card?.instanceId === card.instanceId}
                     isPlayable={cardIsPlayable}
-                    isCostSelectionTarget={isCostSelectionTarget}
                     hasMomentumGlow={showMomentumGlow}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}
                     onClick={
-                      // Cost selection click handler - when selecting cards to pay additional costs
-                      isCostSelectionTarget
-                        ? () => handleCardClick(card)
-                      : mandatoryAction?.type === 'discard'
+                      mandatoryAction?.type === 'discard'
                         ? (c) => {
                             // For phase-based mandatory discards, check if limit reached
                             if (!mandatoryAction.fromAbility && excessCards <= 0) {

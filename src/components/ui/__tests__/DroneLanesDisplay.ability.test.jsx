@@ -77,7 +77,6 @@ describe('DroneLanesDisplay - Ability Mode Props', () => {
     validAbilityTargets: [],
     selectedCard: null,
     validCardTargets: [],
-    multiSelectState: null,
     turnPhase: 'action',
     localPlayerState: { energy: 5 },
     opponentPlayerState: { energy: 5 },

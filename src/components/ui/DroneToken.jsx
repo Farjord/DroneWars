@@ -191,7 +191,6 @@ const DroneToken = ({
   isHovered = false,
   isAbilitySource = false,
   isElevated = false,
-  secondaryTargetingState = null,
   // Action card drag-and-drop props
   draggedActionCard = null,
   onActionCardDrop = null,
