@@ -207,7 +207,7 @@ class EffectChainProcessor {
       let targetLane = null;
       let targetType = null;
 
-      if (t.id?.startsWith('lane')) {
+      if (t.id === 'lane1' || t.id === 'lane2' || t.id === 'lane3') {
         const affinity = effects[0]?.targeting?.affinity || 'ANY';
         if (affinity === 'ENEMY') {
           targetPlayer = playerId === 'player1' ? 'player2' : 'player1';

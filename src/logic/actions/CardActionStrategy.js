@@ -34,6 +34,7 @@ function _findTargetLane(target, playerStates) {
   return null;
 }
 
+// Reads card.effect (derived from effects[0] by effectsAdapter's backward-compat layer)
 function _generateOutcome(card, target) {
   const effect = card.effect;
   const targetName = target ? (target.name || target.id) : 'N/A';
