@@ -72,10 +72,10 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
     mockCard = {
       id: 'CARD_TEST_MOVE',
       name: 'Test Move Card',
-      effect: {
+      effects: [{
         type: 'SINGLE_MOVE',
         properties: []
-      }
+      }]
     };
   });
 
@@ -191,7 +191,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       const dronesToMove = [mockPlayerStates.player1.dronesOnBoard.lane1[1]]; // Try to move drone_2
       const multiMoveCard = {
         ...mockCard,
-        effect: { type: 'MULTI_MOVE', count: 3, properties: [] }
+        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
       };
       const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
 
@@ -239,7 +239,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
       const multiMoveCard = {
         ...mockCard,
-        effect: { type: 'MULTI_MOVE', count: 3, properties: [] }
+        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
       };
       const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
 
@@ -285,7 +285,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1; // Try to move both
       const multiMoveCard = {
         ...mockCard,
-        effect: { type: 'MULTI_MOVE', count: 3, properties: [] }
+        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
       };
       const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
 

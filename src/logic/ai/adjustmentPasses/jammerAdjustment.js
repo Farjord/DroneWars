@@ -57,11 +57,11 @@ export const applyJammerAdjustments = (possibleActions, context) => {
     // Only consider affordable cards (check both energy and momentum costs)
     const canAffordEnergy = player2.energy >= card.cost;
     const canAffordMomentum = !card.momentumCost || (player2.momentum || 0) >= card.momentumCost;
-    if (canAffordEnergy && canAffordMomentum && card.targeting) {
+    if (canAffordEnergy && canAffordMomentum && card.effects[0]?.targeting) {
       // Check if this card targets enemy drones
       const targetsEnemyDrones =
-        card.targeting.type === 'DRONE' &&
-        (card.targeting.affinity === 'ENEMY' || card.targeting.affinity === 'ANY');
+        card.effects[0].targeting.type === 'DRONE' &&
+        (card.effects[0].targeting.affinity === 'ENEMY' || card.effects[0].targeting.affinity === 'ANY');
 
       if (targetsEnemyDrones) {
         // Check ALL enemy drones to see what would be targetable
@@ -74,19 +74,19 @@ export const applyJammerAdjustments = (possibleActions, context) => {
               if (!isJammer) {
                 let cardValue = 0;
 
-                if (card.effect.type === 'DESTROY' && card.effect.scope === 'SINGLE') {
+                if (card.effects[0].type === 'DESTROY' && card.effects[0].scope === 'SINGLE') {
                   const resourceValue = (drone.hull || 0) + (drone.currentShields || 0);
                   cardValue = (resourceValue * 8) - (card.cost * 4);
-                } else if (card.effect.type === 'DAMAGE' && card.effect.scope === 'SINGLE') {
-                  const damageValue = card.effect.value * 8;
+                } else if (card.effects[0].type === 'DAMAGE' && card.effects[0].scope === 'SINGLE') {
+                  const damageValue = card.effects[0].value * 8;
                   const costPenalty = card.cost * 4;
                   cardValue = damageValue - costPenalty;
 
                   // Add lethal bonus if damage kills target
-                  if (card.effect.value >= drone.hull) {
+                  if (card.effects[0].value >= drone.hull) {
                     cardValue += (drone.class * 15) + 50;
                   }
-                } else if (card.effect.type === 'READY_DRONE') {
+                } else if (card.effects[0].type === 'READY_DRONE') {
                   cardValue = drone.class * 12;
                 }
 

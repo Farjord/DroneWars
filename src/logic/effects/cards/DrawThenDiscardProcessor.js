@@ -147,26 +147,26 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
     let value = 0;
 
     // Cards with goAgain are more valuable
-    if (card.effect.goAgain) value += 10;
+    if (card.effects[0].goAgain) value += 10;
 
     // Damage/attack cards are valuable
-    if (card.effect.type === 'DAMAGE' || card.effect.type === 'ATTACK') {
-      value += (card.effect.value || 0) * 2;
+    if (card.effects[0].type === 'DAMAGE' || card.effects[0].type === 'ATTACK') {
+      value += (card.effects[0].value || 0) * 2;
     }
 
     // Healing is valuable
-    if (card.effect.type === 'HEAL_HULL' || card.effect.type === 'HEAL_SHIELDS') {
-      value += (card.effect.value || 0) * 1.5;
+    if (card.effects[0].type === 'HEAL_HULL' || card.effects[0].type === 'HEAL_SHIELDS') {
+      value += (card.effects[0].value || 0) * 1.5;
     }
 
     // Stat modifications are moderately valuable
-    if (card.effect.type === 'MODIFY_STAT') {
+    if (card.effects[0].type === 'MODIFY_STAT') {
       value += 5;
     }
 
     // Draw/energy generation is valuable
-    if (card.effect.type === 'DRAW' || card.effect.type === 'GAIN_ENERGY') {
-      value += (card.effect.value || 0) * 3;
+    if (card.effects[0].type === 'DRAW' || card.effects[0].type === 'GAIN_ENERGY') {
+      value += (card.effects[0].value || 0) * 3;
     }
 
     return value;

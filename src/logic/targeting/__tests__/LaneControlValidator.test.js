@@ -9,21 +9,21 @@ import { isLaneControlCardPlayable } from '../LaneControlValidator.js';
 describe('isLaneControlCardPlayable', () => {
   describe('Cards without effect conditions', () => {
     it('should return true for Ordnance cards without conditions', () => {
-      const card = { type: 'Ordnance', name: 'Laser Blast' };
+      const card = { type: 'Ordnance', name: 'Laser Blast', effects: [{ type: 'DAMAGE' }] };
       const playerStates = {};
 
       expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
     });
 
     it('should return true for Support cards', () => {
-      const card = { type: 'Support', name: 'System Reboot' };
+      const card = { type: 'Support', name: 'System Reboot', effects: [{ type: 'HEAL' }] };
       const playerStates = {};
 
       expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
     });
 
-    it('should return true for any card without effect.condition', () => {
-      const card = { type: 'Tactic', name: 'EMP Burst' };
+    it('should return true for any card without effects[0].condition', () => {
+      const card = { type: 'Tactic', name: 'EMP Burst', effects: [{ type: 'DAMAGE' }] };
       const playerStates = {};
 
       expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
@@ -34,13 +34,13 @@ describe('isLaneControlCardPlayable', () => {
     const crossfireCard = {
       type: 'Ordnance',
       name: 'Crossfire Pattern',
-      effect: {
+      effects: [{
         condition: {
           type: 'CONTROL_LANES',
           lanes: ['lane1', 'lane3'],
           operator: 'ALL'
         }
-      }
+      }]
     };
 
     it('should return true when player controls both flank lanes', () => {
@@ -132,13 +132,13 @@ describe('isLaneControlCardPlayable', () => {
     const breachCard = {
       type: 'Ordnance',
       name: 'Breach the Line',
-      effect: {
+      effects: [{
         condition: {
           type: 'CONTROL_LANES',
           lanes: ['lane2'],
           operator: 'ALL'
         }
-      }
+      }]
     };
 
     it('should return true when player controls middle lane', () => {
@@ -188,11 +188,11 @@ describe('isLaneControlCardPlayable', () => {
     const overrunCard = {
       type: 'Ordnance',
       name: 'Overrun',
-      effect: {
+      effects: [{
         condition: {
           type: 'CONTROL_LANE_EMPTY'
         }
-      }
+      }]
     };
 
     it('should return true when player controls ANY lane with no enemy drones', () => {
@@ -264,13 +264,13 @@ describe('isLaneControlCardPlayable', () => {
     const encirclementCard = {
       type: 'Ordnance',
       name: 'Encirclement',
-      effect: {
+      effects: [{
         condition: {
           type: 'CONTROL_LANES',
           lanes: ['lane1', 'lane2', 'lane3'],
           operator: 'ALL'
         }
-      }
+      }]
     };
 
     it('should return true when player controls all three lanes', () => {
@@ -341,13 +341,13 @@ describe('isLaneControlCardPlayable', () => {
     it('should work correctly for player2 as acting player', () => {
       const crossfireCard = {
         type: 'Ordnance',
-        effect: {
+        effects: [{
           condition: {
             type: 'CONTROL_LANES',
             lanes: ['lane1', 'lane3'],
             operator: 'ALL'
           }
-        }
+        }]
       };
 
       const playerStates = {
@@ -375,11 +375,11 @@ describe('isLaneControlCardPlayable', () => {
     it('should return false for unknown condition types', () => {
       const unknownCard = {
         type: 'Ordnance',
-        effect: {
+        effects: [{
           condition: {
             type: 'UNKNOWN_CONDITION'
           }
-        }
+        }]
       };
 
       const playerStates = {

@@ -153,19 +153,19 @@ export const evaluateReadyDroneCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateCreateTokensCard = (card, target, context) => {
-  if (card.effect.tokenName === 'Rally Beacon') {
+  if (card.effects[0].tokenName === 'Rally Beacon') {
     return evaluateRallyBeaconCard(card, target, context);
   }
-  if (card.effect.tokenName === 'Thruster Inhibitor') {
+  if (card.effects[0].tokenName === 'Thruster Inhibitor') {
     return evaluateThrusterInhibitorCard(card, target, context);
   }
-  if (card.effect.tokenName === 'Proximity Mine') {
+  if (card.effects[0].tokenName === 'Proximity Mine') {
     return evaluateProximityMineCard(card, target, context);
   }
-  if (card.effect.tokenName === 'Inhibitor Mine') {
+  if (card.effects[0].tokenName === 'Inhibitor Mine') {
     return evaluateInhibitorMineCard(card, target, context);
   }
-  if (card.effect.tokenName === 'Jitter Mine') {
+  if (card.effects[0].tokenName === 'Jitter Mine') {
     return evaluateJitterMineCard(card, target, context);
   }
   return evaluateJammerCard(card, target, context);

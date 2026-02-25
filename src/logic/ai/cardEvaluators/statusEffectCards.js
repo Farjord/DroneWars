@@ -418,7 +418,7 @@ export const evaluateClearAllStatusCard = (card, target, context) => {
   }
 
   // === GO_AGAIN BONUS ===
-  if (card.effect.goAgain) {
+  if (card.effects[0].goAgain) {
     totalScore += 30;
     logic.push(`⭐ Go Again: +30 (extra action)`);
   }

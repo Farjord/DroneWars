@@ -17,7 +17,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  */
 export function isLaneControlCardPlayable(card, actingPlayerId, playerStates) {
   // Cards without effect conditions are always playable (by this validator)
-  if (!card.effect?.condition) {
+  if (!card.effects[0]?.condition) {
     return true;
   }
 
@@ -27,7 +27,7 @@ export function isLaneControlCardPlayable(card, actingPlayerId, playerStates) {
     playerStates.player2
   );
 
-  const condition = card.effect.condition;
+  const condition = card.effects[0].condition;
 
   // Check condition based on type
   switch (condition.type) {
@@ -86,7 +86,7 @@ export function getLaneControlPlayabilityMap(cards, actingPlayerId, playerStates
   const playabilityMap = new Map();
 
   cards.forEach(card => {
-    if (card.effect?.condition) {
+    if (card.effects[0]?.condition) {
       playabilityMap.set(card.id, isLaneControlCardPlayable(card, actingPlayerId, playerStates));
     }
   });

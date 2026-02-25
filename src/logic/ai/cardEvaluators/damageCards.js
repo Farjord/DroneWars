@@ -20,7 +20,7 @@ export const evaluateDestroyCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  if (card.effect.scope === 'SINGLE' && target) {
+  if (card.effects[0].scope === 'SINGLE' && target) {
     // Get lane for context-aware scoring
     const lane = getLaneOfDrone ? getLaneOfDrone(target.id, player1) : target.lane;
 
@@ -38,8 +38,8 @@ export const evaluateDestroyCard = (card, target, context) => {
     logic.push(...targetLogic.map(l => `  ${l}`));
     logic.push(`Cost: -${costPenalty}`);
   }
-  else if (card.targeting?.affectedFilter && target && target.id.startsWith('lane')) {
-    const { stat, comparison, value } = card.targeting.affectedFilter[0];
+  else if (card.effects[0]?.targeting?.affectedFilter && target && target.id.startsWith('lane')) {
+    const { stat, comparison, value } = card.effects[0].targeting.affectedFilter[0];
     const laneId = target.id;
     const dronesInLane = player1.dronesOnBoard[laneId] || [];
     let totalValue = 0;
@@ -70,7 +70,7 @@ export const evaluateDestroyCard = (card, target, context) => {
     logic.push(`Filtered Targets (${matchCount}): +${totalValue}`);
     logic.push(`Cost: -${costPenalty}`);
   }
-  else if (card.effect.scope === 'LANE' && target && target.id.startsWith('lane')) {
+  else if (card.effects[0].scope === 'LANE' && target && target.id.startsWith('lane')) {
     const laneId = target.id;
     const enemyDrones = player1.dronesOnBoard[laneId] || [];
     const friendlyDrones = player2.dronesOnBoard[laneId] || [];
@@ -121,8 +121,8 @@ export const evaluateDamageCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  if (card.targeting?.affectedFilter && target.id.startsWith('lane')) {
-    const { stat, comparison, value } = card.targeting.affectedFilter[0];
+  if (card.effects[0]?.targeting?.affectedFilter && target.id.startsWith('lane')) {
+    const { stat, comparison, value } = card.effects[0].targeting.affectedFilter[0];
     const laneId = target.id;
     const dronesInLane = player1.dronesOnBoard[laneId] || [];
     let totalValue = 0;
@@ -137,9 +137,9 @@ export const evaluateDamageCard = (card, target, context) => {
       if (meetsCondition) {
         targetsHit++;
         const { score: droneValue } = calculateTargetValue(drone, context, {
-          damageAmount: card.effect.value,
-          isPiercing: card.effect.damageType === 'PIERCING',
-          damageType: card.effect.damageType,
+          damageAmount: card.effects[0].value,
+          isPiercing: card.effects[0].damageType === 'PIERCING',
+          damageType: card.effects[0].damageType,
           lane: laneId
         });
         totalValue += droneValue;
@@ -156,12 +156,12 @@ export const evaluateDamageCard = (card, target, context) => {
   } else {
     // Single target damage - use unified scoring
     const lane = getLaneOfDrone ? getLaneOfDrone(target.id, player1) : target.lane;
-    const isPiercing = card.effect.damageType === 'PIERCING';
+    const isPiercing = card.effects[0].damageType === 'PIERCING';
 
     const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
-      damageAmount: card.effect.value,
+      damageAmount: card.effects[0].value,
       isPiercing,
-      damageType: card.effect.damageType,
+      damageType: card.effects[0].damageType,
       lane
     });
 
@@ -189,7 +189,7 @@ export const evaluateOverflowDamageCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  const { baseDamage, isPiercing, markedBonus = 0 } = card.effect;
+  const { baseDamage, isPiercing, markedBonus = 0 } = card.effects[0];
   const isMarked = target.isMarked || false;
   const totalDamage = baseDamage + (isMarked ? markedBonus : 0);
 
@@ -200,7 +200,7 @@ export const evaluateOverflowDamageCard = (card, target, context) => {
   const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
     damageAmount: totalDamage,
     isPiercing,
-    damageType: card.effect.damageType,
+    damageType: card.effects[0].damageType,
     lane
   });
 
@@ -250,7 +250,7 @@ export const evaluateSplashDamageCard = (card, target, context) => {
   const friendlyDronesInLane = player2.dronesOnBoard[laneId] || [];
 
   // Check conditional for bonus damage
-  const { primaryDamage, splashDamage, conditional } = card.effect;
+  const { primaryDamage, splashDamage, conditional } = card.effects[0];
   let bonusDamage = 0;
 
   if (conditional?.type === 'FRIENDLY_COUNT_IN_LANE') {
@@ -268,7 +268,7 @@ export const evaluateSplashDamageCard = (card, target, context) => {
   const { score: primaryValue, logic: primaryLogic } = calculateTargetValue(target, context, {
     damageAmount: effectivePrimaryDamage,
     isPiercing: false,
-    damageType: card.effect.damageType,
+    damageType: card.effects[0].damageType,
     lane: laneId
   });
 
@@ -292,7 +292,7 @@ export const evaluateSplashDamageCard = (card, target, context) => {
     const { score: adjValue } = calculateTargetValue(adj, context, {
       damageAmount: effectiveSplashDamage,
       isPiercing: false,
-      damageType: card.effect.damageType,
+      damageType: card.effects[0].damageType,
       lane: laneId
     });
     score += adjValue;
@@ -336,7 +336,7 @@ export const evaluateDamageScalingCard = (card, target, context) => {
 
   // Calculate damage based on source
   let damage = 0;
-  const { source } = card.effect;
+  const { source } = card.effects[0];
 
   if (source === 'READY_DRONES_IN_LANE') {
     damage = friendlyDronesInLane.filter(d => !d.isExhausted).length;
@@ -347,7 +347,7 @@ export const evaluateDamageScalingCard = (card, target, context) => {
   const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
     damageAmount: damage,
     isPiercing: false,
-    damageType: card.effect.damageType,
+    damageType: card.effects[0].damageType,
     lane: laneId
   });
 
@@ -414,7 +414,7 @@ export const evaluateConditionalSectionDamageCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  const effect = card.effect;
+  const effect = card.effects[0];
   const actingPlayerId = 'player2'; // AI is always player2
   const opponentId = 'player1';
 

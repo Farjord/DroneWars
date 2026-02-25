@@ -351,7 +351,7 @@ export default function useClickHandlers({
       }
     }
 
-    if (selectedCard && selectedCard.targeting.type === 'LANE') {
+    if (selectedCard && selectedCard.effects[0].targeting.type === 'LANE') {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         if (validCardTargets.some(t => t.id === lane && t.owner === owner)) {
             setCardConfirmation({ card: selectedCard, target: { id: lane, owner }});
@@ -446,12 +446,12 @@ export default function useClickHandlers({
     } else {
         // All other cards: click selects (shows valid targets), DnD plays
         // Covers: DRONE, LANE, SHIP_SECTION, NONE (upgrades, System Sabotage, Purge Protocol), SINGLE_MOVE
-        if (!card.targeting) {
+        if (!card.effects[0]?.targeting) {
             debugLog('CARD_PLAY', `✅ Non-targeted card - showing confirmation: ${card.name}`);
             cancelAllActions();
             setCardConfirmation({ card, target: null });
         } else {
-            debugLog('CARD_PLAY', `✅ Card selected - drag to play: ${card.name}`, { targeting: card.targeting });
+            debugLog('CARD_PLAY', `✅ Card selected - drag to play: ${card.name}`, { targeting: card.effects[0].targeting });
             cancelAllActions();
             setSelectedCard(card);
         }

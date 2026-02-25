@@ -24,12 +24,12 @@ export const evaluateModifyStatCard = (card, target, context) => {
     allSections,
     getShipStatus
   } = context;
-  const { mod } = card.effect;
+  const { mod } = card.effects[0];
   const logic = [];
   let score = 0;
 
   // Lane-wide stat modification
-  if (card.targeting?.type === 'LANE') {
+  if (card.effects[0]?.targeting?.type === 'LANE') {
     const laneId = target.id;
     const dronesInLane = player2.dronesOnBoard[laneId] || [];
     const activeDronesInLane = dronesInLane.filter(drone => !drone.isExhausted);
@@ -124,7 +124,7 @@ export const evaluateModifyStatCard = (card, target, context) => {
       score *= CARD_EVALUATION.PERMANENT_MOD_MULTIPLIER;
       logic.push(`✅ Permanent Mod: x${CARD_EVALUATION.PERMANENT_MOD_MULTIPLIER}`);
     }
-    if (card.effect.goAgain) {
+    if (card.effects[0].goAgain) {
       score += CARD_EVALUATION.GO_AGAIN_BONUS;
       logic.push(`✅ Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
       // Add bonus if we have ready drones that benefit from multiple actions
@@ -154,7 +154,7 @@ export const evaluateRepeatingEffectCard = (card, target, context) => {
   let score = 0;
 
   let repeatCount = 0;
-  const condition = card.effect?.condition || card.condition;
+  const condition = card.effects[0]?.condition || card.condition;
 
   if (condition === 'OWN_DAMAGED_SECTIONS') {
     // Base of 1, plus additional for each damaged section
@@ -177,7 +177,7 @@ export const evaluateRepeatingEffectCard = (card, target, context) => {
     }
 
     // Use specific values for lane control effects
-    const subEffectType = card.effect?.effects?.[0]?.type;
+    const subEffectType = card.effects[0]?.effects?.[0]?.type;
     let valuePerRepeat = CARD_EVALUATION.REPEAT_VALUE_PER_REPEAT;
 
     if (subEffectType === 'GAIN_ENERGY') {

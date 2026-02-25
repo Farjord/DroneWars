@@ -21,7 +21,7 @@ const getTypeColors = (type, rarity, isDisabled) => {
 
 // Helper function to get effect label for LANES_CONTROLLED cards
 const getEffectLabel = (card) => {
-  const effectType = card.effect?.effects?.[0]?.type;
+  const effectType = card.effects?.[0]?.effects?.[0]?.type;
   if (effectType === 'GAIN_ENERGY') return 'energy';
   if (effectType === 'DRAW_CARDS' || effectType === 'DRAW') return 'cards';
   return 'effect';

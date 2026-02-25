@@ -17,14 +17,14 @@ import { debugLog } from '../../../utils/debugLogger.js';
  * @returns {Object} - { bonusScore: number, logic: string[] }
  */
 export function evaluateConditionalEffects(card, target, context) {
-  if (!card.conditionalEffects?.length) {
+  if (!card.effects[0]?.conditionals?.length) {
     return { bonusScore: 0, logic: [] };
   }
 
   const logic = [];
   let bonusScore = 0;
 
-  for (const conditional of card.conditionalEffects) {
+  for (const conditional of card.effects[0].conditionals) {
     let conditionMet = false;
 
     if (conditional.timing === 'PRE') {
@@ -32,7 +32,7 @@ export function evaluateConditionalEffects(card, target, context) {
       conditionMet = evaluateCondition(conditional.condition, target, context);
     } else if (conditional.timing === 'POST') {
       // POST conditionals can be predicted based on base effect outcome
-      conditionMet = evaluatePostCondition(conditional.condition, card.effect, target, context);
+      conditionMet = evaluatePostCondition(conditional.condition, card.effects[0], target, context);
     }
 
     if (conditionMet) {

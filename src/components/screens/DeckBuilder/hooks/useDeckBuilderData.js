@@ -35,8 +35,8 @@ const useDeckBuilderData = ({
 
   const processedCardCollection = useMemo(() => {
     return fullCardCollection.map(card => {
-      const keywords = extractCardKeywords(card.effect);
-      const targetingText = extractTargetingText(card, card.effect);
+      const keywords = extractCardKeywords(card.effects[0]);
+      const targetingText = extractTargetingText(card, card.effects[0]);
       return { ...card, keywords: [...new Set(keywords)], targetingText };
     });
   }, [fullCardCollection]);
@@ -84,8 +84,8 @@ const useDeckBuilderData = ({
         targets.add(card.targetingText);
       }
       card.keywords.forEach(k => abilities.add(k));
-      if (card.effect?.damageType) {
-        damageTypes.add(card.effect.damageType);
+      if (card.effects?.[0]?.damageType) {
+        damageTypes.add(card.effects[0].damageType);
       }
     });
 

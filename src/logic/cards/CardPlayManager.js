@@ -96,14 +96,14 @@ class CardPlayManager {
     const targetName = target ? (target.name || target.id) : 'N/A';
     let outcome = 'Card effect applied.';
 
-    const effect = card.effect;
+    const effect = card.effects[0];
     if (effect.type === 'DRAW') outcome = `Drew ${effect.value} card(s).`;
     if (effect.type === 'GAIN_ENERGY') outcome = `Gained ${effect.value} energy.`;
     if (effect.type === 'HEAL_HULL') outcome = `Healed ${effect.value} hull on ${targetName}.`;
     if (effect.type === 'HEAL_SHIELDS') outcome = `Healed ${effect.value} shields on ${targetName}.`;
     if (effect.type === 'READY_DRONE') outcome = `Readied ${targetName}.`;
     if (effect.type === 'DAMAGE') {
-      if (card.targeting?.affectedFilter) {
+      if (card.effects[0]?.targeting?.affectedFilter) {
         outcome = `Dealt ${effect.value} damage to filtered targets in ${targetName}.`;
       } else {
         outcome = `Dealt ${effect.value} damage to ${targetName}.`;
@@ -131,9 +131,9 @@ class CardPlayManager {
     // Check if this card will need player selection (local human player only)
     // For these cards, costs will be paid after selection in the completion handler
     const willNeedSelection = actingPlayerId === localPlayerId && (
-      card.effect.type === 'SEARCH_AND_DRAW' ||
-      card.effect.type === 'SINGLE_MOVE' ||
-      card.effect.type === 'MULTI_MOVE'
+      card.effects[0].type === 'SEARCH_AND_DRAW' ||
+      card.effects[0].type === 'SINGLE_MOVE' ||
+      card.effects[0].type === 'MULTI_MOVE'
     );
 
     // Pay card costs first (unless card needs selection - costs will be paid after selection)
@@ -151,13 +151,13 @@ class CardPlayManager {
     };
 
     // Process PRE conditionals (before primary effect)
-    let effectToResolve = card.effect;
+    let effectToResolve = card.effects[0];
     let preAdditionalEffects = [];
 
-    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+    if (card.effects[0].conditionals && card.effects[0].conditionals.length > 0) {
       const preResult = this.conditionalProcessor.processPreConditionals(
-        card.conditionalEffects,
-        card.effect,
+        card.effects[0].conditionals,
+        card.effects[0],
         conditionalContext
       );
       effectToResolve = preResult.modifiedEffect; // May have BONUS_DAMAGE applied
@@ -165,7 +165,7 @@ class CardPlayManager {
       preAdditionalEffects = preResult.additionalEffects || [];
 
       debugLog('EFFECT_PROCESSING', '[CardPlayManager] PRE conditionals processed', {
-        originalValue: card.effect?.value,
+        originalValue: card.effects[0]?.value,
         modifiedValue: effectToResolve?.value,
         additionalEffectsQueued: preAdditionalEffects.length
       });
@@ -175,20 +175,20 @@ class CardPlayManager {
     const result = this.resolveCardEffect(effectToResolve, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
 
     // Process POST conditionals (after primary effect)
-    // Skip for movement cards - POST conditionals are processed in processMovementCompletion
+    // Skip for movement cards - POST conditionals are processed after movement selection
     // after the player selects which drone to move
     let postAdditionalEffects = [];
     let dynamicGoAgain = false;
-    const isMovementCard = card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE';
+    const isMovementCard = card.effects[0]?.type === 'SINGLE_MOVE' || card.effects[0]?.type === 'MULTI_MOVE';
 
-    if (!isMovementCard && card.conditionalEffects && card.conditionalEffects.length > 0) {
+    if (!isMovementCard && card.effects[0]?.conditionals && card.effects[0].conditionals.length > 0) {
       const postContext = {
         ...conditionalContext,
         playerStates: result.newPlayerStates
       };
 
       const postResult = this.conditionalProcessor.processPostConditionals(
-        card.conditionalEffects,
+        card.effects[0].conditionals,
         postContext,
         result.effectResult || null
       );
@@ -242,7 +242,7 @@ class CardPlayManager {
       // Check if target is a lane (lane-scoped effects like 'lane1', 'lane2', 'lane3')
       if (target.id && (target.id === 'lane1' || target.id === 'lane2' || target.id === 'lane3')) {
         // Lane-targeted cards: Determine which player's lane based on targeting affinity
-        const targetingAffinity = card.targeting?.affinity || 'ANY';
+        const targetingAffinity = card.effects[0]?.targeting?.affinity || 'ANY';
 
         if (targetingAffinity === 'ENEMY') {
           // Offensive card targeting opponent's lane (e.g., Sidewinder Missiles)
@@ -394,7 +394,7 @@ class CardPlayManager {
 
     // Determine if turn should end
     // Static goAgain from card definition OR dynamic goAgain from POST conditional
-    const hasGoAgain = card.effect?.goAgain || dynamicGoAgain;
+    const hasGoAgain = card.effects[0]?.goAgain || dynamicGoAgain;
     const shouldEndTurn = !hasGoAgain;
 
     return {

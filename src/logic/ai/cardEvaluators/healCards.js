@@ -16,7 +16,7 @@ import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
 export const evaluateHealShieldsCard = (card, target, context) => {
   const logic = [];
 
-  const shieldsToHeal = Math.min(card.effect.value, target.currentMaxShields - target.currentShields);
+  const shieldsToHeal = Math.min(card.effects[0].value, target.currentMaxShields - target.currentShields);
   const score = shieldsToHeal * CARD_EVALUATION.SHIELD_HEAL_VALUE_PER_POINT;
   logic.push(`✅ Shields Healed: +${score} (${shieldsToHeal} shields)`);
 
@@ -38,7 +38,7 @@ export const evaluateHealHullCard = (card, target, context) => {
   // Check if targeting a drone (has hull and maxHull properties)
   if (target.hull !== undefined && target.maxHull !== undefined) {
     // Drone hull healing
-    const hullToHeal = Math.min(card.effect.value, target.maxHull - target.hull);
+    const hullToHeal = Math.min(card.effects[0].value, target.maxHull - target.hull);
 
     if (hullToHeal <= 0) {
       return { score: INVALID_SCORE, logic: ['❌ Drone at full hull - no effect'] };
@@ -51,7 +51,7 @@ export const evaluateHealHullCard = (card, target, context) => {
     logic.push(`✅ Drone Hull: +${hullValue} (${hullToHeal} hull restored)`);
 
     // Add go-again bonus if present
-    if (card.effect.goAgain) {
+    if (card.effects[0].goAgain) {
       score += CARD_EVALUATION.GO_AGAIN_BONUS;
       logic.push(`✅ Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
       // Add bonus if we have ready drones that benefit from multiple actions
@@ -85,7 +85,7 @@ export const evaluateRestoreSectionShieldsCard = (card, target, context) => {
   const missingShields = maxShields - currentShields;
 
   // Can only restore up to the card's value or missing shields, whichever is less
-  const shieldsToRestore = Math.min(card.effect.value, missingShields);
+  const shieldsToRestore = Math.min(card.effects[0].value, missingShields);
 
   if (shieldsToRestore <= 0) {
     return { score: INVALID_SCORE, logic: ['❌ Section at full shields - no effect'] };

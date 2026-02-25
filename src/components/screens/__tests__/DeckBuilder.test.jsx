@@ -118,8 +118,7 @@ const makeCard = (id, { name, type = 'Ordnance', cost = 1, rarity = 'Common', ba
   type,
   cost,
   rarity,
-  effect: { type: 'DAMAGE' },
-  targeting: { type: 'SINGLE_TARGET' }
+  effects: [{ type: 'DAMAGE', targeting: { type: 'SINGLE_TARGET' } }]
 });
 
 const makeDrone = (name, { rarity = 'Common', attack = 2, speed = 3, shields = 1, hull = 5, limit = 3 } = {}) => ({

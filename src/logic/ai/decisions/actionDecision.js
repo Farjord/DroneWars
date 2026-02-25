@@ -175,27 +175,27 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
         if (!isCardConditionMet(card, 'player2', playerStates)) return false;
       }
       // Check lane control conditions (ex-Doctrine cards with effect.condition)
-      if (card.effect?.condition) {
+      if (card.effects[0]?.condition) {
         if (!isLaneControlCardPlayable(card, 'player2', playerStates)) return false;
       }
       // Skip NONE-type cards that require modal interaction (upgrades, System Sabotage)
       // Purge Protocol (NONE + scope: 'ALL') auto-resolves without a modal, so allow it through.
-      if (card.targeting?.type === 'NONE' && card.effect?.scope !== 'ALL') return false;
+      if (card.effects[0]?.targeting?.type === 'NONE' && card.effects[0]?.scope !== 'ALL') return false;
       return true;
     });
     for (const card of playableCards) {
       // Normal targeted cards (DRONE, LANE, SHIP_SECTION — not SINGLE_MOVE or NONE)
-      if (card.targeting && card.effect?.type !== 'SINGLE_MOVE' && card.targeting.type !== 'NONE') {
+      if (card.effects[0]?.targeting && card.effects[0]?.type !== 'SINGLE_MOVE' && card.effects[0].targeting.type !== 'NONE') {
         let targets = getValidTargets('player2', null, card, player1, player2);
 
-        if (card.effect.type === 'HEAL_SHIELDS') {
+        if (card.effects[0].type === 'HEAL_SHIELDS') {
             targets = targets.filter(t => t.currentShields < t.currentMaxShields);
         }
-        if (card.effect.type === 'HEAL_HULL' && card.targeting.type === 'SHIP_SECTION') {
+        if (card.effects[0].type === 'HEAL_HULL' && card.effects[0].targeting.type === 'SHIP_SECTION') {
             targets = targets.filter(t => t.hull < t.maxHull);
         }
 
-        if (card.effect.type === 'DAMAGE' || card.effect.type === 'DESTROY') {
+        if (card.effects[0].type === 'DAMAGE' || card.effects[0].type === 'DESTROY') {
             targets = targets.filter(t => t.owner === 'player1');
         }
 
@@ -208,7 +208,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
         }
       }
       // SINGLE_MOVE
-      else if (card.effect?.type === 'SINGLE_MOVE') {
+      else if (card.effects[0]?.type === 'SINGLE_MOVE') {
         for (const drone of readyAiDrones) {
           const fromLaneIndex = parseInt(drone.lane.slice(-1));
 

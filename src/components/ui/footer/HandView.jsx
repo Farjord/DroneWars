@@ -21,7 +21,7 @@ const targetingRouter = new TargetingRouter();
 
 // Helper function to check if card has momentum bonus (NOT_FIRST_ACTION conditional)
 const hasMomentumBonus = (card) => {
-  return card.conditionalEffects?.some(
+  return card.effects?.[0]?.conditionals?.some(
     effect => effect.condition?.type === 'NOT_FIRST_ACTION'
   );
 };
@@ -149,10 +149,10 @@ function HandView({
       debugLog('ADDITIONAL_COST_VALIDATION', '🔍 Checking card playability', {
         cardName: card.name,
         cardId: card.id,
-        hasTargeting: !!card.targeting
+        hasTargeting: !!card.effects?.[0]?.targeting
       });
 
-      if (!card.targeting) {
+      if (!card.effects?.[0]?.targeting) {
         debugLog('ADDITIONAL_COST_VALIDATION', '✅ Card is PLAYABLE (no targeting)', {
           cardName: card.name
         });
@@ -257,7 +257,7 @@ function HandView({
 
               // Check lane control conditions (cards with effect.condition)
               let laneControlPlayable = true;
-              if (card.effect?.condition) {
+              if (card.effects?.[0]?.condition) {
                 // Construct playerStates object from local and opponent states
                 const playerStates = localPlayerId === 'player1'
                   ? { player1: localPlayerState, player2: opponentPlayerState }

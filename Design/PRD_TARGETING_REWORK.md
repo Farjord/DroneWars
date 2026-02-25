@@ -354,8 +354,8 @@ The backward-compat layer exists for ~200 AI evaluator references that read `car
 | `src/hooks/useDragMechanics.js` | DnD logic — routes to `startEffectChain` |
 | `src/hooks/useClickHandlers.js` | Click logic — routes chain target/destination selection |
 | `src/logic/cards/EffectChainProcessor.js` | Commit-time chain execution |
-| `src/logic/targeting/chainTargetResolver.js` | Selection-time target computation |
-| `src/logic/cards/effectsAdapter.js` | Backward-compat derivation (`effects[0]` → `card.effect`) |
+| `src/logic/cards/chainTargetResolver.js` | Selection-time target computation |
+| `src/logic/cards/effectsAdapter.js` | Card enrichment pass-through (compat layer removed) |
 | `src/logic/actions/CardActionStrategy.js` | Action dispatch (routes to chain processor) |
 | `src/logic/TargetingRouter.js` | Targeting type → processor router |
 | `src/logic/targeting/uiTargetingHelpers.js` | UI target calculation bridge |

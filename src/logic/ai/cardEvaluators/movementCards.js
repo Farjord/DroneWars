@@ -141,7 +141,7 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
   logic.push(`⚠️ Cost: -${costPenalty}`);
 
   // Add goAgain bonus if applicable
-  if (card.effect.goAgain) {
+  if (card.effects[0].goAgain) {
     score += CARD_EVALUATION.GO_AGAIN_BONUS;
     logic.push(`✅ Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
     // Add bonus if we have ready drones that benefit from multiple actions
@@ -185,7 +185,7 @@ export const evaluateMultiMoveCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
   }
 
-  const maxMoves = card.effect.count || 3;
+  const maxMoves = card.effects[0].count || 3;
   const availableMoves = Math.min(dronesInLane.length, maxMoves);
 
   if (availableMoves === 0) {
@@ -198,7 +198,7 @@ export const evaluateMultiMoveCard = (card, target, context) => {
   logic.push(`✅ Flexibility: +${flexibilityValue} (${availableMoves} drones can move)`);
 
   // Bonus for drones that aren't exhausted after move (DO_NOT_EXHAUST)
-  if (card.effect.properties?.includes('DO_NOT_EXHAUST')) {
+  if (card.effects[0].properties?.includes('DO_NOT_EXHAUST')) {
     const readyBonus = availableMoves * 10;
     score += readyBonus;
     logic.push(`✅ Stay Ready: +${readyBonus}`);

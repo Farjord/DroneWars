@@ -112,7 +112,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 10, currentShields: 0, isMarked: false, class: 1 });
     const context = createMockContext();
@@ -131,7 +131,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 2, currentShields: 0, isMarked: false, class: 2 });
     const context = createMockContext();
@@ -150,7 +150,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 1, currentShields: 0, isMarked: false, class: 1 });
     const context = createMockContext();
@@ -169,7 +169,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 2, currentShields: 0, isMarked: true, class: 1 });
     const context = createMockContext();
@@ -189,7 +189,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 10, currentShields: 3, isMarked: false, class: 1 });
     const context = createMockContext();
@@ -208,7 +208,7 @@ describe('evaluateOverflowDamageCard', () => {
     const card = {
       id: 'CARD031',
       cost: 5,
-      effect: { type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }
+      effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
     const target = createMockDrone({ hull: 1, currentShields: 0, isMarked: true, class: 1 });
     const context = createMockContext();
@@ -229,7 +229,7 @@ describe('evaluateDamageCard', () => {
     const card = {
       id: 'CARD001',
       cost: 2,
-      effect: { type: 'DAMAGE', scope: 'SINGLE', value: 2 }
+      effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2 }]
     };
     const target = createMockDrone({ hull: 3, class: 1 });
     const context = createMockContext();
@@ -247,7 +247,7 @@ describe('evaluateDamageCard', () => {
     const card = {
       id: 'CARD001',
       cost: 2,
-      effect: { type: 'DAMAGE', scope: 'SINGLE', value: 2 }
+      effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2 }]
     };
     // Set currentShields: 0 so 2 damage kills 2 hull target
     const target = createMockDrone({ hull: 2, currentShields: 0, class: 2 });
@@ -266,7 +266,7 @@ describe('evaluateDamageCard', () => {
     const card = {
       id: 'CARD012',
       cost: 4,
-      effect: { type: 'DAMAGE', scope: 'SINGLE', value: 2, damageType: 'PIERCING' }
+      effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2, damageType: 'PIERCING' }]
     };
     const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
     const context = createMockContext();
@@ -280,11 +280,11 @@ describe('evaluateDamageCard', () => {
     const card = {
       id: 'CARD013',
       cost: 3,
-      targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] },
-      effect: {
+      effects: [{
         type: 'DAMAGE',
-        value: 2
-      }
+        value: 2,
+        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] }
+      }]
     };
     const target = { id: 'lane1' };
     // Explicitly set hull/shields so 2 damage is lethal
@@ -316,12 +316,12 @@ describe('evaluateSplashDamageCard', () => {
     const card = {
       id: 'CARD032',
       cost: 4,
-      effect: {
+      effects: [{
         type: 'SPLASH_DAMAGE',
         primaryDamage: 1,
         splashDamage: 1,
         conditional: { type: 'FRIENDLY_COUNT_IN_LANE', threshold: 3, bonusDamage: 1 }
-      }
+      }]
     };
     // Target drone in lane with 2 adjacent drones
     const target = createMockDrone({ id: 'drone_1', hull: 2, currentShields: 0 });
@@ -358,12 +358,12 @@ describe('evaluateSplashDamageCard', () => {
     const card = {
       id: 'CARD032',
       cost: 4,
-      effect: {
+      effects: [{
         type: 'SPLASH_DAMAGE',
         primaryDamage: 1,
         splashDamage: 1,
         conditional: { type: 'FRIENDLY_COUNT_IN_LANE', threshold: 3, bonusDamage: 1 }
-      }
+      }]
     };
     const target = createMockDrone({ id: 'drone_e1', hull: 2, currentShields: 0 });
     const context = createMockContext({
@@ -407,12 +407,12 @@ describe('evaluateSplashDamageCard', () => {
     const card = {
       id: 'CARD032',
       cost: 4,
-      effect: {
+      effects: [{
         type: 'SPLASH_DAMAGE',
         primaryDamage: 1,
         splashDamage: 1,
         conditional: { type: 'FRIENDLY_COUNT_IN_LANE', threshold: 3, bonusDamage: 1 }
-      }
+      }]
     };
     // Target with only 1 hull - will die
     const target = createMockDrone({ id: 'drone_1', hull: 1, currentShields: 0, class: 2 });
@@ -447,10 +447,10 @@ describe('evaluateDamageScalingCard', () => {
     const card = {
       id: 'CARD035',
       cost: 2,
-      effect: {
+      effects: [{
         type: 'DAMAGE_SCALING',
         source: 'READY_DRONES_IN_LANE'
-      }
+      }]
     };
     // Target with 2 hull, class 1
     const target = createMockDrone({ id: 'enemy_1', hull: 2, currentShields: 0, class: 1 });
@@ -490,10 +490,10 @@ describe('evaluateDamageScalingCard', () => {
     const card = {
       id: 'CARD035',
       cost: 2,
-      effect: {
+      effects: [{
         type: 'DAMAGE_SCALING',
         source: 'READY_DRONES_IN_LANE'
-      }
+      }]
     };
     const target = createMockDrone({ id: 'enemy_1', hull: 2 });
     const context = createMockContext({
@@ -519,10 +519,10 @@ describe('evaluateDamageScalingCard', () => {
     const card = {
       id: 'CARD035',
       cost: 2,
-      effect: {
+      effects: [{
         type: 'DAMAGE_SCALING',
         source: 'READY_DRONES_IN_LANE'
-      }
+      }]
     };
     // Target with 3 hull, class 3 (valuable target)
     const target = createMockDrone({ id: 'enemy_1', hull: 3, currentShields: 0, class: 3 });
@@ -560,7 +560,7 @@ describe('evaluateDestroyUpgradeCard', () => {
     const card = {
       id: 'CARD022',
       cost: 1,
-      effect: { type: 'DESTROY_UPGRADE' }
+      effects: [{ type: 'DESTROY_UPGRADE' }]
     };
     // Target is an upgrade with stat modification
     const target = {
@@ -582,7 +582,7 @@ describe('evaluateDestroyUpgradeCard', () => {
     const card = {
       id: 'CARD022',
       cost: 1,
-      effect: { type: 'DESTROY_UPGRADE' }
+      effects: [{ type: 'DESTROY_UPGRADE' }]
     };
     const target = {
       id: 'upgrade_1',
@@ -602,7 +602,7 @@ describe('evaluateDestroyUpgradeCard', () => {
     const card = {
       id: 'CARD022',
       cost: 1,
-      effect: { type: 'DESTROY_UPGRADE' }
+      effects: [{ type: 'DESTROY_UPGRADE' }]
     };
     const target = {
       id: 'upgrade_1',
@@ -624,7 +624,7 @@ describe('evaluateDestroyCard', () => {
     const card = {
       id: 'CARD009',
       cost: 3,
-      effect: { type: 'DESTROY', scope: 'SINGLE' }
+      effects: [{ type: 'DESTROY', scope: 'SINGLE' }]
     };
     const target = createMockDrone({ hull: 3, currentShields: 2 });
     const context = createMockContext();
@@ -641,7 +641,7 @@ describe('evaluateDestroyCard', () => {
     const card = {
       id: 'CARD011',
       cost: 8,
-      effect: { type: 'DESTROY', scope: 'LANE' }
+      effects: [{ type: 'DESTROY', scope: 'LANE' }]
     };
     const target = { id: 'lane1' };
 
@@ -678,7 +678,7 @@ describe('evaluateGainEnergyCard', () => {
       id: 'CARD004',
       instanceId: 'inst1',
       cost: 1,
-      effect: { type: 'GAIN_ENERGY', value: 2 }
+      effects: [{ type: 'GAIN_ENERGY', value: 2 }]
     };
     const expensiveCard = { instanceId: 'inst2', name: 'Expensive Card', cost: 6 };
 
@@ -701,7 +701,7 @@ describe('evaluateGainEnergyCard', () => {
       id: 'CARD004',
       instanceId: 'inst1',
       cost: 1,
-      effect: { type: 'GAIN_ENERGY', value: 2 }
+      effects: [{ type: 'GAIN_ENERGY', value: 2 }]
     };
     const cheapCard = { instanceId: 'inst2', name: 'Cheap Card', cost: 2 };
 
@@ -724,13 +724,13 @@ describe('evaluateGainEnergyCard', () => {
       id: 'CARD004',
       instanceId: 'inst1',
       cost: 1,
-      effect: { type: 'GAIN_ENERGY', value: 2 }
+      effects: [{ type: 'GAIN_ENERGY', value: 2 }]
     };
     const targetedCard = {
       instanceId: 'inst2',
       name: 'Targeted Card',
       cost: 6,
-      targeting: { type: 'ENEMY_DRONE' }
+      effects: [{ type: 'DAMAGE', value: 1, targeting: { type: 'ENEMY_DRONE' } }]
     };
 
     const mockGetValidTargets = vi.fn(() => []);
@@ -755,7 +755,7 @@ describe('evaluateGainEnergyCard', () => {
       id: 'CARD004',
       instanceId: 'inst1',
       cost: 1,
-      effect: { type: 'GAIN_ENERGY', value: 2 }
+      effects: [{ type: 'GAIN_ENERGY', value: 2 }]
     };
     const drawCard = {
       instanceId: 'inst2',
@@ -789,7 +789,7 @@ describe('evaluateDrawCard', () => {
     const card = {
       id: 'CARD003',
       cost: 1,
-      effect: { type: 'DRAW', value: 2 }
+      effects: [{ type: 'DRAW', value: 2 }]
     };
 
     const context = createMockContext({
@@ -807,7 +807,7 @@ describe('evaluateDrawCard', () => {
     const card = {
       id: 'CARD003',
       cost: 1,
-      effect: { type: 'DRAW', value: 2 }
+      effects: [{ type: 'DRAW', value: 2 }]
     };
 
     const context = createMockContext({
@@ -826,7 +826,7 @@ describe('evaluateSearchAndDrawCard', () => {
     const card = {
       id: 'CARD025',
       cost: 2,
-      effect: { type: 'SEARCH_AND_DRAW', drawCount: 1, searchCount: 5 }
+      effects: [{ type: 'SEARCH_AND_DRAW', drawCount: 1, searchCount: 5 }]
     };
 
     const context = createMockContext({
@@ -852,7 +852,7 @@ describe('evaluateHealShieldsCard', () => {
     const card = {
       id: 'CARD008',
       cost: 2,
-      effect: { type: 'HEAL_SHIELDS', value: 2 }
+      effects: [{ type: 'HEAL_SHIELDS', value: 2 }]
     };
     const target = createMockDrone({ currentShields: 0, currentMaxShields: 2 });
     const context = createMockContext();
@@ -868,7 +868,7 @@ describe('evaluateHealShieldsCard', () => {
     const card = {
       id: 'CARD008',
       cost: 2,
-      effect: { type: 'HEAL_SHIELDS', value: 3 }
+      effects: [{ type: 'HEAL_SHIELDS', value: 3 }]
     };
     const target = createMockDrone({ currentShields: 1, currentMaxShields: 2 });
     const context = createMockContext();
@@ -884,7 +884,7 @@ describe('evaluateHealShieldsCard', () => {
     const card = {
       id: 'CARD008',
       cost: 2,
-      effect: { type: 'HEAL_SHIELDS', value: 2 }
+      effects: [{ type: 'HEAL_SHIELDS', value: 2 }]
     };
     const target = createMockDrone({ currentShields: 2, currentMaxShields: 2 });
     const context = createMockContext();
@@ -900,7 +900,7 @@ describe('evaluateHealHullCard', () => {
     const card = {
       id: 'CARD007',
       cost: 2,
-      effect: { type: 'HEAL_HULL', value: 1 }
+      effects: [{ type: 'HEAL_HULL', value: 1 }]
     };
     // Ship section (no hull/maxHull properties)
     const target = { id: 'bridge' };
@@ -916,7 +916,7 @@ describe('evaluateHealHullCard', () => {
     const card = {
       id: 'CARD006',
       cost: 1,
-      effect: { type: 'HEAL_HULL', value: 3, goAgain: true }
+      effects: [{ type: 'HEAL_HULL', value: 3, goAgain: true }]
     };
     // Drone with missing hull
     const target = { id: 'drone_1', hull: 1, maxHull: 3 };
@@ -937,7 +937,7 @@ describe('evaluateHealHullCard', () => {
     const card = {
       id: 'CARD006',
       cost: 1,
-      effect: { type: 'HEAL_HULL', value: 3, goAgain: true }
+      effects: [{ type: 'HEAL_HULL', value: 3, goAgain: true }]
     };
     const target = { id: 'drone_1', hull: 3, maxHull: 3 };
     const context = createMockContext();
@@ -954,7 +954,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
     const card = {
       id: 'CARD037',
       cost: 1,
-      effect: { type: 'RESTORE_SECTION_SHIELDS', value: 2 }
+      effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
     // Ship section with 4 max shields, 1 currently allocated
     const target = {
@@ -977,7 +977,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
     const card = {
       id: 'CARD037',
       cost: 1,
-      effect: { type: 'RESTORE_SECTION_SHIELDS', value: 2 }
+      effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
     // Section with only 1 shield missing
     const target = {
@@ -999,7 +999,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
     const card = {
       id: 'CARD037',
       cost: 1,
-      effect: { type: 'RESTORE_SECTION_SHIELDS', value: 2 }
+      effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
     // Section at full shields
     const target = {
@@ -1020,7 +1020,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
     const card = {
       id: 'CARD037_ENHANCED',
       cost: 2,
-      effect: { type: 'RESTORE_SECTION_SHIELDS', value: 3 }
+      effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 3 }]
     };
     // Section with 4 shields missing
     const target = {
@@ -1048,7 +1048,7 @@ describe('evaluateRepeatingEffectCard', () => {
       id: 'CARD018',
       cost: 1,
       condition: 'OWN_DAMAGED_SECTIONS',
-      effect: { type: 'REPEATING_EFFECT' }
+      effects: [{ type: 'REPEATING_EFFECT' }]
     };
 
     const context = createMockContext({
@@ -1079,7 +1079,7 @@ describe('evaluateRepeatingEffectCard', () => {
       id: 'CARD018',
       cost: 1,
       condition: 'OWN_DAMAGED_SECTIONS',
-      effect: { type: 'REPEATING_EFFECT' }
+      effects: [{ type: 'REPEATING_EFFECT' }]
     };
 
     const context = createMockContext({
@@ -1103,11 +1103,11 @@ describe('evaluateModifyStatCard', () => {
     const card = {
       id: 'CARD014',
       cost: 1,
-      targeting: { type: 'FRIENDLY_DRONE' },
-      effect: {
+      effects: [{
         type: 'MODIFY_STAT',
-        mod: { stat: 'attack', value: 2, type: 'temporary' }
-      }
+        mod: { stat: 'attack', value: 2, type: 'temporary' },
+        targeting: { type: 'FRIENDLY_DRONE' }
+      }]
     };
     const target = createMockDrone({ class: 2, isExhausted: false });
     const context = createMockContext();
@@ -1125,11 +1125,11 @@ describe('evaluateModifyStatCard', () => {
     const card = {
       id: 'CARD014',
       cost: 1,
-      targeting: { type: 'FRIENDLY_DRONE' },
-      effect: {
+      effects: [{
         type: 'MODIFY_STAT',
-        mod: { stat: 'attack', value: 2, type: 'temporary' }
-      }
+        mod: { stat: 'attack', value: 2, type: 'temporary' },
+        targeting: { type: 'FRIENDLY_DRONE' }
+      }]
     };
     const target = createMockDrone({ isExhausted: true });
     const context = createMockContext();
@@ -1143,12 +1143,12 @@ describe('evaluateModifyStatCard', () => {
     const card = {
       id: 'CARD016',
       cost: 2,
-      targeting: { type: 'ENEMY_DRONE' },
-      effect: {
+      effects: [{
         type: 'MODIFY_STAT',
         mod: { stat: 'attack', value: -2, type: 'temporary' },
-        goAgain: true
-      }
+        goAgain: true,
+        targeting: { type: 'ENEMY_DRONE' }
+      }]
     };
     const target = createMockDrone({ attack: 4, isExhausted: false, owner: 'player1' });
     const context = createMockContext();
@@ -1167,11 +1167,11 @@ describe('evaluateModifyStatCard', () => {
     const card = {
       id: 'CARD017',
       cost: 1,
-      targeting: { type: 'FRIENDLY_DRONE' },
-      effect: {
+      effects: [{
         type: 'MODIFY_STAT',
-        mod: { stat: 'speed', value: 2, type: 'temporary' }
-      }
+        mod: { stat: 'speed', value: 2, type: 'temporary' },
+        targeting: { type: 'FRIENDLY_DRONE' }
+      }]
     };
     const target = createMockDrone({ speed: 3, isExhausted: false });
     const enemyDrone = createMockDrone({ id: 'enemy1', speed: 4 });
@@ -1199,11 +1199,11 @@ describe('evaluateModifyStatCard', () => {
     const card = {
       id: 'CARD_PERM',
       cost: 1,
-      targeting: { type: 'FRIENDLY_DRONE' },
-      effect: {
+      effects: [{
         type: 'MODIFY_STAT',
-        mod: { stat: 'attack', value: 1, type: 'permanent' }
-      }
+        mod: { stat: 'attack', value: 1, type: 'permanent' },
+        targeting: { type: 'FRIENDLY_DRONE' }
+      }]
     };
     const target = createMockDrone({ class: 1, isExhausted: false });
     const context = createMockContext();
@@ -1227,7 +1227,7 @@ describe('evaluateSingleMoveCard', () => {
     const card = {
       id: 'CARD023',
       cost: 0,
-      effect: { type: 'SINGLE_MOVE' }
+      effects: [{ type: 'SINGLE_MOVE' }]
     };
     const context = createMockContext();
 
@@ -1241,7 +1241,7 @@ describe('evaluateSingleMoveCard', () => {
     const card = {
       id: 'CARD023',
       cost: 0,
-      effect: { type: 'SINGLE_MOVE' }
+      effects: [{ type: 'SINGLE_MOVE' }]
     };
     const drone = createMockDrone({ name: 'Test Drone' });
     const moveData = { drone, fromLane: 'lane1', toLane: 'lane2' };
@@ -1268,7 +1268,7 @@ describe('evaluateSingleMoveCard', () => {
     const card = {
       id: 'CARD023_ENHANCED',
       cost: 1,
-      effect: { type: 'SINGLE_MOVE', goAgain: true }
+      effects: [{ type: 'SINGLE_MOVE', goAgain: true }]
     };
     const drone = createMockDrone({ name: 'Test Drone' });
     const moveData = { drone, fromLane: 'lane1', toLane: 'lane2' };
@@ -1294,7 +1294,7 @@ describe('evaluateSingleMoveCard', () => {
     const card = {
       id: 'CARD023',
       cost: 0,
-      effect: { type: 'SINGLE_MOVE' }
+      effects: [{ type: 'SINGLE_MOVE' }]
     };
     const drone = createMockDrone({ name: 'Specter' });
     const moveData = { drone, fromLane: 'lane1', toLane: 'lane2' };
@@ -1322,11 +1322,11 @@ describe('evaluateMultiMoveCard', () => {
     const card = {
       id: 'CARD019',
       cost: 4,
-      effect: {
+      effects: [{
         type: 'MULTI_MOVE',
         count: 3,
         properties: ['DO_NOT_EXHAUST']
-      }
+      }]
     };
     // Target is the source lane
     const target = { id: 'lane1' };
@@ -1358,7 +1358,7 @@ describe('evaluateMultiMoveCard', () => {
     const card = {
       id: 'CARD019',
       cost: 4,
-      effect: { type: 'MULTI_MOVE', count: 3 }
+      effects: [{ type: 'MULTI_MOVE', count: 3 }]
     };
     const target = { id: 'lane1' };
     const context = createMockContext({
@@ -1377,7 +1377,7 @@ describe('evaluateMultiMoveCard', () => {
     const card = {
       id: 'CARD019',
       cost: 4,
-      effect: { type: 'MULTI_MOVE', count: 2 }  // Only 2 max
+      effects: [{ type: 'MULTI_MOVE', count: 2 }]  // Only 2 max
     };
     const target = { id: 'lane1' };
     const context = createMockContext({
@@ -1419,11 +1419,13 @@ describe('Card Evaluator Registry', () => {
     const card = {
       id: 'CARD053',
       cost: 2,
-      effect: { type: 'DAMAGE', value: 0 },
-      conditionalEffects: [{
-        timing: 'PRE',
-        condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
-        grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+      effects: [{
+        type: 'DAMAGE', value: 0,
+        conditionals: [{
+          timing: 'PRE',
+          condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+          grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+        }]
       }]
     };
     const target = createMockDrone({ hull: 1, currentShields: 0, class: 1 });
@@ -1445,7 +1447,7 @@ describe('Card Evaluator Registry', () => {
     const card = {
       id: 'CARD001',
       cost: 2,
-      effect: { type: 'DAMAGE', value: 2 }
+      effects: [{ type: 'DAMAGE', value: 2 }]
     };
     // Default currentShields is 1, so total HP is 3, making 2 damage non-lethal
     const target = createMockDrone({ hull: 2, class: 1 });
@@ -1496,7 +1498,7 @@ describe('evaluateCreateTokensCard', () => {
     const card = {
       id: 'CARD030',
       cost: 5,
-      effect: { type: 'CREATE_TOKENS' }
+      effects: [{ type: 'CREATE_TOKENS' }]
     };
 
     const drone1 = createMockDrone({ id: 'd1', class: 2 });
@@ -1529,7 +1531,7 @@ describe('evaluateCreateTokensCard', () => {
     const card = {
       id: 'CARD030',
       cost: 5,
-      effect: { type: 'CREATE_TOKENS' }
+      effects: [{ type: 'CREATE_TOKENS' }]
     };
 
     const context = createMockContext({
@@ -1554,7 +1556,7 @@ describe('evaluateModifyDroneBaseCard', () => {
     const card = {
       id: 'CARD028',
       cost: 5,
-      effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }
+      effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
 
     const context = createMockContext();
@@ -1569,7 +1571,7 @@ describe('evaluateModifyDroneBaseCard', () => {
     const card = {
       id: 'CARD028',
       cost: 5,
-      effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }
+      effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
     const target = { name: 'Unknown Drone' };
 
@@ -1584,7 +1586,7 @@ describe('evaluateModifyDroneBaseCard', () => {
     const card = {
       id: 'CARD028',
       cost: 5,
-      effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }
+      effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
     // Specter has speed 4 (from mock)
     const target = { name: 'Specter' };
@@ -1609,7 +1611,7 @@ describe('evaluateModifyDroneBaseCard', () => {
     const card = {
       id: 'CARD021',
       cost: 3,
-      effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'speed', value: 1 } }
+      effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'speed', value: 1 } }]
     };
     const target = { name: 'Test Drone' };
 
@@ -1631,7 +1633,7 @@ describe('evaluateModifyDroneBaseCard', () => {
     const card = {
       id: 'CARD020',
       cost: 3,
-      effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'limit', value: 1 }, goAgain: true }
+      effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'limit', value: 1 }, goAgain: true }]
     };
     const target = { name: 'Test Drone' };
 
@@ -1666,7 +1668,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_SB',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+        effects: [{ type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }]
       };
       // Target with 3 shields - should get SHIELD_BREAKER_HIGH_SHIELD_BONUS (+15)
       const target = createMockDrone({ hull: 3, currentShields: 3, class: 1 });
@@ -1686,7 +1688,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_SB',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+        effects: [{ type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }]
       };
       // Target with 1 shield - should get SHIELD_BREAKER_LOW_SHIELD_PENALTY (-5)
       const target = createMockDrone({ hull: 3, currentShields: 1, class: 1 });
@@ -1705,7 +1707,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_SB',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+        effects: [{ type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }]
       };
       const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
       const context = createMockContext();
@@ -1723,7 +1725,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_ION',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 3, damageType: 'ION' }
+        effects: [{ type: 'DAMAGE', value: 3, damageType: 'ION' }]
       };
       // Target with 0 shields - ION is useless
       const target = createMockDrone({ hull: 3, currentShields: 0, class: 1 });
@@ -1744,7 +1746,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_ION',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 3, damageType: 'ION' }
+        effects: [{ type: 'DAMAGE', value: 3, damageType: 'ION' }]
       };
       // Target with 2 shields - 3 ION damage will strip all 2 + waste 1
       const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
@@ -1767,7 +1769,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_ION',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2, damageType: 'ION' }
+        effects: [{ type: 'DAMAGE', value: 2, damageType: 'ION' }]
       };
       // Target with 3 shields - 2 ION will damage 2 shields with no waste
       const target = createMockDrone({ hull: 3, currentShields: 3, class: 1 });
@@ -1789,7 +1791,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_KIN',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 3, damageType: 'KINETIC' }
+        effects: [{ type: 'DAMAGE', value: 3, damageType: 'KINETIC' }]
       };
       // Target with shields - KINETIC is blocked entirely
       const target = createMockDrone({ hull: 3, currentShields: 1, class: 1 });
@@ -1809,7 +1811,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_KIN',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 3, damageType: 'KINETIC' }
+        effects: [{ type: 'DAMAGE', value: 3, damageType: 'KINETIC' }]
       };
       // Target with no shields - KINETIC is effective
       const target = createMockDrone({ hull: 3, currentShields: 0, class: 1 });
@@ -1832,7 +1834,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_PIERCE',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2, damageType: 'PIERCING' }
+        effects: [{ type: 'DAMAGE', value: 2, damageType: 'PIERCING' }]
       };
       const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
       const context = createMockContext();
@@ -1851,7 +1853,7 @@ describe('Damage Type AI Scoring', () => {
       const card = {
         id: 'CARD_NORMAL',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 } // No damageType = NORMAL
+        effects: [{ type: 'DAMAGE', value: 2 }] // No damageType = NORMAL
       };
       const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
       const context = createMockContext();
@@ -1875,12 +1877,12 @@ describe('evaluateConditionalEffects', () => {
   });
 
   describe('Cards without conditionals', () => {
-    it('returns zero bonus for cards without conditionalEffects', () => {
+    it('returns zero bonus for cards without conditionals', () => {
       const card = {
         id: 'CARD001',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 }
-        // No conditionalEffects
+        effects: [{ type: 'DAMAGE', value: 2 }]
+        // No conditionals
       };
       const target = createMockDrone({ hull: 2 });
       const context = createMockContext();
@@ -1891,12 +1893,11 @@ describe('evaluateConditionalEffects', () => {
       expect(result.logic).toEqual([]);
     });
 
-    it('returns zero bonus for empty conditionalEffects array', () => {
+    it('returns zero bonus for empty conditionals array', () => {
       const card = {
         id: 'CARD001',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: []
+        effects: [{ type: 'DAMAGE', value: 2, conditionals: [] }]
       };
       const target = createMockDrone({ hull: 2 });
       const context = createMockContext();
@@ -1913,12 +1914,14 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD053',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 0 },
-        conditionalEffects: [{
-          id: 'execute-weak',
-          timing: 'PRE',
-          condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
-          grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+        effects: [{
+          type: 'DAMAGE', value: 0,
+          conditionals: [{
+            id: 'execute-weak',
+            timing: 'PRE',
+            condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+            grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 1, currentShields: 0, class: 1 });
@@ -1937,12 +1940,14 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD053',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 0 },
-        conditionalEffects: [{
-          id: 'execute-weak',
-          timing: 'PRE',
-          condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
-          grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+        effects: [{
+          type: 'DAMAGE', value: 0,
+          conditionals: [{
+            id: 'execute-weak',
+            timing: 'PRE',
+            condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+            grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 3 }); // hull 3 >= 2, condition NOT met
@@ -1960,11 +1965,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD051',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'PRE',
-          condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 2 },
-          grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'PRE',
+            condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 2 },
+            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 2 }); // hull 2 <= 2, condition met
@@ -1984,11 +1991,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD052',
         cost: 4,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'PRE',
-          condition: { type: 'TARGET_IS_MARKED' },
-          grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'PRE',
+            condition: { type: 'TARGET_IS_MARKED' },
+            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+          }]
         }]
       };
       const target = createMockDrone({ isMarked: true });
@@ -2004,11 +2013,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD052',
         cost: 4,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'PRE',
-          condition: { type: 'TARGET_IS_MARKED' },
-          grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'PRE',
+            condition: { type: 'TARGET_IS_MARKED' },
+            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+          }]
         }]
       };
       const target = createMockDrone({ isMarked: false });
@@ -2026,11 +2037,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD060',
         cost: 0,
-        effect: { type: 'SINGLE_MOVE' },
-        conditionalEffects: [{
-          timing: 'PRE',
-          condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 },
-          grantedEffect: { type: 'GO_AGAIN' }
+        effects: [{
+          type: 'SINGLE_MOVE',
+          conditionals: [{
+            timing: 'PRE',
+            condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 },
+            grantedEffect: { type: 'GO_AGAIN' }
+          }]
         }]
       };
       const target = createMockDrone({ speed: 6 }); // speed 6 >= 5
@@ -2050,19 +2063,21 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'MULTI_COND',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [
-          {
-            timing: 'PRE',
-            condition: { type: 'TARGET_IS_MARKED' },
-            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
-          },
-          {
-            timing: 'PRE',
-            condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 3 },
-            grantedEffect: { type: 'GO_AGAIN' }
-          }
-        ]
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [
+            {
+              timing: 'PRE',
+              condition: { type: 'TARGET_IS_MARKED' },
+              grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+            },
+            {
+              timing: 'PRE',
+              condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 3 },
+              grantedEffect: { type: 'GO_AGAIN' }
+            }
+          ]
+        }]
       };
       const target = createMockDrone({ isMarked: true, hull: 2 }); // Both conditions met
       const context = createMockContext();
@@ -2080,11 +2095,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD050',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
       // 2 damage will kill 2 hull drone (no shields)
@@ -2102,11 +2119,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD050',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
       // 2 damage won't kill 3 hull drone
@@ -2123,11 +2142,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD050',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
       // 2 damage vs 1 hull + 1 shield = 2 total, will kill
@@ -2144,11 +2165,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD050',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
       // 2 damage vs 1 hull + 2 shields = won't kill
@@ -2168,11 +2191,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD054',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 1 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_HULL_DAMAGE' },
-          grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+        effects: [{
+          type: 'DAMAGE', value: 1,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_HULL_DAMAGE' },
+            grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 3, currentShields: 0 });
@@ -2190,11 +2215,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'CARD054',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 1 },
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_HULL_DAMAGE' },
-          grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+        effects: [{
+          type: 'DAMAGE', value: 1,
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_HULL_DAMAGE' },
+            grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 3, currentShields: 2 });
@@ -2210,11 +2237,13 @@ describe('evaluateConditionalEffects', () => {
       const card = {
         id: 'TEST_CARD',
         cost: 2,
-        effect: { type: 'HEAL_HULL', value: 2 }, // Not damage
-        conditionalEffects: [{
-          timing: 'POST',
-          condition: { type: 'ON_HULL_DAMAGE' },
-          grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+        effects: [{
+          type: 'HEAL_HULL', value: 2, // Not damage
+          conditionals: [{
+            timing: 'POST',
+            condition: { type: 'ON_HULL_DAMAGE' },
+            grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+          }]
         }]
       };
       const target = createMockDrone({ hull: 3 });

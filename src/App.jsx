@@ -555,7 +555,7 @@ const App = ({ phaseAnimationQueue }) => {
     setMoveConfirmation, setAttackConfirmation, setAbilityConfirmation, setAiCardPlayReport,
     handleConfirmMove, handleConfirmAttack, handleCancelAttack,
     handleConfirmIntercept, handleDeclineIntercept,
-    handleConfirmCardPlay, handleConfirmAdditionalCost, handleCancelAdditionalCost,
+    handleConfirmCardPlay,
     handleConfirmDroneAbility, handleConfirmShipAbility,
     clearConfirmations,
   } = useResolvers({
@@ -1199,8 +1199,6 @@ const App = ({ phaseAnimationQueue }) => {
         onCloseMandatoryActionModal={() => setShowMandatoryActionModal(false)}
         onCancelCardConfirmation={() => setCardConfirmation(null)}
         onConfirmCardPlay={handleConfirmCardPlay}
-        onConfirmAdditionalCost={handleConfirmAdditionalCost}
-        onCancelAdditionalCost={handleCancelAdditionalCost}
         onCancelDroneAbility={() => setAbilityConfirmation(null)}
         onConfirmDroneAbility={handleConfirmDroneAbility}
         onCloseAiHandModal={() => setShowAiHandModal(false)}

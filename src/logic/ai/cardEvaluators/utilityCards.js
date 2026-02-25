@@ -17,7 +17,7 @@ export const evaluateGainEnergyCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  const projectedEnergy = player2.energy - card.cost + card.effect.value;
+  const projectedEnergy = player2.energy - card.cost + card.effects[0].value;
   logic.push(`📊 Projected Energy: ${projectedEnergy}`);
 
   const newlyPlayableCards = player2.hand.filter(otherCard =>
@@ -28,7 +28,7 @@ export const evaluateGainEnergyCard = (card, target, context) => {
 
   if (newlyPlayableCards.length > 0) {
     const usableCards = getValidTargets ? newlyPlayableCards.filter(enabledCard => {
-      if (!enabledCard.targeting) return true;
+      if (!enabledCard.effects?.[0]?.targeting) return true;
       const targets = getValidTargets('player2', null, enabledCard, player1, player2);
       return targets.length > 0;
     }) : newlyPlayableCards;
@@ -90,8 +90,8 @@ export const evaluateSearchAndDrawCard = (card, target, context) => {
   let score = 0;
 
   const energyAfterPlay = player2.energy - card.cost;
-  const drawValue = card.effect.drawCount * CARD_EVALUATION.SEARCH_DRAW_VALUE_PER_CARD;
-  const searchBonus = card.effect.searchCount * CARD_EVALUATION.SEARCH_BONUS_PER_SEARCH;
+  const drawValue = card.effects[0].drawCount * CARD_EVALUATION.SEARCH_DRAW_VALUE_PER_CARD;
+  const searchBonus = card.effects[0].searchCount * CARD_EVALUATION.SEARCH_BONUS_PER_SEARCH;
 
   if (energyAfterPlay >= 0) {
     const energyBonus = energyAfterPlay * CARD_EVALUATION.ENERGY_REMAINING_MULTIPLIER;
@@ -119,7 +119,7 @@ export const evaluateDrainEnergyCard = (card, target, context) => {
   const { player1, roundNumber } = context;
   const logic = [];
 
-  const energyDrained = card.effect.amount;
+  const energyDrained = card.effects[0].amount;
   let baseValue = energyDrained * CARD_EVALUATION.ENERGY_DENY_MULTIPLIER;
 
   logic.push(`✅ Energy Drain: +${baseValue} (${energyDrained} energy denied)`);
@@ -165,7 +165,7 @@ export const evaluateDiscardCard = (card, target, context) => {
   const { player1 } = context;
   const logic = [];
 
-  const discardCount = card.effect.count;
+  const discardCount = card.effects[0].count;
   const opponentHandSize = player1.hand.length;
   const opponentEnergy = player1.energy;
 

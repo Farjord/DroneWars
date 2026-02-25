@@ -186,7 +186,7 @@ const useDragMechanics = ({
     setDraggedActionCard({ card });
 
     // Calculate effect targets for the dragged card
-    if (card.targeting) {
+    if (card.effects[0]?.targeting) {
       const { validCardTargets: targets } = calculateAllValidTargets(
         null,  // abilityMode
         null,  // shipAbilityMode
@@ -201,7 +201,7 @@ const useDragMechanics = ({
       // For LANE-targeting cards, affectedDroneIds is calculated dynamically
       // based on hoveredLane via useEffect (hover-based targeting feedback)
       // For non-LANE cards, calculate immediately
-      if (card.targeting?.type !== 'LANE') {
+      if (card.effects[0]?.targeting?.type !== 'LANE') {
         const affected = calculateAffectedDroneIds(
           card,
           targets,
@@ -327,7 +327,7 @@ const useDragMechanics = ({
 
     // Case 0: Movement cards - check if dropped on target or needs multi-select
     // Must be checked before no-targeting case, since movement cards have no targeting property
-    if (card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE') {
+    if (card.effects[0]?.type === 'SINGLE_MOVE' || card.effects[0]?.type === 'MULTI_MOVE') {
       debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
 
       // Sub-case 0a: Movement card dropped on a valid target drone
@@ -403,22 +403,22 @@ const useDragMechanics = ({
     }
 
     // Case 1: No-target cards - show confirmation
-    if (!card.targeting) {
+    if (!card.effects[0]?.targeting) {
       setCardConfirmation({ card, target: null });
       return;
     }
 
     // Case 2: NONE-type cards — dispatch based on card subtype
-    if (card.targeting?.type === 'NONE') {
+    if (card.effects[0]?.targeting?.type === 'NONE') {
       if (card.type === 'Upgrade') {
         setUpgradeSelectionModal({ card, targets: validCardTargets });
         return;
       }
-      if (card.effect?.type === 'DESTROY_UPGRADE') {
+      if (card.effects[0]?.type === 'DESTROY_UPGRADE') {
         setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
         return;
       }
-      if (card.effect?.scope === 'ALL') {
+      if (card.effects[0]?.scope === 'ALL') {
         setCardConfirmation({ card, target: null });
         return;
       }

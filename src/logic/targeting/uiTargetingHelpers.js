@@ -136,8 +136,9 @@ export const calculateAffectedDroneIds = (
     placedSections
 ) => {
     // NONE-type cards with affectedFilter — global scope (all lanes, filtered by affinity)
-    if (card?.targeting?.type === 'NONE' && card.targeting.affectedFilter) {
-        const affinity = card.targeting.affinity;
+    const targeting = card?.effects?.[0]?.targeting;
+    if (targeting?.type === 'NONE' && targeting.affectedFilter) {
+        const affinity = targeting.affinity;
         const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
         const targetPlayerId = affinity === 'ENEMY' ? opponentId : localPlayerId;
         const targetState = targetPlayerId === 'player1' ? player1 : player2;
@@ -146,7 +147,7 @@ export const calculateAffectedDroneIds = (
         for (const laneId of ['lane1', 'lane2', 'lane3']) {
             const drones = targetState.dronesOnBoard[laneId] || [];
             for (const drone of drones) {
-                const passes = card.targeting.affectedFilter.every(filter => {
+                const passes = targeting.affectedFilter.every(filter => {
                     if (typeof filter === 'string') {
                         if (filter === 'MARKED') return drone.isMarked === true;
                         if (filter === 'EXHAUSTED') return drone.isExhausted === true;
@@ -161,20 +162,20 @@ export const calculateAffectedDroneIds = (
     }
 
     // Only process LANE-targeting cards
-    if (!card || card.targeting?.type !== 'LANE') {
+    if (!card || targeting?.type !== 'LANE') {
         return [];
     }
 
     // Movement effects target lanes as DESTINATIONS - drones in destination are not affected
     // This is a defensive check to future-proof against LANE-targeting movement cards
-    const effectType = card.effect?.type;
+    const effectType = card.effects[0]?.type;
     if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE' || effectType === 'CREATE_TOKENS') {
         return [];
     }
 
     const affectedIds = [];
-    const affectedFilter = card.targeting?.affectedFilter;
-    const maxTargets = card.targeting?.maxTargets;
+    const affectedFilter = targeting?.affectedFilter;
+    const maxTargets = targeting?.maxTargets;
 
     validLaneTargets.forEach(laneTarget => {
         const targetPlayerState = laneTarget.owner === 'player1' ? player1 : player2;

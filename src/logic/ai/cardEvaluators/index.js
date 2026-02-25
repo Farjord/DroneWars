@@ -77,7 +77,7 @@ export const cardEvaluatorRegistry = {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateCardPlay = (card, target, context, moveData = null) => {
-  const effectType = card.effect.type;
+  const effectType = card.effects[0].type;
   const evaluator = cardEvaluatorRegistry[effectType];
 
   if (!evaluator) {

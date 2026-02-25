@@ -75,23 +75,25 @@ export const analyzeEffectTypes = () => {
 
   // Analyze cards
   fullCardCollection.forEach(card => {
-    if (card.effect) {
-      processEffect(card.effect, { type: 'Card', name: card.name, description: card.description });
+    if (card.effects && card.effects.length > 0) {
+      card.effects.forEach(effect => {
+        processEffect(effect, { type: 'Card', name: card.name, description: card.description });
 
-      // Track targeting relationship
-      if (card.targeting) {
-        const effectData = effectMap.get(card.effect.type);
-        if (effectData) {
-          effectData.targetingTypes.add(card.targeting.type);
+        // Track targeting relationship from each effect's targeting
+        if (effect.targeting) {
+          const effectData = effectMap.get(effect.type);
+          if (effectData) {
+            effectData.targetingTypes.add(effect.targeting.type);
+          }
         }
-      }
 
-      // Handle repeating effects
-      if (card.effect.type === 'REPEATING_EFFECT' && card.effect.effects) {
-        card.effect.effects.forEach(subEffect => {
-          processEffect(subEffect, { type: 'Card (Repeating)', name: card.name, description: card.description });
-        });
-      }
+        // Handle repeating effects
+        if (effect.type === 'REPEATING_EFFECT' && effect.effects) {
+          effect.effects.forEach(subEffect => {
+            processEffect(subEffect, { type: 'Card (Repeating)', name: card.name, description: card.description });
+          });
+        }
+      });
     }
   });
 
@@ -204,11 +206,15 @@ export const analyzeTargetingTypes = () => {
 
   // Analyze cards
   fullCardCollection.forEach(card => {
-    if (card.targeting) {
-      processTargeting(card.targeting, {
-        name: card.name,
-        description: card.description,
-        effectType: card.effect?.type
+    if (card.effects && card.effects.length > 0) {
+      card.effects.forEach(effect => {
+        if (effect.targeting) {
+          processTargeting(effect.targeting, {
+            name: card.name,
+            description: card.description,
+            effectType: effect.type
+          });
+        }
       });
     }
   });
@@ -258,26 +264,29 @@ export const analyzeModifiableStats = () => {
 
   // Analyze MODIFY_STAT and MODIFY_DRONE_BASE effects
   fullCardCollection.forEach(card => {
-    if (card.effect?.type === 'MODIFY_STAT' || card.effect?.type === 'MODIFY_DRONE_BASE') {
-      if (card.effect.mod?.stat) {
-        const stat = card.effect.mod.stat;
-        stats.droneStats.add(stat);
+    if (!card.effects) return;
+    card.effects.forEach(effect => {
+      if (effect.type === 'MODIFY_STAT' || effect.type === 'MODIFY_DRONE_BASE') {
+        if (effect.mod?.stat) {
+          const stat = effect.mod.stat;
+          stats.droneStats.add(stat);
 
-        if (card.effect.mod.type) {
-          stats.modificationTypes.add(card.effect.mod.type);
-        }
-
-        // Track value ranges
-        if (card.effect.mod.value !== undefined) {
-          if (!stats.valueRanges[stat]) {
-            stats.valueRanges[stat] = { min: card.effect.mod.value, max: card.effect.mod.value, values: [] };
+          if (effect.mod.type) {
+            stats.modificationTypes.add(effect.mod.type);
           }
-          stats.valueRanges[stat].min = Math.min(stats.valueRanges[stat].min, card.effect.mod.value);
-          stats.valueRanges[stat].max = Math.max(stats.valueRanges[stat].max, card.effect.mod.value);
-          stats.valueRanges[stat].values.push(card.effect.mod.value);
+
+          // Track value ranges
+          if (effect.mod.value !== undefined) {
+            if (!stats.valueRanges[stat]) {
+              stats.valueRanges[stat] = { min: effect.mod.value, max: effect.mod.value, values: [] };
+            }
+            stats.valueRanges[stat].min = Math.min(stats.valueRanges[stat].min, effect.mod.value);
+            stats.valueRanges[stat].max = Math.max(stats.valueRanges[stat].max, effect.mod.value);
+            stats.valueRanges[stat].values.push(effect.mod.value);
+          }
         }
       }
-    }
+    });
   });
 
   // Analyze drone abilities
@@ -350,16 +359,19 @@ export const analyzeKeywords = () => {
 
   // Analyze cards for GRANT_KEYWORD effects
   fullCardCollection.forEach(card => {
-    if (card.effect?.type === 'MODIFY_DRONE_BASE' && card.effect.mod?.abilityToAdd) {
-      const ability = card.effect.mod.abilityToAdd;
-      if (ability.effect?.type === 'GRANT_KEYWORD' && ability.effect.keyword) {
-        processKeyword(ability.effect.keyword, {
-          type: 'Card (Upgrade)',
-          name: card.name,
-          description: card.description
-        });
+    if (!card.effects) return;
+    card.effects.forEach(effect => {
+      if (effect.type === 'MODIFY_DRONE_BASE' && effect.mod?.abilityToAdd) {
+        const ability = effect.mod.abilityToAdd;
+        if (ability.effect?.type === 'GRANT_KEYWORD' && ability.effect.keyword) {
+          processKeyword(ability.effect.keyword, {
+            type: 'Card (Upgrade)',
+            name: card.name,
+            description: card.description
+          });
+        }
       }
-    }
+    });
   });
 
   // Convert to object
@@ -418,27 +430,30 @@ export const analyzeConditions = () => {
 
   // Analyze cards
   fullCardCollection.forEach(card => {
-    if (card.effect?.condition) {
-      const condType = card.effect.condition;
+    if (!card.effects) return;
+    card.effects.forEach(effect => {
+      if (effect.condition) {
+        const condType = effect.condition;
 
-      if (!conditions.has(condType)) {
-        conditions.set(condType, {
-          type: condType,
-          parameters: new Set(),
-          examples: []
-        });
+        if (!conditions.has(condType)) {
+          conditions.set(condType, {
+            type: condType,
+            parameters: new Set(),
+            examples: []
+          });
+        }
+
+        const condData = conditions.get(condType);
+
+        if (condData.examples.length < 2) {
+          condData.examples.push({
+            name: card.name,
+            condition: condType,
+            description: card.description
+          });
+        }
       }
-
-      const condData = conditions.get(condType);
-
-      if (condData.examples.length < 2) {
-        condData.examples.push({
-          name: card.name,
-          condition: condType,
-          description: card.description
-        });
-      }
-    }
+    });
   });
 
   // Convert Sets to Arrays
@@ -468,7 +483,8 @@ export const analyzeFilters = () => {
 
   // Analyze cards with affectedFilter targeting
   fullCardCollection.forEach(card => {
-    const affectedFilter = card.targeting?.affectedFilter;
+    const targeting = card.effects?.[0]?.targeting;
+    const affectedFilter = targeting?.affectedFilter;
     if (affectedFilter && affectedFilter.length > 0) {
       const filter = affectedFilter[0];
 
@@ -513,28 +529,31 @@ export const analyzeScopes = () => {
   const scopes = new Map();
 
   fullCardCollection.forEach(card => {
-    if (card.effect?.scope) {
-      const scope = card.effect.scope;
+    if (!card.effects) return;
+    card.effects.forEach(effect => {
+      if (effect.scope) {
+        const scope = effect.scope;
 
-      if (!scopes.has(scope)) {
-        scopes.set(scope, {
-          scope: scope,
-          effectTypes: new Set(),
-          examples: []
-        });
+        if (!scopes.has(scope)) {
+          scopes.set(scope, {
+            scope: scope,
+            effectTypes: new Set(),
+            examples: []
+          });
+        }
+
+        const scopeData = scopes.get(scope);
+        scopeData.effectTypes.add(effect.type);
+
+        if (scopeData.examples.length < 3) {
+          scopeData.examples.push({
+            name: card.name,
+            effect: effect.type,
+            description: card.description
+          });
+        }
       }
-
-      const scopeData = scopes.get(scope);
-      scopeData.effectTypes.add(card.effect.type);
-
-      if (scopeData.examples.length < 3) {
-        scopeData.examples.push({
-          name: card.name,
-          effect: card.effect.type,
-          description: card.description
-        });
-      }
-    }
+    });
   });
 
   // Convert to object

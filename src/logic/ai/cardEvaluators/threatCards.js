@@ -19,21 +19,21 @@ export const evaluateIncreaseThreatCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  if (card.effect.perDrone) {
+  if (card.effects[0].perDrone) {
     // Per-drone mode (Transmit Threat): score scales with matching drone count
     let droneCount = 0;
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       const drones = player2.dronesOnBoard?.[lane] || [];
-      droneCount += drones.filter(d => d.name === card.effect.perDrone).length;
+      droneCount += drones.filter(d => d.name === card.effects[0].perDrone).length;
     }
 
     if (droneCount === 0) {
-      logic.push(`❌ No ${card.effect.perDrone} on board - cannot play`);
+      logic.push(`❌ No ${card.effects[0].perDrone} on board - cannot play`);
       return { score: INVALID_SCORE, logic };
     }
 
     score = droneCount * CARD_EVALUATION.THREAT_PER_DRONE_VALUE;
-    logic.push(`📡 ${droneCount}x ${card.effect.perDrone}: +${score}`);
+    logic.push(`📡 ${droneCount}x ${card.effects[0].perDrone}: +${score}`);
 
     // Cost penalty
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
@@ -44,9 +44,9 @@ export const evaluateIncreaseThreatCard = (card, target, context) => {
     score = CARD_EVALUATION.THREAT_INCREASE_BASE_VALUE;
     logic.push(`🚨 Flat threat base: +${score}`);
 
-    const perPointBonus = card.effect.value * CARD_EVALUATION.THREAT_INCREASE_PER_POINT;
+    const perPointBonus = card.effects[0].value * CARD_EVALUATION.THREAT_INCREASE_PER_POINT;
     score += perPointBonus;
-    logic.push(`📈 Threat value (${card.effect.value}): +${perPointBonus}`);
+    logic.push(`📈 Threat value (${card.effects[0].value}): +${perPointBonus}`);
 
     // Cost penalty
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;

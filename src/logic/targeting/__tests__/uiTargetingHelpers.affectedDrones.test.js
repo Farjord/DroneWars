@@ -37,8 +37,7 @@ describe('calculateAffectedDroneIds', () => {
   describe('non-LANE targeting cards (returns empty)', () => {
     it('should return empty array for non-LANE targeting cards', () => {
       const droneTargetingCard = {
-        targeting: { type: 'DRONE', affinity: 'ENEMY' },
-        effect: { type: 'DAMAGE', value: 2 }
+        effects: [{ type: 'DAMAGE', value: 2, targeting: { type: 'DRONE', affinity: 'ENEMY' } }]
       };
       const result = calculateAffectedDroneIds(
         droneTargetingCard,
@@ -84,16 +83,14 @@ describe('calculateAffectedDroneIds', () => {
     const shriekerMissiles = {
       id: 'CARD010',
       name: 'Shrieker Missiles',
-      targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
-      effect: { type: 'DESTROY' }
+      effects: [{ type: 'DESTROY', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] } }]
     };
 
     // Sidewinder Missiles - DAMAGE drones with speed <= 3
     const sidewinderMissiles = {
       id: 'CARD013',
       name: 'Sidewinder Missiles',
-      targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] },
-      effect: { type: 'DAMAGE', value: 2 }
+      effects: [{ type: 'DAMAGE', value: 2, targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] } }]
     };
 
     it('should return drone IDs matching GTE filter (Shrieker Missiles - speed >= 5)', () => {
@@ -146,8 +143,7 @@ describe('calculateAffectedDroneIds', () => {
 
     it('should return drone IDs matching EQ filter', () => {
       const eqFilterCard = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'EQ', value: 4 }] },
-        effect: { type: 'DAMAGE' }
+        effects: [{ type: 'DAMAGE', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'EQ', value: 4 }] } }]
       };
 
       const player2State = createPlayerState({
@@ -172,8 +168,7 @@ describe('calculateAffectedDroneIds', () => {
 
     it('should return drone IDs matching GT filter', () => {
       const gtFilterCard = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GT', value: 5 }] },
-        effect: { type: 'DAMAGE' }
+        effects: [{ type: 'DAMAGE', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GT', value: 5 }] } }]
       };
 
       const player2State = createPlayerState({
@@ -198,8 +193,7 @@ describe('calculateAffectedDroneIds', () => {
 
     it('should return drone IDs matching LT filter', () => {
       const ltFilterCard = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LT', value: 4 }] },
-        effect: { type: 'DAMAGE' }
+        effects: [{ type: 'DAMAGE', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LT', value: 4 }] } }]
       };
 
       const player2State = createPlayerState({
@@ -330,24 +324,21 @@ describe('calculateAffectedDroneIds', () => {
     const nukeCard = {
       id: 'CARD011',
       name: 'Nuke',
-      targeting: { type: 'LANE', affinity: 'ANY' },
-      effect: { type: 'DESTROY', scope: 'LANE' }
+      effects: [{ type: 'DESTROY', scope: 'LANE', targeting: { type: 'LANE', affinity: 'ANY' } }]
     };
 
     // Shield Recharge - HEAL all friendly drones
     const shieldRechargeCard = {
       id: 'CARD008',
       name: 'Shield Recharge',
-      targeting: { type: 'LANE', affinity: 'FRIENDLY' },
-      effect: { type: 'HEAL_SHIELDS', value: 2, goAgain: true }
+      effects: [{ type: 'HEAL_SHIELDS', value: 2, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } }]
     };
 
     // Streamline - MODIFY_STAT for all friendly drones
     const streamlineCard = {
       id: 'CARD015',
       name: 'Streamline',
-      targeting: { type: 'LANE', affinity: 'FRIENDLY' },
-      effect: { type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' }, goAgain: true }
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' }, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } }]
     };
 
     it('should return ALL drone IDs in targeted lanes for LANE scope (Nuke)', () => {
@@ -427,11 +418,11 @@ describe('calculateAffectedDroneIds', () => {
     const strafeRunCard = {
       id: 'CARD034',
       name: 'Strafe Run',
-      targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'hull', comparison: 'GTE', value: 1 }], maxTargets: 3 },
-      effect: {
+      effects: [{
         type: 'DAMAGE',
-        value: 1
-      }
+        value: 1,
+        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'hull', comparison: 'GTE', value: 1 }], maxTargets: 3 }
+      }]
     };
 
     const drone1 = { id: 'd1', speed: 4, attack: 2, hull: 2 };
@@ -507,8 +498,7 @@ describe('calculateAffectedDroneIds', () => {
   describe('edge cases', () => {
     it('should handle empty lanes gracefully', () => {
       const shriekerMissiles = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
-        effect: { type: 'DESTROY' }
+        effects: [{ type: 'DESTROY', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] } }]
       };
 
       const result = calculateAffectedDroneIds(
@@ -526,8 +516,7 @@ describe('calculateAffectedDroneIds', () => {
 
     it('should handle lanes with only non-matching drones', () => {
       const shriekerMissiles = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
-        effect: { type: 'DESTROY' }
+        effects: [{ type: 'DESTROY', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] } }]
       };
 
       const player2State = createPlayerState({
@@ -551,8 +540,7 @@ describe('calculateAffectedDroneIds', () => {
 
     it('should handle empty validLaneTargets array', () => {
       const shriekerMissiles = {
-        targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
-        effect: { type: 'DESTROY' }
+        effects: [{ type: 'DESTROY', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] } }]
       };
 
       const result = calculateAffectedDroneIds(
@@ -571,8 +559,7 @@ describe('calculateAffectedDroneIds', () => {
     it('should handle LANE cards without scope (treat as LANE scope)', () => {
       // Card with no scope specified
       const noScopeCard = {
-        targeting: { type: 'LANE', affinity: 'ENEMY' },
-        effect: { type: 'DAMAGE', value: 1 } // No scope field
+        effects: [{ type: 'DAMAGE', value: 1, targeting: { type: 'LANE', affinity: 'ENEMY' } }] // No scope field
       };
 
       const player2State = createPlayerState({

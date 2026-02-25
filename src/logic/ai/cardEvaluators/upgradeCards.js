@@ -46,7 +46,7 @@ export const evaluateModifyDroneBaseCard = (card, target, context) => {
     return { score: -999, logic: [`Invalid drone type: ${droneName}`] };
   }
 
-  const mod = card.effect.mod;
+  const mod = card.effects[0].mod;
   const droneClass = baseDrone.class || 1;
 
   // ========================================
@@ -172,7 +172,7 @@ export const evaluateModifyDroneBaseCard = (card, target, context) => {
   // ========================================
   // 7. GO AGAIN BONUS
   // ========================================
-  if (card.effect.goAgain) {
+  if (card.effects[0].goAgain) {
     score += CARD_EVALUATION.GO_AGAIN_BONUS;
     logic.push(`Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
     // Add bonus if we have ready drones that benefit from multiple actions

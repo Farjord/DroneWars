@@ -8,6 +8,7 @@ import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { CHAIN_ONLY_FIELDS, stripChainFields } from './chainConstants.js';
 
 // --- Selection-Time: Position Tracker ---
 
@@ -87,18 +88,6 @@ function resolveRef(refObj, effectResults) {
 }
 
 // --- Effect Data Helpers ---
-
-// Chain effects include targeting, conditionals, prompt, and destination
-// that are NOT part of the EffectRouter effect interface.
-const CHAIN_ONLY_FIELDS = new Set(['targeting', 'conditionals', 'prompt', 'destination']);
-
-function stripChainFields(chainEffect) {
-  const result = {};
-  for (const key of Object.keys(chainEffect)) {
-    if (!CHAIN_ONLY_FIELDS.has(key)) result[key] = chainEffect[key];
-  }
-  return result;
-}
 
 function resolveEffectValues(effectData, effectResults) {
   const resolved = { ...effectData };
@@ -407,8 +396,8 @@ class EffectChainProcessor {
       player2: JSON.parse(JSON.stringify(playerStates.player2)),
     };
 
-    // Build a card-like object for MovementEffectProcessor (it reads card.effect)
-    const pseudoCard = { name: 'Effect Chain', effect: effectData };
+    // Build a card-like object for MovementEffectProcessor (it reads card.effects[0])
+    const pseudoCard = { name: 'Effect Chain', effects: [effectData] };
     const moveContext = { callbacks, placedSections };
 
     if (effectData.type === 'SINGLE_MOVE') {

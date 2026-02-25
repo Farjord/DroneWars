@@ -2,7 +2,7 @@
 // CARD PLAY MANAGER - CONDITIONAL EFFECTS INTEGRATION TESTS
 // ========================================
 // TDD: Tests for conditional effects integration in CardPlayManager
-// Tests PRE/POST timing hooks for conditionalEffects array on cards
+// Tests PRE/POST timing hooks for effects[].conditionals array on cards
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -104,12 +104,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_001',
         name: 'Marked Hunter',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          id: 'marked-bonus',
-          timing: 'PRE',
-          condition: { type: 'TARGET_IS_MARKED' },
-          grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            id: 'marked-bonus',
+            timing: 'PRE',
+            condition: { type: 'TARGET_IS_MARKED' },
+            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+          }]
         }]
       };
 
@@ -134,12 +136,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_001',
         name: 'Marked Hunter',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          id: 'marked-bonus',
-          timing: 'PRE',
-          condition: { type: 'TARGET_IS_MARKED' },
-          grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            id: 'marked-bonus',
+            timing: 'PRE',
+            condition: { type: 'TARGET_IS_MARKED' },
+            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+          }]
         }]
       };
 
@@ -161,12 +165,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_002',
         name: 'Executioner',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 0 }, // Placeholder effect (conditional DESTROY is the main effect)
-        conditionalEffects: [{
-          id: 'execute-weak',
-          timing: 'PRE',
-          condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
-          grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+        effects: [{
+          type: 'DAMAGE', value: 0, // Placeholder effect (conditional DESTROY is the main effect)
+          conditionals: [{
+            id: 'execute-weak',
+            timing: 'PRE',
+            condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+            grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+          }]
         }]
       };
 
@@ -192,12 +198,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_003',
         name: 'Scavenger Shot',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 5 }, // Enough to destroy (in mock)
-        conditionalEffects: [{
-          id: 'draw-on-destroy',
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 5, // Enough to destroy (in mock)
+          conditionals: [{
+            id: 'draw-on-destroy',
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
 
@@ -218,12 +226,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_003',
         name: 'Scavenger Shot',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 }, // Not enough to destroy
-        conditionalEffects: [{
-          id: 'draw-on-destroy',
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2, // Not enough to destroy
+          conditionals: [{
+            id: 'draw-on-destroy',
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
 
@@ -244,12 +254,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_004',
         name: 'Kill Shot',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 5, goAgain: false }, // Base: no goAgain
-        conditionalEffects: [{
-          id: 'goagain-on-destroy',
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'GO_AGAIN' }
+        effects: [{
+          type: 'DAMAGE', value: 5, goAgain: false, // Base: no goAgain
+          conditionals: [{
+            id: 'goagain-on-destroy',
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'GO_AGAIN' }
+          }]
         }]
       };
 
@@ -272,12 +284,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_005',
         name: 'Energy Leech',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          id: 'energy-on-hull-damage',
-          timing: 'POST',
-          condition: { type: 'ON_HULL_DAMAGE' },
-          grantedEffect: { type: 'GAIN_ENERGY', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            id: 'energy-on-hull-damage',
+            timing: 'POST',
+            condition: { type: 'ON_HULL_DAMAGE' },
+            grantedEffect: { type: 'GAIN_ENERGY', value: 1 }
+          }]
         }]
       };
 
@@ -303,27 +317,29 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_006',
         name: 'Opportunist Strike',
         cost: 4,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [
-          {
-            id: 'marked-bonus',
-            timing: 'PRE',
-            condition: { type: 'TARGET_IS_MARKED' },
-            grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
-          },
-          {
-            id: 'energy-on-destroy',
-            timing: 'POST',
-            condition: { type: 'ON_DESTROY' },
-            grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
-          },
-          {
-            id: 'goagain-on-destroy',
-            timing: 'POST',
-            condition: { type: 'ON_DESTROY' },
-            grantedEffect: { type: 'GO_AGAIN' }
-          }
-        ]
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [
+            {
+              id: 'marked-bonus',
+              timing: 'PRE',
+              condition: { type: 'TARGET_IS_MARKED' },
+              grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+            },
+            {
+              id: 'energy-on-destroy',
+              timing: 'POST',
+              condition: { type: 'ON_DESTROY' },
+              grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
+            },
+            {
+              id: 'goagain-on-destroy',
+              timing: 'POST',
+              condition: { type: 'ON_DESTROY' },
+              grantedEffect: { type: 'GO_AGAIN' }
+            }
+          ]
+        }]
       };
 
       mockPlayerStates.player1.hand.push(card);
@@ -343,21 +359,23 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_007',
         name: 'Rewarding Kill',
         cost: 3,
-        effect: { type: 'DAMAGE', value: 5 },
-        conditionalEffects: [
-          {
-            id: 'draw-on-destroy',
-            timing: 'POST',
-            condition: { type: 'ON_DESTROY' },
-            grantedEffect: { type: 'DRAW', value: 1 }
-          },
-          {
-            id: 'energy-on-destroy',
-            timing: 'POST',
-            condition: { type: 'ON_DESTROY' },
-            grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
-          }
-        ]
+        effects: [{
+          type: 'DAMAGE', value: 5,
+          conditionals: [
+            {
+              id: 'draw-on-destroy',
+              timing: 'POST',
+              condition: { type: 'ON_DESTROY' },
+              grantedEffect: { type: 'DRAW', value: 1 }
+            },
+            {
+              id: 'energy-on-destroy',
+              timing: 'POST',
+              condition: { type: 'ON_DESTROY' },
+              grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
+            }
+          ]
+        }]
       };
 
       mockPlayerStates.player1.hand.push(card);
@@ -374,15 +392,15 @@ describe('CardPlayManager with conditionalEffects', () => {
   // ========================================
   // CARDS WITHOUT CONDITIONAL EFFECTS
   // ========================================
-  describe('cards without conditionalEffects', () => {
-    it('works normally for cards without conditionalEffects property', () => {
+  describe('cards without conditionals', () => {
+    it('works normally for cards without conditionals property', () => {
       const card = {
         id: 'CARD_SIMPLE',
         instanceId: 'inst_008',
         name: 'Simple Shot',
         cost: 1,
-        effect: { type: 'DAMAGE', value: 2 }
-        // No conditionalEffects
+        effects: [{ type: 'DAMAGE', value: 2 }]
+        // No conditionals
       };
 
       mockPlayerStates.player1.hand.push(card);
@@ -397,14 +415,16 @@ describe('CardPlayManager with conditionalEffects', () => {
       expect(result.animationEvents).toBeDefined();
     });
 
-    it('works normally for cards with empty conditionalEffects array', () => {
+    it('works normally for cards with empty conditionals array', () => {
       const card = {
         id: 'CARD_EMPTY_COND',
         instanceId: 'inst_009',
         name: 'Empty Conditionals',
         cost: 1,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: []
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: []
+        }]
       };
 
       mockPlayerStates.player1.hand.push(card);
@@ -429,12 +449,14 @@ describe('CardPlayManager with conditionalEffects', () => {
         instanceId: 'inst_010',
         name: 'Conditional Card',
         cost: 2,
-        effect: { type: 'DAMAGE', value: 2 },
-        conditionalEffects: [{
-          id: 'draw-on-destroy',
-          timing: 'POST',
-          condition: { type: 'ON_DESTROY' },
-          grantedEffect: { type: 'DRAW', value: 1 }
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          conditionals: [{
+            id: 'draw-on-destroy',
+            timing: 'POST',
+            condition: { type: 'ON_DESTROY' },
+            grantedEffect: { type: 'DRAW', value: 1 }
+          }]
         }]
       };
 

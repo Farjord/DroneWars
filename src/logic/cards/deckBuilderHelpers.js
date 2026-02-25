@@ -92,10 +92,10 @@ export const extractCardKeywords = (effect) => {
  * @returns {string} Human-readable targeting description
  */
 export const extractTargetingText = (card, effect) => {
-  if (card.targeting) {
-    const t = formatKeyword(card.targeting.type);
-    if (card.targeting.affinity) {
-      const a = card.targeting.affinity.charAt(0) + card.targeting.affinity.slice(1).toLowerCase();
+  if (card.effects[0]?.targeting) {
+    const t = formatKeyword(card.effects[0].targeting.type);
+    if (card.effects[0].targeting.affinity) {
+      const a = card.effects[0].targeting.affinity.charAt(0) + card.effects[0].targeting.affinity.slice(1).toLowerCase();
       return `${t} (${a})`;
     }
     return t;

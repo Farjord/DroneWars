@@ -209,8 +209,8 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
     if (action.type === 'play_card' && action.target && action.target.owner === 'player1') {
       const card = action.card;
       const target = action.target;
-      const effectType = card.effect?.type;
-      const scope = card.effect?.scope;
+      const effectType = card.effects[0]?.type;
+      const scope = card.effects[0]?.scope;
 
       // Only apply to SINGLE-target DESTROY or single-target DAMAGE cards
       // Skip FILTERED/LANE/OVERFLOW/SPLASH - already handled by calculateTargetValue
@@ -232,7 +232,7 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
         const laneId = getLaneOfDrone(target.id, player1);
         if (laneId) {
           const analysis = interceptionAnalysis[laneId];
-          if (analysis.enemyInterceptors.includes(target.id) && isLethal(card.effect.value || 0, target, card.effect.damageType === 'PIERCING', card.effect.damageType)) {
+          if (analysis.enemyInterceptors.includes(target.id) && isLethal(card.effects[0].value || 0, target, card.effects[0].damageType === 'PIERCING', card.effects[0].damageType)) {
             const bestUnblockedValue = calculateBestUnblockedValue(laneId, analysis, possibleActions);
 
             if (bestUnblockedValue > 0) {

@@ -150,7 +150,7 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
     }
 
     // Effect type filtering (e.g., 'DAMAGE', 'HEAL')
-    if (filter.effectType && card.effect?.type !== filter.effectType) {
+    if (filter.effectType && card.effects[0]?.type !== filter.effectType) {
       return false;
     }
 
@@ -203,15 +203,15 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
     }
 
     // Basic scoring by effect type
-    switch (card.effect?.type) {
+    switch (card.effects[0]?.type) {
       case 'DAMAGE':
-        score = 15 + (card.effect.value || 0) * 3;
+        score = 15 + (card.effects[0].value || 0) * 3;
         break;
       case 'DRAW':
-        score = 12 + (card.effect.value || 0) * 2;
+        score = 12 + (card.effects[0].value || 0) * 2;
         break;
       case 'GAIN_ENERGY':
-        score = 8 + (card.effect.value || 0) * 2;
+        score = 8 + (card.effects[0].value || 0) * 2;
         break;
       case 'HEAL_HULL':
         score = 10;

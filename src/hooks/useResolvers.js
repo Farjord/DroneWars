@@ -330,12 +330,12 @@ const useResolvers = ({
 
   // --- Handle Close AI Card Report ---
   const handleCloseAiCardReport = useCallback(async () => {
-    if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
+    if (aiCardPlayReport && !aiCardPlayReport.card.effects[0].goAgain) {
       await processActionWithGuestRouting('turnTransition', {
         newPlayer: getLocalPlayerId(),
         reason: 'aiCardReportClosed'
       });
-    } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
+    } else if (aiCardPlayReport && aiCardPlayReport.card.effects[0].goAgain && !winner) {
       await processActionWithGuestRouting('turnTransition', {
         newPlayer: getOpponentPlayerId(),
         reason: 'aiGoAgain'

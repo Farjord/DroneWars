@@ -245,8 +245,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
   /**
    * Execute single drone movement
-   * Called by ActionProcessor after UI selection completes
-   * NOTE: This method is called directly from ActionProcessor.processMovementCompletion
+   * Called via gameLogic bindings after UI selection completes
    *
    * @param {Object} card - Card being played
    * @param {Object} droneToMove - Drone being moved
@@ -259,7 +258,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @returns {Object} Result with newPlayerStates or error
    */
   executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context) {
-    const { effect } = card;
+    const effect = card.effects[0];
     const { callbacks, placedSections } = context;
 
     debugLog('MOVEMENT_EFFECT', 'executeSingleMove - card effect check', {
@@ -405,7 +404,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     // Check Rally Beacon go-again for friendly drone moves only
     const rallyGoAgain = !isMovingEnemyDrone
-      ? checkRallyBeaconGoAgain(newPlayerStates[droneOwnerId], toLane, card.effect.goAgain, logCallback)
+      ? checkRallyBeaconGoAgain(newPlayerStates[droneOwnerId], toLane, card.effects[0].goAgain, logCallback)
       : false;
 
     // Snapshot state before mine trigger (movement complete, mine not yet triggered)
@@ -438,7 +437,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: !card.effect.goAgain && !rallyGoAgain,
+      shouldEndTurn: !card.effects[0].goAgain && !rallyGoAgain,
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents,
@@ -448,8 +447,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
   /**
    * Execute multiple drones movement
-   * Called by ActionProcessor after UI selection completes
-   * NOTE: This method is called directly from ActionProcessor.processMovementCompletion
+   * Called via gameLogic bindings after UI selection completes
    *
    * @param {Object} card - Card being played
    * @param {Array} dronesToMove - Array of drones being moved
@@ -462,7 +460,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @returns {Object} Result with newPlayerStates or error
    */
   executeMultiMove(card, dronesToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context) {
-    const { effect } = card;
+    const effect = card.effects[0];
     const { callbacks, placedSections } = context;
     const { logCallback } = callbacks;
 
@@ -584,7 +582,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     // Check Rally Beacon go-again for multi-move
     const rallyGoAgain = checkRallyBeaconGoAgain(
-      newPlayerStates[actingPlayerId], toLane, card.effect?.goAgain || false, logCallback
+      newPlayerStates[actingPlayerId], toLane, card.effects[0]?.goAgain || false, logCallback
     );
 
     // Snapshot state before mine trigger (movement complete, mine not yet triggered)
@@ -621,7 +619,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: !(card.effect?.goAgain || rallyGoAgain),
+      shouldEndTurn: !(card.effects[0]?.goAgain || rallyGoAgain),
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents,

@@ -3,7 +3,7 @@ import fullCardCollection from '../cardData';
 
 const VALID_RARITIES = ['Common', 'Uncommon', 'Rare', 'Mythic'];
 const VALID_TYPES = ['Ordnance', 'Support', 'Tactic', 'Upgrade'];
-const REQUIRED_FIELDS = ['id', 'baseCardId', 'name', 'maxInDeck', 'rarity', 'type', 'cost', 'image', 'description', 'effect'];
+const REQUIRED_FIELDS = ['id', 'baseCardId', 'name', 'maxInDeck', 'rarity', 'type', 'cost', 'image', 'description', 'effects'];
 
 describe('fullCardCollection', () => {
   it('exports a non-empty array', () => {
