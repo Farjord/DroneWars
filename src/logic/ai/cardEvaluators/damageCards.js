@@ -38,8 +38,8 @@ export const evaluateDestroyCard = (card, target, context) => {
     logic.push(...targetLogic.map(l => `  ${l}`));
     logic.push(`Cost: -${costPenalty}`);
   }
-  else if (card.effect.scope === 'FILTERED' && target && target.id.startsWith('lane')) {
-    const { stat, comparison, value } = card.effect.filter;
+  else if (card.targeting?.affectedFilter && target && target.id.startsWith('lane')) {
+    const { stat, comparison, value } = card.targeting.affectedFilter[0];
     const laneId = target.id;
     const dronesInLane = player1.dronesOnBoard[laneId] || [];
     let totalValue = 0;
@@ -121,8 +121,8 @@ export const evaluateDamageCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  if (card.effect.scope === 'FILTERED' && target.id.startsWith('lane') && card.effect.filter) {
-    const { stat, comparison, value } = card.effect.filter;
+  if (card.targeting?.affectedFilter && target.id.startsWith('lane')) {
+    const { stat, comparison, value } = card.targeting.affectedFilter[0];
     const laneId = target.id;
     const dronesInLane = player1.dronesOnBoard[laneId] || [];
     let totalValue = 0;

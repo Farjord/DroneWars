@@ -15,7 +15,7 @@ function ActionPhaseButtons({
   isMyTurn,
   mandatoryAction,
   multiSelectState,
-  singleMoveMode,
+  secondaryTargetingState,
   additionalCostState,
   reallocationPhase,
   passInfo,
@@ -31,13 +31,13 @@ function ActionPhaseButtons({
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
-  handleCancelSingleMove,
+  handleCancelSecondaryTargeting,
   handleCancelAdditionalCost
 }) {
   return (
     <>
       {/* Pass Button - Hide during reallocation */}
-      {isMyTurn() && !mandatoryAction && !multiSelectState && !singleMoveMode && !additionalCostState && !reallocationPhase && (
+      {isMyTurn() && !mandatoryAction && !multiSelectState && !secondaryTargetingState && !additionalCostState && !reallocationPhase && (
         <button
           onClick={handlePlayerPass}
           disabled={passInfo[`${getLocalPlayerId()}Passed`]}
@@ -160,10 +160,10 @@ function ActionPhaseButtons({
         </>
       )}
 
-      {/* Single Move Mode Controls */}
-      {singleMoveMode && (
+      {/* Secondary Targeting Mode Controls */}
+      {secondaryTargetingState && (
         <button
-          onClick={handleCancelSingleMove}
+          onClick={handleCancelSecondaryTargeting}
           className="dw-btn dw-btn-danger dw-btn--sm"
         >
           Cancel

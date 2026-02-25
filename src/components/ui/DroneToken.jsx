@@ -191,7 +191,7 @@ const DroneToken = ({
   isHovered = false,
   isAbilitySource = false,
   isElevated = false,
-  singleMoveMode = null,
+  secondaryTargetingState = null,
   // Action card drag-and-drop props
   draggedActionCard = null,
   onActionCardDrop = null,
@@ -296,13 +296,10 @@ const DroneToken = ({
           return;
         }
 
-        // Allow drag in two cases:
-        // 1. Normal case: player-owned drone that's not exhausted
-        // 2. Single-move case: this is the selected drone in singleMoveMode (any owner)
-        const canDragNormally = isPlayer && !drone.isExhausted;
-        const canDragInSingleMode = singleMoveMode?.droneId === drone.id;
+        // Allow drag for player-owned drones that aren't exhausted
+        const canDrag = isPlayer && !drone.isExhausted;
 
-        if (onDragStart && (canDragNormally || canDragInSingleMode)) {
+        if (onDragStart && canDrag) {
           e.preventDefault();
           onDragStart(drone, lane, e);
         }

@@ -53,6 +53,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 54 | useCardSelection.js:267 | useEffect deps include `additionalCostState` but early-returns skip recalculation — fires unnecessarily | Audit closure (Phase M) | 2026-02-24 | Low |
 | 55 | TestingSetupScreen.jsx:862-1005 | Lane controls for lane1/lane2/lane3 copy-pasted 3x — dev-only, fix when UI revamped | Audit closure (Phase M) | 2026-02-24 | Low |
 | 56 | QuickDeployEditorScreen.jsx:346-417 | Deployment order index remapping duplicated | Audit closure (Phase M) | 2026-02-24 | Low |
+| 57 | Forced Repositioning card | Still uses `additionalCost` flow with `COST_SOURCE_LANE`/`COST_TARGET` location values. Migrating to `secondaryTargeting` requires a chained 4-step targeting engine (select drone → move → select enemy → move). Not feasible with current 2-step secondary targeting model. | Targeting system rework Phase 6 | 2026-02-25 | Low |
 
 ## Audit Findings (2026-02-23)
 

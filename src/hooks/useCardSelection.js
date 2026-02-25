@@ -28,7 +28,6 @@ const useCardSelection = ({
   const [affectedDroneIds, setAffectedDroneIds] = useState([]);
   const [hoveredLane, setHoveredLane] = useState(null);
   const [cardConfirmation, setCardConfirmation] = useState(null);
-  const [singleMoveMode, setSingleMoveMode] = useState(null);
   const [additionalCostState, setAdditionalCostState] = useState(null);
   const [additionalCostConfirmation, setAdditionalCostConfirmation] = useState(null);
   const [additionalCostSelectionContext, setAdditionalCostSelectionContext] = useState(null);
@@ -69,6 +68,7 @@ const useCardSelection = ({
       primaryLane,
       primaryOwner
     });
+    setSelectedCard(card);
     setSecondaryTargetingState({
       card,
       primaryTarget,
@@ -84,17 +84,6 @@ const useCardSelection = ({
     setSelectedCard(null);
     setValidCardTargets([]);
   }, []);
-
-  const cancelSingleMoveMode = useCallback(() => {
-    debugLog('SINGLE_MOVE_MODE', '🚨 cancelSingleMoveMode CALLED', {
-      timestamp: performance.now(),
-      hadSingleMoveMode: singleMoveMode !== null
-    });
-    setSingleMoveMode(null);
-    setSelectedCard(null);
-    setSelectedDrone(null);
-    setValidCardTargets([]);
-  }, [singleMoveMode, setSelectedDrone]);
 
   const cancelAdditionalCostMode = useCallback(() => {
     debugLog('ADDITIONAL_COST_UI', '🚨 Canceling additional cost mode');
@@ -116,7 +105,6 @@ const useCardSelection = ({
         multiSelectFlowRef: multiSelectFlowInProgress.current,
         multiSelectStateExists: multiSelectState !== null,
         selectedCardExists: selectedCard !== null,
-        singleMoveModeExists: singleMoveMode !== null,
         additionalCostStateExists: additionalCostState !== null,
         additionalCostPhase: additionalCostState?.phase || 'none',
         callStack: new Error().stack.split('\n').slice(0, 10).join('\n')
@@ -136,11 +124,10 @@ const useCardSelection = ({
     multiSelectFlowInProgress.current = false;
     setSelectedCard(null);
     setMultiSelectState(null);
-    setSingleMoveMode(null);
     setSecondaryTargetingState(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
-  }, [additionalCostFlowInProgress, multiSelectFlowInProgress, multiSelectState, selectedCard, singleMoveMode, additionalCostState, setMultiSelectState]);
+  }, [additionalCostFlowInProgress, multiSelectFlowInProgress, multiSelectState, selectedCard, additionalCostState, setMultiSelectState]);
 
   const confirmAdditionalCostCard = useCallback(async (card, costSelection, effectTarget) => {
     debugLog('ADDITIONAL_COST_UI', '✅ Confirming additional cost card', {
@@ -252,13 +239,11 @@ const useCardSelection = ({
       multiSelectState_phase: multiSelectState?.phase || null,
       multiSelectState_sourceLane: multiSelectState?.sourceLane || null,
       multiSelectState_full: multiSelectState ? JSON.stringify(multiSelectState) : null,
-      singleMoveMode_drone: singleMoveMode?.drone?.name || null,
-      singleMoveMode_sourceLane: singleMoveMode?.sourceLane || null,
       additionalCostState_phase: additionalCostState?.phase || null,
-      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode
+      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !secondaryTargetingState
     });
 
-    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode && !secondaryTargetingState) {
+    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !secondaryTargetingState) {
       setValidAbilityTargets([]);
       setValidCardTargets([]);
       return;
@@ -305,7 +290,7 @@ const useCardSelection = ({
       gameState.player1,
       gameState.player2,
       getLocalPlayerId(),
-      singleMoveMode,
+      null,  // reserved parameter
       gameDataService.getEffectiveStats.bind(gameDataService)
     );
 
@@ -316,7 +301,7 @@ const useCardSelection = ({
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState, secondaryTargetingState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, additionalCostState, secondaryTargetingState]);
 
   // Additional cost highlighting debug logging
   useEffect(() => {
@@ -340,7 +325,6 @@ const useCardSelection = ({
     hoveredLane,
     cardConfirmation,
     multiSelectState,
-    singleMoveMode,
     additionalCostState,
     additionalCostConfirmation,
     additionalCostSelectionContext,
@@ -357,7 +341,6 @@ const useCardSelection = ({
     setHoveredLane,
     setCardConfirmation,
     setMultiSelectState,
-    setSingleMoveMode,
     setAdditionalCostState,
     setAdditionalCostConfirmation,
     setAdditionalCostSelectionContext,
@@ -368,7 +351,6 @@ const useCardSelection = ({
 
     // Functions
     cancelCardSelection,
-    cancelSingleMoveMode,
     cancelAdditionalCostMode,
     enterSecondaryTargeting,
     cancelSecondaryTargeting,

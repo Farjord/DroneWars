@@ -96,9 +96,7 @@ export const targetingDescriptions = {
 
   'SHIP_SECTION': 'Targets one of the player\'s ship sections. Used for effects that heal or damage ship hulls directly.',
 
-  'DRONE_CARD': 'Targets a drone type in your active pool (not a specific drone on the field). Used by Upgrade cards to permanently enhance all drones of a chosen type.',
-
-  'APPLIED_UPGRADE': 'Targets an active upgrade that has been applied to a drone type. Used by upgrade removal/destruction effects.'
+  'NONE': 'No target selection required. Used by upgrades (modal opens for pool selection), System Sabotage (modal), and Purge Protocol (auto-resolves).'
 };
 
 // ========================================

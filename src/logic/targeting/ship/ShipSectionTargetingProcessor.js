@@ -87,7 +87,7 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
 
   /**
    * Apply lane control filtering for doctrine cards
-   * Only filters when targeting.custom includes 'REQUIRES_LANE_CONTROL'
+   * Only filters when targeting.restrictions includes 'REQUIRES_LANE_CONTROL'
    *
    * @param {Array} targets - Unfiltered targets
    * @param {Object} context - Targeting context
@@ -97,7 +97,7 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
     const { definition, actingPlayerId } = context;
     const targeting = definition.targeting;
 
-    const restrictions = targeting.restrictions || targeting.custom;
+    const restrictions = targeting.restrictions;
     if (!restrictions?.includes('REQUIRES_LANE_CONTROL')) {
       return targets;
     }

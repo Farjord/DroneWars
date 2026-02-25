@@ -104,11 +104,7 @@ const fullCardCollection = [
       type: 'LANE', affinity: 'ENEMY',
       affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
     },
-    effect: {
-      type: 'DESTROY',
-      scope: 'FILTERED',
-      filter: { stat: 'speed', comparison: 'GTE', value: 5 },
-    },
+    effect: { type: 'DESTROY' },
   },
   {
     id: 'CARD010_ENHANCED',
@@ -124,11 +120,7 @@ const fullCardCollection = [
       type: 'LANE', affinity: 'ENEMY',
       affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
     },
-    effect: {
-      type: 'DESTROY',
-      scope: 'FILTERED',
-      filter: { stat: 'speed', comparison: 'GTE', value: 5 },
-    },
+    effect: { type: 'DESTROY' },
   },
   {
     id: 'CARD011',
@@ -187,12 +179,7 @@ const fullCardCollection = [
       type: 'LANE', affinity: 'ENEMY',
       affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }]
     },
-    effect: {
-      type: 'DAMAGE',
-      value: 2,
-      scope: 'FILTERED',
-      filter: { stat: 'speed', comparison: 'LTE', value: 4 },
-    },
+    effect: { type: 'DAMAGE', value: 2 },
   },
   {
     id: 'CARD031',
@@ -303,9 +290,6 @@ const fullCardCollection = [
     effect: {
       type: 'DAMAGE',
       value: 1,
-      scope: 'FILTERED',
-      maxTargets: 3,
-      filter: { stat: 'hull', comparison: 'GTE', value: 0 },
     },
   },
   {
@@ -1519,7 +1503,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ExhaustingStrike.png',
     description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower speed in the same lane.',
     visualEffect: { type: 'DISRUPTION' },
-    // New targeting model (Phase 1): primary = friendly drone, secondary = enemy drone
+    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
     secondaryTargeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
@@ -1534,28 +1518,8 @@ const fullCardCollection = [
         },
       ],
     },
-    secondaryEffect: { type: 'EXHAUST_DRONE' },
-    // Legacy targeting model (still active until Phase 2 engine is built)
-    targeting: {
-      type: 'DRONE',
-      affinity: 'ENEMY',
-      location: 'SAME_LANE_AS_COST',
-      restrictions: [
-        {
-          type: 'STAT_COMPARISON',
-          stat: 'speed',
-          comparison: 'LT',
-          reference: 'COST_TARGET',
-          referenceStat: 'speed',
-        },
-      ],
-    },
     effect: { type: 'EXHAUST_DRONE' },
-    additionalCost: {
-      type: 'EXHAUST_DRONE',
-      targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-      description: 'Exhaust a friendly drone',
-    },
+    secondaryEffect: { type: 'EXHAUST_DRONE' },
   },
   {
     id: 'FORCED_REPOSITION',
@@ -1568,26 +1532,6 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ForcedRepositioning.png',
     description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
-    // New targeting model (Phase 1): primary = friendly drone, secondary = enemy drone
-    secondaryTargeting: {
-      type: 'DRONE',
-      affinity: 'ENEMY',
-      location: 'PRIMARY_SOURCE_LANE',
-      restrictions: [
-        {
-          type: 'STAT_COMPARISON',
-          stat: 'attack',
-          comparison: 'GT',
-          reference: 'PRIMARY_TARGET',
-          referenceStat: 'attack',
-        },
-      ],
-    },
-    secondaryEffect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
-    // Legacy targeting model (still active until Phase 2 engine is built)
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',

@@ -75,9 +75,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
       // Effect: Sidewinder Missiles - damage drones with speed <= 4
       const effect = {
         type: 'DAMAGE',
-        value: 2,
-        scope: 'FILTERED',
-        filter: { stat: 'speed', comparison: 'LTE', value: 4 }
+        value: 2
       };
 
       const context = {
@@ -86,7 +84,10 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         playerStates: mockPlayerStates,
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
-        card: { id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1' }
+        card: {
+          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
+        }
       };
 
       const result = processor.process(effect, context);
@@ -130,9 +131,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
 
       const effect = {
         type: 'DAMAGE',
-        value: 2,
-        scope: 'FILTERED',
-        filter: { stat: 'speed', comparison: 'LTE', value: 4 }
+        value: 2
       };
 
       const context = {
@@ -141,7 +140,10 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         playerStates: mockPlayerStates,
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
-        card: { id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1' }
+        card: {
+          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
+        }
       };
 
       const result = processor.process(effect, context);
@@ -180,9 +182,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
 
       const effect = {
         type: 'DAMAGE',
-        value: 2,
-        scope: 'FILTERED',
-        filter: { stat: 'speed', comparison: 'LTE', value: 4 }
+        value: 2
       };
 
       const context = {
@@ -191,7 +191,10 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         playerStates: mockPlayerStates,
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
-        card: { id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1' }
+        card: {
+          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
+        }
       };
 
       const result = processor.process(effect, context);
@@ -238,9 +241,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
       // Effect: damage drones with speed >= 5
       const effect = {
         type: 'DAMAGE',
-        value: 2,
-        scope: 'FILTERED',
-        filter: { stat: 'speed', comparison: 'GTE', value: 5 }
+        value: 2
       };
 
       const context = {
@@ -249,7 +250,10 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         playerStates: mockPlayerStates,
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
-        card: { id: 'TEST_CARD', name: 'Test Card', instanceId: 'inst_1' }
+        card: {
+          id: 'TEST_CARD', name: 'Test Card', instanceId: 'inst_1',
+          targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] }
+        }
       };
 
       const result = processor.process(effect, context);

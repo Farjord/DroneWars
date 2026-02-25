@@ -510,14 +510,14 @@ const App = ({ phaseAnimationQueue }) => {
   // --- CARD SELECTION HOOK ---
   const {
     selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds,
-    hoveredLane, cardConfirmation, multiSelectState, singleMoveMode,
+    hoveredLane, cardConfirmation, multiSelectState,
     additionalCostState, additionalCostConfirmation, additionalCostSelectionContext,
     destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal,
     setSelectedCard, setValidCardTargets, setValidAbilityTargets, setAffectedDroneIds,
-    setHoveredLane, setCardConfirmation, setMultiSelectState, setSingleMoveMode,
+    setHoveredLane, setCardConfirmation, setMultiSelectState,
     setAdditionalCostState, setAdditionalCostConfirmation, setAdditionalCostSelectionContext,
     setDestroyUpgradeModal, setUpgradeSelectionModal, setViewUpgradesModal,
-    cancelCardSelection, cancelSingleMoveMode, cancelAdditionalCostMode,
+    cancelCardSelection, cancelAdditionalCostMode,
     confirmAdditionalCostCard, handleCancelMultiMove, handleConfirmMultiMoveDrones,
     cancelCardState,
     secondaryTargetingState, setSecondaryTargetingState,
@@ -574,11 +574,11 @@ const App = ({ phaseAnimationQueue }) => {
     setSelectedDrone, setAbilityMode, setValidAbilityTargets, setMandatoryAction,
     setFooterView, setIsFooterOpen, setShipAbilityMode, setDraggedDrone,
     setCardSelectionModal, setShipAbilityConfirmation,
-    cancelCardSelection, setSingleMoveMode, setSelectedCard, setValidCardTargets,
+    cancelCardSelection, setSelectedCard, setValidCardTargets,
     setMultiSelectState, setAdditionalCostState, setAdditionalCostConfirmation,
     setAdditionalCostSelectionContext, setCostReminderArrowState, setCardConfirmation,
     setAffectedDroneIds, confirmAdditionalCostCard,
-    singleMoveMode, additionalCostSelectionContext, cardConfirmation,
+    additionalCostSelectionContext, cardConfirmation,
     pendingShieldChanges, clearReallocationState,
   });
 
@@ -622,7 +622,7 @@ const App = ({ phaseAnimationQueue }) => {
     opponentPlayerState,
     selectedDrone,
     draggedDrone,
-    singleMoveMode,
+    secondaryTargetingState,
     abilityMode,
     getLocalPlayerId,
     getPlacedSectionsForEngine,
@@ -654,10 +654,10 @@ const App = ({ phaseAnimationQueue }) => {
     gameEngine, setSelectedDrone, setModalContent, executeDeployment,
     // From useCardSelection
     setAffectedDroneIds, setHoveredLane, setSelectedCard, setMultiSelectState,
-    cancelCardSelection, setSingleMoveMode, setCardConfirmation,
+    cancelCardSelection, setCardConfirmation,
     setUpgradeSelectionModal, setDestroyUpgradeModal, setAdditionalCostState,
     setAdditionalCostConfirmation, setValidCardTargets, validCardTargets,
-    additionalCostState, selectedCard, multiSelectState, singleMoveMode,
+    additionalCostState, selectedCard, multiSelectState,
     // From useCardSelection — secondary targeting
     enterSecondaryTargeting, secondaryTargetingState,
     // From useInterception
@@ -864,7 +864,6 @@ const App = ({ phaseAnimationQueue }) => {
     cancelCardSelection, multiSelectFlowInProgress,
     additionalCostState, setAdditionalCostState,
     additionalCostFlowInProgress, additionalCostSelectionContext,
-    singleMoveMode, setSingleMoveMode,
     secondaryTargetingState, cancelSecondaryTargeting,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
@@ -912,8 +911,8 @@ const App = ({ phaseAnimationQueue }) => {
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => {
       cancelAbilityMode();
-      // Don't cancel card selection if we're in a multi-select flow or single-move mode
-      if (!multiSelectFlowInProgress.current && !singleMoveMode) {
+      // Don't cancel card selection if we're in a multi-select flow or secondary targeting
+      if (!multiSelectFlowInProgress.current && !secondaryTargetingState) {
         cancelCardSelection('game-area-click');
       }
     }}>
@@ -1022,9 +1021,9 @@ const App = ({ phaseAnimationQueue }) => {
         handleShowInterceptionDialog={handleShowInterceptionDialog}
         handleResetInterception={handleResetInterception}
         handleConfirmInterception={handleConfirmInterception}
-        // Single-move mode props
-        singleMoveMode={singleMoveMode}
-        handleCancelSingleMove={cancelSingleMoveMode}
+        // Secondary targeting mode props
+        secondaryTargetingState={secondaryTargetingState}
+        handleCancelSecondaryTargeting={cancelSecondaryTargeting}
         // Additional cost mode props
         additionalCostState={additionalCostState}
         handleCancelAdditionalCost={cancelAdditionalCostMode}
@@ -1047,7 +1046,7 @@ const App = ({ phaseAnimationQueue }) => {
         abilityMode={abilityMode}
         validAbilityTargets={validAbilityTargets}
         multiSelectState={multiSelectState}
-        singleMoveMode={singleMoveMode}
+        secondaryTargetingState={secondaryTargetingState}
         additionalCostState={additionalCostState}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}

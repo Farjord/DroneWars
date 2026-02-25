@@ -51,8 +51,8 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
   const mockLaneTargetingCard = {
     id: 'CARD013',
     name: 'Shrieker Missiles',
-    targeting: { type: 'LANE', affinity: 'ENEMY' },
-    effect: { type: 'DAMAGE', scope: 'FILTERED', filter: { stat: 'speed', comparison: 'GTE', value: 5 } }
+    targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
+    effect: { type: 'DAMAGE' }
   };
 
   // Mock DRONE-targeting card (like Ion Blast)

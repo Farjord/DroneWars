@@ -29,10 +29,10 @@ const useDragMechanics = ({
   executeDeployment,
   // From useCardSelection
   setAffectedDroneIds, setHoveredLane, setSelectedCard, setMultiSelectState,
-  cancelCardSelection, setSingleMoveMode, setCardConfirmation,
+  cancelCardSelection, setCardConfirmation,
   setUpgradeSelectionModal, setDestroyUpgradeModal, setAdditionalCostState,
   setAdditionalCostConfirmation, setValidCardTargets, validCardTargets,
-  additionalCostState, selectedCard, multiSelectState, singleMoveMode,
+  additionalCostState, selectedCard, multiSelectState,
   // From useInterception
   interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
   // From useCardSelection — secondary targeting
@@ -75,7 +75,7 @@ const useDragMechanics = ({
 
   // Show/hide click-based targeting arrow based on selectedDrone
   useEffect(() => {
-    if (selectedDrone && !abilityMode && !singleMoveMode && turnPhase === 'action') {
+    if (selectedDrone && !abilityMode && !secondaryTargetingState && turnPhase === 'action') {
       const startPos = getElementCenter(droneRefs.current[selectedDrone.id], gameAreaRef.current);
       if (startPos) {
         setArrowState({ visible: true, start: startPos, end: { x: startPos.x, y: startPos.y } });
@@ -83,7 +83,7 @@ const useDragMechanics = ({
     } else {
       setArrowState(prev => ({ ...prev, visible: false }));
     }
-  }, [selectedDrone, turnPhase, abilityMode, singleMoveMode]);
+  }, [selectedDrone, turnPhase, abilityMode, secondaryTargetingState]);
 
   // --- Handlers ---
 
@@ -230,8 +230,8 @@ const useDragMechanics = ({
         gameState.player1,
         gameState.player2,
         getLocalPlayerId(),
-        null,  // singleMoveMode
-        gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+        null,  // reserved parameter
+        gameDataService.getEffectiveStats.bind(gameDataService)
       );
       setValidCardTargets(targets);
 
@@ -307,7 +307,7 @@ const useDragMechanics = ({
           gameState.player1,
           gameState.player2,
           getLocalPlayerId(),
-          null,  // singleMoveMode
+          null,  // reserved parameter
           gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
         );
 
@@ -356,7 +356,7 @@ const useDragMechanics = ({
             return;
           }
 
-          // For SINGLE_MOVE cards with secondaryTargeting, use the new secondary targeting flow
+          // For SINGLE_MOVE cards, use the secondary targeting flow
           if (card.effect.type === 'SINGLE_MOVE' && card.secondaryTargeting) {
             debugLog('SECONDARY_TARGETING', '🎯 Card with secondaryTargeting dropped on primary target', {
               cardName: card.name,
@@ -366,54 +366,6 @@ const useDragMechanics = ({
               targetOwner
             });
             enterSecondaryTargeting(card, target, targetLane, targetOwner);
-            return;
-          }
-
-          // For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
-          if (card.effect.type === 'SINGLE_MOVE') {
-            // CHECKPOINT 2: Card Dropped on Drone Target
-            debugLog('SINGLE_MOVE_FLOW', '🎯 CHECKPOINT 2: Card dropped on drone target', {
-              cardName: card.name,
-              targetId: target.id,
-              targetName: target.name,
-              targetOwner: targetOwner,
-              targetLane: targetLane,
-              targetObject: target
-            });
-
-            debugLog('SINGLE_MOVE_MODE', '🎯 Entering single-move mode', {
-              cardName: card.name,
-              droneId: target.id,
-              droneName: target.name,
-              sourceLane: targetLane,
-              targetOwner: targetOwner
-            });
-
-            // CHECKPOINT 3: Setting singleMoveMode State
-            const newSingleMoveMode = {
-              card: card,
-              droneId: target.id,
-              owner: targetOwner,
-              sourceLane: targetLane
-            };
-
-            debugLog('SINGLE_MOVE_FLOW', '💾 CHECKPOINT 3: Setting singleMoveMode state', {
-              singleMoveMode: newSingleMoveMode,
-              droneId: newSingleMoveMode.droneId,
-              owner: newSingleMoveMode.owner,
-              sourceLane: newSingleMoveMode.sourceLane,
-              cardName: newSingleMoveMode.card.name
-            });
-
-            setSingleMoveMode(newSingleMoveMode);
-
-            // Set selectedDrone so the drone highlights correctly
-            setSelectedDrone({ ...target, owner: targetOwner });
-
-            // Clear selectedCard so targeting useEffect prioritizes singleMoveMode
-            // The card will still be referenced via singleMoveMode.card
-            setSelectedCard(null);
-
             return;
           }
 
@@ -508,31 +460,21 @@ const useDragMechanics = ({
       return;
     }
 
-    // Case 2: Upgrade cards - open upgrade selection modal
-    if (card.type === 'Upgrade' || card.targeting?.type === 'DRONE_CARD' || card.targeting?.type === 'NONE') {
-      // NONE-type upgrade cards and legacy DRONE_CARD both open the upgrade modal
+    // Case 2: NONE-type cards — dispatch based on card subtype
+    if (card.targeting?.type === 'NONE') {
       if (card.type === 'Upgrade') {
         setUpgradeSelectionModal({ card, targets: validCardTargets });
         return;
       }
-      // NONE-type non-upgrade cards with effect DESTROY_UPGRADE → System Sabotage
       if (card.effect?.type === 'DESTROY_UPGRADE') {
         setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
         return;
       }
-      // NONE-type cards with scope ALL (Purge Protocol) — auto-resolve
       if (card.effect?.scope === 'ALL') {
         setCardConfirmation({ card, target: null });
         return;
       }
-      // Generic NONE card — show confirmation
       setCardConfirmation({ card, target: null });
-      return;
-    }
-
-    // Case 3: System Sabotage (legacy APPLIED_UPGRADE) - open destroy upgrade modal
-    if (card.targeting?.type === 'APPLIED_UPGRADE') {
-      setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
       return;
     }
 
@@ -758,6 +700,32 @@ const useDragMechanics = ({
       }
     }
 
+    // Case 4.5: Cards with secondaryTargeting (non-movement, e.g., Feint)
+    if (target && targetType === 'drone' && card.secondaryTargeting) {
+      const isValidTarget = validCardTargets.some(t =>
+        (t.id === target.id || t.id === target.name) && t.owner === targetOwner
+      );
+      if (isValidTarget) {
+        const tgtPlayerState = targetOwner === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+        const tgtLaneEntry = Object.entries(tgtPlayerState.dronesOnBoard).find(
+          ([_, drones]) => drones.some(d => d.id === target.id)
+        );
+        const targetLane = tgtLaneEntry?.[0];
+        if (targetLane) {
+          debugLog('SECONDARY_TARGETING', '🎯 Card with secondaryTargeting dropped on primary target', {
+            cardName: card.name,
+            targetId: target.id,
+            targetName: target.name,
+            targetLane,
+            targetOwner,
+            effectType: card.effect?.type
+          });
+          enterSecondaryTargeting(card, target, targetLane, targetOwner);
+          return;
+        }
+      }
+    }
+
     // Case 5: Targeted cards (drone, lane, section) - validate and show confirmation
     if (target && targetType) {
       const isValidTarget = validCardTargets.some(t =>
@@ -867,37 +835,6 @@ const useDragMechanics = ({
       return;
     }
 
-    // Check for single-move mode - only allow dragging the selected drone
-    if (singleMoveMode) {
-      if (drone.id !== singleMoveMode.droneId) {
-        debugLog('SINGLE_MOVE_MODE', '⛔ Drone drag blocked - not the selected drone', {
-          attemptedDroneId: drone.id,
-          selectedDroneId: singleMoveMode.droneId
-        });
-        return;
-      }
-
-      debugLog('SINGLE_MOVE_MODE', '🎯 Selected drone drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
-      setDraggedDrone({ drone, sourceLane, isSingleMoveDrag: true });
-
-      // Get start position from top-middle of the drone token
-      if (gameAreaRef.current) {
-        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
-        const tokenElement = event.currentTarget;
-        const tokenRect = tokenElement.getBoundingClientRect();
-
-        const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
-        const startY = tokenRect.top - gameAreaRect.top + 15;
-
-        setDroneDragArrowState({
-          visible: true,
-          start: { x: startX, y: startY },
-          end: { x: startX, y: startY }
-        });
-      }
-      return;
-    }
-
     // Normal action phase drag - only allow during action phase, when it's our turn, and drone is not exhausted
     if (turnPhase !== 'action' || currentPlayer !== getLocalPlayerId() || drone.isExhausted) {
       debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked', { turnPhase, currentPlayer, localPlayerId: getLocalPlayerId(), isExhausted: drone.isExhausted });
@@ -953,7 +890,6 @@ const useDragMechanics = ({
       draggedDroneName: draggedDrone?.drone?.name,
       draggedDroneId: draggedDrone?.drone?.id,
       isInterceptionDrag: draggedDrone?.isInterceptionDrag,
-      isSingleMoveDrag: draggedDrone?.isSingleMoveDrag,
       isAdditionalCostDrag: draggedDrone?.isAdditionalCostDrag,
 
       // Additional cost state
@@ -970,13 +906,12 @@ const useDragMechanics = ({
       return;
     }
 
-    const { drone: interceptorDrone, sourceLane, isInterceptionDrag, isSingleMoveDrag } = draggedDrone;
+    const { drone: interceptorDrone, sourceLane, isInterceptionDrag } = draggedDrone;
 
     debugLog('CHECKPOINT_FLOW', '📥 CHECKPOINT 5A: draggedDrone destructured', {
       interceptorDrone: interceptorDrone?.name,
       sourceLane,
-      isInterceptionDrag,
-      isSingleMoveDrag
+      isInterceptionDrag
     });
 
     // Handle interception mode drag end
@@ -1096,95 +1031,6 @@ const useDragMechanics = ({
         setCostReminderArrowState(arrowState);
         debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown (drag-drop path)', arrowState);
       }
-
-      return;
-    }
-
-    // Handle single-move mode drag end
-    if (isSingleMoveDrag && singleMoveMode) {
-      // Cleanup drag state
-      setDraggedDrone(null);
-      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
-
-      // Validate drone matches singleMoveMode
-      if (interceptorDrone.id !== singleMoveMode.droneId) {
-        debugLog('SINGLE_MOVE_MODE', '⛔ Drone mismatch - should not happen', {
-          draggedDroneId: interceptorDrone.id,
-          selectedDroneId: singleMoveMode.droneId
-        });
-        return;
-      }
-
-      // Must be dropped on a lane (not opponent target)
-      if (!targetLane || isOpponentTarget) {
-        debugLog('SINGLE_MOVE_MODE', '📥 Single-move drag cancelled - no valid lane target');
-        return;
-      }
-
-      // Validate target lane is adjacent to source lane
-      const sourceLaneIndex = parseInt(singleMoveMode.sourceLane.replace('lane', ''), 10);
-      const targetLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
-      const distance = Math.abs(sourceLaneIndex - targetLaneIndex);
-
-      if (distance !== 1) {
-        debugLog('SINGLE_MOVE_MODE', '⛔ Move blocked - not adjacent', {
-          sourceLane: singleMoveMode.sourceLane,
-          targetLane,
-          distance
-        });
-        debugLog('MODAL_TRIGGER', '🚨 INVALID MOVE MODAL TRIGGERED', {
-          location: 'handleDroneDragEnd - single move mode',
-          lineNumber: 4106,
-          timestamp: Date.now(),
-          singleMoveMode: singleMoveMode,
-          sourceLane: singleMoveMode?.sourceLane,
-          targetLane: targetLane,
-          distance: distance,
-          selectedDrone: selectedDrone,
-          additionalCostState: additionalCostState,
-          additionalCostPhase: additionalCostState?.phase,
-          turnPhase: turnPhase
-        });
-        debugLog('MODAL_TRIGGER', '🚨 Invalid Move modal call stack');
-        setModalContent({
-          title: "Invalid Move",
-          text: "You can only move this drone to an adjacent lane.",
-          isBlocking: true
-        });
-        return;
-      }
-
-      // Valid move - show confirmation modal
-      debugLog('SINGLE_MOVE_MODE', '✅ Valid move - showing confirmation', {
-        drone: interceptorDrone.name,
-        from: singleMoveMode.sourceLane,
-        to: targetLane,
-        card: singleMoveMode.card.name
-      });
-
-      // Look up drone for isSnared status
-      const smDrone = Object.values(localPlayerState.dronesOnBoard).flat().find(d => d.id === singleMoveMode.droneId);
-      const moveConfData = {
-        droneId: singleMoveMode.droneId,
-        owner: singleMoveMode.owner,
-        from: singleMoveMode.sourceLane,
-        to: targetLane,
-        card: singleMoveMode.card,  // Include card for card-based movement
-        isSnared: smDrone?.isSnared || false
-      };
-
-      debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - single-move drag]', {
-        location: 'handleDroneDragEnd - single-move drag',
-        dataStructure: {
-          hasDroneId: 'droneId' in moveConfData,
-          hasDrone: 'drone' in moveConfData,
-          hasOwner: 'owner' in moveConfData,
-          keys: Object.keys(moveConfData)
-        },
-        data: moveConfData
-      });
-
-      setMoveConfirmation(moveConfData);
 
       return;
     }

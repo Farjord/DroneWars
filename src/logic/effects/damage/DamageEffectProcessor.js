@@ -90,8 +90,9 @@ class DamageEffectProcessor extends BaseEffectProcessor {
   processDamage(effect, context) {
     const { actingPlayerId, playerStates, placedSections, target, callbacks, card } = context;
 
-    // Handle filtered damage (scope: 'FILTERED')
-    if (effect.scope === 'FILTERED' && target.id && target.id.startsWith('lane') && effect.filter) {
+    // Handle filtered lane damage (targeting.affectedFilter)
+    const affectedFilter = card?.targeting?.affectedFilter;
+    if (affectedFilter && target?.id?.startsWith('lane')) {
       return this.processFilteredDamage(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
     }
 
@@ -115,19 +116,23 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     // Snapshot the drones to avoid modification during iteration
     const droneSnapshot = dronesInLane.map(d => ({ ...d }));
 
-    debugLog('COMBAT', `[DAMAGE FILTERED] Processing ${effect.filter.targetType} in ${laneId} (${droneSnapshot.length} drones)`);
+    // Read filter from targeting.affectedFilter
+    const filter = card?.targeting?.affectedFilter?.[0] || {};
+    const maxTargets = card?.targeting?.maxTargets;
+
+    debugLog('COMBAT', `[DAMAGE FILTERED] Processing filtered damage in ${laneId} (${droneSnapshot.length} drones)`);
 
     // Apply filter to determine which drones are affected
     let affectedDrones = droneSnapshot;
-    if (effect.filter.targetType === 'FRONT_MOST') {
+    if (filter.targetType === 'FRONT_MOST') {
       affectedDrones = droneSnapshot.length > 0 ? [droneSnapshot[0]] : [];
-    } else if (effect.filter.targetType === 'BACK_MOST') {
+    } else if (filter.targetType === 'BACK_MOST') {
       affectedDrones = droneSnapshot.length > 0 ? [droneSnapshot[droneSnapshot.length - 1]] : [];
     }
 
     // Apply stat-based filtering (e.g., speed LTE 4 for Sidewinder Missiles)
-    if (effect.filter.stat) {
-      const { stat, comparison, value } = effect.filter;
+    if (filter.stat) {
+      const { stat, comparison, value } = filter;
       const actingPlayerState = newPlayerStates[actingPlayerId];
 
       affectedDrones = affectedDrones.filter(drone => {
@@ -165,6 +170,11 @@ class DamageEffectProcessor extends BaseEffectProcessor {
         debugLog('COMBAT', `[DAMAGE FILTERED] ${drone.name} ${stat}=${statValue} ${comparison} ${value} = ${meetsCondition}`);
         return meetsCondition;
       });
+    }
+
+    // Apply maxTargets cap (e.g., Strafing Run: first 3 drones)
+    if (maxTargets && affectedDrones.length > maxTargets) {
+      affectedDrones = affectedDrones.slice(0, maxTargets);
     }
 
     // Track damage results for animation

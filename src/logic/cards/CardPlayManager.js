@@ -105,7 +105,7 @@ class CardPlayManager {
     if (effect.type === 'HEAL_SHIELDS') outcome = `Healed ${effect.value} shields on ${targetName}.`;
     if (effect.type === 'READY_DRONE') outcome = `Readied ${targetName}.`;
     if (effect.type === 'DAMAGE') {
-      if (effect.scope === 'FILTERED') {
+      if (card.targeting?.affectedFilter) {
         outcome = `Dealt ${effect.value} damage to filtered targets in ${targetName}.`;
       } else {
         outcome = `Dealt ${effect.value} damage to ${targetName}.`;

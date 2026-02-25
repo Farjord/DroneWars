@@ -181,37 +181,12 @@ export const calculateUpgradeTargets = (selectedCard, playerState) => {
  * @param {Object} player1 - Player 1 state
  * @param {Object} player2 - Player 2 state
  * @param {string} localPlayerId - 'player1' or 'player2'
- * @param {Object} singleMoveMode - Single-move card mode state (if any)
+ * @param {Object} _singleMoveMode - Deprecated, unused (secondary targeting handles this)
  * @returns {Object} { validAbilityTargets, validCardTargets }
  */
-export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, singleMoveMode = null, getEffectiveStatsFn = null) => {
+export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, _singleMoveMode = null, getEffectiveStatsFn = null) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
-
-    // Handle singleMoveMode - highlight adjacent lanes for drone movement
-    if (singleMoveMode) {
-        const sourceLaneIndex = parseInt(singleMoveMode.sourceLane.replace('lane', ''), 10);
-        const adjacentLanes = [];
-
-        // Check all lanes and find adjacent ones (distance = 1)
-        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-            const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
-            if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
-                adjacentLanes.push({ id: laneId, owner: singleMoveMode.owner, type: 'lane' });
-            }
-        });
-
-        // CHECKPOINT 4: Target Calculation for Adjacent Lanes
-        debugLog('SINGLE_MOVE_FLOW', '🎲 CHECKPOINT 4: Calculated valid target lanes', {
-            singleMoveMode: singleMoveMode,
-            sourceLane: singleMoveMode.sourceLane,
-            adjacentLanes: adjacentLanes,
-            droneId: singleMoveMode.droneId,
-            owner: singleMoveMode.owner
-        });
-
-        return { validAbilityTargets: [], validCardTargets: adjacentLanes };
-    }
 
     if (abilityMode) {
         validAbilityTargets = targetingRouter.routeTargeting({
@@ -361,18 +336,18 @@ export const calculateAffectedDroneIds = (
     }
 
     const affectedIds = [];
-    const effect = card.effect;
-    const isFiltered = effect?.scope === 'FILTERED' && effect?.filter;
-    const isLaneScope = effect?.scope === 'LANE' || !effect?.scope;
+    const affectedFilter = card.targeting?.affectedFilter;
+    const maxTargets = card.targeting?.maxTargets;
 
     validLaneTargets.forEach(laneTarget => {
         const targetPlayerState = laneTarget.owner === 'player1' ? player1 : player2;
         const opponentState = laneTarget.owner === 'player1' ? player2 : player1;
         const dronesInLane = targetPlayerState.dronesOnBoard[laneTarget.id] || [];
 
-        if (isFiltered) {
-            // FILTERED scope: only drones matching the filter
-            const { stat, comparison, value } = effect.filter;
+        if (affectedFilter && affectedFilter.length > 0) {
+            // Filtered targeting: only drones matching affectedFilter criteria
+            const filter = affectedFilter[0];
+            const { stat, comparison, value } = filter;
             let matchingDrones = [];
 
             dronesInLane.forEach(drone => {
@@ -399,14 +374,14 @@ export const calculateAffectedDroneIds = (
             });
 
             // Apply maxTargets if specified (e.g., Strafe Run)
-            if (effect.maxTargets && matchingDrones.length > effect.maxTargets) {
-                matchingDrones = matchingDrones.slice(0, effect.maxTargets);
+            if (maxTargets && matchingDrones.length > maxTargets) {
+                matchingDrones = matchingDrones.slice(0, maxTargets);
             }
 
             matchingDrones.forEach(d => affectedIds.push(d.id));
 
-        } else if (isLaneScope) {
-            // LANE scope or no scope: all drones in lane
+        } else {
+            // No filter: all drones in lane are affected
             dronesInLane.forEach(drone => affectedIds.push(drone.id));
         }
     });
@@ -535,7 +510,7 @@ export function calculateEffectTargetsWithCostContext(card, costSelection, playe
     targetingType: card.targeting?.type,
     targetingLocation: card.targeting?.location,
     targetingAffinity: card.targeting?.affinity,
-    customCriteria: card.targeting?.restrictions || card.targeting?.custom
+    restrictions: card.targeting?.restrictions
   });
 
   const validTargets = targetingRouter.routeTargeting(context);

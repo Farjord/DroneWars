@@ -181,8 +181,8 @@ export const analyzeTargetingTypes = () => {
       targetData.locationOptions.add(targeting.location);
     }
 
-    // Track restriction filters (supports both `restrictions` and legacy `custom`)
-    const restrictions = targeting.restrictions || targeting.custom;
+    // Track restriction filters
+    const restrictions = targeting.restrictions;
     if (restrictions && Array.isArray(restrictions)) {
       restrictions.forEach(filter => targetData.customFilters.add(filter));
     }
@@ -466,10 +466,11 @@ export const analyzeFilters = () => {
     examples: []
   };
 
-  // Analyze cards with filtered effects
+  // Analyze cards with affectedFilter targeting
   fullCardCollection.forEach(card => {
-    if (card.effect?.filter) {
-      const filter = card.effect.filter;
+    const affectedFilter = card.targeting?.affectedFilter;
+    if (affectedFilter && affectedFilter.length > 0) {
+      const filter = affectedFilter[0];
 
       if (filter.stat) {
         filters.stats.add(filter.stat);
@@ -481,10 +482,6 @@ export const analyzeFilters = () => {
 
       if (filter.value !== undefined) {
         filters.values.push(filter.value);
-      }
-
-      if (filter.type) {
-        filters.stats.add('type');
       }
 
       if (filters.examples.length < 5) {

@@ -130,9 +130,9 @@ function GameHeader({
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
-  // Single-move mode props
-  singleMoveMode,
-  handleCancelSingleMove,
+  // Secondary targeting mode props
+  secondaryTargetingState,
+  handleCancelSecondaryTargeting,
   // Additional cost mode props
   additionalCostState,
   handleCancelAdditionalCost,
@@ -377,7 +377,7 @@ function GameHeader({
           localPlayerEffectiveStats={localPlayerEffectiveStats}
           multiSelectState={multiSelectState}
           interceptionModeActive={interceptionModeActive}
-          singleMoveMode={singleMoveMode}
+          secondaryTargetingState={secondaryTargetingState}
           additionalCostState={additionalCostState}
         />
 
@@ -428,7 +428,7 @@ function GameHeader({
               isMyTurn={isMyTurn}
               mandatoryAction={mandatoryAction}
               multiSelectState={multiSelectState}
-              singleMoveMode={singleMoveMode}
+              secondaryTargetingState={secondaryTargetingState}
               additionalCostState={additionalCostState}
               reallocationPhase={reallocationPhase}
               passInfo={passInfo}
@@ -444,7 +444,7 @@ function GameHeader({
               handleShowInterceptionDialog={handleShowInterceptionDialog}
               handleResetInterception={handleResetInterception}
               handleConfirmInterception={handleConfirmInterception}
-              handleCancelSingleMove={handleCancelSingleMove}
+              handleCancelSecondaryTargeting={handleCancelSecondaryTargeting}
               handleCancelAdditionalCost={handleCancelAdditionalCost}
             />
             </>

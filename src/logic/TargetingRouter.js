@@ -7,24 +7,18 @@
 import LaneTargetingProcessor from './targeting/lane/LaneTargetingProcessor.js';
 import ShipSectionTargetingProcessor from './targeting/ship/ShipSectionTargetingProcessor.js';
 import DroneTargetingProcessor from './targeting/drone/DroneTargetingProcessor.js';
-import DroneCardTargetingProcessor from './targeting/cards/DroneCardTargetingProcessor.js';
-import AppliedUpgradeTargetingProcessor from './targeting/cards/AppliedUpgradeTargetingProcessor.js';
-import AllMarkedProcessor from './targeting/drone/AllMarkedProcessor.js';
 import CardInHandTargetingProcessor from './targeting/cards/CardInHandTargetingProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
  * TargetingRouter - Dispatches targeting requests to modular processors
  *
- * Phase 2 Implementation: All targeting types
- *  - LANE
- *  - SHIP_SECTION
- *  - DRONE
- *  - MULTI_DRONE (uses DroneTargetingProcessor)
- *  - DRONE_CARD
- *  - APPLIED_UPGRADE
- *  - ALL_MARKED
- *  - CARD_IN_HAND
+ * Target types:
+ *  - DRONE (drone-on-board targeting)
+ *  - LANE (lane area targeting)
+ *  - SHIP_SECTION (ship section targeting)
+ *  - NONE (no target selection — handled before processor lookup)
+ *  - CARD_IN_HAND (hand card targeting, used by additionalCost)
  *
  * Usage:
  *   const router = new TargetingRouter();
@@ -32,16 +26,10 @@ import { debugLog } from '../utils/debugLogger.js';
  */
 class TargetingRouter {
   constructor() {
-    // Initialize processors for all targeting types
     this.processors = {
       LANE: new LaneTargetingProcessor(),
       SHIP_SECTION: new ShipSectionTargetingProcessor(),
       DRONE: new DroneTargetingProcessor(),
-      MULTI_DRONE: new DroneTargetingProcessor(), // Uses same processor as DRONE
-      // Legacy processors — kept for backward compatibility during rework
-      DRONE_CARD: new DroneCardTargetingProcessor(),
-      APPLIED_UPGRADE: new AppliedUpgradeTargetingProcessor(),
-      ALL_MARKED: new AllMarkedProcessor(),
       CARD_IN_HAND: new CardInHandTargetingProcessor()
     };
   }

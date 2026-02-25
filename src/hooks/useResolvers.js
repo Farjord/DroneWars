@@ -46,7 +46,6 @@ const useResolvers = ({
 
   // --- From useCardSelection ---
   cancelCardSelection,
-  setSingleMoveMode,
   setSelectedCard,
   setValidCardTargets,
   setMultiSelectState,
@@ -57,7 +56,6 @@ const useResolvers = ({
   setCardConfirmation,
   setAffectedDroneIds,
   confirmAdditionalCostCard,
-  singleMoveMode,
   additionalCostSelectionContext,
   cardConfirmation,
 
@@ -426,11 +424,6 @@ const useResolvers = ({
     });
 
     setMoveConfirmation(null);
-
-    if (singleMoveMode) {
-      setSingleMoveMode(null);
-      setSelectedCard(null);
-    }
 
     if (wasSnared) {
       debugLog('CONSUMPTION_DEBUG', '[1] Calling processAction snaredConsumption', { droneId, owner });

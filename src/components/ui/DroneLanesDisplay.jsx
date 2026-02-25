@@ -60,7 +60,7 @@ const renderDronesOnBoard = ({
   affectedDroneIds,
   setHoveredTarget,
   hoveredTarget,
-  singleMoveMode,
+  secondaryTargetingState,
   interceptedBadge,
   draggedDrone,
   handleDroneDragStart,
@@ -158,7 +158,7 @@ const renderDronesOnBoard = ({
               isSelected={
                 (selectedDrone && selectedDrone.id === drone.id) ||
                 (additionalCostState?.costSelection?.drone?.id === drone.id) ||
-                (singleMoveMode?.droneId === drone.id)
+                (secondaryTargetingState?.primaryTarget?.id === drone.id)
               }
               isSelectedForMove={multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)}
               isHit={recentlyHitDrones.includes(drone.id)}
@@ -174,11 +174,11 @@ const renderDronesOnBoard = ({
               onMouseLeave={() => {
                 setHoveredTarget(null);
               }}
-              singleMoveMode={singleMoveMode}
+              secondaryTargetingState={secondaryTargetingState}
               interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
-              onDragStart={(isPlayer || singleMoveMode?.droneId === drone.id) ? handleDroneDragStart : undefined}
+              onDragStart={isPlayer ? handleDroneDragStart : undefined}
               onDragDrop={!isPlayer && draggedDrone ?
                 (targetDrone) => {
                   debugLog('CHECKPOINT_FLOW', '🔌 CHECKPOINT 3-FIRE: onDragDrop callback executing', {
@@ -270,7 +270,7 @@ const DroneLanesDisplay = ({
   validCardTargets,
   affectedDroneIds = [],
   multiSelectState,
-  singleMoveMode,
+  secondaryTargetingState,
   additionalCostState,
   turnPhase,
   localPlayerState,
@@ -324,7 +324,7 @@ const DroneLanesDisplay = ({
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
-                             (singleMoveMode && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
+                             (secondaryTargetingState && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (draggedCard && isPlayer) || // Highlight player lanes when dragging a deployment card
                              isActionCardLaneTarget; // Highlight lanes when dragging a LANE targeting action card
 
@@ -413,7 +413,7 @@ const DroneLanesDisplay = ({
               }
 
               // Handle drone drop for movement (to player lanes OR in single-move mode)
-              if (draggedDrone && handleDroneDragEnd && (isPlayer || singleMoveMode)) {
+              if (draggedDrone && handleDroneDragEnd && isPlayer) {
                 if (additionalCostState?.phase === 'select_effect') {
                   debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C-BLOCKED: Drone drop on lane BLOCKED by select_effect phase guard', {
                     lane: lane,
@@ -435,7 +435,7 @@ const DroneLanesDisplay = ({
                 debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4D: Lane conditions not met, propagating', {
                   hasDraggedDrone: !!draggedDrone,
                   hasHandler: !!handleDroneDragEnd,
-                  isPlayerOrSingleMove: isPlayer || singleMoveMode
+                  isPlayer: isPlayer
                 });
               }
             }}
@@ -486,7 +486,7 @@ const DroneLanesDisplay = ({
               affectedDroneIds,
               setHoveredTarget,
               hoveredTarget,
-              singleMoveMode,
+              secondaryTargetingState,
               interceptedBadge,
               draggedDrone,
               handleDroneDragStart,

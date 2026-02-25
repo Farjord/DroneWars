@@ -280,11 +280,10 @@ describe('evaluateDamageCard', () => {
     const card = {
       id: 'CARD013',
       cost: 3,
+      targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] },
       effect: {
         type: 'DAMAGE',
-        scope: 'FILTERED',
-        value: 2,
-        filter: { stat: 'speed', comparison: 'LTE', value: 3 }
+        value: 2
       }
     };
     const target = { id: 'lane1' };

@@ -67,9 +67,10 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const animationEvents = [];
     const destroyedDrones = [];
 
-    // Route based on effect scope
-    if (effect.scope === 'FILTERED' && target.id && target.id.startsWith('lane') && effect.filter) {
-      // FILTERED scope: Destroy multiple drones in a lane based on criteria
+    // Route based on effect scope and targeting configuration
+    const affectedFilter = card?.targeting?.affectedFilter;
+    if (affectedFilter && target?.id?.startsWith('lane')) {
+      // Filtered lane destroy: Destroy drones in a lane matching targeting.affectedFilter
       const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
@@ -145,7 +146,9 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
-    const { stat, comparison, value } = effect.filter;
+    // Read filter from targeting.affectedFilter
+    const filterSource = card?.targeting?.affectedFilter?.[0];
+    const { stat, comparison, value } = filterSource;
 
     debugLog('EFFECT_PROCESSING', `[DESTROY] Filtered destroy - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`, {
       filter: `${stat} ${comparison} ${value}`,
@@ -317,7 +320,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
   /**
    * Process ALL scope destruction (destroy all marked enemy drones)
-   * Used by Purge Protocol card with ALL_MARKED targeting
+   * Used by Purge Protocol card (NONE targeting, scope: ALL)
    *
    * @private
    */

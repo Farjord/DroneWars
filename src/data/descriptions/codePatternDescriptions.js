@@ -27,23 +27,20 @@ export const effectPatterns = {
   'DAMAGE': {
     validParameters: {
       value: 'number (damage amount)',
-      damageType: ['PIERCING', 'undefined (normal)'],
-      scope: ['SINGLE', 'FILTERED', 'LANE'],
-      filter: 'object (when scope is FILTERED)'
+      damageType: ['PIERCING', 'undefined (normal)']
     },
     requiredParameters: ['value'],
     implementation: 'gameLogic.js:resolveUnifiedDamageEffect',
-    notes: 'Can target drones or ship sections. Piercing ignores shields.'
+    notes: 'Can target drones or ship sections. Piercing ignores shields. Filtered via targeting.affectedFilter.'
   },
 
   'DESTROY': {
     validParameters: {
-      scope: ['SINGLE', 'FILTERED', 'LANE'],
-      filter: 'object (when scope is FILTERED)'
+      scope: ['SINGLE', 'LANE', 'ALL']
     },
-    requiredParameters: ['scope'],
+    requiredParameters: [],
     implementation: 'gameLogic.js:resolveDestroyEffect',
-    notes: 'FILTERED scope requires filter object with stat, comparison, and value.'
+    notes: 'Lane-scoped filtering uses targeting.affectedFilter instead of effect.filter.'
   },
 
   'HEAL_HULL': {
@@ -296,18 +293,13 @@ export const targetingPatterns = {
     notes: 'Targets ship section for healing or damage.'
   },
 
-  'DRONE_CARD': {
-    validParameters: {},
-    requiredParameters: [],
-    notes: 'Targets drone type in pool. Used by upgrades.'
-  },
-
-  'APPLIED_UPGRADE': {
+  'NONE': {
     validParameters: {
-      affinity: ['ENEMY', 'FRIENDLY']
+      affinity: ['ENEMY', 'FRIENDLY', 'ANY'],
+      affectedFilter: 'Array of string or object filters for preview highlighting'
     },
-    requiredParameters: ['affinity'],
-    notes: 'Targets active upgrade for removal.'
+    requiredParameters: [],
+    notes: 'No target selection. Used by upgrades, System Sabotage, Purge Protocol.'
   }
 };
 
@@ -324,7 +316,7 @@ export const filterPatterns = {
     comparison: 'string (comparison operator)',
     value: 'number or string'
   },
-  notes: 'Used with FILTERED scope for DAMAGE and DESTROY effects.'
+  notes: 'Used in targeting.affectedFilter for lane-targeting cards with per-drone filtering.'
 };
 
 // ========================================
@@ -368,12 +360,12 @@ export const keywordPatterns = {
 // ========================================
 
 export const scopePatterns = {
-  validScopes: ['SINGLE', 'LANE', 'FILTERED'],
+  validScopes: ['SINGLE', 'LANE', 'ALL'],
   usedWith: ['DESTROY', 'DAMAGE', 'HEAL_SHIELDS'],
   notes: {
     'SINGLE': 'Affects only the targeted unit.',
-    'LANE': 'Affects all units in target lane.',
-    'FILTERED': 'Requires filter object. Affects units matching filter criteria.'
+    'LANE': 'Affects all units in target lane (both sides).',
+    'ALL': 'Affects all matching units globally (e.g., Purge Protocol).'
   }
 };
 

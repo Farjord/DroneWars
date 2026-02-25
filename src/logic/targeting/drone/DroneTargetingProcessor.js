@@ -1,7 +1,7 @@
 // ========================================
 // DRONE TARGETING PROCESSOR
 // ========================================
-// Handles DRONE and MULTI_DRONE targeting types
+// Handles DRONE targeting type
 // Includes complex Jammer keyword protection logic and custom criteria filtering
 
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
@@ -11,7 +11,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
 /**
  * DroneTargetingProcessor - Handles drone targeting
  *
- * Targeting Types: DRONE, MULTI_DRONE
+ * Targeting Type: DRONE
  * Dependencies: dronesOnBoard, getLaneOfDrone, Jammer keyword logic
  * Risk Level: MODERATE (complex Jammer logic)
  *
@@ -25,7 +25,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
  */
 class DroneTargetingProcessor extends BaseTargetingProcessor {
   /**
-   * Process DRONE or MULTI_DRONE targeting
+   * Process DRONE targeting
    *
    * @param {Object} context - Targeting context
    * @param {string} context.actingPlayerId - Player performing targeting
@@ -36,15 +36,15 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
    * @param {Object} context.definition.targeting - Targeting configuration
    * @param {string} context.definition.targeting.affinity - FRIENDLY/ENEMY/ANY
    * @param {string} context.definition.targeting.location - ANY_LANE/SAME_LANE
-   * @param {Array} context.definition.targeting.custom - Custom criteria
+   * @param {Array} context.definition.targeting.restrictions - Restriction criteria
    * @returns {Array} Array of valid drone targets
    */
   process(context) {
     this.logProcessStart(context);
 
     const { actingPlayerId, source, definition, costSelection } = context;
-    const { affinity, location, restrictions, custom } = definition.targeting;
-    const criteria = restrictions || custom;
+    const { affinity, location, restrictions } = definition.targeting;
+    const criteria = restrictions;
     const targets = [];
 
     const isCard = this.isCard(definition);
@@ -252,7 +252,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
   /**
    * Check if a lane matches location criteria
    *
-   * @param {string} location - ANY_LANE, SAME_LANE, SAME_LANE_AS_COST, or COST_SOURCE_LANE
+   * @param {string} location - ANY_LANE, SAME_LANE, or COST_SOURCE_LANE
    * @param {string} lane - Lane to check
    * @param {string|null} userLane - Source lane (for SAME_LANE)
    * @param {Object} costContext - Cost selection context (for cost-based location filtering)
@@ -291,27 +291,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
       return passes;
     }
 
-    // Cost-based location filtering
-    if (location === 'SAME_LANE_AS_COST') {
-      if (!costContext || !costContext.lane) {
-        debugLog('ADDITIONAL_COST_TARGETING', '❌ SAME_LANE_AS_COST fails - missing cost context', {
-          hasCostContext: !!costContext,
-          costContextLane: costContext?.lane
-        });
-        return false;
-      }
-      const passes = lane === costContext.lane;
-      debugLog('ADDITIONAL_COST_TARGETING',
-        passes ? '✅ SAME_LANE_AS_COST passes' : '❌ SAME_LANE_AS_COST fails',
-        {
-          lane,
-          costLane: costContext.lane,
-          passes
-        }
-      );
-      return passes;
-    }
-
+    // Cost-based location filtering (used by additionalCost cards like Forced Repositioning)
     if (location === 'COST_SOURCE_LANE') {
       if (!costContext || !costContext.sourceLane) {
         debugLog('ADDITIONAL_COST_TARGETING', '❌ COST_SOURCE_LANE fails - missing cost source lane', {

@@ -68,8 +68,6 @@ export default function useClickHandlers({
   setAdditionalCostState,
   additionalCostFlowInProgress,
   additionalCostSelectionContext,
-  singleMoveMode,
-  setSingleMoveMode,
   secondaryTargetingState,
   cancelSecondaryTargeting,
 
@@ -307,6 +305,33 @@ export default function useClickHandlers({
           }
         }
 
+        // Secondary DRONE targeting (e.g., Feint — select enemy drone as secondary target)
+        if (secondaryTargetingState?.phase === 'secondary' &&
+            secondaryTargetingState.card?.secondaryTargeting?.type === 'DRONE') {
+          const matchedTarget = validCardTargets.find(t => t.id === target.id && t.owner === owner);
+          if (matchedTarget) {
+            debugLog('SECONDARY_TARGETING', '🎯 Secondary drone target selected', {
+              targetId: target.id,
+              targetName: target.name,
+              owner,
+              lane: matchedTarget.lane,
+              cardName: secondaryTargetingState.card.name
+            });
+
+            processActionWithGuestRouting('secondaryTargetingCardPlay', {
+              card: secondaryTargetingState.card,
+              primaryTarget: secondaryTargetingState.primaryTarget,
+              primaryLane: secondaryTargetingState.primaryLane,
+              secondaryTarget: { ...target, owner },
+              secondaryLane: matchedTarget.lane,
+              playerId: getLocalPlayerId()
+            });
+
+            cancelSecondaryTargeting();
+            return;
+          }
+        }
+
         // Standard card confirmation
         if (validCardTargets.some(t => t.id === target.id && t.owner === owner)) {
           setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
@@ -476,7 +501,6 @@ export default function useClickHandlers({
       additionalCostState: additionalCostState,
       additionalCostPhase: additionalCostState?.phase,
       turnPhase: turnPhase,
-      singleMoveMode: singleMoveMode,
       timestamp: Date.now()
     });
 
@@ -573,56 +597,6 @@ export default function useClickHandlers({
       }
     }
 
-    // --- 9.2 HANDLE SINGLE-MOVE MODE LANE CLICKS ---
-    if (singleMoveMode && isPlayer && validCardTargets.some(t => t.id === lane)) {
-      // CHECKPOINT 5: Lane Clicked/Selected
-      debugLog('SINGLE_MOVE_FLOW', '🖱️ CHECKPOINT 5: Lane selected for move', {
-        lane: lane,
-        currentSingleMoveMode: singleMoveMode,
-        droneId: singleMoveMode.droneId,
-        owner: singleMoveMode.owner,
-        from: singleMoveMode.sourceLane,
-        to: lane,
-        cardName: singleMoveMode.card.name
-      });
-
-      debugLog('SINGLE_MOVE_MODE', '🎯 Lane selected for single-move', {
-        cardName: singleMoveMode.card.name,
-        droneId: singleMoveMode.droneId,
-        from: singleMoveMode.sourceLane,
-        to: lane
-      });
-
-      // CHECKPOINT 6: Setting moveConfirmation State
-      const smClickDrone = Object.values(localPlayerState.dronesOnBoard).flat().find(d => d.id === singleMoveMode.droneId);
-      const newMoveConfirmation = {
-        droneId: singleMoveMode.droneId,
-        owner: singleMoveMode.owner,
-        from: singleMoveMode.sourceLane,
-        to: lane,
-        card: singleMoveMode.card,
-        isSnared: smClickDrone?.isSnared || false
-      };
-
-      debugLog('SINGLE_MOVE_FLOW', '📝 CHECKPOINT 6: Setting moveConfirmation state', {
-        moveConfirmation: newMoveConfirmation,
-        droneId: newMoveConfirmation.droneId,
-        owner: newMoveConfirmation.owner,
-        from: newMoveConfirmation.from,
-        to: newMoveConfirmation.to,
-        cardName: newMoveConfirmation.card.name,
-        hasAllRequiredFields: !!(newMoveConfirmation.droneId && newMoveConfirmation.owner && newMoveConfirmation.from && newMoveConfirmation.to)
-      });
-
-      setMoveConfirmation(newMoveConfirmation);
-
-      // Clear single-move mode state
-      setSingleMoveMode(null);
-      setSelectedDrone(null);
-
-      return;
-    }
-
     if (multiSelectState && isPlayer && validCardTargets.some(t => t.id === lane)) {
         const { phase, sourceLane, selectedDrones } = multiSelectState;
 
@@ -702,8 +676,8 @@ export default function useClickHandlers({
       willCallCancel: !!selectedCard && !multiSelectFlowInProgress.current
     });
 
-    // Don't cancel if in single-move mode or additional cost flow
-    if (selectedCard && !multiSelectFlowInProgress.current && !singleMoveMode && !additionalCostFlowInProgress.current) {
+    // Don't cancel if in multi-select flow, secondary targeting, or additional cost flow
+    if (selectedCard && !multiSelectFlowInProgress.current && !secondaryTargetingState && !additionalCostFlowInProgress.current) {
       cancelCardSelection('lane-click-cleanup');
       return;
     }

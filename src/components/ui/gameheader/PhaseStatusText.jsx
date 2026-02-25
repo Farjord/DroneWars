@@ -26,7 +26,7 @@ function PhaseStatusText({
   localPlayerEffectiveStats,
   multiSelectState,
   interceptionModeActive,
-  singleMoveMode,
+  secondaryTargetingState,
   additionalCostState
 }) {
   return (
@@ -94,10 +94,10 @@ function PhaseStatusText({
           (Intercepting - select interceptor)
         </span>
       )}
-      {/* Single Move Mode Status Text */}
-      {singleMoveMode && (
+      {/* Secondary Targeting Mode Status Text */}
+      {secondaryTargetingState && (
         <span className="text-base font-semibold text-cyan-300 ml-2">
-          (Moving {extractDroneNameFromId(singleMoveMode.droneId)} - drag to adjacent lane)
+          (Moving {secondaryTargetingState.primaryTarget?.name || 'drone'} - select adjacent lane)
         </span>
       )}
       {/* Additional Cost Mode Status Text */}
