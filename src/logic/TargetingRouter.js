@@ -47,6 +47,11 @@ class TargetingRouter {
    * @throws {Error} If no processor exists for the targeting type
    */
   routeTargeting(context) {
+    // Normalize: cards store targeting inside effects[0], abilities have it directly
+    if (!context.definition.targeting && context.definition.effects?.[0]?.targeting) {
+      context = { ...context, definition: { ...context.definition, targeting: context.definition.effects[0].targeting } };
+    }
+
     const targetingType = context.definition.targeting.type;
 
     // NONE type — no target selection needed, return empty array
