@@ -108,12 +108,12 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
         const droneOwnerId = drone.owner || actingPlayerId;
         newStates[droneOwnerId].dronesOnBoard[fromLane] =
           newStates[droneOwnerId].dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
-        const movedDrone = { ...drone, isExhausted: !card.effect?.properties?.includes('DO_NOT_EXHAUST') };
+        const movedDrone = { ...drone, isExhausted: !card.effects?.[0]?.properties?.includes('DO_NOT_EXHAUST') };
         newStates[droneOwnerId].dronesOnBoard[toLane].push(movedDrone);
         return {
           newPlayerStates: newStates,
           effectResult: { movedDrones: [movedDrone], fromLane, toLane, wasSuccessful: true },
-          shouldEndTurn: !card.effect?.goAgain,
+          shouldEndTurn: !card.effects?.[0]?.goAgain,
           healAnimationEvents: [],
           mineAnimationEvents: [],
         };
