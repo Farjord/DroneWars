@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { calculateAllValidTargets, resolveSecondaryTargets } from '../logic/targeting/uiTargetingHelpers.js';
+import useEffectChain from './useEffectChain.js';
 
 const useCardSelection = ({
   processActionWithGuestRouting,
@@ -38,6 +39,19 @@ const useCardSelection = ({
   // Secondary targeting state for cards with secondaryTargeting field
   // { card, primaryTarget, primaryLane, primaryOwner, phase: 'secondary' }
   const [secondaryTargetingState, setSecondaryTargetingState] = useState(null);
+
+  // Effect chain state — unified sequential effect selection (coexists with legacy flows)
+  const {
+    effectChainState,
+    startEffectChain,
+    selectChainTarget,
+    selectChainDestination,
+    cancelEffectChain,
+  } = useEffectChain({
+    playerStates: gameState ? { player1: gameState.player1, player2: gameState.player2 } : {},
+    actingPlayerId: getLocalPlayerId(),
+    getEffectiveStats: gameDataService?.getEffectiveStats?.bind(gameDataService) || null,
+  });
 
   // Multi-select state with logged setter for debugging
   const [multiSelectStateRaw, setMultiSelectStateRaw] = useState(null);
@@ -127,7 +141,8 @@ const useCardSelection = ({
     setSecondaryTargetingState(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
-  }, [additionalCostFlowInProgress, multiSelectFlowInProgress, multiSelectState, selectedCard, additionalCostState, setMultiSelectState]);
+    cancelEffectChain();
+  }, [additionalCostFlowInProgress, multiSelectFlowInProgress, multiSelectState, selectedCard, additionalCostState, setMultiSelectState, cancelEffectChain]);
 
   const confirmAdditionalCostCard = useCallback(async (card, costSelection, effectTarget) => {
     debugLog('ADDITIONAL_COST_UI', '✅ Confirming additional cost card', {
@@ -358,6 +373,13 @@ const useCardSelection = ({
     handleCancelMultiMove,
     handleConfirmMultiMoveDrones,
     cancelCardState,
+
+    // Effect chain (unified sequential effect selection)
+    effectChainState,
+    startEffectChain,
+    selectChainTarget,
+    selectChainDestination,
+    cancelEffectChain,
   };
 };
 
