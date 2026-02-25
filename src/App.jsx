@@ -522,6 +522,8 @@ const App = ({ phaseAnimationQueue }) => {
     cancelCardState,
     secondaryTargetingState, setSecondaryTargetingState,
     enterSecondaryTargeting, cancelSecondaryTargeting,
+    // Effect chain (unified sequential effect selection)
+    effectChainState, startEffectChain, selectChainTarget, selectChainDestination, cancelEffectChain,
   } = useCardSelection({
     processActionWithGuestRouting,
     getLocalPlayerId,
@@ -660,6 +662,8 @@ const App = ({ phaseAnimationQueue }) => {
     additionalCostState, selectedCard, multiSelectState,
     // From useCardSelection — secondary targeting
     enterSecondaryTargeting, secondaryTargetingState,
+    // From useCardSelection — effect chain
+    startEffectChain,
     // From useInterception
     interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
     // Hoisted state
@@ -865,6 +869,8 @@ const App = ({ phaseAnimationQueue }) => {
     additionalCostState, setAdditionalCostState,
     additionalCostFlowInProgress, additionalCostSelectionContext,
     secondaryTargetingState, cancelSecondaryTargeting,
+    // From useCardSelection — effect chain
+    effectChainState, selectChainTarget, selectChainDestination,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
     setReallocationPhase, setShieldsToRemove, setShieldsToAdd,

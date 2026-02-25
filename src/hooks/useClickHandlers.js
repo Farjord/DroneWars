@@ -70,6 +70,10 @@ export default function useClickHandlers({
   additionalCostSelectionContext,
   secondaryTargetingState,
   cancelSecondaryTargeting,
+  // --- From useCardSelection — effect chain ---
+  effectChainState,
+  selectChainTarget,
+  selectChainDestination,
 
   // --- From useShieldAllocation ---
   shipAbilityMode,
@@ -461,6 +465,23 @@ export default function useClickHandlers({
           return;
       }
 
+      // 1.5. Effect chain drone selection — route to chain target/destination
+      if (effectChainState && !effectChainState.complete) {
+          const tokenOwnerChain = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          const isValidChainTarget = validCardTargets.some(t => t.id === token.id && t.owner === tokenOwnerChain);
+          if (isValidChainTarget) {
+              const droneState = tokenOwnerChain === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+              const droneLane = Object.entries(droneState.dronesOnBoard).find(([_, drones]) =>
+                  drones.some(d => d.id === token.id)
+              )?.[0];
+              debugLog('EFFECT_CHAIN', '🎯 Chain drone click', {
+                  tokenId: token.id, droneLane, subPhase: effectChainState.subPhase,
+              });
+              selectChainTarget(token, droneLane);
+              return;
+          }
+      }
+
       // 2. Handle targeting for an active card or ability
       const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
       if (validAbilityTargets.some(t => t.id === token.id && t.owner === tokenOwner) ||
@@ -523,6 +544,24 @@ export default function useClickHandlers({
             });
             return;
         }
+    }
+
+    // --- 9.1.2 HANDLE EFFECT CHAIN LANE/DRONE SELECTION ---
+    if (effectChainState && !effectChainState.complete) {
+      const laneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+      const isValidChainLane = validCardTargets.some(t => t.id === lane && t.owner === laneOwner);
+      if (isValidChainLane) {
+        debugLog('EFFECT_CHAIN', '📍 Chain lane click', {
+          lane, subPhase: effectChainState.subPhase, currentIndex: effectChainState.currentIndex,
+        });
+        if (effectChainState.subPhase === 'destination') {
+          selectChainDestination(lane);
+        } else {
+          // Lane as target (for LANE-type targeting)
+          selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);
+        }
+        return;
+      }
     }
 
     // --- 9.1.5 HANDLE ADDITIONAL COST MOVEMENT DESTINATION ---

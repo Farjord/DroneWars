@@ -258,9 +258,16 @@ const useCardSelection = ({
       willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !secondaryTargetingState
     });
 
-    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !secondaryTargetingState) {
+    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !secondaryTargetingState && !effectChainState) {
       setValidAbilityTargets([]);
       setValidCardTargets([]);
+      return;
+    }
+
+    // Effect chain phase — valid targets computed by useEffectChain
+    if (effectChainState && !effectChainState.complete) {
+      setValidAbilityTargets([]);
+      setValidCardTargets(effectChainState.validTargets);
       return;
     }
 
@@ -316,7 +323,7 @@ const useCardSelection = ({
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, additionalCostState, secondaryTargetingState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, additionalCostState, secondaryTargetingState, effectChainState]);
 
   // Additional cost highlighting debug logging
   useEffect(() => {
@@ -330,6 +337,37 @@ const useCardSelection = ({
       });
     }
   }, [additionalCostState, validCardTargets, affectedDroneIds]);
+
+  // Effect chain auto-commit — when all selections are gathered, dispatch the card play
+  useEffect(() => {
+    if (!effectChainState?.complete) return;
+
+    const { card, selections } = effectChainState;
+    debugLog('EFFECT_CHAIN', '✅ Chain complete — auto-committing', {
+      cardName: card.name,
+      selectionCount: selections.length,
+    });
+
+    // Build chainSelections for the engine (convert chain format to engine format)
+    const chainSelections = selections.map(sel => ({
+      target: sel.target,
+      lane: sel.lane,
+      destination: sel.destination || null,
+      skipped: sel.skipped || false,
+    }));
+
+    processActionWithGuestRouting('cardPlay', {
+      card,
+      targetId: chainSelections[0]?.target?.id || null,
+      playerId: getLocalPlayerId(),
+      chainSelections,
+    });
+
+    // Clean up UI state
+    cancelEffectChain();
+    setSelectedCard(null);
+    setValidCardTargets([]);
+  }, [effectChainState, processActionWithGuestRouting, getLocalPlayerId, cancelEffectChain]);
 
   return {
     // State values

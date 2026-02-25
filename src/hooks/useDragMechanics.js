@@ -9,6 +9,7 @@ import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
 import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
+import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
 
 // Vertical pixel offset from card top to arrow start point
 const ARROW_START_Y_OFFSET = 20;
@@ -37,6 +38,8 @@ const useDragMechanics = ({
   interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
   // From useCardSelection — secondary targeting
   enterSecondaryTargeting, secondaryTargetingState,
+  // From useCardSelection — effect chain
+  startEffectChain,
   // Hoisted to App.jsx to break circular dependency with useCardSelection/useInterception
   draggedDrone, setDraggedDrone,
   costReminderArrowState, setCostReminderArrowState,
@@ -289,6 +292,78 @@ const useDragMechanics = ({
     setActionCardDragArrowState(prev => ({ ...prev, visible: false }));
     setAffectedDroneIds([]);
     setHoveredLane(null);
+
+    // Case Chain: Multi-effect or compound-effect cards — route through effect chain UI
+    if (card._chainEnabled && card.effects?.length > 0) {
+      const effect0 = card.effects[0];
+      const isMultiEffect = card.effects.length > 1;
+      const isCompound = isCompoundEffect(effect0);
+
+      if (isMultiEffect || isCompound) {
+        const firstTargetType = effect0.targeting?.type;
+        debugLog('EFFECT_CHAIN', '🔗 Chain card detected in drag handler', {
+          cardName: card.name, isMultiEffect, isCompound, firstTargetType,
+          targetId: target?.id, targetType, targetOwner,
+        });
+
+        // Non-board first target (CARD_IN_HAND, NONE) → start chain with no initial target
+        if (firstTargetType === 'CARD_IN_HAND' || firstTargetType === 'NONE') {
+          setSelectedCard(card);
+          startEffectChain(card, null, null);
+          return;
+        }
+
+        // Board first target → validate drop target
+        if (!target) {
+          cancelCardSelection('chain-no-target');
+          return;
+        }
+
+        // Compute valid targets inline (validCardTargets from state may be stale)
+        const { validCardTargets: dragTargets } = calculateAllValidTargets(
+          null, null, null, card,
+          gameState.player1, gameState.player2,
+          getLocalPlayerId(), null,
+          gameDataService.getEffectiveStats.bind(gameDataService)
+        );
+
+        if (targetType === 'drone') {
+          const isValid = dragTargets.some(t => t.id === target.id && t.owner === targetOwner);
+          if (!isValid) {
+            cancelCardSelection('chain-invalid-target');
+            return;
+          }
+          const tgtState = targetOwner === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+          const laneEntry = Object.entries(tgtState.dronesOnBoard).find(
+            ([_, drones]) => drones.some(d => d.id === target.id)
+          );
+          const targetLane = laneEntry?.[0];
+          if (!targetLane) {
+            cancelCardSelection('chain-lane-not-found');
+            return;
+          }
+          setSelectedCard(card);
+          startEffectChain(card, target, targetLane);
+          return;
+        }
+
+        if (targetType === 'lane') {
+          const isValid = dragTargets.some(t =>
+            (t.id === target.id || t.id === target.name) && t.owner === targetOwner
+          );
+          if (!isValid) {
+            cancelCardSelection('chain-invalid-lane');
+            return;
+          }
+          setSelectedCard(card);
+          startEffectChain(card, target, target.id);
+          return;
+        }
+
+        cancelCardSelection('chain-no-valid-target');
+        return;
+      }
+    }
 
     // Case 0: Movement cards - check if dropped on target or needs multi-select
     // Must be checked before no-targeting case, since movement cards have no targeting property

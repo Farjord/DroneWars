@@ -56,8 +56,11 @@ function _generateOutcome(card, target) {
   return 'Card effect applied.';
 }
 
-async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx) {
-  debugLog('EFFECT_CHAIN', `⚡ Chain engine processing: ${card.name}`, { playerId, targetId: target?.id });
+async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, chainSelections = null) {
+  debugLog('EFFECT_CHAIN', `⚡ Chain engine processing: ${card.name}`, {
+    playerId, targetId: target?.id, hasChainSelections: !!chainSelections,
+    chainSelectionCount: chainSelections?.length,
+  });
 
   const callbacks = {
     logCallback: (entry) => ctx.addLogEntry(entry),
@@ -68,18 +71,24 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
   };
 
   // Log the card play
-  const outcome = _generateOutcome(card, target);
+  const logTarget = chainSelections?.[0]?.target || target;
+  const outcome = _generateOutcome(card, logTarget);
   callbacks.logCallback({
     player: playerStates[playerId].name,
     actionType: 'PLAY_CARD',
     source: card.name,
-    target: target ? (target.name || target.id) : 'N/A',
+    target: logTarget ? (logTarget.name || logTarget.id) : 'N/A',
     outcome,
   });
 
-  // Build selection for single-effect cards
-  const lane = _findTargetLane(target, playerStates);
-  const selections = [{ target, lane }];
+  // Use pre-built selections from chain UI, or build single-selection for simple cards
+  let selections;
+  if (chainSelections) {
+    selections = chainSelections;
+  } else {
+    const lane = _findTargetLane(target, playerStates);
+    selections = [{ target, lane }];
+  }
 
   const result = getChainProcessor().processEffectChain(card, selections, playerId, {
     playerStates,
@@ -171,7 +180,7 @@ export async function processCardPlay(payload, ctx) {
 
   // --- Chain engine path for cards with native effects[] ---
   if (card._chainEnabled) {
-    return _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx);
+    return _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, payload.chainSelections || null);
   }
 
   // --- Legacy path ---

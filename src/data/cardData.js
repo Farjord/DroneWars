@@ -1161,12 +1161,9 @@ const fullCardCollection = [
     cost: 1,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
+    effects: [
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
+    ],
   },
   {
     id: 'CARD023_ENHANCED',
@@ -1178,13 +1175,9 @@ const fullCardCollection = [
     cost: 4,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-      goAgain: true,
-    },
+    effects: [
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
+    ],
   },
   {
     id: 'CARD025',
@@ -1263,18 +1256,12 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/SwiftManeuver.png',
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
-    conditionalEffects: [
+    effects: [
       {
-        id: 'fast-goagain',
-        timing: 'POST',
-        condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 },
-        grantedEffect: { type: 'GO_AGAIN' },
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        conditionals: [
+          { id: 'fast-goagain', timing: 'POST', condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 }, grantedEffect: { type: 'GO_AGAIN' } },
+        ],
       },
     ],
   },
@@ -1288,18 +1275,12 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/TacticalShift.png',
     description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
-    conditionalEffects: [
+    effects: [
       {
-        id: 'contested-draw',
-        timing: 'POST',
-        condition: { type: 'OPPONENT_HAS_MORE_IN_LANE', lane: 'DESTINATION', count: 'TOTAL' },
-        grantedEffect: { type: 'DRAW', value: 1 },
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        conditionals: [
+          { id: 'contested-draw', timing: 'POST', condition: { type: 'OPPONENT_HAS_MORE_IN_LANE', lane: 'DESTINATION', count: 'TOTAL' }, grantedEffect: { type: 'DRAW', value: 1 } },
+        ],
       },
     ],
   },
@@ -1313,21 +1294,12 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
     description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +1 attack.',
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
-    conditionalEffects: [
+    effects: [
       {
-        id: 'attack-buff',
-        timing: 'POST',
-        condition: { type: 'TARGET_STAT_LTE', stat: 'attack', value: 3 },
-        grantedEffect: {
-          type: 'MODIFY_STAT',
-          mod: { stat: 'attack', value: 1 },
-        },
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        conditionals: [
+          { id: 'attack-buff', timing: 'POST', condition: { type: 'TARGET_STAT_LTE', stat: 'attack', value: 3 }, grantedEffect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1 } } },
+        ],
       },
     ],
   },
@@ -1547,19 +1519,9 @@ const fullCardCollection = [
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
     description: 'Move target class 2 or less ready enemy drone  to an adjacent lane.',
-    targeting: {
-      type: 'DRONE',
-      affinity: 'ENEMY',
-      location: 'ANY_LANE',
-      restrictions: [
-        { stat: 'class', comparison: 'LTE', value: 2 },
-      ],
-    },
-    secondaryTargeting: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
+    effects: [
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 2 }] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
+    ],
   },
   {
     id: 'CARD_TACTICS_2',
@@ -1734,23 +1696,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ExhaustingStrike.png',
     description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower speed in the same lane.',
     visualEffect: { type: 'DISRUPTION' },
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    secondaryTargeting: {
-      type: 'DRONE',
-      affinity: 'ENEMY',
-      location: 'PRIMARY_SOURCE_LANE',
-      restrictions: [
-        {
-          type: 'STAT_COMPARISON',
-          stat: 'speed',
-          comparison: 'LT',
-          reference: 'PRIMARY_TARGET',
-          referenceStat: 'speed',
-        },
-      ],
-    },
-    effect: { type: 'EXHAUST_DRONE' },
-    secondaryEffect: { type: 'EXHAUST_DRONE' },
+    effects: [
+      { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
+      { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' }, restrictions: [{ type: 'STAT_COMPARISON', stat: 'speed', comparison: 'LT', reference: { ref: 0, field: 'target' }, referenceStat: 'speed' }] } },
+    ],
   },
   {
     id: 'FORCED_REPOSITION',
@@ -1763,30 +1712,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ForcedRepositioning.png',
     description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
-    targeting: {
-      type: 'DRONE',
-      affinity: 'ENEMY',
-      location: 'COST_SOURCE_LANE',
-      restrictions: [
-        {
-          type: 'STAT_COMPARISON',
-          stat: 'attack',
-          comparison: 'GT',
-          reference: 'COST_TARGET',
-          referenceStat: 'attack',
-        },
-      ],
-    },
-    effect: {
-      type: 'SINGLE_MOVE',
-      properties: ['DO_NOT_EXHAUST'],
-    },
-    additionalCost: {
-      type: 'SINGLE_MOVE',
-      targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-      description: 'Move a friendly drone',
-      properties: ['DO_NOT_EXHAUST'],
-    },
+    effects: [
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' }, restrictions: [{ type: 'STAT_COMPARISON', stat: 'attack', comparison: 'GT', reference: { ref: 0, field: 'target' }, referenceStat: 'attack' }] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
+    ],
   },
   {
     id: 'Mainframe_Breach',
@@ -1799,13 +1728,10 @@ const fullCardCollection = [
     momentumCost: 1,
     image: '/DroneWars/cards/MainframeBreach.png',
     description: 'Target opponent discards 2 cards at random and loses 4 energy.',
-    effect: {
-      type: 'COMPOSITE_EFFECT',
-      effects: [
-        { type: 'DISCARD', count: 2, targetPlayer: 'opponent' },
-        { type: 'DRAIN_ENERGY', amount: 4, targetPlayer: 'opponent' },
-      ],
-    },
+    effects: [
+      { type: 'DISCARD', count: 2, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
+      { type: 'DRAIN_ENERGY', amount: 4, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
+    ],
   },
   {
     id: 'Raise_the_Alarm',
@@ -1835,16 +1761,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SacrificeforPower.png',
     description: 'Discard a card from your hand to give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
     visualEffect: { type: 'BUFF' },
-    targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-    effect: {
-      type: 'MODIFY_STAT',
-      mod: { stat: 'attack', value: 'COST_CARD_VALUE', type: 'temporary' },
-    },
-    additionalCost: {
-      type: 'DISCARD_CARD',
-      targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' },
-      description: 'Discard a card from your hand',
-    },
+    effects: [
+      { type: 'DISCARD_CARD', targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' }, prompt: 'Discard a card from your hand' },
+      { type: 'MODIFY_STAT', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, mod: { stat: 'attack', value: { ref: 0, field: 'cardCost' }, type: 'temporary' }, prompt: 'Select a drone to receive the power boost' },
+    ],
   },
   {
     id: 'Transmit_Threat',
