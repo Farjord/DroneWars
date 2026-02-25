@@ -11,8 +11,6 @@ import {
   isCompoundEffect,
   hasSkippedRef,
 } from '../logic/cards/chainTargetResolver.js';
-import { debugLog } from '../utils/debugLogger.js';
-
 /**
  * Check if an effect requires multi-target selection.
  */
@@ -43,14 +41,12 @@ function advanceToNextSelection(state, context) {
 
     if (hasSkippedRef(effect, sels)) {
       sels.push({ target: null, lane: null, skipped: true });
-      debugLog('EFFECT_CHAIN', `  [${idx}] auto-skipped — broken ref`);
       idx++;
       continue;
     }
 
     if (effect.targeting?.type === 'NONE') {
       sels.push({ target: null, lane: null });
-      debugLog('EFFECT_CHAIN', `  [${idx}] auto-selected — NONE targeting`);
       idx++;
       continue;
     }
@@ -58,7 +54,6 @@ function advanceToNextSelection(state, context) {
     const validTargets = computeChainTargets(effect, idx, sels, positionTracker, context);
     if (validTargets.length === 0) {
       sels.push({ target: null, lane: null, skipped: true });
-      debugLog('EFFECT_CHAIN', `  [${idx}] auto-skipped — zero valid targets`);
       idx++;
       continue;
     }
@@ -133,11 +128,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     const effects = card.effects;
     if (!effects || effects.length === 0) return;
 
-    debugLog('EFFECT_CHAIN', `▶️ startEffectChain: ${card.name}`, {
-      effectCount: effects.length,
-      hasInitialTarget: !!initialTarget,
-    });
-
     const positionTracker = new PositionTracker(playerStates);
     const context = makeContext();
     const base = {
@@ -193,11 +183,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     if (!chainState) return;
 
     const effect = chainState.effects[chainState.currentIndex];
-    debugLog('EFFECT_CHAIN', `🎯 selectChainTarget [${chainState.currentIndex}]`, {
-      targetId: target?.id,
-      lane,
-      effectType: effect?.type,
-    });
 
     if (isCompoundEffect(effect)) {
       const destTargets = computeDestinationTargets(
@@ -236,11 +221,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   const selectChainDestination = useCallback((destinationLane) => {
     if (!chainState || chainState.subPhase !== 'destination') return;
 
-    debugLog('EFFECT_CHAIN', `📍 selectChainDestination [${chainState.currentIndex}]`, {
-      destination: destinationLane,
-      targetId: chainState.pendingTarget?.id,
-    });
-
     const pendingTarget = chainState.pendingTarget;
     // Record moves for position tracking
     if (Array.isArray(pendingTarget)) {
@@ -277,11 +257,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     const maxTargets = effect.targeting?.maxTargets || 1;
     const current = chainState.pendingMultiTargets || [];
     const isAlreadySelected = current.some(d => d.id === target.id);
-
-    debugLog('EFFECT_CHAIN', `🎯 selectChainMultiTarget [${chainState.currentIndex}]`, {
-      targetId: target?.id, lane, isAlreadySelected,
-      currentCount: current.length, maxTargets,
-    });
 
     if (isAlreadySelected) {
       // Remove from selection
@@ -330,10 +305,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     const effect = chainState.effects[chainState.currentIndex];
     const sourceLane = chainState.multiSourceLane;
 
-    debugLog('EFFECT_CHAIN', `✅ confirmChainMultiSelect [${chainState.currentIndex}]`, {
-      targetCount: targets.length, sourceLane, isCompound: isCompoundEffect(effect),
-    });
-
     if (isCompoundEffect(effect)) {
       // Advance to destination selection
       const destTargets = computeDestinationTargets(
@@ -367,7 +338,6 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
    * Cancel the effect chain — resets all state.
    */
   const cancelEffectChain = useCallback(() => {
-    debugLog('EFFECT_CHAIN', '❌ cancelEffectChain');
     setChainState(null);
   }, []);
 

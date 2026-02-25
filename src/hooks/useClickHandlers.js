@@ -267,9 +267,6 @@ export default function useClickHandlers({
               const droneLane = Object.entries(droneState.dronesOnBoard).find(([_, drones]) =>
                   drones.some(d => d.id === token.id)
               )?.[0];
-              debugLog('EFFECT_CHAIN', '🎯 Chain drone click', {
-                  tokenId: token.id, droneLane, subPhase: effectChainState.subPhase,
-              });
               if (effectChainState.subPhase === 'multi-target') {
                   selectChainMultiTarget(token, droneLane);
               } else {
@@ -338,9 +335,6 @@ export default function useClickHandlers({
       const laneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
       const isValidChainLane = validCardTargets.some(t => t.id === lane && t.owner === laneOwner);
       if (isValidChainLane) {
-        debugLog('EFFECT_CHAIN', '📍 Chain lane click', {
-          lane, subPhase: effectChainState.subPhase, currentIndex: effectChainState.currentIndex,
-        });
         if (effectChainState.subPhase === 'destination') {
           selectChainDestination(lane);
         } else {

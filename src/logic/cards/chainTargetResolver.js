@@ -4,7 +4,6 @@
 // No state mutations — uses PositionTracker for virtual position tracking.
 
 import { resolveRefFromSelections } from './EffectChainProcessor.js';
-import { debugLog } from '../../utils/debugLogger.js';
 
 // --- Ref Resolution ---
 
@@ -176,7 +175,6 @@ export function computeChainTargets(effect, effectIndex, selections, positionTra
     case 'SHIP_SECTION':
       return computeShipSectionTargets(targeting, actingPlayerId, playerStates);
     default:
-      debugLog('EFFECT_CHAIN', `Unknown targeting type: ${targeting.type}`);
       return [];
   }
 }

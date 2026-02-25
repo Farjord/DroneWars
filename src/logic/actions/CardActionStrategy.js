@@ -49,9 +49,10 @@ function _generateOutcome(card, target) {
 }
 
 async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, chainSelections = null) {
-  debugLog('EFFECT_CHAIN', `⚡ Chain engine processing: ${card.name}`, {
-    playerId, targetId: target?.id, hasChainSelections: !!chainSelections,
-    chainSelectionCount: chainSelections?.length,
+  debugLog('CARD_PLAY_TRACE', '[5] Entering chain engine', {
+    card: card.name, playerId, targetId: target?.id,
+    targetType: target?.name ? 'entity' : target?.id?.startsWith('lane') ? 'lane' : 'none',
+    hasChainSelections: !!chainSelections, chainSelectionCount: chainSelections?.length,
   });
 
   const callbacks = {
@@ -90,13 +91,13 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     gameMode: currentState.gameMode || 'local',
   });
 
-  debugLog('CARDS', '[ANIMATION EVENTS] Chain card play events:', result.animationEvents);
-
   const animations = ctx.mapAnimationEvents(result.animationEvents);
   ctx.captureAnimationsForBroadcast(animations);
   await ctx.executeAnimationPhase(animations, result.newPlayerStates);
 
   ctx.checkWinCondition();
+
+  debugLog('CARD_PLAY_TRACE', '[9] Post-chain complete', { card: card.name, shouldEndTurn: result.shouldEndTurn, animationCount: animations.length });
 
   if (!result.shouldEndTurn) {
     await ctx.executeGoAgainAnimation(playerId);
@@ -115,6 +116,8 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
  */
 export async function processCardPlay(payload, ctx) {
   const { card, targetId, playerId } = payload;
+
+  debugLog('CARD_PLAY_TRACE', '[4] Resolving target from targetId', { card: card.name, targetId, playerId });
 
   const currentState = ctx.getState();
   const playerStates = { player1: currentState.player1, player2: currentState.player2 };

@@ -166,14 +166,14 @@ class EffectChainProcessor {
     const { playerStates, placedSections, callbacks } = ctx;
     const effects = card.effects;
 
-    debugLog('EFFECT_CHAIN', `▶️ processEffectChain: ${card.name} (${effects.length} effects)`, {
-      cardId: card.id,
-      playerId,
-      selectionCount: selections.length,
-    });
-
     // 1. Pay card costs
     let currentStates = this.payCardCosts(card, playerId, playerStates);
+
+    debugLog('CARD_PLAY_TRACE', '[6] Chain started, costs paid', {
+      card: card.name, cardId: card.id, playerId,
+      energyCost: card.cost ?? 0, momentumCost: card.momentumCost ?? 0,
+      effectCount: effects.length, selectionCount: selections.length,
+    });
     const allAnimationEvents = [];
     let dynamicGoAgain = false;
     const effectResults = [];
@@ -255,14 +255,14 @@ class EffectChainProcessor {
       // Skip if no selection (earlier referenced effect was skipped)
       if (!selection || selection.skipped) {
         effectResults.push(null);
-        debugLog('EFFECT_CHAIN', `  [${i}] skipped — no selection`);
+        debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] skipped — no selection`, { card: card.name });
         continue;
       }
 
       // Check if target is still alive (trigger invalidation from earlier effects)
       if (selection.target && selection.target.id && !isTargetAlive(selection.target, currentStates)) {
         effectResults.push(null);
-        debugLog('EFFECT_CHAIN', `  [${i}] skipped — target invalidated`, { targetId: selection.target.id });
+        debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] skipped — target invalidated`, { card: card.name, targetId: selection.target.id });
         continue;
       }
 
@@ -311,7 +311,7 @@ class EffectChainProcessor {
         };
         result = this.effectRouter.routeEffect(effectData, routerContext);
         if (!result) {
-          debugLog('EFFECT_CHAIN', `  [${i}] no processor for ${effectData.type} — skipping`);
+          debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] skipped — no processor`, { card: card.name, effectType: effectData.type });
           effectResults.push(null);
           continue;
         }
@@ -360,20 +360,20 @@ class EffectChainProcessor {
         effectResult: result.effectResult || null,
       });
 
-      debugLog('EFFECT_CHAIN', `  [${i}] ${effectData.type} completed`, {
-        targetId: selection.target?.id,
-        lane: selection.lane,
+      debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] ${effectData.type} complete`, {
+        card: card.name, targetId: selection.target?.id, lane: selection.lane,
+        processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
     }
 
     // 3. Finalize: discard card, determine shouldEndTurn
     const finish = this.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
 
-    debugLog('EFFECT_CHAIN', `✅ processEffectChain complete: ${card.name}`, {
-      shouldEndTurn: finish.shouldEndTurn,
-      animationCount: allAnimationEvents.length,
+    debugLog('CARD_PLAY_TRACE', '[8] Chain finalized', {
+      card: card.name, shouldEndTurn: finish.shouldEndTurn,
       effectsProcessed: effectResults.filter(r => r !== null).length,
       effectsSkipped: effectResults.filter(r => r === null).length,
+      animationCount: allAnimationEvents.length,
     });
 
     return {
@@ -406,7 +406,7 @@ class EffectChainProcessor {
         playerId, newStates, opponentId, moveContext
       );
       if (result.error) {
-        debugLog('EFFECT_CHAIN', `  movement error: ${result.error}`);
+        debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
         return { newPlayerStates: playerStates, animationEvents: [], effectResult: null };
       }
       return {

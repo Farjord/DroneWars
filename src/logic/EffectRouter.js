@@ -31,8 +31,6 @@ import DrainEnergyEffectProcessor from './effects/energy/DrainEnergyEffectProces
 import ExhaustDroneEffectProcessor from './effects/state/ExhaustDroneEffectProcessor.js';
 import StatusEffectProcessor from './effects/state/StatusEffectProcessor.js';
 import ConditionalSectionDamageProcessor from './effects/ConditionalSectionDamageProcessor.js';
-import { debugLog } from '../utils/debugLogger.js';
-
 /**
  * EffectRouter - Dispatches effects to modular processors
  *
@@ -120,20 +118,9 @@ class EffectRouter {
     const processor = this.processors[effect.type];
 
     if (processor) {
-      // Route to modular processor (Phase 1 effects)
-      debugLog('EFFECT_ROUTING', `✅ Routing ${effect.type} to ${processor.constructor.name}`, {
-        effectType: effect.type,
-        processor: processor.constructor.name,
-        actingPlayer: context.actingPlayerId
-      });
       return processor.process(effect, context);
     }
 
-    // Effect type not yet extracted - return null to signal fallback needed
-    debugLog('EFFECT_ROUTING', `⚠️ No processor for ${effect.type} - falling back to monolithic`, {
-      effectType: effect.type,
-      actingPlayer: context.actingPlayerId
-    });
     return null;
   }
 

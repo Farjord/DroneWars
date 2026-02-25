@@ -322,8 +322,6 @@ class CardPlayManager {
       allAnimationEvents.push(...result.animationEvents);
     }
 
-    debugLog('CARDS', '[ANIMATION EVENTS] resolveCardPlay emitted:', allAnimationEvents);
-
     // If no card selection is needed, complete the card play immediately
     if (!result.needsCardSelection) {
       const completion = this.finishCardPlay(card, actingPlayerId, result.newPlayerStates, dynamicGoAgain);
@@ -369,28 +367,9 @@ class CardPlayManager {
 
     const actingPlayerState = newPlayerStates[actingPlayerId];
 
-    // Debug: Log card and hand state before filtering
-    const handSizeBefore = actingPlayerState.hand.length;
-    const handInstanceIds = actingPlayerState.hand.map(c => c.instanceId);
-    debugLog('CARD_DISCARD', `🗑️ finishCardPlay called`, {
-      cardName: card.name,
-      cardInstanceId: card.instanceId,
-      handSizeBefore,
-      handInstanceIds,
-      cardInstanceIdInHand: handInstanceIds.includes(card.instanceId)
-    });
-
     // Remove card from hand and add to discard pile (final cleanup)
     actingPlayerState.hand = actingPlayerState.hand.filter(c => c.instanceId !== card.instanceId);
     actingPlayerState.discardPile.push(card);
-
-    // Debug: Log hand state after filtering
-    debugLog('CARD_DISCARD', `🗑️ finishCardPlay completed`, {
-      cardName: card.name,
-      handSizeAfter: actingPlayerState.hand.length,
-      cardsRemoved: handSizeBefore - actingPlayerState.hand.length,
-      discardPileSize: actingPlayerState.discardPile.length
-    });
 
     // Determine if turn should end
     // Static goAgain from card definition OR dynamic goAgain from POST conditional
@@ -423,13 +402,6 @@ class CardPlayManager {
     if (modularResult !== null) {
       return modularResult;
     }
-
-    debugLog('EFFECT_FALLBACK', `⚠️ Falling back to monolithic switch for ${effect.type}`, {
-      effectType: effect.type,
-      actingPlayer: actingPlayerId,
-      hasTarget: !!target,
-      hasCard: !!card
-    });
 
     switch (effect.type) {
       case 'SINGLE_MOVE':

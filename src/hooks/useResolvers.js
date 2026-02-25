@@ -207,6 +207,8 @@ const useResolvers = ({
       setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
     }
 
+    debugLog('CARD_PLAY_TRACE', '[2] Dispatching cardPlay action', { card: card.name, targetId: target?.id, playerId: actingPlayerId, isAI: aiContext !== null });
+
     const result = await processActionWithGuestRouting('cardPlay', {
       card: card,
       targetId: target?.id || null,
@@ -247,6 +249,8 @@ const useResolvers = ({
       cancelCardSelection();
       setCardConfirmation(null);
     }
+
+    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved', { card: card.name, success: result?.success !== false });
 
     return result;
   }, [processActionWithGuestRouting, getLocalPlayerId, localPlayerState, opponentPlayerState]);
@@ -433,6 +437,7 @@ const useResolvers = ({
     if (!cardConfirmation) return;
     const card = cardConfirmation.card;
     const target = cardConfirmation.target;
+    debugLog('CARD_PLAY_TRACE', '[1] Card play confirmed (human)', { card: card.name, cardId: card.id, targetId: target?.id });
     setCardConfirmation(null);
     setTimeout(async () => {
       await resolveCardPlay(card, target, getLocalPlayerId());

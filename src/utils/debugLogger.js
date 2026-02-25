@@ -76,10 +76,11 @@ const DEBUG_CONFIG = {
     PATH_HIGHLIGHTING: false,      // Path/waypoint display state in HexGridRenderer
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
-    // Effect System Refactoring - Modular Processor Logging
-    EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
+    // Card Play Pipeline
+    CARD_PLAY_TRACE: false,      // End-to-end card play milestone trace (10 numbered steps)
+
+    // Effect System - Modular Processor Logging
     EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
-    EFFECT_FALLBACK: false,      // Effects falling back to monolithic switch (not yet extracted)
 
     // Targeting System Refactoring - Modular Processor Logging
     TARGETING_ROUTING: false,    // Targeting router decisions
@@ -87,7 +88,6 @@ const DEBUG_CONFIG = {
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
-    CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
     MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation
     AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)

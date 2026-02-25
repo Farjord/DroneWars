@@ -116,11 +116,6 @@ const useCardSelection = ({
     if (!effectChainState?.complete) return;
 
     const { card, selections } = effectChainState;
-    debugLog('EFFECT_CHAIN', '✅ Chain complete — auto-committing', {
-      cardName: card.name,
-      selectionCount: selections.length,
-    });
-
     // Build chainSelections for the engine (convert chain format to engine format)
     const chainSelections = selections.map(sel => ({
       target: sel.target,

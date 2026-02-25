@@ -537,7 +537,10 @@ setAnimationManager(animationManager) {
   async processMove(payload) { return _processMove(payload, this._getActionContext()); }
   async processAbility(payload) { return _processAbility(payload, this._getActionContext()); }
   async processDeployment(payload) { return _processDeployment(payload, this._getActionContext()); }
-  async processCardPlay(payload) { return _processCardPlay(payload, this._getActionContext()); }
+  async processCardPlay(payload) {
+    debugLog('CARD_PLAY_TRACE', '[3] ActionProcessor.processCardPlay', { card: payload.card?.name, playerId: payload.playerId, targetId: payload.targetId });
+    return _processCardPlay(payload, this._getActionContext());
+  }
   async processSearchAndDrawCompletion(payload) { return _processSearchAndDrawCompletion(payload, this._getActionContext()); }
   async processShipAbility(payload) { return _processShipAbility(payload, this._getActionContext()); }
   async processShipAbilityCompletion(payload) { return _processShipAbilityCompletion(payload, this._getActionContext()); }

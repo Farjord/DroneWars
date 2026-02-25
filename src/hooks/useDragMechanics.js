@@ -261,10 +261,6 @@ const useDragMechanics = ({
 
       if (isMultiEffect || isCompound) {
         const firstTargetType = effect0.targeting?.type;
-        debugLog('EFFECT_CHAIN', '🔗 Chain card detected in drag handler', {
-          cardName: card.name, isMultiEffect, isCompound, firstTargetType,
-          targetId: target?.id, targetType, targetOwner,
-        });
 
         // Non-board first target (CARD_IN_HAND, NONE) → start chain with no initial target
         if (firstTargetType === 'CARD_IN_HAND' || firstTargetType === 'NONE') {
