@@ -1,3 +1,5 @@
+import { enrichCardsWithEffects } from '../logic/cards/effectsAdapter';
+
 const fullCardCollection = [
 
   // --- Ordnance Cards ---
@@ -1818,4 +1820,4 @@ const fullCardCollection = [
   },
 ];
 
-export default fullCardCollection;
+export default enrichCardsWithEffects(fullCardCollection);
