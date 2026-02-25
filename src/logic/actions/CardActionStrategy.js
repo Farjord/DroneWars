@@ -184,6 +184,10 @@ export async function processCardPlay(payload, ctx) {
 export async function processSearchAndDrawCompletion(payload, ctx) {
   const { card, selectedCards, selectionData, playerId } = payload;
 
+  debugLog('CARD_PLAY_TRACE', '[6] SearchAndDraw completion — costs paid', {
+    card: card.name, playerId, selectedCount: selectedCards.length,
+  });
+
   const currentState = ctx.getState();
   const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
 
@@ -239,6 +243,11 @@ export async function processSearchAndDrawCompletion(payload, ctx) {
     completion.newPlayerStates.player1,
     completion.newPlayerStates.player2
   );
+
+  debugLog('CARD_PLAY_TRACE', '[8] SearchAndDraw finalized', {
+    card: card.name, shouldEndTurn: completion.shouldEndTurn,
+    selectedCards: selectedCards.map(c => c.name),
+  });
 
   const animMgr = ctx.getAnimationManager();
   const animDef = animMgr?.animations['CARD_REVEAL'];

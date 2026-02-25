@@ -289,6 +289,7 @@ class EffectChainProcessor {
             currentStates = addResult.newPlayerStates;
             allAnimationEvents.push(...(addResult.animationEvents || []));
           }
+          debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
       }
 
@@ -335,7 +336,10 @@ class EffectChainProcessor {
         );
         currentStates = postResult.newPlayerStates;
         allAnimationEvents.push(...(postResult.animationEvents || []));
-        if (postResult.grantsGoAgain) dynamicGoAgain = true;
+        if (postResult.grantsGoAgain) {
+          dynamicGoAgain = true;
+          debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional granted goAgain`, { card: card.name });
+        }
 
         for (const addEffect of (postResult.additionalEffects || [])) {
           const addResult = this.effectRouter.routeEffect(addEffect, {
@@ -345,6 +349,7 @@ class EffectChainProcessor {
             currentStates = addResult.newPlayerStates;
             allAnimationEvents.push(...(addResult.animationEvents || []));
           }
+          debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
       }
 
@@ -362,6 +367,7 @@ class EffectChainProcessor {
 
       debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] ${effectData.type} complete`, {
         card: card.name, targetId: selection.target?.id, lane: selection.lane,
+        value: effectData.value ?? effectData.mod?.value ?? null,
         processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
     }
@@ -424,6 +430,7 @@ class EffectChainProcessor {
       playerId, newStates, opponentId, moveContext
     );
     if (result.error) {
+      debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
       return { newPlayerStates: playerStates, animationEvents: [], effectResult: null };
     }
     return {

@@ -420,12 +420,21 @@ export async function processAiAction(payload, ctx) {
             }
           });
 
-        case 'play_card':
-          return await ctx.processCardPlay({
+        case 'play_card': {
+          debugLog('CARD_PLAY_TRACE', '[2] Dispatching cardPlay action', {
+            card: chosenAction.card.name, targetId: chosenAction.target?.id,
+            playerId: 'player2', isAI: true,
+          });
+          const cardResult = await ctx.processCardPlay({
             card: chosenAction.card,
             targetId: chosenAction.target?.id,
             playerId: 'player2'
           });
+          debugLog('CARD_PLAY_TRACE', '[10] Card play resolved', {
+            card: chosenAction.card.name, success: cardResult?.success !== false, isAI: true,
+          });
+          return cardResult;
+        }
 
         case 'move':
           return await ctx.processMove({

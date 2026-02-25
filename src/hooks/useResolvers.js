@@ -269,6 +269,8 @@ const useResolvers = ({
       cancelCardSelection('confirm-card-selection');
       setCardConfirmation(null);
     }
+
+    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (after selection)', { card: originalCard.name });
   }, [processActionWithGuestRouting, getLocalPlayerId, cancelCardSelection]);
 
   // --- Resolve Multi Move ---
@@ -283,6 +285,8 @@ const useResolvers = ({
     });
 
     cancelCardSelection('confirm-multi-move');
+
+    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (multi-move)', { card: card.name });
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- Resolve Single Move ---
@@ -330,6 +334,8 @@ const useResolvers = ({
     });
 
     cancelCardSelection('confirm-single-move');
+
+    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (single-move)', { card: card.name });
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- Handle Close AI Card Report ---
