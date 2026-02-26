@@ -9,6 +9,7 @@ import { PositionTracker } from '../logic/cards/EffectChainProcessor.js';
 import {
   computeChainTargets,
   computeDestinationTargets,
+  resolveDestinationRefs,
   isCompoundEffect,
   hasSkippedRef,
 } from '../logic/cards/chainTargetResolver.js';
@@ -200,11 +201,29 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     const effect = chainState.effects[chainState.currentIndex];
 
     if (isCompoundEffect(effect)) {
+      const resolvedDest = resolveDestinationRefs(effect.destination, chainState.selections);
       const destTargets = computeDestinationTargets(
-        effect.destination,
+        resolvedDest,
         { target, lane },
         actingPlayerId
       );
+
+      // Auto-select when destination ref resolved to a concrete lane (exactly 1 target)
+      const lanes = ['lane1', 'lane2', 'lane3'];
+      if (lanes.includes(resolvedDest.location) && destTargets.length === 1) {
+        const destLane = destTargets[0].id;
+        if (target?.id) chainState.positionTracker.recordMove(target.id, destLane);
+        const context = makeContext();
+        const selection = { target: { ...target, lane }, lane, destination: destLane };
+        const newSelections = [...chainState.selections, selection];
+        setChainState(advanceToNextSelection({
+          ...chainState,
+          currentIndex: chainState.currentIndex + 1,
+          selections: newSelections,
+        }, context));
+        return;
+      }
+
       setChainState(prev => ({
         ...prev,
         subPhase: 'destination',

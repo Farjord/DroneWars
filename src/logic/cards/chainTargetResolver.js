@@ -32,6 +32,19 @@ export function resolveTargetingRefs(targeting, selections) {
   return resolved;
 }
 
+/**
+ * Resolve back-references in a destination definition using prior selections.
+ * Converts ref objects like { ref: 0, field: 'destinationLane' } to concrete lane IDs.
+ */
+export function resolveDestinationRefs(destination, selections) {
+  if (!destination) return destination;
+  const resolved = { ...destination };
+  if (resolved.location && typeof resolved.location === 'object' && 'ref' in resolved.location) {
+    resolved.location = resolveRefFromSelections(resolved.location, selections);
+  }
+  return resolved;
+}
+
 // --- Effect Classification ---
 
 /**
@@ -61,6 +74,9 @@ export function hasSkippedRef(effect, selections) {
   }
   if (effect.mod?.value && typeof effect.mod.value === 'object' && 'ref' in effect.mod.value) {
     refs.push(effect.mod.value.ref);
+  }
+  if (effect.destination?.location && typeof effect.destination.location === 'object' && 'ref' in effect.destination.location) {
+    refs.push(effect.destination.location.ref);
   }
 
   return refs.some(refIdx => !selections[refIdx] || selections[refIdx].skipped);
@@ -216,6 +232,11 @@ export function computeDestinationTargets(destination, selection, actingPlayerId
   if (!destination || destination.type !== 'LANE') return [];
 
   const lanes = ['lane1', 'lane2', 'lane3'];
+
+  // Concrete lane ID (e.g., resolved from a ref) — single valid destination
+  if (lanes.includes(destination.location)) {
+    return [{ id: destination.location, owner: actingPlayerId, type: 'lane' }];
+  }
 
   if (destination.location === 'ADJACENT_TO_PRIMARY') {
     const sourceLane = selection.lane;
