@@ -260,7 +260,9 @@ class EffectChainProcessor {
       }
 
       // Check if target is still alive (trigger invalidation from earlier effects)
-      if (selection.target && selection.target.id && !isTargetAlive(selection.target, currentStates)) {
+      // Skip for NONE-targeting effects — target is metadata (e.g., upgrade drone type), not a board dependency
+      const needsAliveCheck = chainEffect.targeting?.type !== 'NONE';
+      if (needsAliveCheck && selection.target && selection.target.id && !isTargetAlive(selection.target, currentStates)) {
         effectResults.push(null);
         debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] skipped — target invalidated`, { card: card.name, targetId: selection.target.id });
         continue;
