@@ -4,6 +4,7 @@
 // position tracking for multi-effect card plays, and multi-target selection.
 
 import { useState, useCallback } from 'react';
+import { debugLog } from '../utils/debugLogger.js';
 import { PositionTracker } from '../logic/cards/EffectChainProcessor.js';
 import {
   computeChainTargets,
@@ -128,6 +129,11 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     const effects = card.effects;
     if (!effects || effects.length === 0) return;
 
+    debugLog('CARD_PLAY_TRACE', '[1] Effect chain started (drag)', {
+      card: card.name, effectCount: effects.length,
+      initialTarget: initialTarget?.id, initialLane,
+    });
+
     const positionTracker = new PositionTracker(playerStates);
     const context = makeContext();
     const base = {
@@ -238,11 +244,19 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
       destination: destinationLane,
     };
     const newSelections = [...chainState.selections, selection];
-    setChainState(advanceToNextSelection({
+    const nextState = advanceToNextSelection({
       ...chainState,
       currentIndex: chainState.currentIndex + 1,
       selections: newSelections,
-    }, context));
+    }, context);
+
+    debugLog('EFFECT_CHAIN_DEBUG', '[DEST] After advanceToNextSelection', {
+      complete: nextState.complete, subPhase: nextState.subPhase,
+      currentIndex: nextState.currentIndex, validTargetCount: nextState.validTargets?.length,
+      selectionCount: nextState.selections?.length,
+    });
+
+    setChainState(nextState);
   }, [chainState, makeContext]);
 
   /**

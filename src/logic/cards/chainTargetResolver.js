@@ -4,6 +4,7 @@
 // No state mutations — uses PositionTracker for virtual position tracking.
 
 import { resolveRefFromSelections } from './EffectChainProcessor.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // --- Ref Resolution ---
 
@@ -106,18 +107,32 @@ function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTr
   const board = playerStates[targetPlayerId]?.dronesOnBoard || {};
   const targets = [];
 
+  let totalDrones = 0;
+  let restrictionFailures = 0;
+
   for (const origLane of ['lane1', 'lane2', 'lane3']) {
     for (const drone of (board[origLane] || [])) {
+      totalDrones++;
       const virtualLane = positionTracker?.getDronePosition(drone.id)?.lane || origLane;
       if (!targetLanes.includes(virtualLane)) continue;
 
       if (targeting.restrictions) {
-        if (!targeting.restrictions.every(r => passesRestriction(drone, r, getEffectiveStats))) continue;
+        if (!targeting.restrictions.every(r => passesRestriction(drone, r, getEffectiveStats))) {
+          restrictionFailures++;
+          continue;
+        }
       }
 
       targets.push({ ...drone, owner: targetPlayerId, lane: virtualLane });
     }
   }
+
+  debugLog('EFFECT_CHAIN_DEBUG', '[TARGETS] computeDroneTargets', {
+    affinity: targeting.affinity, targetPlayerId, location: targeting.location,
+    totalDrones, restrictionFailures, validCount: targets.length,
+    hasRestrictions: !!targeting.restrictions,
+    restrictions: targeting.restrictions?.map(r => ({ type: r.type, stat: r.stat, comparison: r.comparison, referenceStat: r.referenceStat })),
+  });
 
   return targets;
 }

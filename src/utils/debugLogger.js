@@ -75,6 +75,9 @@ const DEBUG_CONFIG = {
     PATH_HIGHLIGHTING: false,      // Path/waypoint display state in HexGridRenderer
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
+    // Effect Chain Investigation
+    EFFECT_CHAIN_DEBUG: true,   // Temporary: effect chain auto-commit investigation
+
     // Card Play Pipeline
     CARD_PLAY_TRACE: true,      // End-to-end card play milestone trace (10 numbered steps)
 

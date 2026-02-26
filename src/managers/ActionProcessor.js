@@ -377,6 +377,9 @@ setAnimationManager(animationManager) {
           action.resolve(result);
         } catch (error) {
           debugLog('STATE_SYNC', 'Action processing error:', error);
+          debugLog('EFFECT_CHAIN_DEBUG', '[QUEUE] Action processing error', {
+            type: action.type, error: error.message, stack: error.stack,
+          });
           action.reject(error);
         }
       }

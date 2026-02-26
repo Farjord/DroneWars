@@ -124,17 +124,33 @@ const useCardSelection = ({
       skipped: sel.skipped || false,
     }));
 
-    processActionWithGuestRouting('cardPlay', {
-      card,
-      targetId: chainSelections[0]?.target?.id || null,
-      playerId: getLocalPlayerId(),
-      chainSelections,
+    debugLog('EFFECT_CHAIN_DEBUG', '[AUTO-COMMIT] Dispatching chain cardPlay', {
+      card: card.name, selectionCount: chainSelections.length,
+      targetId: chainSelections[0]?.target?.id,
+      selections: chainSelections.map((s, i) => ({
+        i, targetId: s.target?.id, lane: s.lane, dest: s.destination, skipped: s.skipped
+      })),
     });
 
-    // Clean up UI state
-    cancelEffectChain();
-    setSelectedCard(null);
-    setValidCardTargets([]);
+    // Wrap in async IIFE to await dispatch before cleaning up
+    (async () => {
+      try {
+        await processActionWithGuestRouting('cardPlay', {
+          card,
+          targetId: chainSelections[0]?.target?.id || null,
+          playerId: getLocalPlayerId(),
+          chainSelections,
+        });
+      } catch (err) {
+        debugLog('EFFECT_CHAIN_DEBUG', '[AUTO-COMMIT] Dispatch failed', {
+          error: err.message, stack: err.stack,
+        });
+      } finally {
+        cancelEffectChain();
+        setSelectedCard(null);
+        setValidCardTargets([]);
+      }
+    })();
   }, [effectChainState, processActionWithGuestRouting, getLocalPlayerId, cancelEffectChain]);
 
   return {
