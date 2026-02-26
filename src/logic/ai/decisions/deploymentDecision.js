@@ -51,15 +51,6 @@ export const handleOpponentTurn = ({ player1, player2, turn, placedSections, opp
     const sortedHandByCost = [...player2.hand].sort((a, b) => b.cost - a.cost);
     const reservedEnergy = sortedHandByCost[0]?.cost || 0;
 
-    debugLog('AI_DECISIONS', '[AI ENERGY DEBUG] Deployment energy management:', {
-      currentEnergy: player2.energy,
-      reservedEnergy: reservedEnergy,
-      cardsInHand: player2.hand.map(card => ({ name: card.name, cost: card.cost })),
-      mostExpensiveCard: sortedHandByCost[0]?.name || 'None',
-      turn: turn,
-      deploymentBudget: turn === 1 ? player2.initialDeploymentBudget : player2.deploymentBudget
-    });
-
     const allPotentialDrones = player2.activeDronePool;
     const possibleDeployments = [];
     const lanes = ['lane1', 'lane2', 'lane3'];
@@ -100,9 +91,6 @@ const currentLaneScores = {
         if (energyAfterDeployment < reservedEnergy) {
           isAffordable = false;
           reason = `Reserves energy for cards (needs ${reservedEnergy})`;
-          debugLog('AI_DECISIONS', `[AI ENERGY DEBUG] ${drone.name} rejected: energy after deployment (${energyAfterDeployment}) < reserved (${reservedEnergy})`);
-        } else {
-          debugLog('AI_DECISIONS', `[AI ENERGY DEBUG] ${drone.name} affordable: energy after deployment (${energyAfterDeployment}) >= reserved (${reservedEnergy})`);
         }
       }
 
@@ -121,10 +109,7 @@ const currentLaneScores = {
       for (const laneId of lanes) {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
 
-        // Log if drone not found - crash is intentional to catch data issues
-        if (!baseDrone) {
-          debugLog('AI_DECISIONS', `[AI] FATAL: Drone "${drone.name}" not found in fullDroneCollection. Check aiData.js for typos.`);
-        }
+        // Crash is intentional to catch data issues if drone not found
 
         // Check maxPerLane restriction
         if (baseDrone.maxPerLane) {
@@ -280,24 +265,11 @@ const currentLaneScores = {
 
     const topScore = possibleDeployments.length > 0 ? Math.max(...possibleDeployments.map(a => a.score)) : -1;
 
-    // AI_DEPLOYMENT logging for bug investigation
-    debugLog('AI_DEPLOYMENT', `🧠 AI evaluated options`, {
-      possibleDeploymentCount: possibleDeployments.length,
-      topScore,
-      passThreshold: 5,
-      willDeploy: topScore >= 5,
-      topOptions: possibleDeployments
-        .filter(d => d.score === topScore)
-        .slice(0, 3)
-        .map(d => ({ drone: d.drone?.name, lane: d.laneId, score: d.score }))
-    });
+    const affordableCount = possibleDeployments.filter(d => d.score > -999).length;
+    debugLog('AI_TURN_TRACE', `[AI-04] Decision | evaluated=${possibleDeployments.length}, affordable=${affordableCount}, topScore=${topScore}`);
 
     if (topScore < 5) {
-      debugLog('AI_DEPLOYMENT', `🤖 AI decides to PASS`, {
-        reason: 'No high-impact plays (topScore < 5)',
-        topScore,
-        evaluatedCount: possibleDeployments.length
-      });
+      debugLog('AI_TURN_TRACE', `[AI-05] Decision | type=pass, reason=noHighImpactPlays (topScore=${topScore})`);
       addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during deployment phase (no high-impact plays).` }, 'aiDeploymentPass', possibleDeployments);
       // Capture decision for CSV export
       gameStateManager.addAIDecisionToHistory('deployment', turn, possibleDeployments, { player1, player2 });
@@ -308,13 +280,7 @@ const currentLaneScores = {
     const chosenAction = bestActions[Math.floor(rng.random() * bestActions.length)];
     chosenAction.isChosen = true;
 
-    debugLog('AI_DEPLOYMENT', `🤖 AI decides to DEPLOY`, {
-      droneName: chosenAction.drone?.name,
-      droneClass: chosenAction.drone?.class,
-      targetLane: chosenAction.laneId,
-      score: chosenAction.score,
-      tiedOptions: bestActions.length
-    });
+    debugLog('AI_TURN_TRACE', `[AI-05] Decision | type=deploy, drone=${chosenAction.drone?.name}, lane=${chosenAction.laneId}, score=${chosenAction.score}`);
 
     // Log the deployment decision
     addLogEntry({

@@ -31,7 +31,6 @@ export function buildPassAction(phase, passInfo) {
  */
 export function shouldPass(gameState, phase) {
   if (gameState.passInfo && gameState.passInfo.player2Passed) {
-    debugLog('AI_DECISIONS', '🤖 AI has already passed');
     return true;
   }
   return false;
@@ -45,8 +44,6 @@ export function shouldPass(gameState, phase) {
  * @returns {Promise<void>}
  */
 export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
-  debugLog('AI_DECISIONS', '🤖 executeDeploymentTurn starting...');
-
   if (shouldPass(gameState, 'deployment')) {
     await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
     return;
@@ -54,6 +51,8 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
 
   const { aiBrain } = await import('./aiLogic.js');
   const { gameEngine } = await import('../gameLogic.js');
+
+  debugLog('AI_TURN_TRACE', `[AI-03] Deployment: eval | energy=${gameState.player2.energy}, budget=${gameState.turn === 1 ? gameState.player2.initialDeploymentBudget : gameState.player2.deploymentBudget}, poolSize=${gameState.player2.activeDronePool?.length ?? 0}`);
 
   const aiDecision = aiBrain.handleOpponentTurn({
     player1: gameState.player1,
@@ -69,20 +68,13 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
     }
   });
 
-  debugLog('AI_DECISIONS', '🤖 Executing deployment decision:', aiDecision);
-  debugLog('AI_DEPLOYMENT', '🤖 AI decision made', {
-    decisionType: aiDecision.type,
-    droneName: aiDecision.payload?.droneToDeploy?.name,
-    targetLane: aiDecision.payload?.targetLane,
-    score: aiDecision.score,
-    turnUsed: gameState.roundNumber,
-    player2Energy: gameState.player2?.energy,
-    player2Budget: gameState.player2?.deploymentBudget
-  });
-
   if (aiDecision.type === 'pass') {
+    debugLog('AI_TURN_TRACE', `[AI-06] Decision | type=pass, reason=noHighImpactPlays`);
     await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
   } else if (aiDecision.type === 'deploy') {
+    debugLog('AI_TURN_TRACE', `[AI-06] Decision | type=deploy, drone=${aiDecision.payload.droneToDeploy?.name}, lane=${aiDecision.payload.targetLane}`);
+    debugLog('AI_TURN_TRACE', `[AI-05] Dispatching | deployment action`);
+
     const result = await actionProcessor.queueAction({
       type: 'deployment',
       payload: {
@@ -94,25 +86,19 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
     });
 
     if (result.success) {
-      debugLog('AI_DEPLOYMENT', '✅ Deployment executed', {
-        droneName: aiDecision.payload?.droneToDeploy?.name,
-        targetLane: aiDecision.payload?.targetLane
-      });
+      debugLog('AI_TURN_TRACE', `[AI-06] Result | success=true`);
       await actionProcessor.queueAction({
         type: 'turnTransition',
         payload: { newPlayer: 'player1', reason: 'deploymentCompleted' }
       });
     } else {
-      debugLog('AI_DEPLOYMENT', '❌ Deployment FAILED', {
-        droneName: aiDecision.payload?.droneToDeploy?.name,
-        error: result.error,
-        reason: result.reason
-      });
+      debugLog('AI_TURN_TRACE', `[AI-06] Result | success=false, error=${result.error || result.reason}`);
       // When deployment fails, pass to prevent infinite loop
-      debugLog('AI_DEPLOYMENT', '🔄 Deployment failed - forcing AI to pass');
       await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
     }
   }
+
+  debugLog('AI_TURN_TRACE', `[AI-07] Turn complete | switching to player1`);
 }
 
 /**
@@ -123,8 +109,6 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
  * @returns {Promise<Object|null>} Result (may contain needsInterceptionDecision)
  */
 export async function executeActionTurn(gameState, actionProcessor, deps) {
-  debugLog('AI_DECISIONS', '🤖 executeActionTurn starting...');
-
   if (shouldPass(gameState, 'action')) {
     await actionProcessor.queueAction(buildPassAction('action', gameState.passInfo));
     return;
@@ -139,6 +123,10 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
     return targetingRouter.routeTargeting({ actingPlayerId, source, definition, player1, player2 });
   };
 
+  const p2 = gameState.player2;
+  const readyDrones = Object.values(p2.dronesOnBoard).flat().filter(d => !d.isExhausted);
+  debugLog('AI_TURN_TRACE', `[AI-03] Action: generating | playableCards=${p2.hand?.filter(c => p2.energy >= c.cost).length ?? 0}, readyAttackers=${readyDrones.length}, movableDrones=${readyDrones.length}`);
+
   const aiDecision = aiBrain.handleOpponentAction({
     player1: gameState.player1,
     player2: gameState.player2,
@@ -152,8 +140,6 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
       deps.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
     }
   });
-
-  debugLog('AI_DECISIONS', '🤖 Executing action decision:', aiDecision);
 
   if (aiDecision.type === 'pass') {
     await actionProcessor.queueAction(buildPassAction('action', gameState.passInfo));
@@ -175,14 +161,15 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
  * @returns {Promise<Object>} Result with updated player state
  */
 export async function executeOptionalDiscardTurn(gameState, gameDataService) {
-  debugLog('AI_DECISIONS', '🤖 executeOptionalDiscardTurn starting...');
-
   const { gameEngine } = await import('../gameLogic.js');
   const aiState = gameState.player2;
   const opponentPlacedSections = gameState.opponentPlacedSections;
 
+  debugLog('AI_TURN_TRACE', `[AI-02] Evaluating | phase=optionalDiscard, handSize=${aiState.hand?.length ?? 0}`);
+
   if (!aiState.hand || aiState.hand.length === 0) {
-    debugLog('AI_DECISIONS', '🤖 AI has no cards, auto-completing optional discard');
+    debugLog('AI_TURN_TRACE', `[AI-03] Decision | noCards, auto-completing`);
+    debugLog('AI_TURN_TRACE', `[AI-04] Complete | discarded=0, drawn=0`);
     return { type: 'optionalDiscard', cardsToDiscard: [], playerId: 'player2', updatedPlayerState: aiState };
   }
 
@@ -200,14 +187,13 @@ export async function executeOptionalDiscardTurn(gameState, gameDataService) {
       hand: updatedAiState.hand.slice(excessCards),
       discardPile: [...updatedAiState.discardPile, ...cardsToDiscard]
     };
-    debugLog('AI_DECISIONS', `🤖 AI discarding ${excessCards} excess cards to meet hand limit of ${handLimit}`);
   }
 
   updatedAiState = gameEngine.drawToHandLimit(updatedAiState, handLimit);
   const cardsDrawn = updatedAiState.hand.length - (aiState.hand.length - cardsToDiscard.length);
-  if (cardsDrawn > 0) {
-    debugLog('AI_DECISIONS', `🤖 AI drew ${cardsDrawn} cards to reach hand limit`);
-  }
+
+  debugLog('AI_TURN_TRACE', `[AI-03] Decision | discarded=${cardsToDiscard.length}, drawn=${cardsDrawn}, handLimit=${handLimit}`);
+  debugLog('AI_TURN_TRACE', `[AI-04] Complete | finalHandSize=${updatedAiState.hand.length}`);
 
   return { type: 'optionalDiscard', cardsToDiscard, playerId: 'player2', updatedPlayerState: updatedAiState };
 }
@@ -220,15 +206,16 @@ export async function executeOptionalDiscardTurn(gameState, gameDataService) {
  * @returns {Promise<Object>} Result with cards to discard
  */
 export async function executeMandatoryDiscardTurn(gameState, gameDataService) {
-  debugLog('AI_DECISIONS', '🤖 executeMandatoryDiscardTurn starting...');
-
   const aiState = gameState.player2;
   const opponentPlacedSections = gameState.opponentPlacedSections;
   const effectiveStats = gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
   const handLimit = effectiveStats.totals.handLimit;
 
+  debugLog('AI_TURN_TRACE', `[AI-02] Evaluating | phase=mandatoryDiscard, handSize=${aiState.hand?.length ?? 0}, handLimit=${handLimit}`);
+
   if (!aiState.hand || aiState.hand.length <= handLimit) {
-    debugLog('AI_DECISIONS', '🤖 AI already at/below hand limit, auto-completing mandatory discard');
+    debugLog('AI_TURN_TRACE', `[AI-03] Decision | atOrBelowLimit, auto-completing`);
+    debugLog('AI_TURN_TRACE', `[AI-04] Complete | discarded=0`);
     return { type: 'mandatoryDiscard', cardsToDiscard: [], playerId: 'player2', updatedPlayerState: aiState };
   }
 
@@ -250,7 +237,8 @@ export async function executeMandatoryDiscardTurn(gameState, gameDataService) {
   }
   cardsToDiscard = cardsToDiscard.slice(0, excessCards);
 
-  debugLog('AI_DECISIONS', `🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
+  debugLog('AI_TURN_TRACE', `[AI-03] Decision | discarding=${cardsToDiscard.length}, lowestCostFirst`);
+  debugLog('AI_TURN_TRACE', `[AI-04] Complete | discarded=${cardsToDiscard.length}`);
   return { type: 'mandatoryDiscard', cardsToDiscard, playerId: 'player2', updatedPlayerState: aiState };
 }
 
@@ -262,8 +250,6 @@ export async function executeMandatoryDiscardTurn(gameState, gameDataService) {
  * @returns {Promise<Object>} Result with drones to remove
  */
 export async function executeMandatoryDroneRemovalTurn(gameState, gameDataService) {
-  debugLog('AI_DECISIONS', '🤖 executeMandatoryDroneRemovalTurn starting...');
-
   const aiState = gameState.player2;
   const opponentPlacedSections = gameState.opponentPlacedSections;
   const effectiveStats = gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
@@ -271,8 +257,11 @@ export async function executeMandatoryDroneRemovalTurn(gameState, gameDataServic
 
   const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
 
+  debugLog('AI_TURN_TRACE', `[AI-02] Evaluating | phase=mandatoryDroneRemoval, totalDrones=${totalDrones}, droneLimit=${droneLimit}`);
+
   if (totalDrones <= droneLimit) {
-    debugLog('AI_DECISIONS', '🤖 AI already at/below drone limit, auto-completing mandatory drone removal');
+    debugLog('AI_TURN_TRACE', `[AI-03] Decision | atOrBelowLimit, auto-completing`);
+    debugLog('AI_TURN_TRACE', `[AI-04] Complete | removed=0`);
     return { type: 'mandatoryDroneRemoval', dronesToRemove: [], playerId: 'player2', updatedPlayerState: aiState };
   }
 
@@ -309,7 +298,8 @@ export async function executeMandatoryDroneRemovalTurn(gameState, gameDataServic
   });
 
   const dronesToRemove = allDrones.slice(0, excessDrones);
-  debugLog('AI_DECISIONS', `🤖 AI removing ${dronesToRemove.length} excess drones to meet drone limit`);
+  debugLog('AI_TURN_TRACE', `[AI-03] Decision | removing=${dronesToRemove.length}, cheapestFromWinningLanes`);
+  debugLog('AI_TURN_TRACE', `[AI-04] Complete | removed=${dronesToRemove.length}`);
   return { type: 'mandatoryDroneRemoval', dronesToRemove, playerId: 'player2', updatedPlayerState: aiState };
 }
 
@@ -320,17 +310,18 @@ export async function executeMandatoryDroneRemovalTurn(gameState, gameDataServic
  * @returns {Promise<void>}
  */
 export async function executeShieldAllocationTurn(gameState, actionProcessor) {
-  debugLog('AI_DECISIONS', '🤖 executeShieldAllocationTurn starting...');
-
   const aiPlacedSections = gameState.opponentPlacedSections;
   const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
 
+  debugLog('AI_TURN_TRACE', `[AI-02] Evaluating | phase=shieldAllocation, shieldsToAllocate=${shieldsToAllocate}, sections=${aiPlacedSections.length}`);
+
   if (shieldsToAllocate === 0 || aiPlacedSections.length === 0) {
-    debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate or no sections');
+    debugLog('AI_TURN_TRACE', `[AI-03] Decision | noShieldsOrSections, skipping`);
+    debugLog('AI_TURN_TRACE', `[AI-04] Complete | allocated=0`);
     return;
   }
 
-  debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields across ${aiPlacedSections.length} sections`);
+  debugLog('AI_TURN_TRACE', `[AI-03] Decision | distributing=${shieldsToAllocate}, evenlyAcross=${aiPlacedSections.length}sections`);
 
   let remainingShields = shieldsToAllocate;
   let currentSectionIndex = 0;
@@ -343,5 +334,5 @@ export async function executeShieldAllocationTurn(gameState, actionProcessor) {
     currentSectionIndex = (currentSectionIndex + 1) % aiPlacedSections.length;
   }
 
-  debugLog('AI_DECISIONS', '✅ AI shield allocation complete');
+  debugLog('AI_TURN_TRACE', `[AI-04] Complete | allocated=${shieldsToAllocate}`);
 }

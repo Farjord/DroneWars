@@ -387,6 +387,8 @@ export async function processAiShipPlacement(payload, ctx) {
 export async function processAiAction(payload, ctx) {
   const { aiDecision } = payload;
 
+  debugLog('AI_TURN_TRACE', `[AI-08] Dispatching | type=${aiDecision.type}, subtype=${aiDecision.payload?.type || 'N/A'}`);
+
   switch (aiDecision.type) {
     case 'deploy':
       const { droneToDeploy, targetLane } = aiDecision.payload;

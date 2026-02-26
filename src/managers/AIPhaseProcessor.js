@@ -59,7 +59,6 @@ class AIPhaseProcessor {
   initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null, { isAnimationBlocking } = {}) {
     // Check if already initialized
     if (this.isInitialized) {
-      debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor already initialized, skipping...');
       return;
     }
 
@@ -94,14 +93,6 @@ class AIPhaseProcessor {
     }
 
     this.isInitialized = true;
-
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
-    if (actionProcessor) {
-      debugLog('AI_DECISIONS', '🔗 AIPhaseProcessor connected to ActionProcessor for execution');
-    }
-    if (gameStateManager) {
-      debugLog('AI_DECISIONS', '🔗 AIPhaseProcessor subscribed to GameStateManager for self-triggering');
-    }
   }
 
   /**
@@ -109,8 +100,6 @@ class AIPhaseProcessor {
    * Clears timers and unsubscribes from state changes
    */
   cleanup() {
-    debugLog('AI_DECISIONS', '🧹 AIPhaseProcessor: Cleaning up resources');
-
     // Clear any pending AI turn timer
     if (this.turnTimer) {
       clearTimeout(this.turnTimer);
@@ -126,8 +115,6 @@ class AIPhaseProcessor {
     // Reset processing state
     this.isProcessing = false;
     this.isInitialized = false;
-
-    debugLog('AI_DECISIONS', '✅ AIPhaseProcessor: Cleanup complete');
   }
 
   // --- Simultaneous Phase Delegation ---
@@ -221,7 +208,7 @@ class AIPhaseProcessor {
       return;
     }
 
-    debugLog('AI_DECISIONS', `⏰ AIPhaseProcessor: Scheduling AI turn for ${state.turnPhase} phase`);
+    debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
 
     // Clear any existing timer and schedule new turn
     clearTimeout(this.turnTimer);
@@ -236,7 +223,6 @@ class AIPhaseProcessor {
    */
   async executeTurn() {
     if (this.isProcessing) {
-      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Already processing a turn, skipping');
       return;
     }
 
@@ -245,25 +231,21 @@ class AIPhaseProcessor {
 
     // Validate it's still AI's turn (state may have changed during delay)
     if (state.currentPlayer !== 'player2') {
-      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Turn changed before execution, cancelling AI turn');
       return;
     }
 
     // Validate AI hasn't passed
     if (state.passInfo && state.passInfo.player2Passed) {
-      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: AI has already passed, cancelling turn');
       return;
     }
 
     // Validate phase is still sequential
     if (!isSequentialPhase(state.turnPhase)) {
-      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Phase changed to non-sequential, cancelling turn');
       return;
     }
 
     // Block AI if animations are playing (phase announcements or action animations)
     if (this.isAnimationBlocking()) {
-      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Animation blocking, rescheduling AI turn');
       this.turnTimer = setTimeout(() => {
         this.executeTurn();
       }, 500);
@@ -271,9 +253,10 @@ class AIPhaseProcessor {
     }
 
     this.isProcessing = true;
+    const p2 = state.player2;
 
     try {
-      debugLog('AI_DECISIONS', `🤖 AIPhaseProcessor: Executing AI turn for ${state.turnPhase} phase`);
+      debugLog('AI_TURN_TRACE', `[AI-02] Turn executing | phase=${state.turnPhase}, energy=${p2.energy}, handSize=${p2.hand?.length ?? 0}, readyDrones=${Object.values(p2.dronesOnBoard).flat().filter(d => !d.isExhausted).length}`);
 
       let result;
       if (state.turnPhase === 'deployment') {
@@ -281,29 +264,29 @@ class AIPhaseProcessor {
       } else if (state.turnPhase === 'action') {
         result = await this.executeActionTurn(state);
       } else {
-        debugLog('AI_DECISIONS', `⚠️ AIPhaseProcessor: Unknown sequential phase: ${state.turnPhase}`);
         return;
       }
 
       // Check if result indicates human interception decision needed
       if (result?.needsInterceptionDecision) {
-        debugLog('AI_DECISIONS', '🛡️ AIPhaseProcessor: AI attack needs human interception decision, pausing turn loop');
-
+        debugLog('AI_TURN_TRACE', `[AI-09] Result | success=true, needsInterception=true`);
         // ActionProcessor already set interceptionPending state, just pause AI turn loop
         // Turn will resume after interception is resolved (state cleared)
         this.isProcessing = false;
         return; // Don't schedule another AI turn yet
       }
 
+      debugLog('AI_TURN_TRACE', `[AI-09] Result | success=${result?.success !== false}, needsInterception=false`);
+
       // Check if AI should continue taking turns
       const currentState = this.gameStateManager.getState();
-      if (currentState.currentPlayer === 'player2' &&
+      const continues = currentState.currentPlayer === 'player2' &&
           currentState.passInfo &&
-          !currentState.passInfo.player2Passed) {
-        // AI should continue if:
-        // 1. Human has passed but AI hasn't, OR
-        // 2. AI played a goAgain card and still has the turn
-        debugLog('AI_DECISIONS', '🔄 AIPhaseProcessor: AI continues taking turns (either human passed or goAgain card played)');
+          !currentState.passInfo.player2Passed;
+
+      debugLog('AI_TURN_TRACE', `[AI-10] Turn complete | continues=${continues}, reason=${continues ? 'humanPassedOrGoAgain' : 'turnOver'}`);
+
+      if (continues) {
         // Schedule another turn
         setTimeout(() => {
           this.checkForAITurn(currentState);
@@ -311,7 +294,7 @@ class AIPhaseProcessor {
       }
 
     } catch (error) {
-      debugLog('AI_DECISIONS', '❌ AIPhaseProcessor: Error executing turn:', error);
+      debugLog('AI_TURN_TRACE', `[AI-09] Result | success=false, error=${error.message}`);
     } finally {
       this.isProcessing = false;
     }
@@ -330,12 +313,7 @@ class AIPhaseProcessor {
       throw new Error('AIPhaseProcessor not initialized');
     }
 
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.makeInterceptionDecision called:', {
-      interceptorCount: interceptors?.length || 0,
-      target: attackDetails.target?.name,
-      attacker: attackDetails.attacker?.name,
-      targetType: attackDetails.targetType
-    });
+    debugLog('AI_TURN_TRACE', `[AI-INT-1] Interception requested | interceptorCount=${interceptors?.length || 0}, attacker=${attackDetails.attacker?.name}, target=${attackDetails.target?.name}, targetType=${attackDetails.targetType}`);
 
     const { aiBrain } = await import('../logic/ai/aiLogic.js');
 
@@ -347,20 +325,7 @@ class AIPhaseProcessor {
       this.gameStateManager    // GameStateManager for opportunity cost analysis
     );
 
-    debugLog('AI_DECISIONS', '🤖 AI interception decision:', {
-      willIntercept: !!result.interceptor,
-      interceptorName: result.interceptor?.name
-    });
-
-    // Log interception decision to Action Log with Decision Matrix
-    debugLog('AI_DECISIONS', '📝 [INTERCEPTION LOG] Preparing log entry:', {
-      hasGameStateManager: !!this.gameStateManager,
-      willIntercept: !!result.interceptor,
-      decisionContextLength: result.decisionContext?.length || 0,
-      attackerName: attackDetails.attacker?.name,
-      targetType: attackDetails.targetType,
-      targetName: attackDetails.target?.name || attackDetails.target?.id
-    });
+    debugLog('AI_TURN_TRACE', `[AI-INT-2] Decision | willIntercept=${!!result.interceptor}, interceptor=${result.interceptor?.name || 'declined'}`);
 
     if (this.gameStateManager) {
       const targetName = attackDetails.targetType === 'section'
@@ -377,13 +342,7 @@ class AIPhaseProcessor {
           : `Declined to intercept ${attackDetails.attacker.name} attacking ${targetName}`
       };
 
-      debugLog('AI_DECISIONS', '📋 [INTERCEPTION LOG] Log entry data:', logEntry);
-
       this.gameStateManager.addLogEntry(logEntry, 'aiInterception', result.decisionContext);
-
-      debugLog('AI_DECISIONS', '✅ [INTERCEPTION LOG] Log entry added successfully');
-    } else {
-      debugLog('AI_DECISIONS', '❌ [INTERCEPTION LOG] gameStateManager is null/undefined - cannot add log entry!');
     }
 
     return result;

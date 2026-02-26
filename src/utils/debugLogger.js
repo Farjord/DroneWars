@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_DECISIONS: false,        // AI decision making
+    AI_TURN_TRACE: true,        // Numbered step-by-step AI turn trace
     MULTIPLAYER: false,          // Network sync and multiplayer
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
     ANIMATIONS: false,           // Animation system
@@ -52,14 +52,13 @@ const DEBUG_CONFIG = {
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation
     FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
-    EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
+    EXTRACTION: false,           // Single-player extraction mode (hangar, tactical map, deployment)
     SAVE: false,                 // Save game migration and format conversion
     ENCOUNTER: false,          // Random encounter rolls and combat triggers
     QUICK_DEPLOY: false,         // Quick deployment validation and selection
     PHASE_FLOW: false,           // Phase transitions and announcements
     TICKER: false,              // News ticker message generation and data flow
     INTERCEPTOR_GLOW: false,     // Interceptor glow calculation debugging
-    AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: false,           // Card wrapper and sizing debugging
     ASSET_PRELOAD: false,          // Asset preloading and splash screen timing
     SP_COMBAT: false,              // Single-player combat init, abandon, and state transitions
@@ -77,7 +76,7 @@ const DEBUG_CONFIG = {
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
     // Card Play Pipeline
-    CARD_PLAY_TRACE: false,      // End-to-end card play milestone trace (10 numbered steps)
+    CARD_PLAY_TRACE: true,      // End-to-end card play milestone trace (10 numbered steps)
 
     // Effect System - Modular Processor Logging
     EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
@@ -113,8 +112,8 @@ const DEBUG_CONFIG = {
     STAT_CALCULATION: false,           // Effective stat calculation for targeting comparisons
     // Momentum Glow Debugging
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
-    CONSUMPTION_DEBUG: true,           // Snared/suppressed consumption flow tracing
-    ON_MOVE_EFFECTS: true,             // ON_MOVE ability trigger flow (HEAL, PERMANENT_STAT_MOD)
+    CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
+    ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, PERMANENT_STAT_MOD)
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration

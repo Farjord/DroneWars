@@ -335,6 +335,12 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       }
     }
 
+    const cardPlayCount = possibleActions.filter(a => a.type === 'play_card').length;
+    const attackCount = possibleActions.filter(a => a.type === 'attack').length;
+    const moveCount = possibleActions.filter(a => a.type === 'move').length;
+    const abilityCount = possibleActions.filter(a => a.type === 'use_ability').length;
+    debugLog('AI_TURN_TRACE', `[AI-04] Action: pool built | cardPlays=${cardPlayCount}, attacks=${attackCount}, moves=${moveCount}, abilities=${abilityCount}, total=${possibleActions.length}`);
+
     // Create evaluation context for modular evaluators
     const evaluationContext = {
       player1,
@@ -354,7 +360,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       action.logic = [];
 
       // Customize display for SINGLE_MOVE cards
-      if (action.type === 'play_card' && action.card?.effect.type === 'SINGLE_MOVE' && action.moveData) {
+      if (action.type === 'play_card' && action.card?.effects[0]?.type === 'SINGLE_MOVE' && action.moveData) {
         const { drone, fromLane, toLane } = action.moveData;
         action.instigator = `${action.card.name} (${drone.name})`;
         action.targetName = `${fromLane}→${toLane}`;
@@ -441,6 +447,10 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       }
     });
 
+    const preAdjustTopScore = possibleActions.length > 0 ? Math.max(...possibleActions.map(a => a.score)) : 0;
+    const preAdjustPositive = possibleActions.filter(a => a.score > 0).length;
+    debugLog('AI_TURN_TRACE', `[AI-05] Action: scored | topScore=${preAdjustTopScore}, positiveCount=${preAdjustPositive}, poolSize=${possibleActions.length}`);
+
     // ========================================
     // JAMMER ADJUSTMENT PASS
     // ========================================
@@ -465,6 +475,9 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
     // Boost attacks against Thruster Inhibitors and Purge ability usage
     applyMovementInhibitorAdjustments(possibleActions, evaluationContext);
 
+    const postAdjustTopScore = possibleActions.length > 0 ? Math.max(...possibleActions.map(a => a.score)) : 0;
+    debugLog('AI_TURN_TRACE', `[AI-06] Adjustments applied | preTop=${preAdjustTopScore}, postTop=${postAdjustTopScore}, delta=${postAdjustTopScore - preAdjustTopScore}`);
+
     // ========================================
     // DRONE DISADVANTAGE PACING PASS
     // ========================================
@@ -483,6 +496,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
     const topScore = possibleActions.length > 0 ? Math.max(...possibleActions.map(a => a.score)) : 0;
 
     if (topScore <= 0) {
+        debugLog('AI_TURN_TRACE', `[AI-07] Decision | type=pass, reason=noPositiveActions (topScore=${topScore})`);
         addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during action phase.` }, 'aiActionPass', possibleActions);
         // Capture decision for CSV export
         const turn = gameStateManager.getState().turn;
@@ -494,6 +508,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
     const positiveActionPool = actionPool.filter(action => action.score > 0);
 
     if (positiveActionPool.length === 0) {
+      debugLog('AI_TURN_TRACE', `[AI-07] Decision | type=pass, reason=noPositiveInPool`);
       addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: 'Passed (no positive actions in pool).' }, 'aiActionPass', possibleActions);
       return { type: 'pass' };
     }
@@ -502,6 +517,8 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
     const chosenAction = positiveActionPool[Math.floor(rng.random() * positiveActionPool.length)];
 
     chosenAction.isChosen = true;
+
+    debugLog('AI_TURN_TRACE', `[AI-07] Decision | type=${chosenAction.type}, instigator=${chosenAction.instigator}, target=${chosenAction.targetName}, score=${chosenAction.score?.toFixed(0)}`);
 
     // Log the action decision
     let actionType, source, target, outcome;
