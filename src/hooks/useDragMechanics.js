@@ -63,6 +63,7 @@ const useDragMechanics = ({
   const droneDragArrowRef = useRef(null);
   const actionCardDragArrowRef = useRef(null);
   const actionCardDragHandledRef = useRef(false);
+  const suppressNextClickRef = useRef(false);
 
   // --- Selection-driven effects ---
 
@@ -82,6 +83,25 @@ const useDragMechanics = ({
       setArrowState(prev => ({ ...prev, visible: false }));
     }
   }, [selectedDrone, turnPhase, abilityMode]);
+
+  // --- Capture-phase click absorber ---
+  // After any drag-end, the browser synthesizes a click on the game area.
+  // This capture-phase listener absorbs exactly one click so it never reaches
+  // React handlers (e.g. cancelCardSelection in App.jsx's root onClick).
+  useEffect(() => {
+    const gameArea = gameAreaRef.current;
+    if (!gameArea) return;
+
+    const handleCaptureClick = (e) => {
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false;
+        e.stopPropagation();
+      }
+    };
+
+    gameArea.addEventListener('click', handleCaptureClick, true);
+    return () => gameArea.removeEventListener('click', handleCaptureClick, true);
+  }, []);
 
   // --- Handlers ---
 
@@ -139,6 +159,7 @@ const useDragMechanics = ({
       debugLog('DRAG_DROP_DEPLOY', '⛔ handleCardDragEnd early return - no draggedCard');
       return;
     }
+    suppressNextClickRef.current = true;
 
     const droneToDeployFromDrag = draggedCard;
 
@@ -246,6 +267,7 @@ const useDragMechanics = ({
   const handleActionCardDragEnd = (target = null, targetType = null, targetOwner = null) => {
     if (!draggedActionCard) return;
     actionCardDragHandledRef.current = true;
+    suppressNextClickRef.current = true;
 
     const { card } = draggedActionCard;
     debugLog('DRAG_DROP_DEPLOY', '📥 Action card drag end', { cardName: card.name, target, targetType, targetOwner });
@@ -528,6 +550,7 @@ const useDragMechanics = ({
     });
 
     if (!draggedDrone) return;
+    suppressNextClickRef.current = true;
 
     const { drone: interceptorDrone, sourceLane, isInterceptionDrag } = draggedDrone;
 
