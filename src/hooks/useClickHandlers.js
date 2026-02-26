@@ -268,9 +268,9 @@ export default function useClickHandlers({
                   drones.some(d => d.id === token.id)
               )?.[0];
               if (effectChainState.subPhase === 'multi-target') {
-                  selectChainMultiTarget(token, droneLane);
+                  selectChainMultiTarget({ ...token, owner: tokenOwnerChain }, droneLane);
               } else {
-                  selectChainTarget(token, droneLane);
+                  selectChainTarget({ ...token, owner: tokenOwnerChain }, droneLane);
               }
               return;
           }

@@ -130,7 +130,7 @@ const useCardSelection = ({
       skipped: sel.skipped || false,
     }));
 
-    debugLog('CARD_PLAY_TRACE', '[1.5] Auto-commit dispatching', {
+    debugLog('CARD_PLAY_TRACE', '[1.5] Chain complete — showing confirmation modal', {
       card: card.name, selectionCount: chainSelections.length,
       targetId: chainSelections[0]?.target?.id,
       selections: chainSelections.map((s, i) => ({
@@ -138,26 +138,16 @@ const useCardSelection = ({
       })),
     });
 
-    // Wrap in async IIFE to await dispatch before cleaning up
-    (async () => {
-      try {
-        await processActionWithGuestRouting('cardPlay', {
-          card,
-          targetId: chainSelections[0]?.target?.id || null,
-          playerId: getLocalPlayerId(),
-          chainSelections,
-        });
-      } catch (err) {
-        debugLog('EFFECT_CHAIN_DEBUG', '[AUTO-COMMIT] Dispatch failed', {
-          error: err.message, stack: err.stack,
-        });
-      } finally {
-        cancelEffectChain();
-        setSelectedCard(null);
-        setValidCardTargets([]);
-      }
-    })();
-  }, [effectChainState, processActionWithGuestRouting, getLocalPlayerId, cancelEffectChain]);
+    // Show confirmation modal instead of auto-dispatching
+    setCardConfirmation({
+      card,
+      target: chainSelections[0]?.target || null,
+      chainSelections,
+    });
+    cancelEffectChain();
+    setSelectedCard(null);
+    setValidCardTargets([]);
+  }, [effectChainState, cancelEffectChain]);
 
   return {
     // State values

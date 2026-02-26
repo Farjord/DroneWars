@@ -442,11 +442,19 @@ const useResolvers = ({
 
   const handleConfirmCardPlay = async () => {
     if (!cardConfirmation) return;
-    const card = cardConfirmation.card;
-    const target = cardConfirmation.target;
+    const { card, target, chainSelections } = cardConfirmation;
     setCardConfirmation(null);
     setTimeout(async () => {
-      await resolveCardPlay(card, target, getLocalPlayerId());
+      if (chainSelections) {
+        await processActionWithGuestRouting('cardPlay', {
+          card,
+          targetId: target?.id || null,
+          playerId: getLocalPlayerId(),
+          chainSelections,
+        });
+      } else {
+        await resolveCardPlay(card, target, getLocalPlayerId());
+      }
     }, 400);
   };
 
