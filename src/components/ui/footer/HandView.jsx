@@ -152,11 +152,13 @@ function HandView({
         hasTargeting: !!card.effects?.[0]?.targeting
       });
 
-      if (!card.effects?.[0]?.targeting) {
-        debugLog('ADDITIONAL_COST_VALIDATION', '✅ Card is PLAYABLE (no targeting)', {
-          cardName: card.name
+      const targeting = card.effects?.[0]?.targeting;
+      if (!targeting || targeting.type === 'NONE') {
+        debugLog('ADDITIONAL_COST_VALIDATION', '✅ Card is PLAYABLE (no target selection needed)', {
+          cardName: card.name,
+          targetingType: targeting?.type ?? 'none'
         });
-        // No targeting = always playable
+        // No targeting or NONE targeting = always playable (no target selection needed)
         targetMap.set(card.instanceId, true);
       } else {
         // Normal card - check for valid effect targets
