@@ -137,7 +137,7 @@ const renderDronesOnBoard = ({
               cardTargetMatch,
               affectedDroneMatch,
               validCardTargetIds: validCardTargets.map(t => t.id).slice(0, 5),
-              affectedDroneIds: affectedDroneIds.slice(0, 5)
+              affectedDroneIds: affectedDroneIds?.slice(0, 5) ?? []
             });
           }
 
