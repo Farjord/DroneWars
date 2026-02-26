@@ -65,6 +65,7 @@ const useDragMechanics = ({
   const droneDragArrowRef = useRef(null);
   const actionCardDragArrowRef = useRef(null);
   const actionCardDragHandledRef = useRef(false);
+  const droneDragHandledRef = useRef(false);
   const suppressNextClickRef = useRef(false);
 
   // --- Selection-driven effects ---
@@ -479,6 +480,7 @@ const useDragMechanics = ({
       }
 
       debugLog('INTERCEPTION_MODE', '🎯 Interceptor drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+      droneDragHandledRef.current = false;
       setDraggedDrone({ drone, sourceLane, isInterceptionDrag: true });
 
       // Get start position from top-middle of the drone token
@@ -513,6 +515,7 @@ const useDragMechanics = ({
     }
 
     debugLog('DRAG_DROP_DEPLOY', '🎯 Drone drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+    droneDragHandledRef.current = false;
     setDraggedDrone({ drone, sourceLane });
 
     // Get start position from top-middle of the drone token
@@ -552,6 +555,7 @@ const useDragMechanics = ({
     });
 
     if (!draggedDrone) return;
+    droneDragHandledRef.current = true;
     suppressNextClickRef.current = true;
 
     // Route drone drag through effect chain destination selection.
@@ -812,12 +816,17 @@ const useDragMechanics = ({
   }, [draggedCard]);
 
   // 8.4e DRONE DRAG CANCEL ON MOUSE UP OUTSIDE TARGETS
-  // Cancel drone drag if mouseup happens outside of valid drop targets
+  // Cancel drone drag if mouseup happens outside of valid drop targets.
+  // The droneDragHandledRef guard prevents this fallback from cancelling a drag
+  // that was already handled by a drop zone — matching the action card pattern.
   useEffect(() => {
     const handleMouseUp = () => {
       if (draggedDrone) {
-        // Defer cancel to allow React's onMouseUp handlers to fire first
-        setTimeout(() => handleDroneDragEnd(null, null, false), 0);
+        setTimeout(() => {
+          if (!droneDragHandledRef.current) {
+            handleDroneDragEnd(null, null, false);
+          }
+        }, 0);
       }
     };
 
