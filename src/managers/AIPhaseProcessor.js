@@ -208,6 +208,11 @@ class AIPhaseProcessor {
       return;
     }
 
+    // Don't trigger while waiting for human interception decision
+    if (state.interceptionPending) {
+      return;
+    }
+
     debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
 
     // Clear any existing timer and schedule new turn
