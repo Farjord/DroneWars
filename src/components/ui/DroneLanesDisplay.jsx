@@ -89,8 +89,8 @@ const renderDronesOnBoard = ({
           // Shows "no entry" symbol on drones in targeting scope but NOT valid targets
           const activeCostTargeting = null;
 
-          const targetingAffinity = activeCostTargeting?.affinity || selectedCard?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
-          const targetingType = activeCostTargeting?.type || selectedCard?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
+          const targetingAffinity = activeCostTargeting?.affinity || selectedCard?.targeting?.affinity || selectedCard?.effects?.[0]?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
+          const targetingType = activeCostTargeting?.type || selectedCard?.targeting?.type || selectedCard?.effects?.[0]?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
 
           const isInvalidTarget = (() => {
             // For DRONE targeting: show invalid indicator on drones in scope but not valid targets
@@ -102,7 +102,7 @@ const renderDronesOnBoard = ({
             // when hovering over their lane (indicates they won't be affected by the card)
             // Skip for CREATE_TOKENS - these cards create new drones, they don't affect existing ones
             if (targetingType === 'LANE' && hoveredLane?.id === lane) {
-              const effectType = draggedActionCard?.card?.effect?.type || selectedCard?.effect?.type;
+              const effectType = draggedActionCard?.card?.effects?.[0]?.type || selectedCard?.effects?.[0]?.type;
               if (effectType === 'CREATE_TOKENS') {
                 return false;
               }

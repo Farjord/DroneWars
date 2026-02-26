@@ -208,7 +208,9 @@ const useDragMechanics = ({
     debugLog('DRAG_DROP_DEPLOY', '🎯 Action card drag start', { cardName: card.name, cardId: card.id });
 
     cancelAllActions();
-    setDraggedActionCard({ card });
+    // Normalize: promote effects[0].targeting to top-level for UI consumption
+    const normalizedCard = card.targeting ? card : { ...card, targeting: card.effects?.[0]?.targeting };
+    setDraggedActionCard({ card: normalizedCard });
     actionCardDragHandledRef.current = false;
 
     // Calculate effect targets for the dragged card
