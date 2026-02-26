@@ -25,8 +25,8 @@ vi.mock('../../../utils/debugLogger.js', () => ({
 
 // Mock DroneToken to avoid deep component rendering issues
 vi.mock('../DroneToken.jsx', () => ({
-  default: ({ drone, isActionTarget }) => (
-    <div data-testid={`drone-${drone.id}`} data-is-action-target={isActionTarget}>
+  default: ({ drone, isActionTarget, isInvalidTarget }) => (
+    <div data-testid={`drone-${drone.id}`} data-is-action-target={isActionTarget} data-is-invalid-target={isInvalidTarget}>
       {drone.name}
     </div>
   )
@@ -296,6 +296,46 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
       // Fast drone should no longer be highlighted
       fastDroneEl = container.querySelector('[data-testid="drone-fast-1"]');
       expect(fastDroneEl.getAttribute('data-is-action-target')).toBe('false');
+    });
+  });
+
+  describe('DRONE-targeting with null affectedDroneIds', () => {
+    it('should show isInvalidTarget on non-target drones even when affectedDroneIds is null', () => {
+      // Regression: affectedDroneIds=null (from movement/creation effects) was
+      // short-circuiting isInvalidTarget before the DRONE check could run
+      const props = {
+        ...getDefaultProps(),
+        selectedCard: {
+          ...mockDroneTargetingCard,
+          effects: [{ type: 'DAMAGE', value: 1, targeting: { type: 'DRONE', affinity: 'ENEMY' } }]
+        },
+        validCardTargets: [{ id: 'fast-1', owner: 'player2' }], // Only fast drone is valid
+        affectedDroneIds: null // null from calculateAffectedDroneIds for non-applicable effects
+      };
+
+      const { container } = render(<DroneLanesDisplay {...props} />);
+
+      // Slow drone is NOT a valid target — should be marked invalid
+      const slowDroneEl = container.querySelector('[data-testid="drone-slow-1"]');
+      expect(slowDroneEl.getAttribute('data-is-invalid-target')).toBe('true');
+
+      // Fast drone IS a valid target — should NOT be marked invalid
+      const fastDroneEl = container.querySelector('[data-testid="drone-fast-1"]');
+      expect(fastDroneEl.getAttribute('data-is-invalid-target')).toBe('false');
+    });
+
+    it('should not show isInvalidTarget for LANE-targeting cards when affectedDroneIds is null', () => {
+      // LANE targeting with null affectedDroneIds should show no markers
+      const props = {
+        ...getDefaultProps(),
+        selectedCard: mockLaneTargetingCard,
+        affectedDroneIds: null
+      };
+
+      const { container } = render(<DroneLanesDisplay {...props} />);
+
+      const slowDroneEl = container.querySelector('[data-testid="drone-slow-1"]');
+      expect(slowDroneEl.getAttribute('data-is-invalid-target')).toBe('false');
     });
   });
 

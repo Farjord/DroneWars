@@ -101,15 +101,16 @@ const renderDronesOnBoard = ({
             || selectedCard?.effects?.[0];
 
           const isInvalidTarget = (() => {
-            // null = effect doesn't target existing drones (movement, creation) — no markers
-            if (affectedDroneIds === null) return false;
-
             // DRONE targeting: invalid if in scope but not valid target
-            // Skip for compound effects (movement) — "excluded" marker is misleading
+            // Uses isActionTarget (not affectedDroneIds), so null-safe
             if (targetingType === 'DRONE' && !isActionTarget) {
               if (currentEffect && isCompoundEffect(currentEffect)) return false;
               return true;
             }
+
+            // null = effect doesn't target existing drones (movement, creation) — no markers
+            // Guards the LANE block below from calling .includes() on null
+            if (affectedDroneIds === null) return false;
 
             // LANE targeting: invalid if in scope, lane hovered, drone not affected
             if (targetingType === 'LANE' && hoveredLane?.id === lane) {
