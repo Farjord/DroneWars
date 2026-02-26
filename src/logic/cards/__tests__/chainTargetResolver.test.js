@@ -50,6 +50,7 @@ vi.mock('../EffectChainProcessor.js', () => {
 
 import {
   resolveTargetingRefs,
+  resolveDestinationRefs,
   isCompoundEffect,
   hasSkippedRef,
   computeChainTargets,
@@ -138,6 +139,33 @@ describe('resolveTargetingRefs', () => {
   });
 });
 
+// --- resolveDestinationRefs ---
+
+describe('resolveDestinationRefs', () => {
+  it('returns destination unchanged when no refs', () => {
+    const dest = { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' };
+    expect(resolveDestinationRefs(dest, [])).toEqual(dest);
+  });
+
+  it('returns null/undefined destination as-is', () => {
+    expect(resolveDestinationRefs(null, [])).toBeNull();
+    expect(resolveDestinationRefs(undefined, [])).toBeUndefined();
+  });
+
+  it('resolves destination location ref from selections', () => {
+    const dest = { type: 'LANE', location: { ref: 0, field: 'destinationLane' } };
+    const selections = [{ target: { id: 'd1' }, lane: 'lane1', destination: 'lane2' }];
+    const result = resolveDestinationRefs(dest, selections);
+    expect(result.location).toBe('lane2');
+  });
+
+  it('returns null for unresolvable destination ref', () => {
+    const dest = { type: 'LANE', location: { ref: 0, field: 'destinationLane' } };
+    const result = resolveDestinationRefs(dest, []);
+    expect(result.location).toBeNull();
+  });
+});
+
 // --- isCompoundEffect ---
 
 describe('isCompoundEffect', () => {
@@ -195,6 +223,24 @@ describe('hasSkippedRef', () => {
       },
     };
     expect(hasSkippedRef(effect, [{ target: null, skipped: true }])).toBe(true);
+  });
+
+  it('detects skipped ref in destination.location', () => {
+    const effect = {
+      type: 'SINGLE_MOVE',
+      targeting: { type: 'DRONE' },
+      destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+    };
+    expect(hasSkippedRef(effect, [{ target: null, skipped: true }])).toBe(true);
+  });
+
+  it('returns false for destination ref pointing to valid selection', () => {
+    const effect = {
+      type: 'SINGLE_MOVE',
+      targeting: { type: 'DRONE' },
+      destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+    };
+    expect(hasSkippedRef(effect, [{ target: { id: 'd1' }, lane: 'lane1', destination: 'lane2' }])).toBe(false);
   });
 });
 
@@ -381,6 +427,12 @@ describe('computeDestinationTargets', () => {
     const targets = computeDestinationTargets(dest, { lane: 'lane2' }, 'player1');
     expect(targets).toHaveLength(2);
     expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane3']);
+  });
+
+  it('returns single target for concrete lane ID', () => {
+    const dest = { type: 'LANE', location: 'lane2' };
+    const targets = computeDestinationTargets(dest, { lane: 'lane1' }, 'player1');
+    expect(targets).toEqual([{ id: 'lane2', owner: 'player1', type: 'lane' }]);
   });
 
   it('returns empty for null destination', () => {
