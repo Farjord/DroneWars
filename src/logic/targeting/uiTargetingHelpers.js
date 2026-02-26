@@ -151,6 +151,7 @@ export const calculateAffectedDroneIds = (
                     if (typeof filter === 'string') {
                         if (filter === 'MARKED') return drone.isMarked === true;
                         if (filter === 'EXHAUSTED') return drone.isExhausted === true;
+                        if (filter === 'NOT_EXHAUSTED') return drone.isExhausted !== true;
                         return false;
                     }
                     return false;

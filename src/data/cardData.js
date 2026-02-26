@@ -1144,7 +1144,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
     effects: [
-      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'SAME_LANE', maxTargets: 3 }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'SAME_LANE', maxTargets: 3, restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
     ],
   },
   {
@@ -1158,7 +1158,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
     effects: [
-      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
   },
   {
@@ -1172,7 +1172,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effects: [
-      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
     ],
   },
   {
@@ -1243,7 +1243,7 @@ const fullCardCollection = [
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
     effects: [
       {
-        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
         conditionals: [
           { id: 'fast-goagain', timing: 'POST', condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 }, grantedEffect: { type: 'GO_AGAIN' } },
         ],
@@ -1262,7 +1262,7 @@ const fullCardCollection = [
     description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
     effects: [
       {
-        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
         conditionals: [
           { id: 'contested-draw', timing: 'POST', condition: { type: 'OPPONENT_HAS_MORE_IN_LANE', lane: 'DESTINATION', count: 'TOTAL' }, grantedEffect: { type: 'DRAW', value: 1 } },
         ],
@@ -1281,7 +1281,7 @@ const fullCardCollection = [
     description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +1 attack.',
     effects: [
       {
-        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
+        type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
         conditionals: [
           { id: 'attack-buff', timing: 'POST', condition: { type: 'TARGET_STAT_LTE', stat: 'attack', value: 3 }, grantedEffect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1 } } },
         ],
@@ -1505,7 +1505,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/TacticalRepositioning.png',
     description: 'Move target class 2 or less ready enemy drone  to an adjacent lane.',
     effects: [
-      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 2 }] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 2 }, 'NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
   },
   {
@@ -1697,8 +1697,8 @@ const fullCardCollection = [
     description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
     effects: [
-      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
-      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' }, restrictions: [{ type: 'STAT_COMPARISON', stat: 'attack', comparison: 'GT', reference: { ref: 0, field: 'target' }, referenceStat: 'attack' }] }, destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } }, properties: ['DO_NOT_EXHAUST'] },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
+      { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' }, restrictions: [{ type: 'STAT_COMPARISON', stat: 'attack', comparison: 'GT', reference: { ref: 0, field: 'target' }, referenceStat: 'attack' }, 'NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } }, properties: ['DO_NOT_EXHAUST'] },
     ],
   },
   {

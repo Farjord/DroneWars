@@ -176,6 +176,11 @@ class BaseTargetingProcessor {
       return !drone.isMarked;
     }
 
+    // NOT_EXHAUSTED - Drone must not be exhausted
+    if (criterion === 'NOT_EXHAUSTED') {
+      return !drone.isExhausted;
+    }
+
     return true;
   }
 

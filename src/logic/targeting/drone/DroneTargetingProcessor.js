@@ -190,15 +190,6 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           const effectType = context?.definition?.effect?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
 
-          // Check if EXHAUSTED is explicitly allowed as a restriction
-          const allowsExhausted = restrictions && Array.isArray(restrictions) &&
-            restrictions.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
-
-          // For movement effects, skip exhausted drones unless explicitly allowed
-          if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
-            return; // Skip this drone
-          }
-
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
           if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {
             return;
@@ -220,15 +211,6 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           // Check if this is a movement effect
           const effectType = context?.definition?.effect?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
-
-          // Check if EXHAUSTED is explicitly allowed as a restriction
-          const allowsExhausted = restrictions && Array.isArray(restrictions) &&
-            restrictions.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
-
-          // For movement effects, skip exhausted drones unless explicitly allowed
-          if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
-            return; // Skip this drone
-          }
 
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
           if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {
