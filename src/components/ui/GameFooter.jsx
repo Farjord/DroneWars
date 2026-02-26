@@ -30,7 +30,6 @@ function GameFooter({
   mandatoryAction,
   excessCards,
   handleFooterButtonClick,
-  handleCardClick,
   cancelCardSelection,
   downloadLogAsCSV,
   getLocalPlayerId,
@@ -134,7 +133,6 @@ function GameFooter({
                 turnPhase={turnPhase}
                 mandatoryAction={mandatoryAction}
                 excessCards={excessCards}
-                handleCardClick={handleCardClick}
                 getLocalPlayerId={getLocalPlayerId}
                 isMyTurn={isMyTurn}
                 hoveredCardId={hoveredCardId}

@@ -95,8 +95,8 @@ function ActionPhaseButtons({
         </>
       )}
 
-      {/* Effect Chain Multi-Target Controls */}
-      {effectChainState?.subPhase === 'multi-target' && (
+      {/* Effect Chain Controls — Cancel available for all subPhases */}
+      {effectChainState && !effectChainState.complete && (
         <>
           <button
             onClick={handleCancelEffectChain}
@@ -105,16 +105,18 @@ function ActionPhaseButtons({
             Cancel
           </button>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleConfirmChainMultiSelect();
-            }}
-            disabled={!effectChainState.pendingMultiTargets?.length}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
-          >
-            Confirm Drones
-          </button>
+          {effectChainState.subPhase === 'multi-target' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleConfirmChainMultiSelect();
+              }}
+              disabled={!effectChainState.pendingMultiTargets?.length}
+              className="dw-btn dw-btn-confirm dw-btn--sm"
+            >
+              Confirm Drones
+            </button>
+          )}
         </>
       )}
 

@@ -253,7 +253,7 @@ During selection, **no triggers fire and no game state changes**. The real engin
 
 ### Drag vs Click
 
-**Rule: Drag when there's a physical entity to drag AND a spatial destination. Click/prompt otherwise.**
+**Rule: All card plays (including Drones) use drag-only during action phase. Drag when there's a physical entity to drag AND a spatial destination. Click/prompt otherwise for effect chain steps.**
 
 | Scenario | Interaction | Why |
 |-|-|-|
@@ -266,8 +266,9 @@ During selection, **no triggers fire and no game state changes**. The real engin
 
 During effect 1+ selection, the header bar displays:
 - **Prompt text** from the effect's `prompt` field
-- **Cancel button** — safe because no state has changed
+- **Cancel button** — visible for ALL subPhases (target, destination, multi-target). Safe because no state has changed
 - **Effect progress** indicator for multi-step chains
+- **Confirm Drones** button — only for `multi-target` subPhase
 
 ### Valid Target Highlighting
 
@@ -298,7 +299,7 @@ effectChainState = {
 2. For each effect: user selects target via `selectChainTarget(target, lane)`
 3. If compound (SINGLE_MOVE): `selectChainDestination(lane)` for destination
 4. If multi-select: `selectChainMultiTarget` + `confirmChainMultiSelect`
-5. After all effects: `complete = true` triggers auto-commit via `useEffect`
+5. After all effects: `complete = true` → shows confirmation modal
 6. `cancelEffectChain()` — discard everything, return to hand
 
 ---

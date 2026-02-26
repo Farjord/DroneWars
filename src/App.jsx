@@ -840,7 +840,6 @@ const App = ({ phaseAnimationQueue }) => {
     handleTargetClick,
     handleTokenClick,
     handleLaneClick,
-    handleCardClick,
   } = useClickHandlers({
     // Game state
     turnPhase, currentPlayer, gameState, localPlayerState, opponentPlayerState,
@@ -1093,7 +1092,7 @@ const App = ({ phaseAnimationQueue }) => {
         }
         excessCards={excessCards}
         handleFooterButtonClick={handleFooterButtonClick}
-        handleCardClick={handleCardClick}
+
         cancelCardSelection={cancelCardSelection}
         downloadLogAsCSV={downloadLogAsCSV}
         getLocalPlayerId={getLocalPlayerId}

@@ -365,93 +365,6 @@ export default function useClickHandlers({
 
   };
 
-  // --- handleCardClick ---
-
-  const handleCardClick = async (card) => {
-    const localPlayerId = getLocalPlayerId();
-    const myTurn = isMyTurn();
-    const playerPassed = passInfo[`${localPlayerId}Passed`];
-
-    debugLog('CARD_PLAY', `🎯 handleCardClick called: ${card.name}`, {
-      cardId: card.id,
-      cardCost: card.cost,
-      gameMode: gameState.gameMode,
-      localPlayerId,
-      turnPhase,
-      isMyTurn: myTurn,
-      playerPassed,
-      playerEnergy: localPlayerState.energy,
-      hasEnoughEnergy: localPlayerState.energy >= card.cost,
-    });
-
-    if (turnPhase !== 'action') {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - wrong phase: ${turnPhase}`, { card: card.name });
-      return;
-    }
-
-    // Action cards (non-Drone) use drag-only during action phase
-    if (card.type !== 'Drone') {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - action cards use drag-only`, { card: card.name });
-      return;
-    }
-
-    if (isActionInProgress()) {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - action already in progress`, { card: card.name });
-      return;
-    }
-
-    if (!myTurn) {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - not player's turn`, {
-        card: card.name,
-        localPlayerId,
-        currentPlayer: gameState.currentPlayer
-      });
-      return;
-    }
-
-    if (playerPassed) {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - player has passed`, { card: card.name });
-      return;
-    }
-
-    if (localPlayerState.energy < card.cost) {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - not enough energy`, {
-        card: card.name,
-        cardCost: card.cost,
-        playerEnergy: localPlayerState.energy
-      });
-      return;
-    }
-
-    // Check momentum cost for cards that require it (e.g., lane-control cards)
-    if (card.momentumCost && (localPlayerState.momentum || 0) < card.momentumCost) {
-      debugLog('CARD_PLAY', `🚫 Card click rejected - not enough momentum`, {
-        card: card.name,
-        momentumCost: card.momentumCost,
-        playerMomentum: localPlayerState.momentum || 0
-      });
-      return;
-    }
-
-    // Deselect if clicking the already-selected card
-    if (selectedCard?.instanceId === card.instanceId) {
-      debugLog('CARD_PLAY', `✅ Card deselected: ${card.name}`);
-      cancelCardSelection('card-click-deselect');
-    } else {
-        // All other cards: click selects (shows valid targets), DnD plays
-        // Covers: DRONE, LANE, SHIP_SECTION, NONE (upgrades, System Sabotage, Purge Protocol), SINGLE_MOVE
-        if (!card.effects[0]?.targeting) {
-            debugLog('CARD_PLAY', `✅ Non-targeted card - showing confirmation: ${card.name}`);
-            cancelAllActions();
-            setCardConfirmation({ card, target: null });
-        } else {
-            debugLog('CARD_PLAY', `✅ Card selected - drag to play: ${card.name}`, { targeting: card.effects[0].targeting });
-            cancelAllActions();
-            setSelectedCard(card);
-        }
-    }
-  };
-
   return {
     handleToggleDroneSelection,
     handleAbilityIconClick,
@@ -459,6 +372,5 @@ export default function useClickHandlers({
     handleTargetClick,
     handleTokenClick,
     handleLaneClick,
-    handleCardClick,
   };
 }

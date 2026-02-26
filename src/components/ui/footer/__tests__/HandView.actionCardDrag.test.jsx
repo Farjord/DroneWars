@@ -87,7 +87,6 @@ describe('HandView action card drag-and-drop', () => {
     turnPhase: 'action',
     mandatoryAction: null,
     excessCards: 0,
-    handleCardClick: vi.fn(),
     getLocalPlayerId: () => 'player1',
     isMyTurn: () => true,
     hoveredCardId: null,
@@ -344,24 +343,6 @@ describe('HandView action card drag-and-drop', () => {
       const card2 = screen.getByTestId('action-card-CARD002');
       expect(card1.dataset.dragging).toBe('false');
       expect(card2.dataset.dragging).toBe('false');
-    });
-  });
-
-  describe('click functionality', () => {
-    it('should NOT call handleCardClick for action cards during action phase (drag-only)', () => {
-      const mockHandleCardClick = vi.fn();
-      render(
-        <HandView
-          {...defaultProps}
-          handleCardClick={mockHandleCardClick}
-        />
-      );
-
-      const card = screen.getByTestId('action-card-CARD001');
-      fireEvent.click(card);
-
-      // Action cards use drag-only during action phase, so handleCardClick should NOT be called
-      expect(mockHandleCardClick).not.toHaveBeenCalled();
     });
   });
 

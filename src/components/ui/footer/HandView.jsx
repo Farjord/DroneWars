@@ -34,7 +34,6 @@ function HandView({
   turnPhase,
   mandatoryAction,
   excessCards,
-  handleCardClick,
   getLocalPlayerId,
   isMyTurn,
   hoveredCardId,
@@ -432,9 +431,7 @@ function HandView({
                               onCancel: () => setConfirmationModal(null),
                               text: `Are you sure you want to discard ${c.name}?`
                             })
-                          : card.type === 'Drone'
-                            ? handleCardClick  // Only Drone cards are click-playable
-                            : null             // Action cards use drag-only
+                          : null  // All cards use drag-only during action phase
                     }
                   />
                 </div>
