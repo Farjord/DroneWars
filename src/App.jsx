@@ -900,7 +900,9 @@ const App = ({ phaseAnimationQueue }) => {
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => {
       cancelAbilityMode();
-      cancelCardSelection('game-area-click');
+      if (!effectChainState) {
+        cancelCardSelection('game-area-click');
+      }
     }}>
      {currentBackground.type === 'animated' ? (
        <SpaceBackground />
