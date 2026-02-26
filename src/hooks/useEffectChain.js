@@ -53,6 +53,15 @@ function advanceToNextSelection(state, context) {
     }
 
     const validTargets = computeChainTargets(effect, idx, sels, positionTracker, context);
+
+    debugLog('CARD_PLAY_TRACE', `[1.2] advanceToNextSelection evaluating effect[${idx}]`, {
+      effectType: effect.type,
+      targetingType: effect.targeting?.type,
+      hasSkippedRef: hasSkippedRef(effect, sels),
+      validTargetCount: validTargets.length,
+      willSkip: validTargets.length === 0,
+    });
+
     if (validTargets.length === 0) {
       sels.push({ target: null, lane: null, skipped: true });
       idx++;
@@ -174,7 +183,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
       setChainState(advanceToNextSelection({
         ...base,
         currentIndex: 1,
-        selections: [{ target: initialTarget, lane: initialLane }],
+        selections: [{ target: { ...initialTarget, lane: initialLane }, lane: initialLane }],
       }, context));
       return;
     }
@@ -213,7 +222,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     }
 
     const context = makeContext();
-    const newSelections = [...chainState.selections, { target, lane }];
+    const newSelections = [...chainState.selections, { target: { ...target, lane }, lane }];
     setChainState(advanceToNextSelection({
       ...chainState,
       currentIndex: chainState.currentIndex + 1,
@@ -239,7 +248,9 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
 
     const context = makeContext();
     const selection = {
-      target: pendingTarget,
+      target: Array.isArray(pendingTarget)
+        ? pendingTarget.map(d => ({ ...d, lane: chainState.pendingLane }))
+        : { ...pendingTarget, lane: chainState.pendingLane },
       lane: chainState.pendingLane,
       destination: destinationLane,
     };
@@ -250,10 +261,15 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
       selections: newSelections,
     }, context);
 
-    debugLog('EFFECT_CHAIN_DEBUG', '[DEST] After advanceToNextSelection', {
-      complete: nextState.complete, subPhase: nextState.subPhase,
-      currentIndex: nextState.currentIndex, validTargetCount: nextState.validTargets?.length,
+    debugLog('CARD_PLAY_TRACE', '[1.1] Chain destination selected', {
+      card: chainState.card.name,
+      destinationLane,
+      nextComplete: nextState.complete,
+      nextSubPhase: nextState.subPhase,
+      nextIndex: nextState.currentIndex,
+      validTargetCount: nextState.validTargets?.length,
       selectionCount: nextState.selections?.length,
+      skippedEffects: nextState.selections?.filter(s => s.skipped).length,
     });
 
     setChainState(nextState);

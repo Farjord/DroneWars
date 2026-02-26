@@ -113,6 +113,12 @@ const useCardSelection = ({
 
   // Effect chain auto-commit — when all selections are gathered, dispatch the card play
   useEffect(() => {
+    debugLog('CARD_PLAY_TRACE', '[1.4] Auto-commit useEffect fired', {
+      hasChainState: !!effectChainState,
+      complete: effectChainState?.complete,
+      card: effectChainState?.card?.name,
+    });
+
     if (!effectChainState?.complete) return;
 
     const { card, selections } = effectChainState;
@@ -124,7 +130,7 @@ const useCardSelection = ({
       skipped: sel.skipped || false,
     }));
 
-    debugLog('EFFECT_CHAIN_DEBUG', '[AUTO-COMMIT] Dispatching chain cardPlay', {
+    debugLog('CARD_PLAY_TRACE', '[1.5] Auto-commit dispatching', {
       card: card.name, selectionCount: chainSelections.length,
       targetId: chainSelections[0]?.target?.id,
       selections: chainSelections.map((s, i) => ({

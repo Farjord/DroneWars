@@ -80,23 +80,33 @@ function getTargetLanes(location) {
   return allLanes;
 }
 
-function passesRestriction(drone, restriction, getEffectiveStats) {
+function passesRestriction(drone, restriction, getEffectiveStats, lane) {
   if (restriction.type !== 'STAT_COMPARISON') return true;
 
   const { stat, comparison, reference, referenceStat } = restriction;
   if (!reference) return true;
 
-  const droneStat = getEffectiveStats ? getEffectiveStats(drone)[stat] : drone[stat];
-  const refStat = getEffectiveStats ? getEffectiveStats(reference)[referenceStat] : reference[referenceStat];
+  const droneStat = getEffectiveStats ? getEffectiveStats(drone, lane)[stat] : drone[stat];
+  const refStat = getEffectiveStats ? getEffectiveStats(reference, reference.lane)[referenceStat] : reference[referenceStat];
   if (droneStat == null || refStat == null) return true;
 
+  let result;
   switch (comparison) {
-    case 'LT': return droneStat < refStat;
-    case 'LTE': return droneStat <= refStat;
-    case 'GT': return droneStat > refStat;
-    case 'GTE': return droneStat >= refStat;
-    default: return true;
+    case 'LT': result = droneStat < refStat; break;
+    case 'LTE': result = droneStat <= refStat; break;
+    case 'GT': result = droneStat > refStat; break;
+    case 'GTE': result = droneStat >= refStat; break;
+    default: result = true;
   }
+
+  debugLog('CARD_PLAY_TRACE', '[1.3] Restriction check', {
+    droneName: drone.name, stat, droneStat,
+    refName: reference?.name, referenceStat, refStat,
+    comparison, result,
+    lane, refLane: reference?.lane,
+  });
+
+  return result;
 }
 
 // --- Per-Type Target Computation ---
@@ -117,7 +127,7 @@ function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTr
       if (!targetLanes.includes(virtualLane)) continue;
 
       if (targeting.restrictions) {
-        if (!targeting.restrictions.every(r => passesRestriction(drone, r, getEffectiveStats))) {
+        if (!targeting.restrictions.every(r => passesRestriction(drone, r, getEffectiveStats, virtualLane))) {
           restrictionFailures++;
           continue;
         }
