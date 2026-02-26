@@ -64,6 +64,7 @@ const useCardSelection = ({
   // Convenience function for cancelAllActions in App.jsx
   const cancelCardState = useCallback(() => {
     setSelectedCard(null);
+    setValidCardTargets([]);
     setAffectedDroneIds([]);
   }, []);
 

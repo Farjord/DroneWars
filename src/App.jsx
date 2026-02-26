@@ -1009,7 +1009,7 @@ const App = ({ phaseAnimationQueue }) => {
         // Effect chain props
         effectChainState={effectChainState}
         handleConfirmChainMultiSelect={confirmChainMultiSelect}
-        handleCancelEffectChain={cancelEffectChain}
+        handleCancelEffectChain={() => cancelCardSelection('header-cancel-effect-chain')}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
         isExtractionMode={tacticalMapStateManager.isRunActive()}
@@ -1199,7 +1199,10 @@ const App = ({ phaseAnimationQueue }) => {
         onConfirmAbandonRun={handleConfirmAbandonRun}
         onCloseViewShipSection={() => setViewShipSectionModal(null)}
         onCloseMandatoryActionModal={() => setShowMandatoryActionModal(false)}
-        onCancelCardConfirmation={() => setCardConfirmation(null)}
+        onCancelCardConfirmation={() => {
+          setCardConfirmation(null);
+          cancelCardSelection('modal-cancel-card-confirmation');
+        }}
         onConfirmCardPlay={handleConfirmCardPlay}
         onCancelDroneAbility={() => setAbilityConfirmation(null)}
         onConfirmDroneAbility={handleConfirmDroneAbility}
