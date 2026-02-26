@@ -62,6 +62,7 @@ const useDragMechanics = ({
   const cardDragArrowRef = useRef(null);
   const droneDragArrowRef = useRef(null);
   const actionCardDragArrowRef = useRef(null);
+  const actionCardDragHandledRef = useRef(false);
 
   // --- Selection-driven effects ---
 
@@ -184,6 +185,7 @@ const useDragMechanics = ({
 
     cancelAllActions();
     setDraggedActionCard({ card });
+    actionCardDragHandledRef.current = false;
 
     // Calculate effect targets for the dragged card
     if (card.effects[0]?.targeting) {
@@ -243,6 +245,7 @@ const useDragMechanics = ({
    */
   const handleActionCardDragEnd = (target = null, targetType = null, targetOwner = null) => {
     if (!draggedActionCard) return;
+    actionCardDragHandledRef.current = true;
 
     const { card } = draggedActionCard;
     debugLog('DRAG_DROP_DEPLOY', '📥 Action card drag end', { cardName: card.name, target, targetType, targetOwner });
@@ -791,11 +794,15 @@ const useDragMechanics = ({
     if (!draggedActionCard) return;
 
     const handleGlobalMouseUp = () => {
-      // Always trigger handleActionCardDragEnd on mouseUp
-      // - Drop zones call it with valid target first (their onMouseUp fires before document's)
-      // - If no drop zone handled it (draggedActionCard still set), this cancels the drag
-      // - setTimeout ensures drop zone handlers fire first
-      setTimeout(() => handleActionCardDragEnd(null, null, null), 0);
+      // setTimeout ensures drop zone handlers fire first.
+      // The ref guard prevents this fallback from cancelling a drag that was
+      // already handled by a drop zone — the closure-captured draggedActionCard
+      // is stale (React hasn't re-rendered yet), but the ref is always current.
+      setTimeout(() => {
+        if (!actionCardDragHandledRef.current) {
+          handleActionCardDragEnd(null, null, null);
+        }
+      }, 0);
     };
 
     document.addEventListener('mouseup', handleGlobalMouseUp);
