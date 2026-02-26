@@ -37,6 +37,8 @@ const useDragMechanics = ({
   interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
   // From useCardSelection — effect chain
   startEffectChain,
+  effectChainState,
+  selectChainDestination,
   // Hoisted to App.jsx to break circular dependency with useCardSelection/useInterception
   draggedDrone, setDraggedDrone,
   // From App.jsx
@@ -551,6 +553,22 @@ const useDragMechanics = ({
 
     if (!draggedDrone) return;
     suppressNextClickRef.current = true;
+
+    // Route drone drag through effect chain destination selection.
+    // When the chain is waiting for a destination lane and the user drags
+    // the drone to a lane, route through selectChainDestination instead
+    // of the regular move path.
+    if (effectChainState?.subPhase === 'destination' && !draggedDrone.isInterceptionDrag) {
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+      if (targetLane) {
+        const isValidDestination = effectChainState.validTargets?.some(t => t.id === targetLane);
+        if (isValidDestination) {
+          selectChainDestination(targetLane);
+        }
+      }
+      return;
+    }
 
     const { drone: interceptorDrone, sourceLane, isInterceptionDrag } = draggedDrone;
 

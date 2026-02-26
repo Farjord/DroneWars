@@ -652,6 +652,8 @@ const App = ({ phaseAnimationQueue }) => {
     selectedCard,
     // From useCardSelection — effect chain
     startEffectChain,
+    effectChainState,
+    selectChainDestination,
     // From useInterception
     interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
     // Hoisted state
