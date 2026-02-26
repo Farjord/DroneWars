@@ -162,16 +162,15 @@ export const calculateAffectedDroneIds = (
         return affectedIds;
     }
 
-    // Only process LANE-targeting cards
+    // Only process LANE-targeting cards — null means "effect doesn't target existing drones"
     if (!card || targeting?.type !== 'LANE') {
-        return [];
+        return null;
     }
 
-    // Movement effects target lanes as DESTINATIONS - drones in destination are not affected
-    // This is a defensive check to future-proof against LANE-targeting movement cards
+    // Movement/creation effects target lanes as DESTINATIONS - existing drones are not affected
     const effectType = card.effects[0]?.type;
     if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE' || effectType === 'CREATE_TOKENS') {
-        return [];
+        return null;
     }
 
     const affectedIds = [];

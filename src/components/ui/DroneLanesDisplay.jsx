@@ -9,6 +9,10 @@ import DroneToken from './DroneToken.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
+/** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
+const isCompoundEffect = (effect) =>
+  (effect.type === 'SINGLE_MOVE' || effect.type === 'MULTI_MOVE') && !!effect.destination;
+
 /**
  * RENDER DRONES ON BOARD
  * Renders all drones within a specific lane with proper positioning.
@@ -82,7 +86,7 @@ const renderDronesOnBoard = ({
           const droneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           const abilityTargetMatch = validAbilityTargets.some(t => t.id === drone.id && t.owner === droneOwner);
           const cardTargetMatch = validCardTargets.some(t => t.id === drone.id && t.owner === droneOwner);
-          const affectedDroneMatch = affectedDroneIds.includes(drone.id);
+          const affectedDroneMatch = affectedDroneIds?.includes(drone.id) ?? false;
           const isActionTarget = abilityTargetMatch || cardTargetMatch || affectedDroneMatch;
 
           // Calculate invalid target indicator state
@@ -92,27 +96,28 @@ const renderDronesOnBoard = ({
           const targetingAffinity = activeCostTargeting?.affinity || selectedCard?.targeting?.affinity || selectedCard?.effects?.[0]?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
           const targetingType = activeCostTargeting?.type || selectedCard?.targeting?.type || selectedCard?.effects?.[0]?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
 
+          const currentEffect = effectChainState?.effects?.[effectChainState.currentIndex]
+            || draggedActionCard?.card?.effects?.[0]
+            || selectedCard?.effects?.[0];
+
           const isInvalidTarget = (() => {
-            // For DRONE targeting: show invalid indicator on drones in scope but not valid targets
+            // null = effect doesn't target existing drones (movement, creation) — no markers
+            if (affectedDroneIds === null) return false;
+
+            // DRONE targeting: invalid if in scope but not valid target
+            // Skip for compound effects (movement) — "excluded" marker is misleading
             if (targetingType === 'DRONE' && !isActionTarget) {
+              if (currentEffect && isCompoundEffect(currentEffect)) return false;
               return true;
             }
 
-            // For LANE targeting: show invalid indicator on drones NOT in affectedDroneIds
-            // when hovering over their lane (indicates they won't be affected by the card)
-            // Skip for CREATE_TOKENS - these cards create new drones, they don't affect existing ones
+            // LANE targeting: invalid if in scope, lane hovered, drone not affected
             if (targetingType === 'LANE' && hoveredLane?.id === lane) {
-              const effectType = draggedActionCard?.card?.effects?.[0]?.type || selectedCard?.effects?.[0]?.type;
-              if (effectType === 'CREATE_TOKENS') {
-                return false;
-              }
-              const isAffected = affectedDroneIds.includes(drone.id);
-              if (!isAffected) {
-                // Check if drone is in scope (based on affinity)
+              if (!affectedDroneIds.includes(drone.id)) {
                 switch (targetingAffinity) {
-                  case 'ENEMY': return !isPlayer;      // Show on enemy drones only
-                  case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
-                  case 'ANY': return true;             // Show on all drones
+                  case 'ENEMY': return !isPlayer;
+                  case 'FRIENDLY': return isPlayer;
+                  case 'ANY': return true;
                   default: return false;
                 }
               }

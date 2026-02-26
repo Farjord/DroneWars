@@ -34,8 +34,8 @@ describe('calculateAffectedDroneIds', () => {
     mockGetEffectiveStats.mockClear();
   });
 
-  describe('non-LANE targeting cards (returns empty)', () => {
-    it('should return empty array for non-LANE targeting cards', () => {
+  describe('non-LANE targeting cards (returns null)', () => {
+    it('should return null for non-LANE targeting cards', () => {
       const droneTargetingCard = {
         effects: [{ type: 'DAMAGE', value: 2, targeting: { type: 'DRONE', affinity: 'ENEMY' } }]
       };
@@ -48,10 +48,10 @@ describe('calculateAffectedDroneIds', () => {
         mockGetEffectiveStats,
         {}
       );
-      expect(result).toEqual([]);
+      expect(result).toBeNull();
     });
 
-    it('should return empty array for null card', () => {
+    it('should return null for null card', () => {
       const result = calculateAffectedDroneIds(
         null,
         [{ id: 'lane1', owner: 'player2' }],
@@ -61,10 +61,10 @@ describe('calculateAffectedDroneIds', () => {
         mockGetEffectiveStats,
         {}
       );
-      expect(result).toEqual([]);
+      expect(result).toBeNull();
     });
 
-    it('should return empty array for undefined card', () => {
+    it('should return null for undefined card', () => {
       const result = calculateAffectedDroneIds(
         undefined,
         [{ id: 'lane1', owner: 'player2' }],
@@ -74,7 +74,23 @@ describe('calculateAffectedDroneIds', () => {
         mockGetEffectiveStats,
         {}
       );
-      expect(result).toEqual([]);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for CREATE_TOKENS effect', () => {
+      const createTokensCard = {
+        effects: [{ type: 'CREATE_TOKENS', targeting: { type: 'LANE', affinity: 'FRIENDLY' } }]
+      };
+      const result = calculateAffectedDroneIds(
+        createTokensCard,
+        [{ id: 'lane1', owner: 'player1' }],
+        createPlayerState({ lane1: [fastDrone1] }),
+        createPlayerState(),
+        'player1',
+        mockGetEffectiveStats,
+        {}
+      );
+      expect(result).toBeNull();
     });
   });
 
