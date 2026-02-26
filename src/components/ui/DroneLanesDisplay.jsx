@@ -145,7 +145,13 @@ const renderDronesOnBoard = ({
               onClick={handleTokenClick}
               onAbilityClick={handleAbilityIconClick}
               isSelected={selectedDrone && selectedDrone.id === drone.id}
-              isSelectedForMove={effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id)}
+              isSelectedForMove={
+                (effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id)) ||
+                (effectChainState?.subPhase === 'destination' && (
+                  effectChainState.pendingTarget?.id === drone.id ||
+                  (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
+                ))
+              }
               isHit={recentlyHitDrones.includes(drone.id)}
               isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
               isPotentialGuardian={potentialGuardians.includes(drone.id)}
