@@ -616,6 +616,7 @@ const App = ({ phaseAnimationQueue }) => {
     selectedDrone,
     draggedDrone,
     abilityMode,
+    effectChainState,
     getLocalPlayerId,
     getPlacedSectionsForEngine,
     resolveAttack,

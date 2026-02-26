@@ -14,6 +14,7 @@ import { calculatePotentialInterceptors } from '../logic/combat/InterceptionProc
  * @param {Object|null} deps.selectedDrone - Currently selected drone (click-selected)
  * @param {Object|null} deps.draggedDrone - Currently dragged drone
  * @param {Object|null} deps.abilityMode - Active ability targeting mode
+ * @param {Object|null} deps.effectChainState - Active card effect chain state
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
  * @param {Function} deps.getPlacedSectionsForEngine - Returns placed sections for engine
  * @param {Function} deps.resolveAttack - Resolves an attack with given details
@@ -25,6 +26,7 @@ const useInterception = ({
   selectedDrone,
   draggedDrone,
   abilityMode,
+  effectChainState,
   getLocalPlayerId,
   getPlacedSectionsForEngine,
   resolveAttack,
@@ -58,6 +60,12 @@ const useInterception = ({
       return;
     }
 
+    // Skip interception calculations during card effect chains (card moves can't be intercepted)
+    if (effectChainState) {
+      setPotentialInterceptors([]);
+      return;
+    }
+
     if (turnPhase === 'action') {
       // Use draggedDrone if actively dragging, otherwise use selectedDrone
       const activeDrone = draggedDrone?.drone || selectedDrone;
@@ -71,7 +79,7 @@ const useInterception = ({
     } else {
       setPotentialInterceptors([]);
     }
-  }, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine, interceptionModeActive, playerInterceptionChoice, abilityMode]);
+  }, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine, interceptionModeActive, playerInterceptionChoice, abilityMode, effectChainState]);
 
   // Monitor unified interceptionPending state for both AI and human defenders
   useEffect(() => {
