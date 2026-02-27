@@ -1,8 +1,8 @@
 // ========================================
 // ROUND MANAGER - ON_ROUND_START TRIGGER TESTS
 // ========================================
-// TDD: Tests written first for processRoundStartTriggers
-// Tests the ON_ROUND_START ability trigger processing
+// Tests processRoundStartTriggers delegation to TriggerProcessor
+// TriggerProcessor's own behavior is tested in TriggerProcessor.test.js
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -20,54 +20,52 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
+const mockFireTrigger = vi.fn().mockReturnValue({
+  triggered: false,
+  newPlayerStates: null,
+  animationEvents: [],
+  statModsApplied: false,
+  goAgain: false
+});
+
+vi.mock('../../triggers/TriggerProcessor.js', () => {
+  return {
+    default: class MockTriggerProcessor {
+      constructor() {
+        this.fireTrigger = mockFireTrigger;
+      }
+    }
+  };
+});
+
+vi.mock('../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_ROUND_START: 'ON_ROUND_START' }
+}));
+
 import RoundManager from '../RoundManager.js';
 
 describe('RoundManager - processRoundStartTriggers', () => {
-  let mockEffectRouter;
-
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock effect router
-    mockEffectRouter = {
-      routeEffect: vi.fn().mockReturnValue({
-        newPlayerStates: null,
-        animationEvents: []
-      })
-    };
+    mockFireTrigger.mockReturnValue({
+      triggered: false,
+      newPlayerStates: null,
+      animationEvents: [],
+      statModsApplied: false,
+      goAgain: false
+    });
   });
 
-  // Helper to create a drone with ON_ROUND_START ability
-  const createRoundStartDrone = (overrides = {}) => ({
-    id: 'war_machine_1',
-    name: 'War Machine',
+  // Helper to create a drone
+  const createDrone = (overrides = {}) => ({
+    id: 'drone_1',
+    name: 'TestDrone',
     attack: 2,
     hull: 3,
     shields: 1,
     speed: 2,
     isExhausted: false,
     statMods: [],
-    abilities: [{
-      name: 'Combat Escalation',
-      description: 'Start of Round: Gain +1 attack permanently.',
-      type: 'TRIGGERED',
-      trigger: 'ON_ROUND_START',
-      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }]
-    }],
-    ...overrides
-  });
-
-  // Helper to create a drone without ON_ROUND_START ability
-  const createNormalDrone = (overrides = {}) => ({
-    id: 'dart_1',
-    name: 'Dart',
-    attack: 1,
-    hull: 2,
-    shields: 0,
-    speed: 3,
-    isExhausted: false,
-    statMods: [],
-    abilities: [],
     ...overrides
   });
 
@@ -83,154 +81,87 @@ describe('RoundManager - processRoundStartTriggers', () => {
     shipSections: {}
   });
 
-  describe('Processing ON_ROUND_START abilities', () => {
-    it('should process ON_ROUND_START abilities for drones on board', () => {
-      const drone = createRoundStartDrone();
+  describe('TriggerProcessor delegation', () => {
+    it('should call TriggerProcessor.fireTrigger for each drone on the board', () => {
+      const drone1 = createDrone({ id: 'drone_1', name: 'Drone1' });
+      const drone2 = createDrone({ id: 'drone_2', name: 'Drone2' });
+      const player1State = createPlayerState({ lane1: [drone1], lane2: [drone2] });
+      const player2State = createPlayerState();
+
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+
+      // player2 has 0 drones, player1 has 2 → 2 fireTrigger calls
+      expect(mockFireTrigger).toHaveBeenCalledTimes(2);
+    });
+
+    it('should pass ON_ROUND_START trigger type', () => {
+      const drone = createDrone();
       const player1State = createPlayerState({ lane1: [drone] });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-      expect(mockEffectRouter.routeEffect).toHaveBeenCalled();
-    });
-
-    it('should skip drones without ON_ROUND_START abilities', () => {
-      const drone = createNormalDrone();
-      const player1State = createPlayerState({ lane1: [drone] });
-      const player2State = createPlayerState();
-
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
-
-      expect(mockEffectRouter.routeEffect).not.toHaveBeenCalled();
-    });
-
-    it('should skip PASSIVE abilities even with trigger property', () => {
-      const drone = {
-        id: 'test_1',
-        name: 'Test',
-        abilities: [{
-          type: 'PASSIVE',
-          trigger: 'ON_ROUND_START',  // Shouldn't be processed - PASSIVE takes precedence
-          effect: { type: 'GRANT_KEYWORD' }
-        }]
-      };
-      const player1State = createPlayerState({ lane1: [drone] });
-      const player2State = createPlayerState();
-
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
-
-      expect(mockEffectRouter.routeEffect).not.toHaveBeenCalled();
-    });
-
-    it('should process drones with single effect', () => {
-      const drone = {
-        id: 'signal_beacon_1',
-        name: 'Signal Beacon',
-        abilities: [{
-          type: 'TRIGGERED',
-          trigger: 'ON_ROUND_START',
-          effect: { type: 'INCREASE_THREAT', value: 1 }
-        }]
-      };
-      const player2State = createPlayerState({ lane1: [drone] });
-      const player1State = createPlayerState();
-
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
-
-      expect(mockEffectRouter.routeEffect).toHaveBeenCalledWith(
-        { type: 'INCREASE_THREAT', value: 1 },
+      expect(mockFireTrigger).toHaveBeenCalledWith(
+        'ON_ROUND_START',
         expect.objectContaining({
-          actingPlayerId: 'player2',
-          sourceDroneName: 'Signal Beacon'
+          triggeringPlayerId: 'player1',
+          actingPlayerId: 'player1'
         })
       );
     });
 
-    it('should process drones with multiple effects', () => {
-      const drone = {
-        id: 'multi_effect_1',
-        name: 'Multi Effect',
-        abilities: [{
-          type: 'TRIGGERED',
-          trigger: 'ON_ROUND_START',
-          effects: [
-            { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } },
-            { type: 'PERMANENT_STAT_MOD', mod: { stat: 'speed', value: 1 } }
-          ]
-        }]
-      };
-      const player1State = createPlayerState({ lane1: [drone] });
+    it('should pass correct lane in context', () => {
+      const drone = createDrone();
+      const player1State = createPlayerState({ lane2: [drone] });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-      // Should call routeEffect twice - once for each effect
-      expect(mockEffectRouter.routeEffect).toHaveBeenCalledTimes(2);
+      expect(mockFireTrigger).toHaveBeenCalledWith(
+        'ON_ROUND_START',
+        expect.objectContaining({ lane: 'lane2' })
+      );
+    });
+
+    it('should not call fireTrigger when no drones are on board', () => {
+      const player1State = createPlayerState();
+      const player2State = createPlayerState();
+
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+
+      expect(mockFireTrigger).not.toHaveBeenCalled();
     });
   });
 
   describe('Processing order', () => {
     it('should process AI drones (player2) before player drones (player1)', () => {
       const callOrder = [];
-      mockEffectRouter.routeEffect.mockImplementation((effect, ctx) => {
+      mockFireTrigger.mockImplementation((type, ctx) => {
         callOrder.push(ctx.actingPlayerId);
-        return { newPlayerStates: null, animationEvents: [] };
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
       });
 
-      const player1Drone = createRoundStartDrone({ id: 'p1_drone', name: 'P1 Drone' });
-      const player2Drone = createRoundStartDrone({ id: 'p2_drone', name: 'P2 Drone' });
-
+      const player1Drone = createDrone({ id: 'p1_drone' });
+      const player2Drone = createDrone({ id: 'p2_drone' });
       const player1State = createPlayerState({ lane1: [player1Drone] });
       const player2State = createPlayerState({ lane1: [player2Drone] });
 
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-      // AI (player2) should process first
       expect(callOrder[0]).toBe('player2');
       expect(callOrder[1]).toBe('player1');
     });
 
     it('should process lanes in order: lane1, lane2, lane3', () => {
       const callOrder = [];
-      mockEffectRouter.routeEffect.mockImplementation((effect, ctx) => {
+      mockFireTrigger.mockImplementation((type, ctx) => {
         callOrder.push(ctx.lane);
-        return { newPlayerStates: null, animationEvents: [] };
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
       });
 
-      const lane1Drone = createRoundStartDrone({ id: 'lane1_drone' });
-      const lane2Drone = createRoundStartDrone({ id: 'lane2_drone' });
-      const lane3Drone = createRoundStartDrone({ id: 'lane3_drone' });
-
+      const lane1Drone = createDrone({ id: 'l1' });
+      const lane2Drone = createDrone({ id: 'l2' });
+      const lane3Drone = createDrone({ id: 'l3' });
       const player1State = createPlayerState({
         lane1: [lane1Drone],
         lane2: [lane2Drone],
@@ -238,134 +169,97 @@ describe('RoundManager - processRoundStartTriggers', () => {
       });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
       expect(callOrder).toEqual(['lane1', 'lane2', 'lane3']);
     });
   });
 
   describe('Return value', () => {
-    it('should return updated player states when effect modifies them', () => {
+    it('should return updated player states when trigger fires', () => {
       const modifiedStates = {
         player1: { modified: true, dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
         player2: { modified: false, dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
       };
-      mockEffectRouter.routeEffect.mockReturnValue({
+      mockFireTrigger.mockReturnValue({
+        triggered: true,
         newPlayerStates: modifiedStates,
         animationEvents: []
       });
 
-      const drone = createRoundStartDrone();
+      const drone = createDrone();
       const player1State = createPlayerState({ lane1: [drone] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
       expect(result.player1.modified).toBe(true);
     });
 
-    it('should return original states when effect returns null', () => {
-      mockEffectRouter.routeEffect.mockReturnValue({
-        newPlayerStates: null,
-        animationEvents: []
-      });
-
-      const drone = createRoundStartDrone();
-      const player1State = createPlayerState({ lane1: [drone] });
+    it('should return cloned states when no triggers fire', () => {
+      const player1State = createPlayerState({ lane1: [createDrone()] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-      // Should return cloned original states
       expect(result.player1).toBeDefined();
       expect(result.player2).toBeDefined();
+      // Should be a clone, not the same reference
+      expect(result.player1).not.toBe(player1State);
     });
 
-    it('should collect animation events from effects', () => {
-      mockEffectRouter.routeEffect.mockReturnValue({
-        newPlayerStates: null,
+    it('should collect animation events from triggered abilities', () => {
+      mockFireTrigger.mockReturnValue({
+        triggered: true,
+        newPlayerStates: {
+          player1: createPlayerState({ lane1: [createDrone()] }),
+          player2: createPlayerState()
+        },
         animationEvents: [{ type: 'STAT_INCREASE', data: { stat: 'attack' } }]
       });
 
-      const drone = createRoundStartDrone();
-      const player1State = createPlayerState({ lane1: [drone] });
+      const player1State = createPlayerState({ lane1: [createDrone()] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
       expect(result.animationEvents).toHaveLength(1);
       expect(result.animationEvents[0].type).toBe('STAT_INCREASE');
     });
-  });
 
-  describe('Edge cases', () => {
-    it('should handle empty drones on board', () => {
+    it('should return empty animationEvents when nothing triggers', () => {
       const player1State = createPlayerState();
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
+      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-      expect(mockEffectRouter.routeEffect).not.toHaveBeenCalled();
-      expect(result.player1).toBeDefined();
-      expect(result.player2).toBeDefined();
+      expect(result.animationEvents).toEqual([]);
     });
+  });
 
-    it('should handle drones with no abilities array', () => {
-      const drone = { id: 'no_abilities', name: 'No Abilities' };
-      const player1State = createPlayerState({ lane1: [drone] });
-      const player2State = createPlayerState();
+  describe('State propagation', () => {
+    it('should pass updated states from one trigger call to the next', () => {
+      let callCount = 0;
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callCount++;
+        if (callCount === 1) {
+          // First call modifies state
+          const updatedStates = JSON.parse(JSON.stringify(ctx.playerStates));
+          updatedStates.player2._firstTriggerFired = true;
+          return { triggered: true, newPlayerStates: updatedStates, animationEvents: [] };
+        }
+        // Second call should see the modified state
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
 
-      // Should not throw
-      expect(() => {
-        RoundManager.processRoundStartTriggers(
-          player1State,
-          player2State,
-          {},
-          mockEffectRouter
-        );
-      }).not.toThrow();
+      const player1State = createPlayerState({ lane1: [createDrone({ id: 'p1' })] });
+      const player2State = createPlayerState({ lane1: [createDrone({ id: 'p2' })] });
 
-      expect(mockEffectRouter.routeEffect).not.toHaveBeenCalled();
-    });
+      RoundManager.processRoundStartTriggers(player1State, player2State, {});
 
-    it('should handle drones with empty abilities array', () => {
-      const drone = { id: 'empty_abilities', name: 'Empty', abilities: [] };
-      const player1State = createPlayerState({ lane1: [drone] });
-      const player2State = createPlayerState();
-
-      RoundManager.processRoundStartTriggers(
-        player1State,
-        player2State,
-        {},
-        mockEffectRouter
-      );
-
-      expect(mockEffectRouter.routeEffect).not.toHaveBeenCalled();
+      // Second call (player1's drone) should receive the state modified by first call
+      const secondCallStates = mockFireTrigger.mock.calls[1][1].playerStates;
+      expect(secondCallStates.player2._firstTriggerFired).toBe(true);
     });
   });
 });

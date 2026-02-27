@@ -24,6 +24,21 @@ vi.mock('../../statsCalculator.js', () => ({
   }))
 }))
 
+// Mock TriggerProcessor to avoid EffectRouter import chain
+vi.mock('../../triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: []
+      });
+    }
+  }
+}))
+
+vi.mock('../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_ROUND_START: 'ON_ROUND_START' }
+}))
+
 describe('RoundManager - RAPID/ASSAULT flag reset', () => {
   // Helper to create a drone with RAPID ability
   const createRapidDrone = (overrides = {}) => ({

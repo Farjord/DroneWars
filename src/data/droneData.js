@@ -701,7 +701,7 @@ const fullDroneCollection = [
       description: 'Start of Round: Increase player threat by 2.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_START',
-      effect: { type: 'INCREASE_THREAT', value: 2 }
+      effects: [{ type: 'INCREASE_THREAT', value: 2 }]
     }],
     upgradeSlots: 0
   },

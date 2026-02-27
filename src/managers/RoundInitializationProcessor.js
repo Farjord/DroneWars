@@ -14,7 +14,6 @@
 
 import GameDataService from '../services/GameDataService.js';
 import RoundManager from '../logic/round/RoundManager.js';
-import EffectRouter from '../logic/EffectRouter.js';
 import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
 import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
 import { performAutomaticDraw } from '../logic/cards/cardDrawUtils.js';
@@ -148,13 +147,11 @@ class RoundInitializationProcessor {
     debugLog('PHASE_TRANSITIONS', '🎯 Step 3b: Processing ON_ROUND_START triggers');
 
     const preTriggersState = this.gameStateManager.getState();
-    const effectRouter = new EffectRouter();
 
     const roundStartResult = RoundManager.processRoundStartTriggers(
       preTriggersState.player1,
       preTriggersState.player2,
-      allPlacedSections,
-      effectRouter
+      allPlacedSections
     );
 
     if (roundStartResult) {

@@ -31,10 +31,6 @@ vi.mock('../../logic/round/RoundManager.js', () => ({
   }
 }));
 
-vi.mock('../../logic/EffectRouter.js', () => ({
-  default: vi.fn()
-}));
-
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({
   processRebuildProgress: vi.fn((availability) => availability)
 }));

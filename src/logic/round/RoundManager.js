@@ -7,6 +7,8 @@
 import { calculateEffectiveStats } from '../statsCalculator.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
 /**
  * RoundManager
@@ -158,70 +160,42 @@ class RoundManager {
    * 2. Player drones (player1) second
    * 3. Within each player, process lane1 → lane2 → lane3
    *
+   * Delegates to TriggerProcessor for effect routing and trigger resolution.
+   *
    * @param {Object} player1State - Player 1 state
    * @param {Object} player2State - Player 2 state
    * @param {Object} placedSections - Ship section placements
-   * @param {Object} effectRouter - EffectRouter instance for processing effects
    * @returns {Object} { player1: updatedState, player2: updatedState, animationEvents: [] }
    */
-  processRoundStartTriggers(player1State, player2State, placedSections, effectRouter) {
-    // Deep clone states to avoid mutations
-    let currentPlayer1 = JSON.parse(JSON.stringify(player1State));
-    let currentPlayer2 = JSON.parse(JSON.stringify(player2State));
+  processRoundStartTriggers(player1State, player2State, placedSections) {
+    const triggerProcessor = new TriggerProcessor();
+    let currentStates = {
+      player1: JSON.parse(JSON.stringify(player1State)),
+      player2: JSON.parse(JSON.stringify(player2State))
+    };
     const allAnimationEvents = [];
 
     // Process AI (player2) drones first, then player (player1)
     // This ensures AI threat effects process before player benefits
-    const processOrder = [
-      { playerId: 'player2', state: currentPlayer2 },
-      { playerId: 'player1', state: currentPlayer1 }
-    ];
-
-    for (const { playerId, state } of processOrder) {
-      const playerState = playerId === 'player1' ? currentPlayer1 : currentPlayer2;
-
+    for (const playerId of ['player2', 'player1']) {
       for (const lane of ['lane1', 'lane2', 'lane3']) {
-        const drones = playerState.dronesOnBoard?.[lane] || [];
+        const drones = currentStates[playerId].dronesOnBoard?.[lane] || [];
 
         for (const drone of drones) {
-          if (!drone.abilities) continue;
+          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+            lane,
+            triggeringDrone: drone,
+            triggeringPlayerId: playerId,
+            actingPlayerId: playerId,
+            playerStates: currentStates,
+            placedSections
+          });
 
-          for (const ability of drone.abilities) {
-            // Only process TRIGGERED abilities with ON_ROUND_START trigger
-            if (ability.type !== 'TRIGGERED' || ability.trigger !== 'ON_ROUND_START') {
-              continue;
-            }
+          if (result.triggered) {
+            currentStates = result.newPlayerStates;
 
-            debugLog('ROUND_START', `Processing ON_ROUND_START for ${drone.name} in ${lane}`, {
-              playerId,
-              droneName: drone.name,
-              droneId: drone.id,
-              abilityName: ability.name
-            });
-
-            const context = {
-              actingPlayerId: playerId,
-              playerStates: { player1: currentPlayer1, player2: currentPlayer2 },
-              placedSections,
-              sourceDroneName: drone.name,
-              sourceDroneId: drone.id,
-              lane
-            };
-
-            // Process single effect or multiple effects
-            const effects = ability.effects || (ability.effect ? [ability.effect] : []);
-
-            for (const effect of effects) {
-              const result = effectRouter.routeEffect(effect, context);
-
-              if (result?.newPlayerStates) {
-                currentPlayer1 = result.newPlayerStates.player1;
-                currentPlayer2 = result.newPlayerStates.player2;
-              }
-
-              if (result?.animationEvents?.length > 0) {
-                allAnimationEvents.push(...result.animationEvents);
-              }
+            if (result.animationEvents.length > 0) {
+              allAnimationEvents.push(...result.animationEvents);
             }
           }
         }
@@ -229,8 +203,8 @@ class RoundManager {
     }
 
     return {
-      player1: currentPlayer1,
-      player2: currentPlayer2,
+      player1: currentStates.player1,
+      player2: currentStates.player2,
       animationEvents: allAnimationEvents
     };
   }
