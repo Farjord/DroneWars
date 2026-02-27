@@ -66,9 +66,6 @@ vi.mock('../../data/shipSectionData.js', () => ({ shipComponentCollection: [] })
 vi.mock('../../utils/seededRandom.js', () => ({ default: {} }));
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initializeForCombat: vi.fn() }));
 vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn(() => false) }));
-vi.mock('../../logic/effects/mines/MineTriggeredEffectProcessor.js', () => ({
-  processTrigger: vi.fn(() => ({ triggered: false, animationEvents: [] }))
-}));
 vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {
@@ -79,7 +76,7 @@ vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
   }
 }));
 vi.mock('../../logic/triggers/triggerConstants.js', () => ({
-  TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE' }
+  TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE', ON_LANE_MOVEMENT_IN: 'ON_LANE_MOVEMENT_IN', ON_LANE_ATTACK: 'ON_LANE_ATTACK' }
 }));
 
 function createMockGSM(overrides = {}) {

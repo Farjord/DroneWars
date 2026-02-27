@@ -9,7 +9,6 @@ import { calculateAiInterception } from '../combat/InterceptionProcessor.js';
 import AbilityResolver from '../abilities/AbilityResolver.js';
 import { gameEngine } from '../gameLogic.js';
 import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -365,11 +364,12 @@ export async function processMove(payload, ctx) {
     [opponentPlayerId]: JSON.parse(JSON.stringify(committedState[opponentPlayerId]))
   };
   const movedDroneInLane = minePlayerStates[playerId].dronesOnBoard[toLane].find(d => d.id === droneId);
-  const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
+  const mineTriggerProcessor = new TriggerProcessor();
+  const mineResult = mineTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
     lane: toLane,
     triggeringDrone: movedDroneInLane,
-    triggeringPlayerId: playerId
-  }, {
+    triggeringPlayerId: playerId,
+    actingPlayerId: playerId,
     playerStates: minePlayerStates,
     placedSections,
     logCallback: (entry) => ctx.addLogEntry(entry)
@@ -390,8 +390,9 @@ export async function processMove(payload, ctx) {
 
   // Commit mine destruction state (removes destroyed mine/drone from DOM)
   if (mineResult.triggered) {
-    ctx.updatePlayerState(playerId, minePlayerStates[playerId]);
-    ctx.updatePlayerState(opponentPlayerId, minePlayerStates[opponentPlayerId]);
+    const mineStates = mineResult.newPlayerStates;
+    ctx.updatePlayerState(playerId, mineStates[playerId]);
+    ctx.updatePlayerState(opponentPlayerId, mineStates[opponentPlayerId]);
   }
 
   // Check if the moved drone was destroyed by the mine

@@ -68,6 +68,14 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
+// Mock droneStateUtils and auraManager (used by _destroyDrone and _applyDirectEffect)
+vi.mock('../../utils/droneStateUtils.js', () => ({
+  onDroneDestroyed: vi.fn((playerState) => playerState)
+}));
+vi.mock('../../utils/auraManager.js', () => ({
+  updateAuras: vi.fn((playerState) => playerState.dronesOnBoard)
+}));
+
 // Mock EffectRouter — track what gets routed
 vi.mock('../../EffectRouter.js', () => {
   return {

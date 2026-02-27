@@ -15,7 +15,6 @@ import { buildDefaultMovementAnimation } from './movement/animations/DefaultMove
 import { debugLog } from '../../utils/debugLogger.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from './MineTriggeredEffectProcessor.js';
 
 /**
  * MovementEffectProcessor
@@ -638,17 +637,22 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       // Process ON_LANE_MOVEMENT_IN mine triggers
       // Mines self-destruct, so only the first drone triggers it
       for (const movedDrone of movedDrones) {
-        const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
+        const mineResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
           lane: toLane,
           triggeringDrone: movedDrone,
-          triggeringPlayerId: droneOwnerId
-        }, {
-          playerStates: newPlayerStates,
+          triggeringPlayerId: droneOwnerId,
+          actingPlayerId: droneOwnerId,
+          playerStates: {
+            [droneOwnerId]: newPlayerStates[droneOwnerId],
+            [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
+          },
           placedSections,
           logCallback
         });
 
         if (mineResult.triggered) {
+          newPlayerStates[droneOwnerId] = mineResult.newPlayerStates[droneOwnerId];
+          newPlayerStates[opponentOfDroneOwner] = mineResult.newPlayerStates[opponentOfDroneOwner];
           if (mineResult.animationEvents.length > 0) {
             mineAnimationEvents.push(...mineResult.animationEvents);
           }

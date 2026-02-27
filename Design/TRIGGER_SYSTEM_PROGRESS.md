@@ -29,27 +29,30 @@
 - [x] Tests: deployment tests pass, Scanner marks random enemy
 - [x] Checkpoint commit
 
-## Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor
-- [ ] Replace `applyOnMoveEffects()` calls in MovementEffectProcessor → `TriggerProcessor.fireTrigger('ON_MOVE', ...)`
-- [ ] Replace `gameEngine.applyOnMoveEffects()` in `CombatActionStrategy.js` (line 311) → TriggerProcessor
-- [ ] Extract `_resolvePostMoveTriggers()` helper (shared by executeSingleMove/executeMultiMove)
-- [ ] Remove ON_MOVE enemy drone guard (`isMovingEnemyDrone` check) per PRD Section 3.3
-- [ ] Delete `applyOnMoveEffects` from `abilityHelpers.js`
-- [ ] Remove dead `applyOnMoveEffectsCallback` from `CardActionStrategy.js` (line 61)
-- [ ] Remove `applyOnMoveEffects` import/export from `gameLogic.js` (lines 35, 79)
-- [ ] Update test mocks: `ActionProcessor.test.js:11`, `ActionProcessor.combat.test.js:7`
-- [ ] Tests: Specter +1 attack/+1 speed, Osiris heals 4 hull, multi-move triggers per drone, force-moved enemy fires ON_MOVE
-- [ ] Checkpoint commit
+## Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor ✅
+- [x] Replace `applyOnMoveEffects()` calls in MovementEffectProcessor → `TriggerProcessor.fireTrigger('ON_MOVE', ...)`
+- [x] Replace `gameEngine.applyOnMoveEffects()` in `CombatActionStrategy.js` (line 311) → TriggerProcessor
+- [x] Extract `_resolvePostMoveTriggers()` helper (shared by executeSingleMove/executeMultiMove)
+- [x] Remove ON_MOVE enemy drone guard (`isMovingEnemyDrone` check) per PRD Section 3.3
+- [x] Delete `applyOnMoveEffects` from `abilityHelpers.js`
+- [x] Remove dead `applyOnMoveEffectsCallback` from `CardActionStrategy.js` (line 61)
+- [x] Remove `applyOnMoveEffects` import/export from `gameLogic.js` (lines 35, 79)
+- [x] Update test mocks: `ActionProcessor.test.js:11`, `ActionProcessor.combat.test.js:7`
+- [x] Tests: all 3828 tests pass
+- [x] Checkpoint commit `f2b0d542`
 
-## Phase 4: Migrate Mine Triggers
-- [ ] Normalize all 3 mines: `effect{}` → `effects[]` in droneData.js
-- [ ] Replace `processMineTrigger()` calls in MovementEffectProcessor (via _resolvePostMoveTriggers)
-- [ ] Replace `processMineTrigger()` call in `CombatActionStrategy.js` (line 352)
-- [ ] Replace `processMineTrigger()` call in DeploymentProcessor
-- [ ] Replace `processMineTrigger()` call in AttackProcessor
-- [ ] Delete `MineTriggeredEffectProcessor.js` (272 lines)
-- [ ] Tests: mine detonation per type, self-destruct, stat mod, multi-move mine absorption
-- [ ] Checkpoint commit
+## Phase 4: Migrate Mine Triggers ✅
+- [x] Normalize all 3 mines: `effect{}` → `effects[]` in droneData.js (with `scope: 'TRIGGERING_DRONE'`)
+- [x] Add `_applyDirectEffect` to TriggerProcessor (DAMAGE, EXHAUST_DRONE, MODIFY_STAT for mine effects)
+- [x] Update `_destroyDrone` to call `onDroneDestroyed`, `updateAuras`, emit DRONE_DESTROYED animation
+- [x] Replace `processMineTrigger()` calls in MovementEffectProcessor (via _resolvePostMoveTriggers)
+- [x] Replace `processMineTrigger()` call in `CombatActionStrategy.js`
+- [x] Replace `processMineTrigger()` call in DeploymentProcessor
+- [x] Replace `processMineTrigger()` call in AttackProcessor
+- [x] Delete `MineTriggeredEffectProcessor.js` (272 lines)
+- [x] Update test mocks: AttackProcessor tests (4 files), ActionProcessor tests (3 files)
+- [x] Tests: all 3828 tests pass
+- [x] Checkpoint commit
 
 ## Phase 5: Migrate ON_CARD_DRAWN and ON_ENERGY_GAINED
 - [ ] Replace `applyOnCardDrawnEffects()` in DrawEffectProcessor → TriggerProcessor
@@ -123,7 +126,7 @@
 
 | File | Lines | Phase | Status |
 |-|-|-|-|
-| `src/logic/effects/MineTriggeredEffectProcessor.js` | 272 | 4 | Pending |
+| `src/logic/effects/MineTriggeredEffectProcessor.js` | 272 | 4 | ✅ Deleted |
 | `src/logic/utils/abilityHelpers.js` | 225 | 5 | Pending |
 | `src/logic/utils/rallyBeaconHelper.js` | 37 | 7 | Pending |
 | `AttackProcessor.calculateAfterAttackStateAndEffects` | ~75 | 6 | Pending |

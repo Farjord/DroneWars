@@ -45,7 +45,6 @@ vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({
   })
 }));
 vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn() }));
-vi.mock('../../logic/effects/mines/MineTriggeredEffectProcessor.js', () => ({ processTrigger: vi.fn() }));
 
 describe('ActionProcessor — processCommitment', () => {
   let ap;

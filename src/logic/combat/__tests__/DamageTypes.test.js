@@ -1,4 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+vi.mock('../../triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: [], statModsApplied: false
+      });
+    }
+  }
+}));
+vi.mock('../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_LANE_ATTACK: 'ON_LANE_ATTACK' }
+}));
+
 import { resolveAttack } from '../AttackProcessor.js'
 
 // ========================================

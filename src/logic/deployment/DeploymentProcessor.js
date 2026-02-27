@@ -9,7 +9,6 @@ import { updateAuras } from '../utils/auraManager.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
-import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
@@ -358,19 +357,22 @@ class DeploymentProcessor {
       [playerId]: finalPlayerState,
       [opponentId]: finalOpponentState
     };
-    const mineResult = processMineTrigger('ON_LANE_DEPLOYMENT', {
+    const mineTriggerProcessor = new TriggerProcessor();
+    const mineResult = mineTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_DEPLOYMENT, {
       lane: lane,
       triggeringDrone: newDrone,
-      triggeringPlayerId: playerId
-    }, {
+      triggeringPlayerId: playerId,
+      actingPlayerId: playerId,
       playerStates: minePlayerStates,
       placedSections,
       logCallback
     });
 
-    // Update states from mine processing (minePlayerStates was mutated)
-    finalPlayerState = minePlayerStates[playerId];
-    finalOpponentState = minePlayerStates[opponentId];
+    // Update states from mine processing (TriggerProcessor returns new states)
+    if (mineResult.triggered) {
+      finalPlayerState = mineResult.newPlayerStates[playerId];
+      finalOpponentState = mineResult.newPlayerStates[opponentId];
+    }
 
     if (mineResult.triggered && mineResult.animationEvents.length > 0) {
       allAnimationEvents.push(...mineResult.animationEvents);

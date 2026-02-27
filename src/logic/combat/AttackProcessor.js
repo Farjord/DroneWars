@@ -20,7 +20,8 @@ import { createSectionDamagedAnimation } from './animations/SectionDamagedAnimat
 import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js';
 import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimation.js';
 import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
-import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
 /**
  * Calculate after-attack state changes and effects
@@ -324,20 +325,21 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             [attackingPlayerId]: JSON.parse(JSON.stringify(attackerPlayerState)),
             [defendingPlayerId]: JSON.parse(JSON.stringify(defenderPlayerState))
         };
-        const mineResult = processMineTrigger('ON_LANE_ATTACK', {
+        const mineTriggerProcessor = new TriggerProcessor();
+        const mineResult = mineTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_ATTACK, {
             lane: attackerLane,
             triggeringDrone: attacker,
-            triggeringPlayerId: attackingPlayerId
-        }, {
+            triggeringPlayerId: attackingPlayerId,
+            actingPlayerId: attackingPlayerId,
             playerStates: minePlayerStates,
             placedSections,
             logCallback
         });
 
         if (mineResult.triggered) {
-            // Apply mine state changes back to the source states
-            Object.assign(attackerPlayerState, minePlayerStates[attackingPlayerId]);
-            Object.assign(defenderPlayerState, minePlayerStates[defendingPlayerId]);
+            // Apply mine state changes from returned states
+            Object.assign(attackerPlayerState, mineResult.newPlayerStates[attackingPlayerId]);
+            Object.assign(defenderPlayerState, mineResult.newPlayerStates[defendingPlayerId]);
             // Update playerStates references
             playerStates[attackingPlayerId] = attackerPlayerState;
             playerStates[defendingPlayerId] = defenderPlayerState;

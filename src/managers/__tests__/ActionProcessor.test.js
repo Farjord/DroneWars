@@ -47,7 +47,6 @@ vi.mock('../../data/shipSectionData.js', () => ({ shipComponentCollection: [] })
 vi.mock('../../utils/seededRandom.js', () => ({ default: {} }));
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initializeForCombat: vi.fn() }));
 vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn() }));
-vi.mock('../../logic/effects/mines/MineTriggeredEffectProcessor.js', () => ({ processTrigger: vi.fn() }));
 
 function createMockGameStateManager(overrides = {}) {
   const defaultState = {

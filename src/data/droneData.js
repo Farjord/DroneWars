@@ -852,7 +852,7 @@ const fullDroneCollection = [
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
-        effect: { type: 'DAMAGE', value: 4 }
+        effects: [{ type: 'DAMAGE', value: 4, scope: 'TRIGGERING_DRONE' }]
       },
       {
         name: 'Inert',
@@ -891,7 +891,7 @@ const fullDroneCollection = [
         trigger: 'ON_LANE_DEPLOYMENT',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
-        effect: { type: 'EXHAUST_DRONE' }
+        effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }]
       },
       {
         name: 'Inert',
@@ -930,7 +930,7 @@ const fullDroneCollection = [
         trigger: 'ON_LANE_ATTACK',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
-        effect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'permanent' } }
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'permanent' }, scope: 'TRIGGERING_DRONE' }]
       },
       {
         name: 'Inert',
