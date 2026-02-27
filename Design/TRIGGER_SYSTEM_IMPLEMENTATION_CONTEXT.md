@@ -238,7 +238,8 @@ abilities: [
 ### 3.1 ON_MOVE
 - `MovementEffectProcessor.executeSingleMove` (line 382): `applyOnMoveEffects(droneOwnerState, movedDrone, fromLane, toLane, logCallback)`
 - `MovementEffectProcessor.executeMultiMove` (line 568): Same call per moved drone in a loop
-- Both only fire for friendly drone moves (`if (!isMovingEnemyDrone)`)
+- `CombatActionStrategy.js` (line 311): `gameEngine.applyOnMoveEffects()` — Strategy-layer execution for the move-then-attack combat flow
+- Both MovementEffectProcessor calls only fire for friendly drone moves (`if (!isMovingEnemyDrone)`) — contradicts PRD Section 3.3
 
 ### 3.2 ON_CARD_DRAWN
 - `DrawEffectProcessor.process` (line 74): `applyOnCardDrawnEffects(actingPlayerState, actualCardsDrawn, logCallback)`
@@ -257,6 +258,7 @@ abilities: [
 ### 3.6 ON_LANE_MOVEMENT_IN (mines)
 - `MovementEffectProcessor.executeSingleMove` (line 416): `processMineTrigger('ON_LANE_MOVEMENT_IN', ...)`
 - `MovementEffectProcessor.executeMultiMove` (line 595): Same, per drone in loop (breaks after first mine triggers)
+- `CombatActionStrategy.js` (line 352): `processMineTrigger('ON_LANE_MOVEMENT_IN', ...)` — move-then-attack combat flow
 
 ### 3.7 ON_LANE_DEPLOYMENT (mines)
 - `DeploymentProcessor` (line 390): `processMineTrigger('ON_LANE_DEPLOYMENT', ...)`
@@ -270,6 +272,12 @@ abilities: [
 ### 3.10 Rally Beacon
 - `MovementEffectProcessor.executeSingleMove` (line 407): `checkRallyBeaconGoAgain(...)`
 - `MovementEffectProcessor.executeMultiMove` (line 584): Same
+- `CombatActionStrategy.js` (line 410): `checkRallyBeaconGoAgain(...)` — move-then-attack combat flow
+
+### 3.11 Dead Callback — CardActionStrategy.js
+- `CardActionStrategy.js` (line 61): passes `applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects` in callbacks to `EffectChainProcessor.processEffectChain()`
+- **Dead code** — EffectChainProcessor never consumes this callback. MovementEffectProcessor imports `applyOnMoveEffects` directly.
+- Remove in Phase 3 when `applyOnMoveEffects` is deleted from abilityHelpers.
 
 ---
 
@@ -387,6 +395,7 @@ The AI system references trigger abilities in several places that will need upda
 | `src/logic/ai/helpers/keywordHelpers.js:70-94` | `isThreatAbilityDrone()` | Checks ON_ROUND_START threat + ON_SHIP_SECTION_HULL_DAMAGE |
 | `src/logic/ai/scoring/targetScoring.js:188` | Rally Beacon attack priority | AI targets Rally Beacon tokens for destruction |
 | `src/logic/ai/cardEvaluators/droneCards.js:566` | ON_ATTACK trigger detection | Evaluates drone value for card play |
+| `src/logic/ai/cardEvaluators/statusEffectCards.js:154-156` | `ability.effect?.type === 'AFTER_ATTACK'` | Ability bonus scoring — will break after Phase 6 data migration |
 | `src/logic/ai/cardEvaluators/statusEffectCards.js:321` | ON_ROUND_START/ON_ATTACK detection | Status effect card targeting |
 | `src/logic/ai/aiConstants.js:425` | RALLY_BEACON_ATTACK_PRIORITY | AI priority for attacking Rally Beacon |
 | `src/data/descriptions/codePatternDescriptions.js:19` | 'AFTER_ATTACK' | Glossary description for AFTER_ATTACK |

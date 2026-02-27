@@ -99,7 +99,15 @@ Resolution order:
 
 When a trigger fires and its effect causes a new event (e.g., gaining power, drawing a card), all cascading triggers from that new event fully resolve before the next trigger at the original level fires. This is standard stack-based resolution.
 
-### 4.2 Example
+### 4.2 Drone Liveness Check
+
+Before executing a reactor drone's trigger, TriggerProcessor must verify the reactor drone still exists on the board. A cascade effect that destroys a drone (e.g., mine self-destruct, combat kill) removes it from pending triggers at the same cascade level.
+
+**Example:** A lane contains a Proximity Mine and Odin. A drone moves in — both have pending ON_LANE_MOVEMENT_IN triggers. If the mine fires first and its self-destruct removes it from the board, that's fine (it already fired). But if a cascade effect destroys Odin before Odin's trigger fires, Odin's trigger is skipped.
+
+This check is deterministic — both host and guest verify liveness against the same mutated state at each step.
+
+### 4.3 Example
 
 Lane contains (L→R): Odin (ON_CARD_DRAWN → +1 power), Loki (ON_CARD_DRAWN → gain energy). A card draw occurs.
 

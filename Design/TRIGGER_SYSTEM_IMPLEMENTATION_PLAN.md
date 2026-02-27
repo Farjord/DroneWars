@@ -6,12 +6,18 @@ Identified during pre-implementation code review. Addressed in the phases listed
 
 | Finding | Severity | Phase |
 |-|-|-|
+| CombatActionStrategy.js: untracked call site for ON_MOVE, mines, Rally Beacon | Critical | 3, 4, 7 |
 | abilityHelpers.js: 70% duplication across 3 functions, inconsistent returns, unused params | High | 3, 5 |
 | MovementEffectProcessor: duplicated trigger chain between executeSingleMove/executeMultiMove | High | 3 |
+| statusEffectCards.js: AFTER_ATTACK check will break after Phase 6 data migration | High | 6 |
+| ActionProcessor test mocks for deleted functions will break | High | 3, 7 |
 | MineTriggeredEffectProcessor: unused vars, unreachable LANE_ENEMY branch, state re-fetch smell | Medium | 4 (delete) |
 | droneData.js: inconsistent ability format (`effect{}` vs `effects[]`) | Medium | 1-7 |
-| EffectRouter: no PERMANENT_STAT_MOD or DESTROY_SELF registration | Medium | 0 |
+| EffectRouter: no PERMANENT_STAT_MOD registration | Medium | 0 |
 | Magic strings for trigger types/owners (no constants) | Medium | 0 |
+| CardActionStrategy.js: dead `applyOnMoveEffectsCallback` (never consumed) | Medium | 3 |
+| gameLogic.js: barrel export of deleted `applyOnMoveEffects` | Medium | 3 |
+| ON_MOVE guard blocks enemy drone triggers (contradicts PRD 3.3) | Medium | 3 |
 | RoundManager: unused `state` param, variable shadowing, redundant cloning | Low | 1 |
 | rallyBeaconHelper: hardcoded "Rally Beacon" by name | Low | 7 (delete) |
 | droneAttack.js AI: AFTER_ATTACK string check | Low | 6 |
@@ -52,7 +58,7 @@ Single class that replaces all 6 fragmented trigger patterns. Call sites remain 
 **Method signatures:**
 ```js
 class TriggerProcessor {
-  constructor(effectRouter) { ... }
+  constructor() { this.effectRouter = new EffectRouter(); }  // Creates own instance (consistent with DeploymentProcessor, AbilityResolver, EffectChainProcessor)
 
   // Main entry point — called by MovementEffectProcessor, AttackProcessor, etc.
   fireTrigger(triggerType, triggerContext)
@@ -104,13 +110,13 @@ The `MineTriggeredEffectProcessor.applyMineEffect` switch statement (DAMAGE, EXH
 
 ### 12.3 PERMANENT_STAT_MOD Handling
 
-Currently `PERMANENT_STAT_MOD` is processed directly in `abilityHelpers.js` (pushing to `drone.statMods`), not through EffectRouter. Two options:
-1. Add a `PERMANENT_STAT_MOD` processor to EffectRouter
-2. Map `PERMANENT_STAT_MOD` to existing `MODIFY_STAT` processor with `type: 'permanent'`
+Currently `PERMANENT_STAT_MOD` is processed directly in `abilityHelpers.js` (pushing to `drone.statMods`), not through EffectRouter. Register `PERMANENT_STAT_MOD` in EffectRouter → mapped to `ModifyStatEffectProcessor` (already handles `mod.type: 'permanent'`).
 
-The existing `ModifyStatEffectProcessor` handles stat mods. Check if it can handle permanent mods or needs a minor extension.
+### 12.4 DESTROY with scope: 'SELF'
 
-### 12.4 Debug Logging
+Firefly's self-destruct uses existing `DESTROY` effect type with `scope: 'SELF'`. No new EffectRouter registration needed — the existing `DestroyEffectProcessor` handles this. TriggerProcessor preprocesses `scope: 'SELF'` to target the triggering drone.
+
+### 12.5 Debug Logging
 
 Add `TRIGGERS: false` category to `src/utils/debugLogger.js` in `DEBUG_CONFIG.categories`.
 
@@ -159,11 +165,11 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 
 ### Phase 0: Foundation (no behavior change)
 - Create `src/logic/triggers/triggerConstants.js` — enums for TRIGGER_TYPES, TRIGGER_OWNERS, TRIGGER_SCOPES
-- Create `src/logic/triggers/TriggerProcessor.js` scaffold with method stubs
+- Create `src/logic/triggers/TriggerProcessor.js` scaffold with method stubs (creates its own `new EffectRouter()` internally)
 - Create `src/logic/triggers/__tests__/TriggerProcessor.test.js`
 - Add `TRIGGERS` debug category to `debugLogger.js`
-- Register `PERMANENT_STAT_MOD` in EffectRouter → mapped to `ModifyStatEffectProcessor`
-- Register `DESTROY_SELF` in EffectRouter → mapped to `DestroyEffectProcessor` with scope preprocessing
+- Register `PERMANENT_STAT_MOD` in EffectRouter → mapped to `ModifyStatEffectProcessor` (already handles `mod.type: 'permanent'`)
+- ~~Register `DESTROY_SELF` in EffectRouter~~ — Not needed. Use existing `DESTROY` effect type with `scope: 'SELF'` (Firefly's new format: `effects: [{ type: 'DESTROY', scope: 'SELF' }]`)
 - **Checkpoint commit**
 
 ### Phase 1: Migrate ON_ROUND_START
@@ -184,17 +190,26 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 ### Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor
 - Specter (Phase Shift → PERMANENT_STAT_MOD), Osiris (Regeneration Protocol → HEAL_HULL)
 - Replace both `applyOnMoveEffects()` calls in `MovementEffectProcessor.executeSingleMove` (line 382) and `executeMultiMove` (line 568) with `TriggerProcessor.fireTrigger('ON_MOVE', ...)`
+- Replace `gameEngine.applyOnMoveEffects()` call in `CombatActionStrategy.js` (line 311) with `TriggerProcessor.fireTrigger('ON_MOVE', ...)`
 - Extract shared post-move trigger chain from executeSingleMove/executeMultiMove into `_resolvePostMoveTriggers()` helper
+- **Behavior decision — ON_MOVE for enemy drones:**
+  - Current guard: `if (!isMovingEnemyDrone)` at MovementEffectProcessor line 381 means opponent drones moved by cards do NOT fire ON_MOVE
+  - PRD Section 3.3 says ON_MOVE fires even for forced movement — this is a gameplay change (e.g., force-moving Osiris heals it)
+  - **Implement per PRD** — remove the guard. If playtesting reveals issues, revisit.
 - **Cleanup:** Delete `applyOnMoveEffects` from `src/logic/utils/abilityHelpers.js` (removes one of three duplicated functions)
-- Test: move Specter → gains stats, move Osiris → heals, multi-move triggers per drone
+- **Cleanup:** Remove dead `applyOnMoveEffectsCallback` from `CardActionStrategy.js` (line 61) — never consumed by EffectChainProcessor
+- **Cleanup:** Remove `applyOnMoveEffects` import/export from `gameLogic.js` (lines 35, 79)
+- **Test mock updates:** `ActionProcessor.test.js:11` and `ActionProcessor.combat.test.js:7` mock `applyOnMoveEffects` — update
+- Test: move Specter → gains stats, move Osiris → heals, multi-move triggers per drone, force-moved enemy drone fires ON_MOVE
 
 ### Phase 4: Migrate Mine Triggers (ON_LANE_MOVEMENT_IN, ON_LANE_DEPLOYMENT, ON_LANE_ATTACK)
 - Proximity Mine, Inhibitor Mine, Jitter Mine
 - Normalize all 3 mines: `effect{}` → `effects[]` in droneData.js
 - Replace `processMineTrigger()` calls (now inside `_resolvePostMoveTriggers` for movement):
   1. `MovementEffectProcessor` (via _resolvePostMoveTriggers)
-  2. `DeploymentProcessor` (line 390)
-  3. `AttackProcessor.resolveAttack` (line 327)
+  2. `CombatActionStrategy.js` (line 352) — `processMineTrigger('ON_LANE_MOVEMENT_IN', ...)`
+  3. `DeploymentProcessor` (line 390)
+  4. `AttackProcessor.resolveAttack` (line 327)
 - TriggerProcessor handles `destroyAfterTrigger` (self-destruct) and `triggerOwner: 'LANE_OWNER'` validation
 - **Delete:** `src/logic/effects/MineTriggeredEffectProcessor.js` (272 lines — entire file)
 - Test: mine detonation per type, self-destruct, stat mod, multi-move first drone absorbs mine
@@ -217,14 +232,18 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 - **Delete:** `calculateAfterAttackStateAndEffects` from AttackProcessor (~75 lines)
 - Implement `conditionalEffects` evaluation in TriggerProcessor (for Threat Transmitter)
 - Update AI: `droneAttack.js:100` AFTER_ATTACK string check → TRIGGERED/ON_ATTACK
+- Update AI: `statusEffectCards.js:154-156` AFTER_ATTACK ability bonus scoring → TRIGGERED/ON_ATTACK
+- Update test: `droneAttack.test.js:131` Gladiator AFTER_ATTACK test data → TRIGGERED/ON_ATTACK
 - Test: Firefly self-destructs, Gladiator gains attack, Threat Transmitter increases threat
 - **Verify:** Zero references to `AFTER_ATTACK` in codebase
 
 ### Phase 7: Deprecate RALLY_BEACON → ON_LANE_MOVEMENT_IN
 - Update Rally Beacon data: change from `PASSIVE/GRANT_KEYWORD` to `TRIGGERED` ability with `effects[]` format
 - Remove `checkRallyBeaconGoAgain()` calls in `MovementEffectProcessor` (lines 406-407, 584-585)
+- Remove `checkRallyBeaconGoAgain()` call in `CombatActionStrategy.js` (line 410) — replace with TriggerProcessor goAgain result
 - TriggerProcessor returns `goAgain: true` when trigger has `grantsGoAgain`
 - **Delete:** `src/logic/utils/rallyBeaconHelper.js` (37 lines — entire file)
+- **Test mock updates:** `ActionProcessor.test.js:50`, `ActionProcessor.commitments.test.js:47`, `ActionProcessor.combat.test.js:69` mock `checkRallyBeaconGoAgain` — update
 - Test: drone moves into Rally Beacon lane → go-again granted
 - **Verify:** Zero references to `checkRallyBeaconGoAgain` or `RALLY_BEACON` keyword
 
@@ -256,13 +275,8 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
   - `src/logic/utils/abilityHelpers.js` (Phase 5)
 - **Final sweep:** Grep for orphaned imports, unused constants, stale comments referencing deleted patterns
 
-### Phase 12: Comprehensive Tests
-- Unit tests for TriggerProcessor core (find, execute, pair guard)
-- Integration tests for each trigger type
-- Cascade test: multi-drone interaction (the 4-drone chaos walkthrough from Section 5.2)
-- Cross-player cascade test
-- Loop guard test: verify infinite loops terminate
-- Multi-move resolution test: selection order, mine absorption
+### ~~Phase 12: Comprehensive Tests~~ — Merged into per-phase test sections above
+_Tests are written per-phase. Phase 0 covers core TriggerProcessor tests (pair guard, findMatchingTriggers). Phase 5 covers cascades (4-drone chaos, cross-player, loop guard). Each other phase covers its trigger type._
 
 ---
 
@@ -274,10 +288,13 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 | `src/logic/triggers/TriggerProcessor.js` | CREATE | 0 |
 | `src/logic/triggers/__tests__/TriggerProcessor.test.js` | CREATE | 0 |
 | `src/utils/debugLogger.js` | ADD category | 0 |
-| `src/logic/EffectRouter.js` | ADD PERMANENT_STAT_MOD + DESTROY_SELF | 0 |
+| `src/logic/EffectRouter.js` | ADD PERMANENT_STAT_MOD | 0 |
 | `src/logic/round/RoundManager.js` | MODIFY processRoundStartTriggers | 1 |
 | `src/logic/deployment/DeploymentProcessor.js` | MODIFY ON_DEPLOY + mine calls | 2, 4 |
 | `src/logic/effects/MovementEffectProcessor.js` | MODIFY ON_MOVE + Rally Beacon + mine calls | 3, 4, 7 |
+| `src/logic/actions/CombatActionStrategy.js` | MODIFY ON_MOVE + mine + Rally Beacon calls | 3, 4, 7 |
+| `src/logic/actions/CardActionStrategy.js` | CLEANUP dead applyOnMoveEffectsCallback | 3 |
+| `src/logic/gameLogic.js` | CLEANUP barrel export of applyOnMoveEffects | 3 |
 | `src/logic/effects/cards/DrawEffectProcessor.js` | MODIFY ON_CARD_DRAWN call | 5 |
 | `src/logic/effects/energy/GainEnergyEffectProcessor.js` | MODIFY ON_ENERGY_GAINED call | 5 |
 | `src/logic/combat/AttackProcessor.js` | MODIFY AFTER_ATTACK + mine call → ON_ATTACK | 4, 6 |
@@ -289,6 +306,11 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 | `src/logic/utils/abilityHelpers.js` | DELETE | 5 |
 | `src/logic/utils/rallyBeaconHelper.js` | DELETE | 7 |
 | `src/logic/ai/attackEvaluators/droneAttack.js` | UPDATE AFTER_ATTACK check | 6 |
+| `src/logic/ai/cardEvaluators/statusEffectCards.js` | UPDATE AFTER_ATTACK check | 6 |
+| `src/logic/ai/attackEvaluators/__tests__/droneAttack.test.js` | UPDATE AFTER_ATTACK test data | 6 |
+| `src/managers/__tests__/ActionProcessor.test.js` | UPDATE mocks | 3, 7 |
+| `src/managers/__tests__/ActionProcessor.combat.test.js` | UPDATE mocks | 3, 7 |
+| `src/managers/__tests__/ActionProcessor.commitments.test.js` | UPDATE mocks | 7 |
 | `src/data/descriptions/glossaryDescriptions.js` | UPDATE descriptions | 11 |
 | `src/data/descriptions/codePatternDescriptions.js` | UPDATE descriptions | 11 |
 
