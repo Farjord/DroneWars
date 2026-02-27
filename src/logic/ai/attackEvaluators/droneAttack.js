@@ -98,11 +98,11 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   const growthAbility = baseAttacker?.abilities.find(a =>
     a.type === 'TRIGGERED' &&
     a.trigger === 'ON_ATTACK' &&
-    a.effects?.some(e => e.type === 'PERMANENT_STAT_MOD')
+    a.effects?.some(e => e.type === 'MODIFY_STAT')
   );
 
   if (growthAbility) {
-    const statMod = growthAbility.effects.find(e => e.type === 'PERMANENT_STAT_MOD');
+    const statMod = growthAbility.effects.find(e => e.type === 'MODIFY_STAT');
     const statGain = statMod?.mod?.value || 1;
     const bonus = statGain * ATTACK_BONUSES.GROWTH_MULTIPLIER;
     score += bonus;

@@ -4,7 +4,7 @@
 // Phase 0: Tests for core TriggerProcessor functionality
 // - Pair guard logic
 // - findMatchingTriggers with mock data
-// - PERMANENT_STAT_MOD routing through EffectRouter
+// - MODIFY_STAT routing through EffectRouter
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -18,7 +18,7 @@ vi.mock('../../../data/droneData.js', () => ({
         name: 'Test Self Ability',
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
-        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
     },
     {
@@ -41,7 +41,7 @@ vi.mock('../../../data/droneData.js', () => ({
         type: 'TRIGGERED',
         trigger: 'ON_CARD_DRAWN',
         triggerOwner: 'CONTROLLER',
-        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
     },
     {
@@ -104,7 +104,7 @@ vi.mock('../../../data/droneData.js', () => ({
         trigger: 'ON_CARD_DRAWN',
         triggerOwner: 'CONTROLLER',
         scalingDivisor: 2,
-        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
     },
     {
@@ -139,7 +139,7 @@ vi.mock('../../../data/droneData.js', () => ({
         name: 'Veteran Instincts',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACK',
-        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
     }
   ]
@@ -390,9 +390,9 @@ describe('TriggerProcessor', () => {
 
       expect(result.triggered).toBe(true);
       expect(logCallback).toHaveBeenCalled();
-      // Verify EffectRouter.routeEffect was called with PERMANENT_STAT_MOD
+      // Verify EffectRouter.routeEffect was called with MODIFY_STAT
       expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
+        expect.objectContaining({ type: 'MODIFY_STAT' }),
         expect.any(Object)
       );
     });
@@ -477,11 +477,11 @@ describe('TriggerProcessor', () => {
   });
 
   // ========================================
-  // PERMANENT_STAT_MOD ROUTING TEST
+  // MODIFY_STAT ROUTING TEST
   // ========================================
 
-  describe('PERMANENT_STAT_MOD EffectRouter registration', () => {
-    it('should route PERMANENT_STAT_MOD effects through effectRouter', () => {
+  describe('MODIFY_STAT EffectRouter registration', () => {
+    it('should route MODIFY_STAT effects through effectRouter', () => {
       const triggeringDrone = { id: 'drone1', name: 'TestSelfTriggerDrone', statMods: [] };
       basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
 
@@ -496,7 +496,7 @@ describe('TriggerProcessor', () => {
       });
 
       const routeCall = processor.effectRouter.routeEffect.mock.calls[0];
-      expect(routeCall[0].type).toBe('PERMANENT_STAT_MOD');
+      expect(routeCall[0].type).toBe('MODIFY_STAT');
       expect(routeCall[0].mod).toEqual({ stat: 'attack', value: 1, type: 'permanent' });
     });
   });
@@ -863,9 +863,9 @@ describe('TriggerProcessor', () => {
       // Controller trigger fires
       expect(result.triggered).toBe(true);
       expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
-      // Only PERMANENT_STAT_MOD from controller drone, not DAMAGE from lane drone
+      // Only MODIFY_STAT from controller drone, not DAMAGE from lane drone
       expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
+        expect.objectContaining({ type: 'MODIFY_STAT' }),
         expect.any(Object)
       );
     });
@@ -915,7 +915,7 @@ describe('TriggerProcessor', () => {
       );
     });
 
-    it('fireTrigger(ON_ATTACK) routes PERMANENT_STAT_MOD through EffectRouter for Gladiator', () => {
+    it('fireTrigger(ON_ATTACK) routes MODIFY_STAT through EffectRouter for Gladiator', () => {
       const triggeringDrone = { id: 'glad1', name: 'TestGladiatorDrone', owner: 'player1' };
       basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
 
@@ -932,7 +932,7 @@ describe('TriggerProcessor', () => {
       expect(result.triggered).toBe(true);
       expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
       expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
+        expect.objectContaining({ type: 'MODIFY_STAT' }),
         expect.objectContaining({
           actingPlayerId: 'player1',
           target: expect.objectContaining({ id: 'glad1', name: 'TestGladiatorDrone' })
@@ -951,7 +951,7 @@ describe('TriggerProcessor', () => {
       expect(matches).toHaveLength(1);
       expect(matches[0].ability.name).toBe('Veteran Instincts');
       expect(matches[0].ability.effects[0]).toEqual({
-        type: 'PERMANENT_STAT_MOD',
+        type: 'MODIFY_STAT',
         mod: { stat: 'attack', value: 1, type: 'permanent' }
       });
     });

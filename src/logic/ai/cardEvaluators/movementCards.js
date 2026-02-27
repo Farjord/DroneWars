@@ -119,7 +119,7 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
   if (onMoveAbility) {
     let abilityBonus = 0;
     onMoveAbility.effects?.forEach(effect => {
-      if (effect.type === 'PERMANENT_STAT_MOD') {
+      if (effect.type === 'MODIFY_STAT' && effect.mod?.type === 'permanent') {
         if (effect.mod.stat === 'attack') abilityBonus += (effect.mod.value * CARD_EVALUATION.ON_MOVE_ATTACK_BONUS_PER_POINT);
         if (effect.mod.stat === 'speed') abilityBonus += (effect.mod.value * CARD_EVALUATION.ON_MOVE_SPEED_BONUS_PER_POINT);
       }

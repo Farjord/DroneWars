@@ -40,8 +40,6 @@ export const effectDescriptions = {
   // === STAT MODIFICATION ===
   'MODIFY_STAT': 'Applies a temporary or permanent modification to a drone\'s stats. Temporary mods last until end of turn. Permanent mods persist for the game. Can modify attack, speed, hull, shields, or cost.',
 
-  'PERMANENT_STAT_MOD': 'Permanently increases a stat on the affected unit. The bonus persists for the entire game and stacks with other modifiers.',
-
   'MODIFY_DRONE_BASE': 'Permanently modifies the base stats of a drone type. Affects all drones of that type on the board and future deployments. Used by Upgrade cards.',
 
   'CONDITIONAL_MODIFY_STAT': 'Modifies a stat only when a specific condition is met. The condition is checked every time stats are calculated, so bonuses apply dynamically when conditions change.',

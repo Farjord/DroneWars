@@ -35,7 +35,7 @@ vi.mock('../../../../data/droneData.js', () => ({
     { name: 'Test Drone', class: 1, attack: 2, speed: 3, abilities: [] },
     { name: 'Specter', class: 2, attack: 3, speed: 4, abilities: [
       { type: 'TRIGGERED', trigger: 'ON_MOVE', effects: [
-        { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }
+        { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }
       ]}
     ]}
   ]

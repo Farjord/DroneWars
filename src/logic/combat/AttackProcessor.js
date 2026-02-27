@@ -141,7 +141,7 @@ const applyCounterDamage = (
  * - Shield and hull damage distribution
  * - Animation event creation (7 event types)
  * - State updates (destruction, exhaustion, auras)
- * - After-attack abilities (DESTROY_SELF, PERMANENT_STAT_MOD)
+ * - After-attack abilities (DESTROY_SELF, MODIFY_STAT)
  *
  * @param {Object} attackDetails - Attack configuration
  * @param {Object} playerStates - Current player states

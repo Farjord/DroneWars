@@ -17,7 +17,7 @@
 
 export const effectPatterns = {
   'ON_ATTACK': {
-    validEffects: ['DESTROY (scope: SELF)', 'PERMANENT_STAT_MOD'],
+    validEffects: ['DESTROY (scope: SELF)', 'MODIFY_STAT (permanent)'],
     dataFormat: '{ type: "TRIGGERED", trigger: "ON_ATTACK", effects: [...] }',
     implementation: 'TriggerProcessor.fireTrigger(ON_ATTACK)',
     notes: 'Self-trigger fired after a drone completes an attack. Effects routed through EffectRouter.'
@@ -119,19 +119,6 @@ export const effectPatterns = {
     requiredParameters: ['mods'],
     implementation: 'statsCalculator.js:calculateEffectiveStats',
     notes: 'Applies bonuses when drone is in Lane 1 or Lane 3.'
-  },
-
-  'PERMANENT_STAT_MOD': {
-    validParameters: {
-      mod: {
-        stat: ['attack', 'speed', 'hull', 'shields'],
-        value: 'number',
-        type: 'string (always "permanent")'
-      }
-    },
-    requiredParameters: ['mod'],
-    implementation: 'gameLogic.js:processAfterAttackAbilities',
-    notes: 'Adds permanent modification to drone. Persists for entire game.'
   },
 
   'MODIFY_DRONE_BASE': {

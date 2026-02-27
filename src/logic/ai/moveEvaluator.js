@@ -96,7 +96,7 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   if (onMoveAbility) {
     let abilityBonus = 0;
     onMoveAbility.effects?.forEach(effect => {
-      if (effect.type === 'PERMANENT_STAT_MOD') {
+      if (effect.type === 'MODIFY_STAT' && effect.mod?.type === 'permanent') {
         if (effect.mod.stat === 'attack') abilityBonus += (effect.mod.value * MOVE_EVALUATION.ON_MOVE_ATTACK_BONUS);
         if (effect.mod.stat === 'speed') abilityBonus += (effect.mod.value * MOVE_EVALUATION.ON_MOVE_SPEED_BONUS);
       }

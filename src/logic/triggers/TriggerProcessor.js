@@ -291,7 +291,7 @@ class TriggerProcessor {
           const routeResult = this.effectRouter.routeEffect(effect, triggeringContext);
           if (routeResult?.newPlayerStates) currentStates = routeResult.newPlayerStates;
           if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
-          if (effect.type === 'PERMANENT_STAT_MOD' || effect.type === 'MODIFY_STAT') {
+          if (effect.type === 'MODIFY_STAT') {
             statModsApplied = true;
           }
           continue;
@@ -321,7 +321,7 @@ class TriggerProcessor {
           animationEvents.push(...result.animationEvents);
         }
 
-        if (processedEffect.type === 'PERMANENT_STAT_MOD' || processedEffect.type === 'MODIFY_STAT') {
+        if (processedEffect.type === 'MODIFY_STAT') {
           statModsApplied = true;
         }
       }

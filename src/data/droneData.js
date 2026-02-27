@@ -189,9 +189,9 @@ const fullDroneCollection = [
         description: 'Gains +1 attack permanently after it attacks.',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACK',
-        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
         }],
-    upgradeSlots: 2 
+    upgradeSlots: 2
   },
   {
     name: 'Vindicator',
@@ -260,8 +260,8 @@ const fullDroneCollection = [
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
         effects: [
-            { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } },
-            { type: 'PERMANENT_STAT_MOD', mod: { stat: 'speed', value: 1, type: 'permanent' } }
+            { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } },
+            { type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' } }
         ]
      }],
     upgradeSlots: 2 
@@ -748,7 +748,7 @@ const fullDroneCollection = [
       description: 'Start of Round: Gain +1 attack permanently.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_START',
-      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }]
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
     }],
     upgradeSlots: 2
   },
@@ -966,7 +966,7 @@ const fullDroneCollection = [
       description: 'Each time you draw cards during the action phase, permanently gain +1 attack per card drawn.',
       type: 'TRIGGERED',
       trigger: 'ON_CARD_DRAWN',
-      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
     }],
     upgradeSlots: 1
   },
@@ -987,7 +987,7 @@ const fullDroneCollection = [
       type: 'TRIGGERED',
       trigger: 'ON_ENERGY_GAINED',
       scalingDivisor: 2,
-      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
     }],
     upgradeSlots: 1
   },

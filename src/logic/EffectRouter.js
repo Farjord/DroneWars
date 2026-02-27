@@ -70,7 +70,6 @@ class EffectRouter {
       // Phase 6: Stat modification effects (destroy, modify, upgrades)
       DESTROY: new DestroyEffectProcessor(),
       MODIFY_STAT: new ModifyStatEffectProcessor(),
-      PERMANENT_STAT_MOD: new ModifyStatEffectProcessor(),
       MODIFY_DRONE_BASE: new ModifyDroneBaseEffectProcessor(),
       DESTROY_UPGRADE: new DestroyUpgradeEffectProcessor(),
       // Phase 7: Movement effects - COMPLETE
