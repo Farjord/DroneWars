@@ -68,17 +68,19 @@
 - [x] Code review fixes: route EXHAUST_DRONE/MODIFY_STAT through EffectRouter, remove redundant clones, add lane: null
 - [x] Checkpoint commit
 
-## Phase 6: Deprecate AFTER_ATTACK → ON_ATTACK
-- [ ] Update Firefly: `PASSIVE/AFTER_ATTACK` → `TRIGGERED/ON_ATTACK, effects: [{ type: 'DESTROY', scope: 'SELF' }]`
-- [ ] Update Gladiator: `PASSIVE/AFTER_ATTACK` → `TRIGGERED/ON_ATTACK, effects: [{ type: 'PERMANENT_STAT_MOD' }]`
-- [ ] Add `TriggerProcessor.fireTrigger('ON_ATTACK', ...)` in AttackProcessor
-- [ ] Implement `conditionalEffects` evaluation (Threat Transmitter)
-- [ ] Delete `calculateAfterAttackStateAndEffects` (~75 lines)
-- [ ] Update AI: `droneAttack.js` AFTER_ATTACK check → TRIGGERED/ON_ATTACK
-- [ ] Update AI: `statusEffectCards.js:154-156` AFTER_ATTACK check → TRIGGERED/ON_ATTACK
-- [ ] Update test: `droneAttack.test.js:131` Gladiator AFTER_ATTACK test data → TRIGGERED/ON_ATTACK
-- [ ] Tests: Firefly self-destructs, Gladiator +1 attack, Threat Transmitter +4 threat
-- [ ] Verify: zero references to `AFTER_ATTACK` in codebase
+## Phase 6: Deprecate AFTER_ATTACK → ON_ATTACK ✅
+- [x] Update Firefly: `PASSIVE/AFTER_ATTACK` → `TRIGGERED/ON_ATTACK, effects: [{ type: 'DESTROY', scope: 'SELF' }]`
+- [x] Update Gladiator: `PASSIVE/AFTER_ATTACK` → `TRIGGERED/ON_ATTACK, effects: [{ type: 'PERMANENT_STAT_MOD' }]`
+- [x] Add `TriggerProcessor.fireTrigger('ON_ATTACK', ...)` in AttackProcessor
+- [ ] Implement `conditionalEffects` evaluation (Threat Transmitter) — deferred to Phase 8+
+- [x] Delete `calculateAfterAttackStateAndEffects` (~87 lines)
+- [x] Add `scope: 'SELF'` branch to DestroyEffectProcessor
+- [x] Update AI: `droneAttack.js` AFTER_ATTACK check → TRIGGERED/ON_ATTACK
+- [x] Update AI: `statusEffectCards.js` AFTER_ATTACK check → TRIGGERED/ON_ATTACK
+- [x] Update test: `droneAttack.test.js:131` Gladiator AFTER_ATTACK → ON_ATTACK
+- [x] Update description files: glossaryDescriptions + codePatternDescriptions
+- [x] Tests: Firefly self-destructs via ON_ATTACK, Gladiator +1 attack via ON_ATTACK, SELF scope in DestroyEffectProcessor
+- [x] Verify: zero references to `AFTER_ATTACK` in codebase
 - [ ] Checkpoint commit
 
 ## Phase 7: Deprecate RALLY_BEACON → ON_LANE_MOVEMENT_IN

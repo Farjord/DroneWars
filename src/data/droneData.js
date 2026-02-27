@@ -102,8 +102,9 @@ const fullDroneCollection = [
   abilities: [{
       name: 'Self-Destruct',
       description: 'This drone is destroyed after it attacks.',
-      type: 'PASSIVE',
-      effect: { type: 'AFTER_ATTACK', subEffect: { type: 'DESTROY_SELF' } }
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACK',
+      effects: [{ type: 'DESTROY', scope: 'SELF' }]
       }],
   upgradeSlots: 2 
 },
@@ -186,8 +187,9 @@ const fullDroneCollection = [
     abilities: [{
         name: 'Veteran Instincts',
         description: 'Gains +1 attack permanently after it attacks.',
-        type: 'PASSIVE',
-        effect: { type: 'AFTER_ATTACK', subEffect: { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } } }
+        type: 'TRIGGERED',
+        trigger: 'ON_ATTACK',
+        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
         }],
     upgradeSlots: 2 
   },

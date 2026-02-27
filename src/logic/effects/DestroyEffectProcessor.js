@@ -3,7 +3,7 @@
 // ========================================
 // Handles DESTROY effect type
 // Extracts destroy logic from gameLogic.js resolveDestroyEffect()
-// Supports multiple scopes: SINGLE, FILTERED, LANE, ALL
+// Supports multiple scopes: SELF, SINGLE, FILTERED, LANE, ALL
 //
 // REFACTORED: Animation logic extracted to animations/ builders
 
@@ -79,6 +79,14 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
       // LANE scope: Destroy all drones in a lane (BOTH sides - area effect like Nuke)
       const result = this.processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates);
       destroyedDrones.push(...result.destroyedDrones);
+      animationEvents.push(...result.animationEvents);
+
+    } else if (effect.scope === 'SELF' && target) {
+      // SELF scope: Drone destroys itself (e.g., Firefly after attacking)
+      const result = this.processSingleDestroy(target, actingPlayerId, newPlayerStates);
+      if (result.droneDestroyed) {
+        destroyedDrones.push(result.droneDestroyed);
+      }
       animationEvents.push(...result.animationEvents);
 
     } else if (effect.scope === 'SINGLE' && target && target.owner !== actingPlayerId) {

@@ -121,6 +121,26 @@ vi.mock('../../../data/droneData.js', () => ({
           { type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }
         ]
       }]
+    },
+    {
+      name: 'TestFireflyDrone',
+      attack: 3, hull: 1, shields: 0, speed: 2,
+      abilities: [{
+        name: 'Self-Destruct',
+        type: 'TRIGGERED',
+        trigger: 'ON_ATTACK',
+        effects: [{ type: 'DESTROY', scope: 'SELF' }]
+      }]
+    },
+    {
+      name: 'TestGladiatorDrone',
+      attack: 1, hull: 2, shields: 2, speed: 3,
+      abilities: [{
+        name: 'Veteran Instincts',
+        type: 'TRIGGERED',
+        trigger: 'ON_ATTACK',
+        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
     }
   ]
 }));
@@ -848,6 +868,92 @@ describe('TriggerProcessor', () => {
         expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
         expect.any(Object)
       );
+    });
+  });
+
+  // ========================================
+  // ON_ATTACK TRIGGER TESTS (Phase 6)
+  // ========================================
+
+  describe('ON_ATTACK triggers', () => {
+    it('findMatchingTriggers returns ON_ATTACK self-trigger for TestFireflyDrone', () => {
+      const triggeringDrone = { id: 'firefly1', name: 'TestFireflyDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const matches = processor.findMatchingTriggers(
+        TRIGGER_TYPES.ON_ATTACK, 'lane1', triggeringDrone, 'player1', 'player1', basePlayerStates
+      );
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0].ability.name).toBe('Self-Destruct');
+      expect(matches[0].ability.effects[0]).toEqual({ type: 'DESTROY', scope: 'SELF' });
+      expect(matches[0].tier).toBe(0);
+    });
+
+    it('fireTrigger(ON_ATTACK) routes DESTROY scope SELF through EffectRouter for Firefly', () => {
+      const triggeringDrone = { id: 'firefly1', name: 'TestFireflyDrone', owner: 'player1' };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'DESTROY', scope: 'SELF' }),
+        expect.objectContaining({
+          actingPlayerId: 'player1',
+          target: expect.objectContaining({ id: 'firefly1', name: 'TestFireflyDrone' })
+        })
+      );
+    });
+
+    it('fireTrigger(ON_ATTACK) routes PERMANENT_STAT_MOD through EffectRouter for Gladiator', () => {
+      const triggeringDrone = { id: 'glad1', name: 'TestGladiatorDrone', owner: 'player1' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
+        expect.objectContaining({
+          actingPlayerId: 'player1',
+          target: expect.objectContaining({ id: 'glad1', name: 'TestGladiatorDrone' })
+        })
+      );
+    });
+
+    it('findMatchingTriggers returns ON_ATTACK self-trigger for TestGladiatorDrone', () => {
+      const triggeringDrone = { id: 'glad1', name: 'TestGladiatorDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const matches = processor.findMatchingTriggers(
+        TRIGGER_TYPES.ON_ATTACK, 'lane2', triggeringDrone, 'player1', 'player1', basePlayerStates
+      );
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0].ability.name).toBe('Veteran Instincts');
+      expect(matches[0].ability.effects[0]).toEqual({
+        type: 'PERMANENT_STAT_MOD',
+        mod: { stat: 'attack', value: 1, type: 'permanent' }
+      });
     });
   });
 });

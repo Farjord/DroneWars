@@ -2,9 +2,9 @@
 // TRIGGER PROCESSOR
 // ========================================
 // Unified trigger processing for all triggered abilities.
-// Replaces 6 fragmented patterns: abilityHelpers, MineTriggeredEffectProcessor,
-// calculateAfterAttackStateAndEffects, RoundManager inline, DeploymentProcessor inline,
-// rallyBeaconHelper.
+// Replaces fragmented patterns: abilityHelpers, MineTriggeredEffectProcessor,
+// AttackProcessor AFTER_ATTACK handler (deleted Phase 6),
+// RoundManager inline, DeploymentProcessor inline, rallyBeaconHelper.
 //
 // Call sites remain distributed (movement fires ON_MOVE, combat fires ON_ATTACK, etc.)
 // but they all call TriggerProcessor.fireTrigger() instead of bespoke logic.

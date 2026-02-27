@@ -205,6 +205,62 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
     });
   });
 
+  describe('SELF scope (Firefly self-destruct)', () => {
+    beforeEach(() => {
+      // Acting player has a drone they want to destroy
+      mockPlayerStates.player1.dronesOnBoard = {
+        lane1: [
+          { id: 'firefly_1', name: 'Firefly', hull: 1, attack: 3, owner: 'player1' }
+        ],
+        lane2: [],
+        lane3: []
+      };
+    });
+
+    it('should destroy the acting player\'s own drone', () => {
+      const effect = { type: 'DESTROY', scope: 'SELF' };
+      const context = {
+        ...mockContext,
+        target: { id: 'firefly_1', name: 'Firefly', hull: 1, attack: 3, owner: 'player1' },
+        actingPlayerId: 'player1'
+      };
+
+      const result = processor.process(effect, context);
+
+      // Firefly should be removed from player1's board
+      expect(result.newPlayerStates.player1.dronesOnBoard.lane1).toHaveLength(0);
+    });
+
+    it('should generate DRONE_DESTROYED animation for self-destroyed drone', () => {
+      const effect = { type: 'DESTROY', scope: 'SELF' };
+      const context = {
+        ...mockContext,
+        target: { id: 'firefly_1', name: 'Firefly', hull: 1, attack: 3, owner: 'player1' },
+        actingPlayerId: 'player1'
+      };
+
+      const result = processor.process(effect, context);
+
+      const destroyedEvents = result.animationEvents.filter(e => e.type === 'DRONE_DESTROYED');
+      expect(destroyedEvents).toHaveLength(1);
+      expect(destroyedEvents[0].targetId).toBe('firefly_1');
+      expect(destroyedEvents[0].targetPlayer).toBe('player1');
+    });
+
+    it('should call gameEngine.onDroneDestroyed for the self-destroyed drone', () => {
+      const effect = { type: 'DESTROY', scope: 'SELF' };
+      const context = {
+        ...mockContext,
+        target: { id: 'firefly_1', name: 'Firefly', hull: 1, attack: 3, owner: 'player1' },
+        actingPlayerId: 'player1'
+      };
+
+      processor.process(effect, context);
+
+      expect(gameEngine.onDroneDestroyed).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('effect result', () => {
     it('should return newPlayerStates', () => {
       const effect = { type: 'DESTROY', scope: 'ALL' };

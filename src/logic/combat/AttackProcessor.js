@@ -3,7 +3,7 @@
 // ========================================
 // Handles all combat attack resolution
 // - resolveAttack: Main attack resolution with damage calculation
-// - calculateAfterAttackStateAndEffects: After-attack abilities (DESTROY_SELF, PERMANENT_STAT_MOD)
+// - After-attack abilities (ON_ATTACK) delegated to TriggerProcessor
 
 import { calculateEffectiveStats, calculateEffectiveShipStats } from '../statsCalculator.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
@@ -23,93 +23,6 @@ import { createRetaliationDamageAnimation } from './animations/RetaliationDamage
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
-/**
- * Calculate after-attack state changes and effects
- *
- * Handles drone abilities that trigger AFTER an attack completes:
- * - DESTROY_SELF: Drone destroys itself after attacking (e.g., Ordnance drones)
- * - PERMANENT_STAT_MOD: Drone gains permanent stat boost after attacking
- *
- * @param {Object} playerState - Attacking player's state
- * @param {Object} attacker - Attacking drone
- * @param {string} attackingPlayerId - Player ID ('player1' or 'player2')
- * @returns {Object} { newState, effects, animationEvents }
- */
-const calculateAfterAttackStateAndEffects = (playerState, attacker, attackingPlayerId) => {
-  const baseDrone = fullDroneCollection.find(d => d.name === attacker.name);
-  if (!baseDrone?.abilities) {
-      return { newState: playerState, effects: [], animationEvents: [] };
-  }
-
-  let newState = JSON.parse(JSON.stringify(playerState));
-  const effects = [];
-  const animationEvents = [];
-  let stateModified = false;
-
-  const afterAttackAbilities = baseDrone.abilities.filter(ability => ability.effect?.type === 'AFTER_ATTACK');
-
-  afterAttackAbilities.forEach(ability => {
-      const { subEffect } = ability.effect;
-
-      if (subEffect.type === 'DESTROY_SELF') {
-          for (const lane in newState.dronesOnBoard) {
-              const droneIndex = newState.dronesOnBoard[lane].findIndex(d => d.id === attacker.id);
-              if (droneIndex !== -1) {
-                  stateModified = true;
-                  const destroyedDrone = newState.dronesOnBoard[lane][droneIndex];
-
-                  effects.push({
-                      type: 'LOG',
-                      payload: {
-                          player: newState.name, actionType: 'ABILITY', source: attacker.name, target: 'Self',
-                          outcome: `Activated '${ability.name}', destroying itself.`
-                      }
-                  });
-                  // Add proper animation event for attacker self-destruction
-                  animationEvents.push({
-                      type: 'DRONE_DESTROYED',
-                      targetId: attacker.id,
-                      targetPlayer: attackingPlayerId,
-                      targetLane: lane,
-                      targetType: 'drone',
-                      timestamp: Date.now()
-                  });
-
-                  newState.dronesOnBoard[lane] = newState.dronesOnBoard[lane].filter(d => d.id !== attacker.id);
-                  Object.assign(newState, onDroneDestroyed(newState, destroyedDrone));
-                  break;
-              }
-          }
-      } else if (subEffect.type === 'PERMANENT_STAT_MOD') {
-           for (const lane in newState.dronesOnBoard) {
-              const droneIndex = newState.dronesOnBoard[lane].findIndex(d => d.id === attacker.id);
-              if (droneIndex !== -1) {
-                  stateModified = true;
-                  if (!newState.dronesOnBoard[lane][droneIndex].statMods) {
-                     newState.dronesOnBoard[lane][droneIndex].statMods = [];
-                  }
-
-                  effects.push({
-                      type: 'LOG',
-                      payload: {
-                         player: newState.name, actionType: 'ABILITY', source: attacker.name, target: 'Self',
-                         outcome: `Activated '${ability.name}', gaining a permanent +${subEffect.mod.value} ${subEffect.mod.stat}.`
-                      }
-                  });
-
-                  newState.dronesOnBoard[lane][droneIndex].statMods.push(subEffect.mod);
-                  break;
-              }
-          }
-      }
-  });
-
-  return {
-      newState: stateModified ? newState : playerState,
-      effects,
-      animationEvents
-  };
-};
 
 /**
  * Apply counter damage (dogfight or retaliate) from one drone to another
@@ -624,18 +537,23 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }
 
         if (droneWasOnBoard) {
-            const result = calculateAfterAttackStateAndEffects(newPlayerStates[attackingPlayerId], attacker, attackingPlayerId);
-            newPlayerStates[attackingPlayerId] = result.newState;
-            // Merge after-attack ability animation events
-            if (result.animationEvents && result.animationEvents.length > 0) {
-                animationEvents.push(...result.animationEvents);
-            }
-            // Handle LOG effects
-            result.effects.forEach(effect => {
-                if (effect.type === 'LOG' && logCallback) {
-                    logCallback(effect.payload, 'afterAttack');
-                }
+            const afterAttackProcessor = new TriggerProcessor();
+            const afterAttackResult = afterAttackProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
+                lane: attackerLane,
+                triggeringDrone: attacker,
+                triggeringPlayerId: attackingPlayerId,
+                actingPlayerId: attackingPlayerId,
+                playerStates: newPlayerStates,
+                placedSections,
+                logCallback
             });
+            if (afterAttackResult.triggered) {
+                newPlayerStates[attackingPlayerId] = afterAttackResult.newPlayerStates[attackingPlayerId];
+                newPlayerStates[defendingPlayerId] = afterAttackResult.newPlayerStates[defendingPlayerId];
+                if (afterAttackResult.animationEvents?.length > 0) {
+                    animationEvents.push(...afterAttackResult.animationEvents);
+                }
+            }
         }
     }
 

@@ -96,16 +96,17 @@ export const evaluateDroneAttack = (attacker, target, context) => {
 
   // Growth bonus (Gladiator - gains permanent +1 attack after attacking)
   const growthAbility = baseAttacker?.abilities.find(a =>
-    a.type === 'PASSIVE' &&
-    a.effect?.type === 'AFTER_ATTACK' &&
-    a.effect?.subEffect?.type === 'PERMANENT_STAT_MOD'
+    a.type === 'TRIGGERED' &&
+    a.trigger === 'ON_ATTACK' &&
+    a.effects?.some(e => e.type === 'PERMANENT_STAT_MOD')
   );
 
   if (growthAbility) {
-    const statGain = growthAbility.effect.subEffect.mod?.value || 1;
+    const statMod = growthAbility.effects.find(e => e.type === 'PERMANENT_STAT_MOD');
+    const statGain = statMod?.mod?.value || 1;
     const bonus = statGain * ATTACK_BONUSES.GROWTH_MULTIPLIER;
     score += bonus;
-    logic.push(`Veteran Instincts: +${bonus} (gains +${statGain} ${growthAbility.effect.subEffect.mod?.stat || 'stat'})`);
+    logic.push(`Veteran Instincts: +${bonus} (gains +${statGain} ${statMod?.mod?.stat || 'stat'})`);
   }
 
   // Guardian protection check - heavily penalize attacking with Guardians when enemies present

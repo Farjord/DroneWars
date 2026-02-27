@@ -26,7 +26,7 @@ export const effectDescriptions = {
 
   'DESTROY': 'Immediately destroys target(s). Can target a single unit, all units in a lane, or filtered subsets based on stats like speed or hull.',
 
-  'DESTROY_SELF': 'Destroys the unit that triggered this effect. Commonly used with AFTER_ATTACK for kamikaze-style mechanics.',
+  'DESTROY_SELF': 'Destroys the unit that triggered this effect. Commonly used with ON_ATTACK trigger for kamikaze-style mechanics.',
 
   'DESTROY_UPGRADE': 'Removes an applied upgrade from an enemy drone type, reverting any stat bonuses or abilities granted by that upgrade.',
 
@@ -69,7 +69,7 @@ export const effectDescriptions = {
   'CREATE_TOKENS': 'Creates drone tokens (non-card drones) in specified lanes. Tokens function like deployed drones but weren\'t played from hand. Can bypass CPU limits if specified.',
 
   // === TRIGGERED EFFECTS ===
-  'AFTER_ATTACK': 'Triggers an effect after a drone completes an attack. Commonly used for self-destruct mechanics (like Kamikaze Drone) or stat bonuses that trigger from combat.',
+  'ON_ATTACK': 'Triggers an effect after a drone completes an attack. Routed through TriggerProcessor. Used for self-destruct mechanics (Firefly) or permanent stat bonuses (Gladiator).',
 
   'REPEATING_EFFECT': 'Executes a set of effects multiple times based on a condition. For example, "Draw 1 card and gain 1 energy" repeated once for each damaged ship section.',
 

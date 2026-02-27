@@ -128,7 +128,7 @@ describe('evaluateDroneAttack', () => {
     });
   });
 
-  describe('Gladiator AFTER_ATTACK - Growth bonus', () => {
+  describe('Gladiator ON_ATTACK - Growth bonus', () => {
     it('applies growth bonus for Gladiator attacks', () => {
       const attacker = createMockDrone({
         name: 'Gladiator',

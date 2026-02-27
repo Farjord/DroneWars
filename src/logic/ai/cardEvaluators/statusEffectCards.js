@@ -151,14 +151,14 @@ export const evaluateApplyCannotAttackCard = (card, target, context) => {
     logic.push(`⭐ High Class (${target.class}): +${classBonus}`);
   }
 
-  // === AFTER_ATTACK ABILITY BONUS ===
-  const hasAfterAttackAbility = baseDrone?.abilities?.some(
-    a => a.effect?.type === 'AFTER_ATTACK'
+  // === ON_ATTACK ABILITY BONUS ===
+  const hasOnAttackAbility = baseDrone?.abilities?.some(
+    a => a.type === 'TRIGGERED' && a.trigger === 'ON_ATTACK'
   );
 
-  if (hasAfterAttackAbility) {
+  if (hasOnAttackAbility) {
     totalScore += 15;
-    logic.push(`⭐ AFTER_ATTACK Ability: +15`);
+    logic.push(`⭐ ON_ATTACK Ability: +15`);
   }
 
   // === REDUCED VALUE IF EXHAUSTED (no immediate threat) ===

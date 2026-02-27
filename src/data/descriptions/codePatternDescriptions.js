@@ -16,12 +16,11 @@
 // ========================================
 
 export const effectPatterns = {
-  'AFTER_ATTACK': {
-    validSubEffects: ['DESTROY_SELF', 'PERMANENT_STAT_MOD'],
-    requiredParameters: ['subEffect'],
-    optionalParameters: [],
-    implementation: 'gameLogic.js:processAfterAttackAbilities',
-    notes: 'Triggered after a drone completes an attack. SubEffect determines behavior.'
+  'ON_ATTACK': {
+    validEffects: ['DESTROY (scope: SELF)', 'PERMANENT_STAT_MOD'],
+    dataFormat: '{ type: "TRIGGERED", trigger: "ON_ATTACK", effects: [...] }',
+    implementation: 'TriggerProcessor.fireTrigger(ON_ATTACK)',
+    notes: 'Self-trigger fired after a drone completes an attack. Effects routed through EffectRouter.'
   },
 
   'DAMAGE': {
