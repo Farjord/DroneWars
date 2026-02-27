@@ -60,6 +60,67 @@ vi.mock('../../../data/droneData.js', () => ({
       name: 'NormalDrone',
       attack: 2, hull: 3, shields: 1, speed: 2,
       abilities: []
+    },
+    {
+      name: 'TestMineDamageDrone',
+      attack: 0, hull: 1, shields: 0, speed: 0,
+      abilities: [{
+        name: 'Damage Mine',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effects: [{ type: 'DAMAGE', value: 3, scope: 'TRIGGERING_DRONE' }]
+      }]
+    },
+    {
+      name: 'TestMineExhaustDrone',
+      attack: 0, hull: 1, shields: 0, speed: 0,
+      abilities: [{
+        name: 'Exhaust Mine',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }]
+      }]
+    },
+    {
+      name: 'TestMineModifyStatDrone',
+      attack: 0, hull: 1, shields: 0, speed: 0,
+      abilities: [{
+        name: 'Weaken Mine',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        effects: [{ type: 'MODIFY_STAT', scope: 'TRIGGERING_DRONE', mod: { stat: 'attack', value: -1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestScalingDrone',
+      attack: 1, hull: 2, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Scaling Ability',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_DRAWN',
+        triggerOwner: 'CONTROLLER',
+        scalingDivisor: 2,
+        effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestComboMineDrone',
+      attack: 0, hull: 1, shields: 0, speed: 0,
+      abilities: [{
+        name: 'Combo Mine',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effects: [
+          { type: 'DAMAGE', value: 2, scope: 'TRIGGERING_DRONE' },
+          { type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }
+        ]
+      }]
     }
   ]
 }));
@@ -68,7 +129,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-// Mock droneStateUtils and auraManager (used by _destroyDrone and _applyDirectEffect)
+// Mock droneStateUtils and auraManager (used by _destroyDrone and _applyMineDamage)
 vi.mock('../../utils/droneStateUtils.js', () => ({
   onDroneDestroyed: vi.fn((playerState) => playerState)
 }));
@@ -92,6 +153,8 @@ vi.mock('../../EffectRouter.js', () => {
 
 import TriggerProcessor from '../TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggerConstants.js';
+import { onDroneDestroyed } from '../../utils/droneStateUtils.js';
+import { updateAuras } from '../../utils/auraManager.js';
 
 describe('TriggerProcessor', () => {
   let processor;
@@ -415,6 +478,376 @@ describe('TriggerProcessor', () => {
       const routeCall = processor.effectRouter.routeEffect.mock.calls[0];
       expect(routeCall[0].type).toBe('PERMANENT_STAT_MOD');
       expect(routeCall[0].mod).toEqual({ stat: 'attack', value: 1, type: 'permanent' });
+    });
+  });
+
+  // ========================================
+  // A. SCALING AMOUNT / SCALING DIVISOR
+  // ========================================
+
+  describe('scalingAmount / scalingDivisor', () => {
+    it('A1: scalingAmount: 3 with no divisor → effect fires 3×', () => {
+      const controllerDrone = { id: 'odin1', name: 'TestControllerTriggerDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [controllerDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 3
+      });
+
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(3);
+    });
+
+    it('A2: scalingAmount: 5, scalingDivisor: 2 → fires 2× (floor(5/2))', () => {
+      const scalingDrone = { id: 'scaler1', name: 'TestScalingDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [scalingDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 5
+      });
+
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(2);
+    });
+
+    it('A3: scalingAmount: 1, scalingDivisor: 2 → fires 0× (early return)', () => {
+      const scalingDrone = { id: 'scaler1', name: 'TestScalingDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [scalingDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 1
+      });
+
+      expect(processor.effectRouter.routeEffect).not.toHaveBeenCalled();
+      expect(result.triggered).toBe(false);
+    });
+
+    it('A4: scalingAmount: null → fires 1× (default behavior)', () => {
+      const controllerDrone = { id: 'odin1', name: 'TestControllerTriggerDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [controllerDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: null
+      });
+
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ========================================
+  // B. TRIGGERING_DRONE SCOPE (MINE EFFECTS)
+  // ========================================
+
+  describe('TRIGGERING_DRONE scope', () => {
+    it('B1: DAMAGE via _applyMineDamage — shields absorb first, hull takes remainder', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 1 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      // Mine does 3 damage: 1 to shields, 2 to hull
+      const drone = result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'drone1');
+      expect(drone.currentShields).toBe(0);
+      expect(drone.hull).toBe(3);
+    });
+
+    it('B1b: DAMAGE with shields absorbing all damage — hull untouched', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 5 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const drone = result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'drone1');
+      expect(drone.currentShields).toBe(2);
+      expect(drone.hull).toBe(5);
+    });
+
+    it('B2: DAMAGE destroys drone when hull reaches 0', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 2, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      // Drone destroyed (hull 2 < damage 3)
+      const lane2 = result.newPlayerStates.player1.dronesOnBoard.lane2;
+      expect(lane2.find(d => d.id === 'drone1')).toBeUndefined();
+      // DRONE_DESTROYED animation for triggering drone + mine (destroyAfterTrigger)
+      const destroyEvents = result.animationEvents.filter(e => e.type === 'DRONE_DESTROYED');
+      expect(destroyEvents.length).toBeGreaterThanOrEqual(1);
+      expect(destroyEvents.some(e => e.targetId === 'drone1')).toBe(true);
+    });
+
+    it('B3: EXHAUST_DRONE routes through EffectRouter with correct target', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 3, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineExhaustDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }),
+        expect.objectContaining({
+          target: expect.objectContaining({ id: 'drone1', owner: 'player1' })
+        })
+      );
+    });
+
+    it('B4: MODIFY_STAT routes through EffectRouter with correct target', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 3, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineModifyStatDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'MODIFY_STAT',
+          scope: 'TRIGGERING_DRONE',
+          mod: { stat: 'attack', value: -1, type: 'permanent' }
+        }),
+        expect.objectContaining({
+          target: expect.objectContaining({ id: 'drone1', owner: 'player1' })
+        })
+      );
+    });
+  });
+
+  // ========================================
+  // C. DESTROY AFTER TRIGGER (MINE SELF-DESTRUCT)
+  // ========================================
+
+  describe('destroyAfterTrigger', () => {
+    it('C1: mine is destroyed after its effects fire', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const lane2 = result.newPlayerStates.player1.dronesOnBoard.lane2;
+      expect(lane2.find(d => d.id === 'mine1')).toBeUndefined();
+      // Triggering drone survives (hull 5 > damage 3)
+      expect(lane2.find(d => d.id === 'drone1')).toBeDefined();
+    });
+
+    it('C2: _destroyDrone calls onDroneDestroyed for availability tracking', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(onDroneDestroyed).toHaveBeenCalled();
+    });
+
+    it('C3: _destroyDrone calls updateAuras for recalculation', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(updateAuras).toHaveBeenCalled();
+    });
+
+    it('C4: _destroyDrone emits DRONE_DESTROYED animation event for the mine', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const mineDestroyEvent = result.animationEvents.find(
+        e => e.type === 'DRONE_DESTROYED' && e.targetId === 'mine1'
+      );
+      expect(mineDestroyEvent).toBeDefined();
+      expect(mineDestroyEvent.targetPlayer).toBe('player1');
+      expect(mineDestroyEvent.targetLane).toBe('lane2');
+    });
+  });
+
+  // ========================================
+  // D. EDGE CASES
+  // ========================================
+
+  describe('edge cases', () => {
+    it('D1: TRIGGERING_DRONE effect on missing drone is a no-op', () => {
+      // Triggering drone not actually in the lane (e.g., destroyed by earlier cascade)
+      const triggeringDrone = { id: 'ghost1', name: 'NormalDrone', hull: 3, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine];
+      // ghost1 is NOT on the board
+
+      const logCallback = vi.fn();
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      // Trigger fires (mine matched) but DAMAGE is a no-op
+      expect(result.triggered).toBe(true);
+      // No MINE_DAMAGE log entry (drone not found)
+      const damageLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'MINE_DAMAGE');
+      expect(damageLog).toBeUndefined();
+    });
+
+    it('D2: multiple effects in one trigger (DAMAGE + EXHAUST_DRONE)', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestComboMineDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      // DAMAGE applied (2 damage to hull)
+      const drone = result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'drone1');
+      expect(drone.hull).toBe(3);
+
+      // EXHAUST_DRONE routed through EffectRouter
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }),
+        expect.objectContaining({
+          target: expect.objectContaining({ id: 'drone1' })
+        })
+      );
+
+      // Mine self-destructed
+      expect(result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'mine1')).toBeUndefined();
+    });
+
+    it('D3: non-lane triggers (ON_CARD_DRAWN) with lane: null fire controller triggers only', () => {
+      const controllerDrone = { id: 'odin1', name: 'TestControllerTriggerDrone' };
+      const laneDrone = { id: 'lane1', name: 'TestLaneTriggerDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [controllerDrone];
+      basePlayerStates.player1.dronesOnBoard.lane2 = [laneDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 1
+      });
+
+      // Controller trigger fires
+      expect(result.triggered).toBe(true);
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledTimes(1);
+      // Only PERMANENT_STAT_MOD from controller drone, not DAMAGE from lane drone
+      expect(processor.effectRouter.routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'PERMANENT_STAT_MOD' }),
+        expect.any(Object)
+      );
     });
   });
 });

@@ -75,6 +75,7 @@ class DrawEffectProcessor extends BaseEffectProcessor {
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
       const triggerProcessor = new TriggerProcessor();
       const drawResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
         triggeringPlayerId: actingPlayerId,
         actingPlayerId,
         playerStates: newPlayerStates,

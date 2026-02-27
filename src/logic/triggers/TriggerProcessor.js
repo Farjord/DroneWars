@@ -255,15 +255,44 @@ class TriggerProcessor {
     // Repeat effects for scaling triggers (e.g., Odin: +1 attack per card drawn)
     for (let rep = 0; rep < repeatCount; rep++) {
       for (const effect of effects) {
-        // Route TRIGGERING_DRONE scope directly (mine effects target the triggering drone)
+        // Route TRIGGERING_DRONE scope: mine effects target the triggering drone
         if (effect.scope === 'TRIGGERING_DRONE') {
-          const directResult = this._applyDirectEffect(
-            effect, triggeringDrone, triggeringPlayerId, reactorLane,
-            reactorDrone, currentStates, placedSections, logCallback
-          );
-          if (directResult.newPlayerStates) currentStates = directResult.newPlayerStates;
-          if (directResult.animationEvents?.length > 0) animationEvents.push(...directResult.animationEvents);
-          if (directResult.statModsApplied) statModsApplied = true;
+          if (effect.type === 'DAMAGE') {
+            // DAMAGE handled inline — DamageEffectProcessor uses resolveAttack which is overkill for flat mine damage
+            const directResult = this._applyMineDamage(
+              effect, triggeringDrone, triggeringPlayerId, reactorLane,
+              reactorDrone, currentStates, placedSections, logCallback
+            );
+            if (directResult.animationEvents?.length > 0) animationEvents.push(...directResult.animationEvents);
+            continue;
+          }
+
+          // EXHAUST_DRONE, MODIFY_STAT, etc. route through EffectRouter
+          const triggeringTarget = {
+            type: 'DRONE',
+            id: triggeringDrone.id,
+            droneId: triggeringDrone.id,
+            name: triggeringDrone.name,
+            lane: reactorLane,
+            owner: triggeringPlayerId,
+            playerId: triggeringPlayerId
+          };
+          const triggeringContext = {
+            actingPlayerId: triggeringPlayerId,
+            playerStates: currentStates,
+            placedSections,
+            sourceDroneName: reactorDrone.name,
+            sourceDroneId: reactorDrone.id,
+            lane: reactorLane,
+            target: triggeringTarget,
+            callbacks: { logCallback }
+          };
+          const routeResult = this.effectRouter.routeEffect(effect, triggeringContext);
+          if (routeResult?.newPlayerStates) currentStates = routeResult.newPlayerStates;
+          if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
+          if (effect.type === 'PERMANENT_STAT_MOD' || effect.type === 'MODIFY_STAT') {
+            statModsApplied = true;
+          }
           continue;
         }
 
@@ -530,114 +559,70 @@ class TriggerProcessor {
   }
 
   /**
-   * Apply an effect directly to the triggering drone (used by mine effects with scope: 'TRIGGERING_DRONE').
-   * Handles DAMAGE, EXHAUST_DRONE, and MODIFY_STAT without routing through EffectRouter.
+   * Apply flat mine damage to the triggering drone (scope: 'TRIGGERING_DRONE', type: 'DAMAGE').
+   * Shields absorb first, then hull. Destroys drone if hull reaches 0.
+   * Other TRIGGERING_DRONE effect types (EXHAUST_DRONE, MODIFY_STAT) route through EffectRouter.
    *
-   * @returns {Object} { newPlayerStates, animationEvents, statModsApplied }
+   * Mutates currentStates directly (already a working copy from callers).
+   *
+   * @returns {Object} { newPlayerStates, animationEvents }
    */
-  _applyDirectEffect(effect, triggeringDrone, triggeringPlayerId, lane, reactorDrone, currentStates, placedSections, logCallback) {
-    const newStates = JSON.parse(JSON.stringify(currentStates));
-    const ownerState = newStates[triggeringPlayerId];
+  _applyMineDamage(effect, triggeringDrone, triggeringPlayerId, lane, reactorDrone, currentStates, placedSections, logCallback) {
+    const ownerState = currentStates[triggeringPlayerId];
     const droneInLane = ownerState.dronesOnBoard[lane]?.find(d => d.id === triggeringDrone.id);
 
     if (!droneInLane) {
-      debugLog('TRIGGERS', 'Triggering drone not found for direct effect', { droneId: triggeringDrone.id, lane });
-      return { newPlayerStates: newStates, animationEvents: [], statModsApplied: false };
+      debugLog('TRIGGERS', 'Triggering drone not found for mine damage', { droneId: triggeringDrone.id, lane });
+      return { newPlayerStates: currentStates, animationEvents: [] };
     }
 
     const animationEvents = [];
-    let statModsApplied = false;
+    const damage = effect.value || 0;
+    const shieldDmg = Math.min(damage, droneInLane.currentShields || 0);
+    const remainingDmg = damage - shieldDmg;
+    const hullDmg = Math.min(remainingDmg, droneInLane.hull);
 
-    switch (effect.type) {
-      case 'DAMAGE': {
-        const damage = effect.value || 0;
-        const shieldDmg = Math.min(damage, droneInLane.currentShields || 0);
-        const remainingDmg = damage - shieldDmg;
-        const hullDmg = Math.min(remainingDmg, droneInLane.hull);
+    droneInLane.currentShields -= shieldDmg;
+    droneInLane.hull -= hullDmg;
 
-        droneInLane.currentShields -= shieldDmg;
-        droneInLane.hull -= hullDmg;
-
-        if (logCallback) {
-          logCallback({
-            player: ownerState.name,
-            actionType: 'MINE_DAMAGE',
-            source: reactorDrone.name,
-            target: droneInLane.name,
-            outcome: `${reactorDrone.name} dealt ${shieldDmg} shield and ${hullDmg} hull damage to ${droneInLane.name}.`
-          }, 'triggerProcessor_directEffect');
-        }
-
-        if (droneInLane.hull <= 0) {
-          ownerState.dronesOnBoard[lane] = ownerState.dronesOnBoard[lane].filter(d => d.id !== droneInLane.id);
-          Object.assign(ownerState, onDroneDestroyed(ownerState, droneInLane));
-
-          const opponentId = triggeringPlayerId === 'player1' ? 'player2' : 'player1';
-          ownerState.dronesOnBoard = updateAuras(ownerState, newStates[opponentId], placedSections);
-
-          animationEvents.push({
-            type: 'DRONE_DESTROYED',
-            targetId: droneInLane.id,
-            targetPlayer: triggeringPlayerId,
-            targetLane: lane,
-            targetType: 'drone',
-            timestamp: Date.now()
-          });
-
-          if (logCallback) {
-            logCallback({
-              player: ownerState.name,
-              actionType: 'DRONE_DESTROYED',
-              source: reactorDrone.name,
-              target: droneInLane.name,
-              outcome: `${droneInLane.name} was destroyed by ${reactorDrone.name}.`
-            }, 'triggerProcessor_directEffect');
-          }
-        }
-        break;
-      }
-
-      case 'EXHAUST_DRONE': {
-        droneInLane.isExhausted = true;
-
-        if (logCallback) {
-          logCallback({
-            player: ownerState.name,
-            actionType: 'MINE_EXHAUST',
-            source: reactorDrone.name,
-            target: droneInLane.name,
-            outcome: `${droneInLane.name} was exhausted by ${reactorDrone.name}.`
-          }, 'triggerProcessor_directEffect');
-        }
-        break;
-      }
-
-      case 'MODIFY_STAT': {
-        const { mod } = effect;
-        if (!droneInLane.statMods) {
-          droneInLane.statMods = [];
-        }
-        droneInLane.statMods.push({ ...mod });
-        statModsApplied = true;
-
-        if (logCallback) {
-          logCallback({
-            player: ownerState.name,
-            actionType: 'MINE_STAT_MOD',
-            source: reactorDrone.name,
-            target: droneInLane.name,
-            outcome: `${droneInLane.name} received ${mod.value > 0 ? '+' : ''}${mod.value} ${mod.stat} from ${reactorDrone.name}.`
-          }, 'triggerProcessor_directEffect');
-        }
-        break;
-      }
-
-      default:
-        debugLog('TRIGGERS', `Unknown direct effect type: ${effect.type}`);
-        break;
+    if (logCallback) {
+      logCallback({
+        player: ownerState.name,
+        actionType: 'MINE_DAMAGE',
+        source: reactorDrone.name,
+        target: droneInLane.name,
+        outcome: `${reactorDrone.name} dealt ${shieldDmg} shield and ${hullDmg} hull damage to ${droneInLane.name}.`
+      }, 'triggerProcessor_directEffect');
     }
 
-    return { newPlayerStates: newStates, animationEvents, statModsApplied };
+    if (droneInLane.hull <= 0) {
+      ownerState.dronesOnBoard[lane] = ownerState.dronesOnBoard[lane].filter(d => d.id !== droneInLane.id);
+      Object.assign(ownerState, onDroneDestroyed(ownerState, droneInLane));
+
+      const opponentId = triggeringPlayerId === 'player1' ? 'player2' : 'player1';
+      ownerState.dronesOnBoard = updateAuras(ownerState, currentStates[opponentId], placedSections);
+
+      animationEvents.push({
+        type: 'DRONE_DESTROYED',
+        targetId: droneInLane.id,
+        targetPlayer: triggeringPlayerId,
+        targetLane: lane,
+        targetType: 'drone',
+        timestamp: Date.now()
+      });
+
+      if (logCallback) {
+        logCallback({
+          player: ownerState.name,
+          actionType: 'DRONE_DESTROYED',
+          source: reactorDrone.name,
+          target: droneInLane.name,
+          outcome: `${droneInLane.name} was destroyed by ${reactorDrone.name}.`
+        }, 'triggerProcessor_directEffect');
+      }
+    }
+
+    return { newPlayerStates: currentStates, animationEvents };
   }
 
   /**
@@ -645,11 +630,12 @@ class TriggerProcessor {
    * Calls onDroneDestroyed for availability tracking, updateAuras for recalculation,
    * and generates DRONE_DESTROYED animation event.
    *
+   * Mutates playerStates directly (already a working copy from callers).
+   *
    * @returns {Object} { newStates, animationEvents }
    */
   _destroyDrone(droneId, playerId, lane, playerStates, placedSections, logCallback) {
-    const newStates = JSON.parse(JSON.stringify(playerStates));
-    const drones = newStates[playerId]?.dronesOnBoard?.[lane];
+    const drones = playerStates[playerId]?.dronesOnBoard?.[lane];
     const animationEvents = [];
 
     if (drones) {
@@ -660,11 +646,11 @@ class TriggerProcessor {
         drones.splice(index, 1);
 
         // Update availability/rebuild tracking
-        Object.assign(newStates[playerId], onDroneDestroyed(newStates[playerId], drone));
+        Object.assign(playerStates[playerId], onDroneDestroyed(playerStates[playerId], drone));
 
         // Update auras after removal
         const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-        newStates[playerId].dronesOnBoard = updateAuras(newStates[playerId], newStates[opponentId], placedSections);
+        playerStates[playerId].dronesOnBoard = updateAuras(playerStates[playerId], playerStates[opponentId], placedSections);
 
         // Generate destruction animation
         animationEvents.push({
@@ -678,7 +664,7 @@ class TriggerProcessor {
 
         if (logCallback) {
           logCallback({
-            player: newStates[playerId].name,
+            player: playerStates[playerId].name,
             actionType: 'MINE_DESTROYED',
             source: drone.name,
             target: drone.name,
@@ -688,7 +674,7 @@ class TriggerProcessor {
       }
     }
 
-    return { newStates, animationEvents };
+    return { newStates: playerStates, animationEvents };
   }
 }
 

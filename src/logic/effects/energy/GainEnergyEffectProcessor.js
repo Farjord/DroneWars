@@ -61,6 +61,7 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
       const triggerProcessor = new TriggerProcessor();
       const energyResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ENERGY_GAINED, {
+        lane: null,
         triggeringPlayerId: actingPlayerId,
         actingPlayerId,
         playerStates: newPlayerStates,

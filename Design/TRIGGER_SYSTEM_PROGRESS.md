@@ -61,11 +61,12 @@
 - [x] Delete `abilityHelpers.js` (entire file — all functions now migrated)
 - [x] Tests: all 3828 tests pass
 - [x] Checkpoint commit
-- [ ] Tests: Odin +1 attack per card, Thor +1 attack per 2 energy
-- [ ] Test: 4-drone chaos cascade (PRD Section 5.2)
-- [ ] Test: cross-player cascade
-- [ ] Test: loop guard exhaustion
-- [ ] Checkpoint commit
+- [x] Tests: scaling (repeatCount, scalingDivisor), TRIGGERING_DRONE routing, destroyAfterTrigger, edge cases (+17 tests)
+- [ ] Test: 4-drone chaos cascade (PRD Section 5.2) — deferred to Phase 6+ (needs cascade infrastructure)
+- [ ] Test: cross-player cascade — deferred to Phase 6+
+- [ ] Test: loop guard exhaustion — deferred to Phase 6+
+- [x] Code review fixes: route EXHAUST_DRONE/MODIFY_STAT through EffectRouter, remove redundant clones, add lane: null
+- [x] Checkpoint commit
 
 ## Phase 6: Deprecate AFTER_ATTACK → ON_ATTACK
 - [ ] Update Firefly: `PASSIVE/AFTER_ATTACK` → `TRIGGERED/ON_ATTACK, effects: [{ type: 'DESTROY', scope: 'SELF' }]`
@@ -131,9 +132,9 @@
 | `src/logic/utils/abilityHelpers.js` | 225 | 5 | ✅ Deleted |
 | `src/logic/utils/rallyBeaconHelper.js` | 37 | 7 | Pending |
 | `AttackProcessor.calculateAfterAttackStateAndEffects` | ~75 | 6 | Pending |
-| RoundManager smell (unused params, shadowing, clones) | ~10 | 1 | Pending |
-| `CardActionStrategy.js` dead `applyOnMoveEffectsCallback` | ~1 | 3 | Pending |
-| `gameLogic.js` barrel export of `applyOnMoveEffects` | ~2 | 3 | Pending |
+| RoundManager smell (unused params, shadowing, clones) | ~10 | 1 | ✅ Fixed |
+| `CardActionStrategy.js` dead `applyOnMoveEffectsCallback` | ~1 | 3 | ✅ Deleted |
+| `gameLogic.js` barrel export of `applyOnMoveEffects` | ~2 | 3 | ✅ Deleted |
 | **Total** | **~622** | | |
 
 ---
