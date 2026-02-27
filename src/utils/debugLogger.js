@@ -117,6 +117,7 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, PERMANENT_STAT_MOD)
+    TRIGGERS: false,                     // Unified trigger system (TriggerProcessor)
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration
