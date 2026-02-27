@@ -1,5 +1,46 @@
 # Trigger System Implementation Plan
 
+## Code Review Findings
+
+Identified during pre-implementation code review. Addressed in the phases listed.
+
+| Finding | Severity | Phase |
+|-|-|-|
+| abilityHelpers.js: 70% duplication across 3 functions, inconsistent returns, unused params | High | 3, 5 |
+| MovementEffectProcessor: duplicated trigger chain between executeSingleMove/executeMultiMove | High | 3 |
+| MineTriggeredEffectProcessor: unused vars, unreachable LANE_ENEMY branch, state re-fetch smell | Medium | 4 (delete) |
+| droneData.js: inconsistent ability format (`effect{}` vs `effects[]`) | Medium | 1-7 |
+| EffectRouter: no PERMANENT_STAT_MOD or DESTROY_SELF registration | Medium | 0 |
+| Magic strings for trigger types/owners (no constants) | Medium | 0 |
+| RoundManager: unused `state` param, variable shadowing, redundant cloning | Low | 1 |
+| rallyBeaconHelper: hardcoded "Rally Beacon" by name | Low | 7 (delete) |
+| droneAttack.js AI: AFTER_ATTACK string check | Low | 6 |
+
+## Consistent Ability Format Rule
+
+Every migrated drone MUST use `effects[]` (plural array), not `effect{}` (singular). Fix during their respective phase:
+- Signal Beacon → Phase 1
+- Scanner → Phase 2
+- Proximity/Inhibitor/Jitter Mines → Phase 4
+- Firefly, Gladiator → Phase 6
+- Rally Beacon → Phase 7
+
+## Multiplayer Safety (Applies to ALL Phases)
+
+Architecture: **host-authoritative** with optimistic client prediction (Trystero/WebRTC P2P). Both host and guest execute the same game logic via `ActionProcessor.processAction()`.
+
+**Rules for TriggerProcessor:**
+1. Guest executes triggers optimistically — identical code path on both sides via ActionProcessor
+2. Fully deterministic — same inputs produce identical outputs, no randomness or timing dependency
+3. Deterministic ordering — Self > Actor > Reactor + left-to-right depends only on synchronized state
+4. Loop guard determinism — pairSet evolves identically on both sides from identical starting state
+5. Animation deduplication — TRIGGER_FIRED events include stable identifiers for OptimisticActionService matching
+6. State reconciliation — trigger side effects (stat mods, destroyed drones, drawn cards) covered by existing compareGameStates() checks
+7. TRIGGER_FIRED animation type registered in AnimationManager for both host and guest
+8. Pure game logic — TriggerProcessor in src/logic/triggers/, no React/network dependencies
+
+---
+
 ## 12. Architecture
 
 ### 12.1 TriggerProcessor — New File
@@ -117,62 +158,75 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 ## 14. Implementation Phases
 
 ### Phase 0: Foundation (no behavior change)
+- Create `src/logic/triggers/triggerConstants.js` — enums for TRIGGER_TYPES, TRIGGER_OWNERS, TRIGGER_SCOPES
 - Create `src/logic/triggers/TriggerProcessor.js` scaffold with method stubs
 - Create `src/logic/triggers/__tests__/TriggerProcessor.test.js`
 - Add `TRIGGERS` debug category to `debugLogger.js`
+- Register `PERMANENT_STAT_MOD` in EffectRouter → mapped to `ModifyStatEffectProcessor`
+- Register `DESTROY_SELF` in EffectRouter → mapped to `DestroyEffectProcessor` with scope preprocessing
 - **Checkpoint commit**
 
 ### Phase 1: Migrate ON_ROUND_START
 - Signal Beacon, War Machine
 - Replace `RoundManager.processRoundStartTriggers` body to delegate to `TriggerProcessor.fireTrigger('ON_ROUND_START', ...)`
+- Normalize Signal Beacon ability: `effect{}` → `effects[]` in droneData.js
 - This is the easiest migration since it already routes through EffectRouter
+- **Cleanup:** Remove unused `state` param shadowing, variable shadowing, redundant deep clone in RoundManager
 - Test: existing `RoundManager.roundStart.test.js` must still pass
 
 ### Phase 2: Migrate ON_DEPLOY
 - Scanner (Target Scanner → MARK_RANDOM_ENEMY)
 - Replace inline ON_DEPLOY code in `DeploymentProcessor.js` (lines 331-382) with `TriggerProcessor.fireTrigger('ON_DEPLOY', ...)`
+- Normalize Scanner ability: `effect{}` → `effects[]` in droneData.js
+- **Cleanup:** Remove inline MARK_RANDOM_ENEMY logic from DeploymentProcessor
 - Test: existing deployment tests must pass
 
-### Phase 3: Migrate ON_MOVE
+### Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor
 - Specter (Phase Shift → PERMANENT_STAT_MOD), Osiris (Regeneration Protocol → HEAL_HULL)
-- Replace `applyOnMoveEffects()` calls in `MovementEffectProcessor.executeSingleMove` (line 382) and `executeMultiMove` (line 568)
-- Ensure PERMANENT_STAT_MOD routes correctly through EffectRouter (may need mapping)
-- Test: move Specter → gains stats, move Osiris → heals
+- Replace both `applyOnMoveEffects()` calls in `MovementEffectProcessor.executeSingleMove` (line 382) and `executeMultiMove` (line 568) with `TriggerProcessor.fireTrigger('ON_MOVE', ...)`
+- Extract shared post-move trigger chain from executeSingleMove/executeMultiMove into `_resolvePostMoveTriggers()` helper
+- **Cleanup:** Delete `applyOnMoveEffects` from `src/logic/utils/abilityHelpers.js` (removes one of three duplicated functions)
+- Test: move Specter → gains stats, move Osiris → heals, multi-move triggers per drone
 
 ### Phase 4: Migrate Mine Triggers (ON_LANE_MOVEMENT_IN, ON_LANE_DEPLOYMENT, ON_LANE_ATTACK)
 - Proximity Mine, Inhibitor Mine, Jitter Mine
-- Replace `processMineTrigger()` calls at 5 call sites:
-  1. `MovementEffectProcessor.executeSingleMove` (line 416)
-  2. `MovementEffectProcessor.executeMultiMove` (line 595)
-  3. `DeploymentProcessor` (line 390)
-  4. `AttackProcessor.resolveAttack` (line 327)
+- Normalize all 3 mines: `effect{}` → `effects[]` in droneData.js
+- Replace `processMineTrigger()` calls (now inside `_resolvePostMoveTriggers` for movement):
+  1. `MovementEffectProcessor` (via _resolvePostMoveTriggers)
+  2. `DeploymentProcessor` (line 390)
+  3. `AttackProcessor.resolveAttack` (line 327)
 - TriggerProcessor handles `destroyAfterTrigger` (self-destruct) and `triggerOwner: 'LANE_OWNER'` validation
-- Delete `MineTriggeredEffectProcessor.js` after all call sites migrated
-- Test: mine detonation, self-destruct, stat mod application
+- **Delete:** `src/logic/effects/MineTriggeredEffectProcessor.js` (272 lines — entire file)
+- Test: mine detonation per type, self-destruct, stat mod, multi-move first drone absorbs mine
 
 ### Phase 5: Migrate ON_CARD_DRAWN and ON_ENERGY_GAINED
 - Odin (All-Seeing Eye), Thor (Storm Surge)
 - Replace `applyOnCardDrawnEffects()` call in `DrawEffectProcessor` (line 74)
 - Replace `applyOnEnergyGainedEffects()` call in `GainEnergyEffectProcessor` (line 60)
 - Handle `scalingDivisor` (Thor) in TriggerProcessor
+- **Implement full depth-first cascade with per-(reactor, source) pair loop guard**
 - **This is where cascading becomes real** — drawing cards triggers Odin, which could cascade
+- **Delete:** `src/logic/utils/abilityHelpers.js` (225 lines — entire file, all 3 functions now migrated)
 - Test: Odin gains attack on draw, Thor gains attack on energy, scaling works
+- Test: 4-drone chaos cascade (PRD Section 5.2), pair guard termination, cross-player cascade
 
 ### Phase 6: Deprecate AFTER_ATTACK → ON_ATTACK
 - Firefly, Gladiator, Threat Transmitter
-- Update drone data: change from `PASSIVE` with `AFTER_ATTACK` effect to `TRIGGERED` with `trigger: 'ON_ATTACK'`
-- Add `TriggerProcessor.fireTrigger('ON_ATTACK', ...)` call in `AttackProcessor.resolveAttack` (after damage, before counter-attacks, ~line 625)
-- Remove `calculateAfterAttackStateAndEffects` function
-- Handle `conditionalEffects` for Threat Transmitter
-- Update AI references: `droneAttack.js:100` checks `AFTER_ATTACK`
+- Update drone data: Firefly/Gladiator from `PASSIVE/AFTER_ATTACK` to `TRIGGERED/ON_ATTACK` with `effects[]` format
+- Add `TriggerProcessor.fireTrigger('ON_ATTACK', ...)` call in `AttackProcessor.resolveAttack` (after damage, ~line 625)
+- **Delete:** `calculateAfterAttackStateAndEffects` from AttackProcessor (~75 lines)
+- Implement `conditionalEffects` evaluation in TriggerProcessor (for Threat Transmitter)
+- Update AI: `droneAttack.js:100` AFTER_ATTACK string check → TRIGGERED/ON_ATTACK
 - Test: Firefly self-destructs, Gladiator gains attack, Threat Transmitter increases threat
+- **Verify:** Zero references to `AFTER_ATTACK` in codebase
 
 ### Phase 7: Deprecate RALLY_BEACON → ON_LANE_MOVEMENT_IN
-- Update Rally Beacon data: change from `PASSIVE/GRANT_KEYWORD` to `TRIGGERED` ability
+- Update Rally Beacon data: change from `PASSIVE/GRANT_KEYWORD` to `TRIGGERED` ability with `effects[]` format
 - Remove `checkRallyBeaconGoAgain()` calls in `MovementEffectProcessor` (lines 406-407, 584-585)
 - TriggerProcessor returns `goAgain: true` when trigger has `grantsGoAgain`
-- Delete `rallyBeaconHelper.js`
+- **Delete:** `src/logic/utils/rallyBeaconHelper.js` (37 lines — entire file)
 - Test: drone moves into Rally Beacon lane → go-again granted
+- **Verify:** Zero references to `checkRallyBeaconGoAgain` or `RALLY_BEACON` keyword
 
 ### Phase 8: Add New Trigger Types
 - `ON_LANE_MOVEMENT_OUT` — purely additive, no current users
@@ -193,13 +247,14 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 - Action log records each trigger firing
 - Can run alongside other phases — just ensure animation events are emitted
 
-### Phase 11: Cleanup
-- Delete `src/logic/effects/MineTriggeredEffectProcessor.js`
-- Delete `src/logic/utils/rallyBeaconHelper.js`
-- Clean up `src/logic/utils/abilityHelpers.js` (delete if empty, or remove migrated functions)
-- Remove `calculateAfterAttackStateAndEffects` from `AttackProcessor.js`
-- Update AI references that checked old patterns
-- Update `src/data/descriptions/glossaryDescriptions.js` and `codePatternDescriptions.js`
+### Phase 11: Final Cleanup & Descriptions
+- Update `src/data/descriptions/glossaryDescriptions.js` — update trigger-related entries
+- Update `src/data/descriptions/codePatternDescriptions.js` — remove AFTER_ATTACK, add ON_ATTACK/ON_CARD_PLAY patterns
+- **Verify deleted files** (should already be gone from earlier phases):
+  - `src/logic/effects/MineTriggeredEffectProcessor.js` (Phase 4)
+  - `src/logic/utils/rallyBeaconHelper.js` (Phase 7)
+  - `src/logic/utils/abilityHelpers.js` (Phase 5)
+- **Final sweep:** Grep for orphaned imports, unused constants, stale comments referencing deleted patterns
 
 ### Phase 12: Comprehensive Tests
 - Unit tests for TriggerProcessor core (find, execute, pair guard)
@@ -215,9 +270,11 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 
 | File | Action | Phase |
 |-|-|-|
+| `src/logic/triggers/triggerConstants.js` | CREATE | 0 |
 | `src/logic/triggers/TriggerProcessor.js` | CREATE | 0 |
 | `src/logic/triggers/__tests__/TriggerProcessor.test.js` | CREATE | 0 |
 | `src/utils/debugLogger.js` | ADD category | 0 |
+| `src/logic/EffectRouter.js` | ADD PERMANENT_STAT_MOD + DESTROY_SELF | 0 |
 | `src/logic/round/RoundManager.js` | MODIFY processRoundStartTriggers | 1 |
 | `src/logic/deployment/DeploymentProcessor.js` | MODIFY ON_DEPLOY + mine calls | 2, 4 |
 | `src/logic/effects/MovementEffectProcessor.js` | MODIFY ON_MOVE + Rally Beacon + mine calls | 3, 4, 7 |
@@ -228,10 +285,9 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 | `src/data/cardData.js` | ADD subType: 'Mine' to 3 cards | 8 |
 | `src/data/droneData.js` | ADD Anansi drone | 9 |
 | `src/logic/cards/EffectChainProcessor.js` | ADD ON_CARD_PLAY trigger call | 8 |
-| `src/logic/EffectRouter.js` | POSSIBLY add PERMANENT_STAT_MOD | 3 |
-| `src/logic/effects/MineTriggeredEffectProcessor.js` | DELETE | 11 |
-| `src/logic/utils/rallyBeaconHelper.js` | DELETE | 11 |
-| `src/logic/utils/abilityHelpers.js` | DELETE or gut | 11 |
+| `src/logic/effects/MineTriggeredEffectProcessor.js` | DELETE | 4 |
+| `src/logic/utils/abilityHelpers.js` | DELETE | 5 |
+| `src/logic/utils/rallyBeaconHelper.js` | DELETE | 7 |
 | `src/logic/ai/attackEvaluators/droneAttack.js` | UPDATE AFTER_ATTACK check | 6 |
 | `src/data/descriptions/glossaryDescriptions.js` | UPDATE descriptions | 11 |
 | `src/data/descriptions/codePatternDescriptions.js` | UPDATE descriptions | 11 |

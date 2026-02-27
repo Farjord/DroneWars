@@ -408,3 +408,28 @@ Complete reference for all drones being migrated or modified:
 | Firefly | PASSIVE/AFTER_ATTACK in AttackProcessor | ON_ATTACK (new) | Destroy self after attacking | Convert from PASSIVE to TRIGGERED |
 | Gladiator | PASSIVE/AFTER_ATTACK in AttackProcessor | ON_ATTACK (new) | +1 attack permanent after attacking | Convert from PASSIVE to TRIGGERED |
 | Rally Beacon | PASSIVE/GRANT_KEYWORD in rallyBeaconHelper | ON_LANE_MOVEMENT_IN (new) | Go-again on friendly move-in | Convert from keyword to TRIGGERED |
+
+---
+
+## 12. Multiplayer Safety
+
+### 12.1 Architecture
+
+Host-authoritative with optimistic client prediction (Trystero/WebRTC P2P). Both host and guest execute the same game logic via `ActionProcessor.processAction()`.
+
+**How it works today:**
+- Guest calls `processActionWithGuestRouting()` in `useActionRouting.js` (line 37-64)
+- This runs the **full game logic locally** (same ActionProcessor → Strategy → EffectChainProcessor pipeline as host)
+- `OptimisticActionService` tracks animations for deduplication (it does NOT execute logic itself)
+- Host later broadcasts authoritative state; guest reconciles via `compareGameStates()` and `applyHostState()`
+
+### 12.2 Rules for TriggerProcessor
+
+1. **Guest executes triggers optimistically.** TriggerProcessor runs on BOTH host and guest — identical code path via ActionProcessor. No guest-side delay.
+2. **Fully deterministic.** Same inputs must produce identical outputs on both sides. No randomness, no timing-dependent behavior, no host-only state dependencies. Given identical game state + action, trigger cascades must resolve identically.
+3. **Deterministic ordering.** The three-tier priority (Self > Actor > Reactor) and left-to-right lane ordering produce the same result regardless of which side executes — ordering depends only on board state and acting player, both of which are synchronized.
+4. **Loop guard determinism.** The `pairSet` (Set of "reactorId:sourceId" strings) is built during cascade execution. Since both sides start from identical state and use identical ordering, the pairSet evolves identically — no divergence risk.
+5. **Animation deduplication.** TriggerProcessor emits `TRIGGER_FIRED` animation events. Guest's `OptimisticActionService.filterAnimations()` deduplicates them against the host's broadcast using structural comparison (animationName, payload fields). Animation event payloads must include stable identifiers (droneId, abilityName) for matching.
+6. **State reconciliation.** `GuestMessageQueueService.compareGameStates()` validates energy, shields, health, hand, drones-per-lane. Trigger side effects (stat mods, destroyed drones, drawn cards) are reflected in these checks. No additional reconciliation fields needed.
+7. **`TRIGGER_FIRED` animation type** must be registered in AnimationManager so both host and guest can render trigger overlays.
+8. **Pure game logic.** TriggerProcessor lives in `src/logic/triggers/` — no React dependencies, no network dependencies, no side effects beyond state mutation. This is enforced by code standards (`src/logic/` = pure game logic).
