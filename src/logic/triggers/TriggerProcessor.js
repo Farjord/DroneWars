@@ -263,6 +263,7 @@ class TriggerProcessor {
               effect, triggeringDrone, triggeringPlayerId, reactorLane,
               reactorDrone, currentStates, placedSections, logCallback
             );
+            if (directResult.newPlayerStates) currentStates = directResult.newPlayerStates;
             if (directResult.animationEvents?.length > 0) animationEvents.push(...directResult.animationEvents);
             continue;
           }
