@@ -476,8 +476,11 @@ class TriggerProcessor {
     if (effect._targetDroneId) {
       return {
         type: 'DRONE',
+        id: effect._targetDroneId,
         droneId: effect._targetDroneId,
+        name: reactorDrone.name,
         lane: effect._targetLane,
+        owner: reactorPlayerId,
         playerId: reactorPlayerId
       };
     }
@@ -485,8 +488,11 @@ class TriggerProcessor {
     // Default: target the reactor drone itself
     return {
       type: 'DRONE',
+      id: reactorDrone.id,
       droneId: reactorDrone.id,
+      name: reactorDrone.name,
       lane: reactorLane,
+      owner: reactorPlayerId,
       playerId: reactorPlayerId
     };
   }

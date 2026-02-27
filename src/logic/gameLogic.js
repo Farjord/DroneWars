@@ -32,7 +32,6 @@
 
 // --- IMPORTS ---
 import { getShipStatus } from './statsCalculator.js';
-import { applyOnMoveEffects } from './utils/abilityHelpers.js';
 import StateInitializer, { startingDecklist, startingDroneList } from './state/StateInitializer.js';
 import TurnTransitionManager from './turn/TurnTransitionManager.js';
 import HandLimitManager from './cards/HandLimitManager.js';
@@ -76,7 +75,6 @@ export const gameEngine = {
   getShipStatus,           // Calculate ship damage/destruction state
   onDroneDestroyed,        // Handle drone destruction effects
   onDroneRecalled,         // Handle drone recall effects
-  applyOnMoveEffects,      // Apply effects when drones move
   updateAuras,             // Recalculate aura effects
   getLaneOfDrone,          // Get lane containing specific drone
 

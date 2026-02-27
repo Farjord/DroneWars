@@ -4,7 +4,6 @@ import ActionProcessor from '../ActionProcessor.js';
 vi.mock('../../logic/gameLogic.js', () => ({
   gameEngine: {
     calculateTurnTransition: vi.fn(() => ({ type: 'normal' })),
-    applyOnMoveEffects: vi.fn((state) => ({ newState: state, animationEvents: [] })),
     updateAuras: vi.fn((ps) => ps.dronesOnBoard)
   }
 }));
@@ -69,6 +68,18 @@ vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initial
 vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn(() => false) }));
 vi.mock('../../logic/effects/mines/MineTriggeredEffectProcessor.js', () => ({
   processTrigger: vi.fn(() => ({ triggered: false, animationEvents: [] }))
+}));
+vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: []
+      });
+    }
+  }
+}));
+vi.mock('../../logic/triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE' }
 }));
 
 function createMockGSM(overrides = {}) {

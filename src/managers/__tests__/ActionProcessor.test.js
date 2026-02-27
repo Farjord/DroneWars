@@ -8,7 +8,6 @@ vi.mock('../../logic/gameLogic.js', () => ({
     resolveCardPlay: vi.fn(() => ({ newPlayerStates: {}, animationEvents: [] })),
     payCardCosts: vi.fn((card, pid, states) => states),
     finishCardPlay: vi.fn((card, pid, states) => ({ newPlayerStates: states, shouldEndTurn: true })),
-    applyOnMoveEffects: vi.fn((state) => ({ newState: state, animationEvents: [] })),
     updateAuras: vi.fn((playerState) => playerState.dronesOnBoard),
     getLaneOfDrone: vi.fn(),
     onDroneDestroyed: vi.fn(() => ({})),

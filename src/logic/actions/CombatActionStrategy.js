@@ -10,6 +10,8 @@ import AbilityResolver from '../abilities/AbilityResolver.js';
 import { gameEngine } from '../gameLogic.js';
 import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
 import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -307,19 +309,33 @@ export async function processMove(payload, ctx) {
   newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
   newPlayerState.dronesOnBoard[toLane].push(movedDrone);
 
-  // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
-  let { newState: stateAfterMoveEffects, animationEvents: onMoveAnimationEvents } = gameEngine.applyOnMoveEffects(
-    newPlayerState,
-    movedDrone,
-    fromLane,
-    toLane,
-    (entry) => ctx.addLogEntry(entry)
-  );
+  // Apply ON_MOVE effects via TriggerProcessor (fires for all drones per PRD 3.3)
+  const triggerProcessor = new TriggerProcessor();
+  let opponentState = JSON.parse(JSON.stringify(opponentPlayerState));
+  const moveResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+    lane: toLane,
+    triggeringDrone: movedDrone,
+    triggeringPlayerId: playerId,
+    actingPlayerId: playerId,
+    playerStates: {
+      [playerId]: newPlayerState,
+      [opponentPlayerId]: opponentState
+    },
+    placedSections,
+    logCallback: (entry) => ctx.addLogEntry(entry)
+  });
+  let stateAfterMoveEffects = moveResult.triggered
+    ? moveResult.newPlayerStates[playerId]
+    : newPlayerState;
+  const onMoveAnimationEvents = moveResult.animationEvents || [];
+  if (moveResult.triggered) {
+    opponentState = moveResult.newPlayerStates[opponentPlayerId];
+  }
 
   // Update auras after movement
   stateAfterMoveEffects.dronesOnBoard = gameEngine.updateAuras(
     stateAfterMoveEffects,
-    opponentPlayerState,
+    opponentState,
     placedSections
   );
 

@@ -4,6 +4,21 @@
 // TDD: Tests for cannotMove restriction in SINGLE_MOVE and MULTI_MOVE effects
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock TriggerProcessor to avoid EffectRouter import chain
+vi.mock('../../../triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: []
+      });
+    }
+  }
+}));
+vi.mock('../../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE' }
+}));
+
 import MovementEffectProcessor from '../../MovementEffectProcessor.js';
 
 describe('MovementEffectProcessor - cannotMove restriction', () => {

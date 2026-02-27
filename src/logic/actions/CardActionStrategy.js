@@ -58,7 +58,6 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
   const callbacks = {
     logCallback: (entry) => ctx.addLogEntry(entry),
     resolveAttackCallback: async (attackPayload) => ctx.processAttack(attackPayload),
-    applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
     updateAurasCallback: gameEngine.updateAuras,
     actionsTakenThisTurn: currentState.actionsTakenThisTurn || 0
   };
