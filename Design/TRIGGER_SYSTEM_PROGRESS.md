@@ -4,30 +4,30 @@
 
 ---
 
-## Phase 0: Foundation
-- [ ] Create `src/logic/triggers/triggerConstants.js` (TRIGGER_TYPES, TRIGGER_OWNERS, TRIGGER_SCOPES)
-- [ ] Create `src/logic/triggers/TriggerProcessor.js` scaffold (creates own `new EffectRouter()` internally)
-- [ ] Create `src/logic/triggers/__tests__/TriggerProcessor.test.js` scaffold
-- [ ] Add `TRIGGERS: false` category to `debugLogger.js`
-- [ ] Register `PERMANENT_STAT_MOD` in EffectRouter → `ModifyStatEffectProcessor`
-- [ ] Tests: pair guard, findMatchingTriggers, PERMANENT_STAT_MOD routes correctly
-- [ ] Checkpoint commit
+## Phase 0: Foundation ✅
+- [x] Create `src/logic/triggers/triggerConstants.js` (TRIGGER_TYPES, TRIGGER_OWNERS, TRIGGER_SCOPES)
+- [x] Create `src/logic/triggers/TriggerProcessor.js` scaffold (creates own `new EffectRouter()` internally)
+- [x] Create `src/logic/triggers/__tests__/TriggerProcessor.test.js` scaffold
+- [x] Add `TRIGGERS: false` category to `debugLogger.js`
+- [x] Register `PERMANENT_STAT_MOD` in EffectRouter → `ModifyStatEffectProcessor`
+- [x] Tests: pair guard, findMatchingTriggers, PERMANENT_STAT_MOD routes correctly
+- [x] Checkpoint commit `9d4e63d9`
 
-## Phase 1: Migrate ON_ROUND_START
-- [ ] Replace `processRoundStartTriggers` body → `TriggerProcessor.fireTrigger('ON_ROUND_START', ...)`
-- [ ] Normalize Signal Beacon ability: `effect{}` → `effects[]`
-- [ ] Cleanup: remove unused `state` param shadowing in RoundManager
-- [ ] Cleanup: remove variable shadowing of `playerState`
-- [ ] Cleanup: remove redundant deep clone (lines 169-170)
-- [ ] Tests: `RoundManager.roundStart.test.js` passes, Signal Beacon +2 threat, War Machine +1 attack
-- [ ] Checkpoint commit
+## Phase 1: Migrate ON_ROUND_START ✅
+- [x] Replace `processRoundStartTriggers` body → `TriggerProcessor.fireTrigger('ON_ROUND_START', ...)`
+- [x] Normalize Signal Beacon ability: `effect{}` → `effects[]`
+- [x] Cleanup: remove unused `state` param shadowing in RoundManager
+- [x] Cleanup: remove variable shadowing of `playerState`
+- [x] Cleanup: remove redundant deep clone (lines 169-170)
+- [x] Tests: `RoundManager.roundStart.test.js` passes, Signal Beacon +2 threat, War Machine +1 attack
+- [x] Checkpoint commit `c3d6c196`
 
-## Phase 2: Migrate ON_DEPLOY
-- [ ] Replace inline ON_DEPLOY code in DeploymentProcessor → `TriggerProcessor.fireTrigger('ON_DEPLOY', ...)`
-- [ ] Normalize Scanner ability: `effect{}` → `effects[]`
-- [ ] Cleanup: remove inline MARK_RANDOM_ENEMY logic
-- [ ] Tests: deployment tests pass, Scanner marks random enemy
-- [ ] Checkpoint commit
+## Phase 2: Migrate ON_DEPLOY ✅
+- [x] Replace inline ON_DEPLOY code in DeploymentProcessor → `TriggerProcessor.fireTrigger('ON_DEPLOY', ...)`
+- [x] Normalize Scanner ability: `effect{}` → `effects[]`
+- [x] Cleanup: remove inline MARK_RANDOM_ENEMY logic
+- [x] Tests: deployment tests pass, Scanner marks random enemy
+- [x] Checkpoint commit
 
 ## Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor
 - [ ] Replace `applyOnMoveEffects()` calls in MovementEffectProcessor → `TriggerProcessor.fireTrigger('ON_MOVE', ...)`

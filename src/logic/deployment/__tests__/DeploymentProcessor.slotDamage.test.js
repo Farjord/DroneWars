@@ -8,12 +8,19 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock EffectRouter to avoid circular dependency issues
-vi.mock('../../EffectRouter.js', () => ({
-  default: class MockEffectRouter {
-    constructor() {}
-    processEffects() { return { success: true }; }
+// Mock TriggerProcessor to avoid circular dependency issues
+vi.mock('../../triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: []
+      });
+    }
   }
+}));
+
+vi.mock('../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_DEPLOY: 'ON_DEPLOY' }
 }));
 
 // Now import DeploymentProcessor after mocking

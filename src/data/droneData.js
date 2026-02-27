@@ -356,7 +356,7 @@ const fullDroneCollection = [
         description: 'On deploy, mark a random enemy drone in the same lane.',
         type: 'TRIGGERED',
         trigger: 'ON_DEPLOY',
-        effect: { type: 'MARK_RANDOM_ENEMY', scope: 'SAME_LANE', filter: 'NOT_MARKED' }
+        effects: [{ type: 'MARK_RANDOM_ENEMY', scope: 'SAME_LANE', filter: 'NOT_MARKED' }]
     }],
     upgradeSlots: 2
   },

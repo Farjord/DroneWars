@@ -7,10 +7,11 @@
 import { calculateEffectiveStats, calculateEffectiveShipStats } from '../statsCalculator.js';
 import { updateAuras } from '../utils/auraManager.js';
 import fullDroneCollection from '../../data/droneData.js';
-import EffectRouter from '../EffectRouter.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
 import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
 /**
  * DeploymentProcessor
@@ -20,11 +21,11 @@ import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEf
  * - Validates CPU limit, deployment limit, maxPerLane restrictions
  * - Calculates deployment costs (budget vs energy)
  * - Generates deterministic drone IDs
- * - Processes ON_DEPLOY triggers via EffectRouter
+ * - Processes ON_DEPLOY triggers via TriggerProcessor
  * - Updates deployment counters
  * - Generates TELEPORT_IN animations
  *
- * IMPORTANT: Uses EffectRouter for ON_DEPLOY effects - NO imports from gameLogic.js!
+ * IMPORTANT: Uses TriggerProcessor for ON_DEPLOY effects - NO imports from gameLogic.js!
  */
 class DeploymentProcessor {
   /**
@@ -323,69 +324,39 @@ class DeploymentProcessor {
     // Update auras
     newPlayerState.dronesOnBoard = updateAuras(newPlayerState, opponentState, placedSections);
 
-    // Process ON_DEPLOY triggers via EffectRouter (NO gameLogic.js imports!)
+    // Process ON_DEPLOY triggers via TriggerProcessor
+    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
     let finalPlayerState = newPlayerState;
     let finalOpponentState = opponentState;
     const allAnimationEvents = [];
 
-    if (newDrone.abilities && newDrone.abilities.length > 0) {
-      for (const ability of newDrone.abilities) {
-        if (ability.type === 'TRIGGERED' && ability.trigger === 'ON_DEPLOY') {
-          // Construct playerStates object for effect resolution
-          const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-          const currentPlayerStates = {
-            [playerId]: finalPlayerState,
-            [opponentId]: finalOpponentState
-          };
+    const triggerProcessor = new TriggerProcessor();
+    const deployResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DEPLOY, {
+      lane,
+      triggeringDrone: newDrone,
+      triggeringPlayerId: playerId,
+      actingPlayerId: playerId,
+      playerStates: {
+        [playerId]: finalPlayerState,
+        [opponentId]: finalOpponentState
+      },
+      placedSections,
+      logCallback
+    });
 
-          // ✅ CORRECT: Use EffectRouter (not gameLogic.js import!)
-          const effectRouter = new EffectRouter();
-          const context = {
-            actingPlayerId: playerId,
-            playerStates: currentPlayerStates,
-            lane: lane,  // For MARK_RANDOM_ENEMY effect
-            placedSections: placedSections
-          };
+    if (deployResult.triggered) {
+      finalPlayerState = deployResult.newPlayerStates[playerId];
+      finalOpponentState = deployResult.newPlayerStates[opponentId];
 
-          debugLog('DEPLOYMENT', `🔄 Processing ON_DEPLOY effect: ${ability.effect.type}`, {
-            droneId: newDrone.id,
-            droneName: newDrone.name,
-            effectType: ability.effect.type,
-            lane
-          });
-
-          const result = effectRouter.routeEffect(ability.effect, context);
-
-          if (result && result.newPlayerStates) {
-            // Update states from result
-            finalPlayerState = result.newPlayerStates[playerId];
-            finalOpponentState = result.newPlayerStates[opponentId];
-
-            // Collect animation events
-            if (result.animationEvents && result.animationEvents.length > 0) {
-              allAnimationEvents.push(...result.animationEvents);
-            }
-
-            debugLog('DEPLOYMENT', `✅ ON_DEPLOY effect completed successfully`, {
-              effectType: ability.effect.type,
-              hasAnimations: result.animationEvents?.length > 0
-            });
-          } else {
-            // Effect not yet extracted to processor
-            debugLog('DEPLOYMENT', `⚠️ ON_DEPLOY effect not yet extracted: ${ability.effect.type}`, {
-              droneId: newDrone.id,
-              effectType: ability.effect.type
-            });
-          }
-        }
+      if (deployResult.animationEvents.length > 0) {
+        allAnimationEvents.push(...deployResult.animationEvents);
       }
     }
 
     // Process ON_LANE_DEPLOYMENT mine triggers (fires LAST, after ON_DEPLOY)
-    const opponentIdForMine = playerId === 'player1' ? 'player2' : 'player1';
     const minePlayerStates = {
       [playerId]: finalPlayerState,
-      [opponentIdForMine]: finalOpponentState
+      [opponentId]: finalOpponentState
     };
     const mineResult = processMineTrigger('ON_LANE_DEPLOYMENT', {
       lane: lane,
@@ -399,7 +370,7 @@ class DeploymentProcessor {
 
     // Update states from mine processing (minePlayerStates was mutated)
     finalPlayerState = minePlayerStates[playerId];
-    finalOpponentState = minePlayerStates[opponentIdForMine];
+    finalOpponentState = minePlayerStates[opponentId];
 
     if (mineResult.triggered && mineResult.animationEvents.length > 0) {
       allAnimationEvents.push(...mineResult.animationEvents);
