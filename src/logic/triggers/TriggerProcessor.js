@@ -44,6 +44,7 @@ class TriggerProcessor {
    * @param {Object} context.placedSections - Placed ship sections
    * @param {Function} context.logCallback - Callback for game log entries
    * @param {Object} [context.card] - For ON_CARD_PLAY: the card that was played
+   * @param {number} [context.scalingAmount] - For ON_CARD_DRAWN/ON_ENERGY_GAINED: count for scaling
    * @param {Set} [context.pairSet] - Set of "reactorId:sourceId" strings (cascade tracking)
    * @param {number} [context.chainDepth=0] - Current nesting depth
    * @returns {Object} { triggered, newPlayerStates, animationEvents, statModsApplied, goAgain }
@@ -58,6 +59,7 @@ class TriggerProcessor {
       placedSections,
       logCallback,
       card = null,
+      scalingAmount = null,
       pairSet = new Set(),
       chainDepth = 0
     } = context;
@@ -107,7 +109,7 @@ class TriggerProcessor {
       const result = this.executeTriggerEffects(
         ability, reactorDrone, reactorPlayerId, reactorLane,
         triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, placedSections,
-        logCallback, pairSet, chainDepth
+        logCallback, pairSet, chainDepth, scalingAmount
       );
 
       if (result.triggered) {
@@ -216,7 +218,7 @@ class TriggerProcessor {
   executeTriggerEffects(
     ability, reactorDrone, reactorPlayerId, reactorLane,
     triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, placedSections,
-    logCallback, pairSet, chainDepth
+    logCallback, pairSet, chainDepth, scalingAmount = null
   ) {
     let currentStates = playerStates;
     const animationEvents = [];
@@ -226,60 +228,72 @@ class TriggerProcessor {
     // Normalize effects: support both effect{} and effects[]
     const effects = ability.effects || (ability.effect ? [ability.effect] : []);
 
-    // Apply scalingDivisor (e.g., Thor: per N energy gained)
-    // The scaling amount is passed via context.scalingAmount when fireTrigger is called
-    // For now, effects are processed as-is; scaling will be handled in Phase 5
+    // Calculate repeat count for scaling triggers (ON_CARD_DRAWN, ON_ENERGY_GAINED)
+    let repeatCount = 1;
+    if (scalingAmount !== null && scalingAmount > 0) {
+      const divisor = ability.scalingDivisor || 1;
+      repeatCount = Math.floor(scalingAmount / divisor);
+      if (repeatCount <= 0) {
+        return { triggered: false, newPlayerStates: currentStates, animationEvents: [], statModsApplied: false, goAgain: false };
+      }
+    }
 
     // Log the trigger firing
     if (logCallback) {
+      const outcomeDetail = repeatCount > 1
+        ? `Activated '${ability.name}' — x${repeatCount} from ${scalingAmount} ${ability.trigger === 'ON_CARD_DRAWN' ? 'card(s) drawn' : 'energy gained'}.`
+        : `Activated '${ability.name}'.`;
       logCallback({
         player: currentStates[reactorPlayerId]?.name || reactorPlayerId,
         actionType: 'ABILITY',
         source: reactorDrone.name,
         target: triggeringDrone?.name || 'Self',
-        outcome: `Activated '${ability.name}'.`
+        outcome: outcomeDetail
       }, 'triggerProcessor_fire');
     }
 
-    for (const effect of effects) {
-      // Route TRIGGERING_DRONE scope directly (mine effects target the triggering drone)
-      if (effect.scope === 'TRIGGERING_DRONE') {
-        const directResult = this._applyDirectEffect(
-          effect, triggeringDrone, triggeringPlayerId, reactorLane,
-          reactorDrone, currentStates, placedSections, logCallback
-        );
-        if (directResult.newPlayerStates) currentStates = directResult.newPlayerStates;
-        if (directResult.animationEvents?.length > 0) animationEvents.push(...directResult.animationEvents);
-        if (directResult.statModsApplied) statModsApplied = true;
-        continue;
-      }
+    // Repeat effects for scaling triggers (e.g., Odin: +1 attack per card drawn)
+    for (let rep = 0; rep < repeatCount; rep++) {
+      for (const effect of effects) {
+        // Route TRIGGERING_DRONE scope directly (mine effects target the triggering drone)
+        if (effect.scope === 'TRIGGERING_DRONE') {
+          const directResult = this._applyDirectEffect(
+            effect, triggeringDrone, triggeringPlayerId, reactorLane,
+            reactorDrone, currentStates, placedSections, logCallback
+          );
+          if (directResult.newPlayerStates) currentStates = directResult.newPlayerStates;
+          if (directResult.animationEvents?.length > 0) animationEvents.push(...directResult.animationEvents);
+          if (directResult.statModsApplied) statModsApplied = true;
+          continue;
+        }
 
-      // Preprocess scope: 'SELF' → target the reactor drone
-      const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
+        // Preprocess scope: 'SELF' → target the reactor drone
+        const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
-      const context = {
-        actingPlayerId: reactorPlayerId,
-        playerStates: currentStates,
-        placedSections,
-        sourceDroneName: reactorDrone.name,
-        sourceDroneId: reactorDrone.id,
-        lane: reactorLane,
-        target: this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates),
-        callbacks: { logCallback }
-      };
+        const context = {
+          actingPlayerId: reactorPlayerId,
+          playerStates: currentStates,
+          placedSections,
+          sourceDroneName: reactorDrone.name,
+          sourceDroneId: reactorDrone.id,
+          lane: reactorLane,
+          target: this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates),
+          callbacks: { logCallback }
+        };
 
-      const result = this.effectRouter.routeEffect(processedEffect, context);
+        const result = this.effectRouter.routeEffect(processedEffect, context);
 
-      if (result?.newPlayerStates) {
-        currentStates = result.newPlayerStates;
-      }
+        if (result?.newPlayerStates) {
+          currentStates = result.newPlayerStates;
+        }
 
-      if (result?.animationEvents?.length > 0) {
-        animationEvents.push(...result.animationEvents);
-      }
+        if (result?.animationEvents?.length > 0) {
+          animationEvents.push(...result.animationEvents);
+        }
 
-      if (processedEffect.type === 'PERMANENT_STAT_MOD' || processedEffect.type === 'MODIFY_STAT') {
-        statModsApplied = true;
+        if (processedEffect.type === 'PERMANENT_STAT_MOD' || processedEffect.type === 'MODIFY_STAT') {
+          statModsApplied = true;
+        }
       }
     }
 

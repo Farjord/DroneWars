@@ -5,7 +5,8 @@
 // Respects maximum energy cap from ship sections
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { applyOnEnergyGainedEffects } from '../../utils/abilityHelpers.js';
+import TriggerProcessor from '../../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../../triggers/triggerConstants.js';
 import { calculateEffectiveShipStats } from '../../statsCalculator.js';
 
 /**
@@ -57,8 +58,20 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
     const actualEnergyGained = newEnergy - oldEnergy;
     if (actualEnergyGained > 0) {
       const logCallback = context.callbacks?.logCallback || null;
-      const { newState } = applyOnEnergyGainedEffects(actingPlayerState, actualEnergyGained, logCallback);
-      newPlayerStates[actingPlayerId] = newState;
+      const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+      const triggerProcessor = new TriggerProcessor();
+      const energyResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ENERGY_GAINED, {
+        triggeringPlayerId: actingPlayerId,
+        actingPlayerId,
+        playerStates: newPlayerStates,
+        placedSections,
+        logCallback,
+        scalingAmount: actualEnergyGained
+      });
+      if (energyResult.triggered) {
+        newPlayerStates[actingPlayerId] = energyResult.newPlayerStates[actingPlayerId];
+        newPlayerStates[opponentId] = energyResult.newPlayerStates[opponentId];
+      }
     }
 
     const result = this.createResult(newPlayerStates);

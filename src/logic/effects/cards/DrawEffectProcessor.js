@@ -5,7 +5,8 @@
 // Automatically reshuffles discard pile into deck when empty
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { applyOnCardDrawnEffects } from '../../utils/abilityHelpers.js';
+import TriggerProcessor from '../../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../../triggers/triggerConstants.js';
 
 /**
  * DrawEffectProcessor - Handles card drawing
@@ -71,8 +72,20 @@ class DrawEffectProcessor extends BaseEffectProcessor {
     const actualCardsDrawn = newHand.length - initialHandSize;
     if (actualCardsDrawn > 0) {
       const logCallback = context.callbacks?.logCallback || null;
-      const { newState } = applyOnCardDrawnEffects(actingPlayerState, actualCardsDrawn, logCallback);
-      newPlayerStates[actingPlayerId] = newState;
+      const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+      const triggerProcessor = new TriggerProcessor();
+      const drawResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        triggeringPlayerId: actingPlayerId,
+        actingPlayerId,
+        playerStates: newPlayerStates,
+        placedSections: context.placedSections,
+        logCallback,
+        scalingAmount: actualCardsDrawn
+      });
+      if (drawResult.triggered) {
+        newPlayerStates[actingPlayerId] = drawResult.newPlayerStates[actingPlayerId];
+        newPlayerStates[opponentId] = drawResult.newPlayerStates[opponentId];
+      }
     }
 
     const result = this.createResult(newPlayerStates);

@@ -54,12 +54,13 @@
 - [x] Tests: all 3828 tests pass
 - [x] Checkpoint commit
 
-## Phase 5: Migrate ON_CARD_DRAWN and ON_ENERGY_GAINED
-- [ ] Replace `applyOnCardDrawnEffects()` in DrawEffectProcessor → TriggerProcessor
-- [ ] Replace `applyOnEnergyGainedEffects()` in GainEnergyEffectProcessor → TriggerProcessor
-- [ ] Implement `scalingDivisor` (Thor: per N energy)
-- [ ] Implement full depth-first cascade with per-(reactor, source) pair loop guard
-- [ ] Delete `abilityHelpers.js` (225 lines — entire file)
+## Phase 5: Migrate ON_CARD_DRAWN and ON_ENERGY_GAINED ✅
+- [x] Replace `applyOnCardDrawnEffects()` in DrawEffectProcessor → TriggerProcessor
+- [x] Replace `applyOnEnergyGainedEffects()` in GainEnergyEffectProcessor → TriggerProcessor
+- [x] Implement `scalingAmount` and `scalingDivisor` in executeTriggerEffects (repeatCount loop)
+- [x] Delete `abilityHelpers.js` (entire file — all functions now migrated)
+- [x] Tests: all 3828 tests pass
+- [x] Checkpoint commit
 - [ ] Tests: Odin +1 attack per card, Thor +1 attack per 2 energy
 - [ ] Test: 4-drone chaos cascade (PRD Section 5.2)
 - [ ] Test: cross-player cascade
@@ -127,7 +128,7 @@
 | File | Lines | Phase | Status |
 |-|-|-|-|
 | `src/logic/effects/MineTriggeredEffectProcessor.js` | 272 | 4 | ✅ Deleted |
-| `src/logic/utils/abilityHelpers.js` | 225 | 5 | Pending |
+| `src/logic/utils/abilityHelpers.js` | 225 | 5 | ✅ Deleted |
 | `src/logic/utils/rallyBeaconHelper.js` | 37 | 7 | Pending |
 | `AttackProcessor.calculateAfterAttackStateAndEffects` | ~75 | 6 | Pending |
 | RoundManager smell (unused params, shadowing, clones) | ~10 | 1 | Pending |
