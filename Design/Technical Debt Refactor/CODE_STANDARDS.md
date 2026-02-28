@@ -17,6 +17,13 @@ Each file owns one concern. A cohesive 400-line file is preferable to four scatt
 | Logic (`src/logic/`) | Pure game logic functions, no React dependencies | React components, hooks, UI concerns |
 | Utils (`src/utils/`) | Pure utility functions with no domain knowledge | Business logic, game-specific rules |
 
+### Game Logic Boundary
+
+Components and hooks must **consume** game logic results, never **compute** them. Any calculation that determines game rules, limits, costs, or outcomes belongs in `src/logic/` or `src/managers/`, not in `.jsx` files or hooks. Components should call into the logic layer and render the result.
+
+**Violation example**: `hand.length - handLimit` computed inline in a component to determine discard count.
+**Correct**: Call a logic-layer function (e.g., `HandLimitManager.checkHandLimitViolations()`) and use its result.
+
 ### Where Extracted Helpers Go
 
 - **Data query helpers** (e.g., `getMissionById`) — `src/logic/<domain>/` or a dedicated `<dataFile>Helpers.js` alongside the data file
