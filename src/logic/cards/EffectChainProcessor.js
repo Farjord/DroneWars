@@ -181,6 +181,7 @@ class EffectChainProcessor {
     const deferredTriggerEvents = [];     // all trigger events, deferred after card effects
     let dynamicGoAgain = false;
     const effectResults = [];
+    let stateBeforeTriggers = null;       // first state before any trigger mutations
 
     // CARD_REVEAL animation
     cardAnimationEvents.push({
@@ -332,6 +333,9 @@ class EffectChainProcessor {
 
       // Collect deferred trigger events with leading STATE_SNAPSHOT
       if (result.triggerAnimationEvents?.length > 0) {
+        if (!stateBeforeTriggers && result.preTriggerState) {
+          stateBeforeTriggers = JSON.parse(JSON.stringify(result.preTriggerState));
+        }
         if (result.preTriggerState) {
           deferredTriggerEvents.push({
             type: 'STATE_SNAPSHOT',
@@ -408,6 +412,9 @@ class EffectChainProcessor {
       logCallback: callbacks.logCallback
     });
     if (cardPlayResult.triggered) {
+      if (!stateBeforeTriggers) {
+        stateBeforeTriggers = JSON.parse(JSON.stringify(preCardPlayTriggerState));
+      }
       currentStates = cardPlayResult.newPlayerStates;
       deferredTriggerEvents.push({
         type: 'STATE_SNAPSHOT',
@@ -444,11 +451,14 @@ class EffectChainProcessor {
 
     const allAnimationEvents = [...nonTeleportCardEvents];
 
-    // Insert STATE_SNAPSHOT so teleported tokens exist in DOM before animation
+    // Insert STATE_SNAPSHOT so teleported tokens exist in DOM before animation.
+    // Use pre-trigger state so React doesn't flash trigger side-effects before
+    // trigger announcements play (e.g., drawn cards, stat buffs).
     if (teleportEvents.length > 0 || deferredTriggerEvents.length > 0) {
+      const snapshotState = stateBeforeTriggers || currentStates;
       allAnimationEvents.push({
         type: 'STATE_SNAPSHOT',
-        snapshotPlayerStates: JSON.parse(JSON.stringify(currentStates)),
+        snapshotPlayerStates: JSON.parse(JSON.stringify(snapshotState)),
         timestamp: Date.now()
       });
     }

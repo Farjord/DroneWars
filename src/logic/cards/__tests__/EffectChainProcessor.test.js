@@ -1,11 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock TriggerProcessor (imported by EffectChainProcessor for ON_CARD_PLAY)
+// Configurable: set mockTriggerResult before a test to simulate ON_CARD_PLAY triggers
+let mockTriggerResult = null;
 vi.mock('../../triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {
-      this.fireTrigger = vi.fn().mockReturnValue({
-        triggered: false, newPlayerStates: null, animationEvents: [], goAgain: false
+      this.fireTrigger = vi.fn().mockImplementation((_type, ctx) => {
+        if (mockTriggerResult) {
+          // Apply mutations to a copy of the passed-in state
+          const newStates = JSON.parse(JSON.stringify(ctx.playerStates));
+          if (mockTriggerResult.mutate) mockTriggerResult.mutate(newStates);
+          return {
+            triggered: true,
+            newPlayerStates: newStates,
+            animationEvents: mockTriggerResult.animationEvents || [],
+            goAgain: false
+          };
+        }
+        return {
+          triggered: false, newPlayerStates: null, animationEvents: [], goAgain: false
+        };
       });
     }
   }
@@ -347,6 +362,7 @@ describe('EffectChainProcessor', () => {
     processor = new EffectChainProcessor();
     mockMoveTriggerEvents = [];
     mockMoveMineEvents = [];
+    mockTriggerResult = null;
   });
 
   describe('payCardCosts', () => {
@@ -709,6 +725,62 @@ describe('EffectChainProcessor', () => {
 
       const snapshotEvents = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
       expect(snapshotEvents).toHaveLength(0);
+    });
+
+    it('pre-teleport STATE_SNAPSHOT uses pre-trigger state when ON_CARD_PLAY triggers fire', () => {
+      // Simulate: deploy a token (DEPLOY effect), ON_CARD_PLAY trigger draws a card + buffs a drone.
+      // The first STATE_SNAPSHOT (for teleport) must NOT contain the drawn card or the buff.
+      const controller = createDrone({ id: 'shrike', attack: 2, owner: 'player1' });
+      const drawnCard = { id: 'drawn1', instanceId: 'drawn_inst', name: 'Drawn Card' };
+      const card = {
+        id: 'deploy_mine', instanceId: 'inst_mine', name: 'Deploy Proximity Mine', cost: 1,
+        effects: [{ type: 'GAIN_ENERGY', value: 0, targeting: { type: 'NONE' } }],
+      };
+
+      const states = createGameState({
+        energy: 5,
+        hand: [card],
+        deck: [drawnCard],
+        dronesOnBoard: { lane1: [controller], lane2: [], lane3: [] },
+      });
+
+      // Configure ON_CARD_PLAY trigger to draw a card and buff the controller
+      mockTriggerResult = {
+        mutate: (newStates) => {
+          // Simulate Shrike drawing a card
+          if (newStates.player1.deck.length > 0) {
+            newStates.player1.hand.push(newStates.player1.deck.shift());
+          }
+          // Simulate Odin buffing attack
+          const drone = newStates.player1.dronesOnBoard.lane1.find(d => d.id === 'shrike');
+          if (drone) drone.attack += 1;
+        },
+        animationEvents: [
+          { type: 'TRIGGER_FIRED', triggerName: 'Shrike', timestamp: Date.now() },
+          { type: 'TRIGGER_FIRED', triggerName: 'Odin', timestamp: Date.now() },
+        ],
+      };
+
+      const selections = [{ target: null }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // Find the first STATE_SNAPSHOT (the pre-teleport one, before deferred trigger snapshots)
+      const firstSnapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
+      expect(firstSnapshot).toBeDefined();
+
+      const snapshotP1 = firstSnapshot.snapshotPlayerStates.player1;
+
+      // The drawn card should NOT be in hand in the first snapshot
+      expect(snapshotP1.hand.some(c => c.id === 'drawn1')).toBe(false);
+
+      // The controller should NOT have the trigger buff in the first snapshot
+      const snapshotController = snapshotP1.dronesOnBoard.lane1.find(d => d.id === 'shrike');
+      expect(snapshotController.attack).toBe(2); // original, not 3
+
+      // But the final state SHOULD have both trigger effects
+      expect(result.newPlayerStates.player1.hand.some(c => c.id === 'drawn1')).toBe(true);
+      const finalController = result.newPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'shrike');
+      expect(finalController.attack).toBe(3);
     });
   });
 });
