@@ -265,3 +265,22 @@ When adding any feature that affects game state visible to both players:
 **O4. Unify state comparison** — Replace both comparison functions with one configurable function. Eliminates the risk of the fixed-field version going stale.
 
 **O5. Add connection health monitoring** — Periodic pings with automatic resync-on-reconnect would address S1 and S3 together.
+
+## 12. Determinism Requirement
+
+All game logic that uses randomness **must** use `SeededRandom` from `src/utils/seededRandom.js` — never `Math.random()`. This ensures Host and Guest compute identical results for the same game state.
+
+### When to use which API
+
+- **`SeededRandom.forCardShuffle(gameState, playerId)`** — For deck reshuffles. The seed incorporates `gameSeed`, `roundNumber`, player offset, and current deck length, so each reshuffle in a game produces a unique sequence.
+- **`new SeededRandom(gameSeed + roundNumber * 100 + contextOffset)`** — For non-deck random operations (random discard, random target selection). Use a unique `contextOffset` per operation type (e.g., 5000 for discard, 6000 for marking) to prevent seed collisions.
+- **`SeededRandom.fromGameState(gameState)`** — General-purpose, derives seed from multiple synchronized state fields. Use when full game state is available.
+
+### Where `Math.random()` is allowed
+
+`Math.random()` is permitted **only** in UI/visual code that has no effect on game state:
+- Particle effects and animations (`src/components/`)
+- Background visuals and decorative elements
+- Sound variation (pitch/volume jitter)
+
+Any `Math.random()` call in `src/logic/` or `src/managers/` is a bug.

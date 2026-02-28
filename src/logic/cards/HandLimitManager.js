@@ -58,9 +58,10 @@ class HandLimitManager {
    *
    * @param {Object} playerState - Current player state
    * @param {number} handLimit - Maximum allowed hand size
+   * @param {Object} [rng=null] - Optional SeededRandom instance for deterministic discard
    * @returns {Object} New player state with enforced hand limit
    */
-  enforceHandLimits(playerState, handLimit) {
+  enforceHandLimits(playerState, handLimit, rng = null) {
     if (playerState.hand.length <= handLimit) {
       return {
         ...playerState,
@@ -75,7 +76,9 @@ class HandLimitManager {
     // Randomly discard excess cards
     for (let i = 0; i < discardCount; i++) {
       if (newHand.length > 0) {
-        const randomIndex = Math.floor(Math.random() * newHand.length);
+        const randomIndex = rng
+          ? rng.randomInt(0, newHand.length)
+          : Math.floor(Math.random() * newHand.length);
         const cardToDiscard = newHand.splice(randomIndex, 1)[0];
         newDiscardPile.push(cardToDiscard);
       }
@@ -98,9 +101,10 @@ class HandLimitManager {
    * @param {Object} playerState - Current player state
    * @param {number} discardCount - Number of cards to discard
    * @param {Array} cardsToDiscard - Optional specific cards to discard
+   * @param {Object} [rng=null] - Optional SeededRandom instance for deterministic discard
    * @returns {Object} New player state after discarding
    */
-  processDiscardPhase(playerState, discardCount, cardsToDiscard = null) {
+  processDiscardPhase(playerState, discardCount, cardsToDiscard = null, rng = null) {
     if (discardCount <= 0) {
       return {
         ...playerState,
@@ -129,7 +133,9 @@ class HandLimitManager {
     } else {
       // Random discard if no specific cards provided
       for (let i = 0; i < discardCount && newHand.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * newHand.length);
+        const randomIndex = rng
+          ? rng.randomInt(0, newHand.length)
+          : Math.floor(Math.random() * newHand.length);
         const cardToDiscard = newHand.splice(randomIndex, 1)[0];
         newDiscardPile.push(cardToDiscard);
         actualDiscardCount++;

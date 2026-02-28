@@ -6,6 +6,7 @@
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
 
 /**
  * MarkingEffectProcessor
@@ -119,7 +120,10 @@ class MarkingEffectProcessor extends BaseEffectProcessor {
 
     // If there are valid targets, randomly select one and mark it
     if (validTargets.length > 0) {
-      const randomIndex = Math.floor(Math.random() * validTargets.length);
+      const rng = new SeededRandom(
+        (context.gameSeed || 0) + (context.roundNumber || 1) * 100 + validTargets.length + 6000
+      );
+      const randomIndex = rng.randomInt(0, validTargets.length);
       const targetDrone = validTargets[randomIndex];
 
       // Find the drone in the lane array and mark it

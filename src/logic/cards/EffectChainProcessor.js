@@ -289,6 +289,7 @@ class EffectChainProcessor {
         for (const addEffect of (preResult.additionalEffects || [])) {
           const addResult = this.effectRouter.routeEffect(addEffect, {
             target: selection.target, actingPlayerId: playerId, playerStates: currentStates, placedSections, callbacks, card,
+            gameSeed: ctx.gameSeed, roundNumber: ctx.roundNumber,
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;
@@ -314,6 +315,8 @@ class EffectChainProcessor {
           card,
           localPlayerId: ctx.localPlayerId || 'player1',
           gameMode: ctx.gameMode || 'local',
+          gameSeed: ctx.gameSeed,
+          roundNumber: ctx.roundNumber,
         };
         result = this.effectRouter.routeEffect(effectData, routerContext);
         if (!result) {
@@ -349,6 +352,7 @@ class EffectChainProcessor {
         for (const addEffect of (postResult.additionalEffects || [])) {
           const addResult = this.effectRouter.routeEffect(addEffect, {
             target: selection.target, actingPlayerId: playerId, playerStates: currentStates, placedSections, callbacks, card,
+            gameSeed: ctx.gameSeed, roundNumber: ctx.roundNumber,
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;

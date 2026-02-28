@@ -8,6 +8,7 @@
 // - AI auto-selection for single-player mode
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
+import { SeededRandom } from '../../../utils/seededRandom.js';
 
 /**
  * SearchAndDrawProcessor - Handles SEARCH_AND_DRAW card effects
@@ -49,8 +50,12 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
     if (effect.filter) {
       // Filtered search - search entire deck for matching cards
       if (newDeck.length === 0 && newDiscard.length > 0) {
-        // Shuffle discard into deck if needed
-        newDeck = [...newDiscard.sort(() => 0.5 - Math.random())];
+        // Shuffle discard into deck if needed (deterministic for multiplayer sync)
+        const rng = SeededRandom.forCardShuffle(
+          { gameSeed: context.gameSeed, roundNumber: context.roundNumber, [targetPlayerId]: actingPlayerState },
+          targetPlayerId
+        );
+        newDeck = rng.shuffle(newDiscard);
         newDiscard = [];
       }
 
@@ -66,8 +71,12 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
       // Unfiltered search - search top X cards
       const cardsNeeded = effect.searchCount;
       if (newDeck.length < cardsNeeded && newDiscard.length > 0) {
-        // Shuffle discard into deck if needed
-        newDeck = [...newDeck, ...newDiscard.sort(() => 0.5 - Math.random())];
+        // Shuffle discard into deck if needed (deterministic for multiplayer sync)
+        const rng = SeededRandom.forCardShuffle(
+          { gameSeed: context.gameSeed, roundNumber: context.roundNumber, [targetPlayerId]: actingPlayerState },
+          targetPlayerId
+        );
+        newDeck = [...newDeck, ...rng.shuffle(newDiscard)];
         newDiscard = [];
       }
 
@@ -92,9 +101,13 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
       // Return unselected cards to top of deck in original order
       let finalDeck = [...remainingDeck, ...unselectedCards];
 
-      // Shuffle if required
+      // Shuffle if required (deterministic for multiplayer sync)
       if (effect.shuffleAfter) {
-        finalDeck = finalDeck.sort(() => 0.5 - Math.random());
+        const rng = SeededRandom.forCardShuffle(
+          { gameSeed: context.gameSeed, roundNumber: context.roundNumber, [targetPlayerId]: { ...actingPlayerState, deck: finalDeck } },
+          targetPlayerId
+        );
+        finalDeck = rng.shuffle(finalDeck);
       }
 
       newPlayerStates[targetPlayerId] = {

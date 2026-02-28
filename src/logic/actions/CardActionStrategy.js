@@ -88,6 +88,8 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     callbacks,
     localPlayerId: ctx.getLocalPlayerId(),
     gameMode: currentState.gameMode || 'local',
+    gameSeed: currentState.gameSeed,
+    roundNumber: currentState.roundNumber,
   });
 
   const animations = ctx.mapAnimationEvents(result.animationEvents);

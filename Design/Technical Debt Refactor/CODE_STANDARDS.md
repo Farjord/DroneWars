@@ -228,6 +228,10 @@ When adding a new action that affects shared game state:
 - All broadcast sites must include the host-mode guard: `if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager)`
 - Missing broadcasts cause silent guest state drift — always verify broadcast coverage when touching GameFlowManager or ActionProcessor
 
+### Determinism
+
+All game logic randomness **must** use `SeededRandom` from `src/utils/seededRandom.js`. `Math.random()` is only permitted in UI/visual code (animations, backgrounds, particle effects). Any `Math.random()` in `src/logic/` or `src/managers/` is a multiplayer synchronization bug — Host and Guest will compute different results.
+
 ### Testing Multiplayer Changes
 
 - Test as both host and guest — phase announcements, animations, and state may differ by role

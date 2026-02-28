@@ -7,6 +7,7 @@
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import TriggerProcessor from '../../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../../triggers/triggerConstants.js';
+import { SeededRandom } from '../../../utils/seededRandom.js';
 
 /**
  * DrawEffectProcessor - Handles card drawing
@@ -49,8 +50,12 @@ class DrawEffectProcessor extends BaseEffectProcessor {
       // If deck is empty, reshuffle discard pile
       if (newDeck.length === 0) {
         if (newDiscard.length > 0) {
-          // Shuffle discard pile into deck
-          newDeck = [...newDiscard].sort(() => 0.5 - Math.random());
+          // Shuffle discard pile into deck (deterministic for multiplayer sync)
+          const rng = SeededRandom.forCardShuffle(
+            { gameSeed: context.gameSeed, roundNumber: context.roundNumber, [actingPlayerId]: actingPlayerState },
+            actingPlayerId
+          );
+          newDeck = rng.shuffle(newDiscard);
           newDiscard = [];
           reshuffled = true;
         } else {

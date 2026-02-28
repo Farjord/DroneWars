@@ -6,6 +6,7 @@
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { SeededRandom } from '../../../utils/seededRandom.js';
 
 /**
  * DiscardEffectProcessor - Handles forced discard
@@ -56,10 +57,15 @@ class DiscardEffectProcessor extends BaseEffectProcessor {
     // Calculate actual discard count (handle edge case: fewer cards than requested)
     const actualDiscardCount = Math.min(discardCount, newHand.length);
 
+    // Create deterministic RNG for multiplayer sync (seed includes hand length for uniqueness)
+    const rng = new SeededRandom(
+      (context.gameSeed || 0) + (context.roundNumber || 1) * 100 + newHand.length + 5000
+    );
+
     // Randomly discard cards one at a time
     for (let i = 0; i < actualDiscardCount; i++) {
       // Select random index from remaining cards
-      const randomIndex = Math.floor(Math.random() * newHand.length);
+      const randomIndex = rng.randomInt(0, newHand.length);
 
       // Remove card from hand and add to discard pile
       const discardedCard = newHand.splice(randomIndex, 1)[0];
