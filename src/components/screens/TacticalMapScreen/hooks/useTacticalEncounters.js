@@ -55,7 +55,6 @@ export function useTacticalEncounters({
   setLoadingEncounterData,
   setPoiLootToReveal,
   setPendingLootEncounter,
-  setPendingResumeWaypoints,
   setIsMoving,
   setIsPaused,
   setIsScanningHex,

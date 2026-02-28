@@ -50,8 +50,6 @@ export function useTacticalEscape({
   setShowSalvageModal,
   setCurrentEncounter,
   setActiveSalvage,
-  setPendingResumeWaypoints,
-  pendingResumeWaypoints,
   currentRunState,
   sharedRefs,
 }) {
@@ -249,7 +247,7 @@ export function useTacticalEscape({
       remainingWpsCount: remainingWps.length
     });
 
-    setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+    tacticalMapStateManager.setState({ waypoints: remainingWps });
     escapedWithWaypoints.current = remainingWps.length > 0; // Flag to prevent journey loop from clearing
     debugLog('COMBAT_FLOW', 'Captured remaining journey for escape:', remainingWps.length, 'waypoints');
 
@@ -265,7 +263,7 @@ export function useTacticalEscape({
       aiName: aiPersonality?.name || 'Unknown'
     });
     setShowEscapeLoadingScreen(true);
-  }, [currentEncounter, waypoints, currentWaypointIndex, pathProgressRef, escapedWithWaypoints, setShowEscapeConfirm, setEscapeContext, setShowPOIModal, setShowSalvageModal, setActiveSalvage, setCurrentEncounter, setPendingResumeWaypoints, setEscapeLoadingData, setShowEscapeLoadingScreen]);
+  }, [currentEncounter, waypoints, currentWaypointIndex, pathProgressRef, escapedWithWaypoints, setShowEscapeConfirm, setEscapeContext, setShowPOIModal, setShowSalvageModal, setActiveSalvage, setCurrentEncounter, setEscapeLoadingData, setShowEscapeLoadingScreen]);
 
   /**
    * Handle escape loading screen completion - resume journey
@@ -314,14 +312,13 @@ export function useTacticalEscape({
       encounterResolveRef.current = null;
     }
 
-    // Restore remaining waypoints if any were captured during escape
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: pendingResumeWaypoints?.length });
-      setWaypoints(pendingResumeWaypoints);
-      tacticalMapStateManager.setState({ waypoints: pendingResumeWaypoints });
-      setPendingResumeWaypoints(null);
+    // Restore remaining waypoints from manager (stored by handleEscapeConfirm)
+    const remainingWaypoints = tacticalMapStateManager.getState()?.waypoints || [];
+    if (remainingWaypoints.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: remainingWaypoints.length });
+      setWaypoints(remainingWaypoints);
     }
-  }, [currentEncounter, activeSalvage, escapeContext, pendingResumeWaypoints, shouldStopMovement, encounterResolveRef, setShowEscapeLoadingScreen, setEscapeLoadingData, setEscapeContext, setShowPOIModal, setShowSalvageModal, setActiveSalvage, setCurrentEncounter, setIsMoving, setIsScanningHex, setWaypoints, setPendingResumeWaypoints]);
+  }, [currentEncounter, activeSalvage, escapeContext, shouldStopMovement, encounterResolveRef, setShowEscapeLoadingScreen, setEscapeLoadingData, setEscapeContext, setShowPOIModal, setShowSalvageModal, setActiveSalvage, setCurrentEncounter, setIsMoving, setIsScanningHex, setWaypoints]);
 
   return {
     handleEscapeRequest,

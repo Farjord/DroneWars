@@ -98,9 +98,6 @@ function TacticalMapScreen() {
   const [poiLootToReveal, setPoiLootToReveal] = useState(null);
   const [pendingLootEncounter, setPendingLootEncounter] = useState(null);
 
-  // Post-combat PoI loot state (for resuming journey after combat + loot)
-  const [pendingResumeWaypoints, setPendingResumeWaypoints] = useState(null);
-
   // Extraction/Abandon modal state
   const [showAbandonModal, setShowAbandonModal] = useState(false);
 
@@ -230,7 +227,6 @@ function TacticalMapScreen() {
     setActiveSalvage,
     setShowBlueprintEncounterModal,
     setPendingBlueprintEncounter,
-    setPendingResumeWaypoints,
     currentRunState,
     sharedRefs,
   });
@@ -274,7 +270,6 @@ function TacticalMapScreen() {
     setLoadingEncounterData,
     setPoiLootToReveal,
     setPendingLootEncounter,
-    setPendingResumeWaypoints,
     setIsMoving,
     setIsPaused,
     setIsScanningHex,
@@ -345,8 +340,6 @@ function TacticalMapScreen() {
     setShowSalvageModal,
     setCurrentEncounter,
     setActiveSalvage,
-    setPendingResumeWaypoints,
-    pendingResumeWaypoints,
     currentRunState,
     sharedRefs,
   });
@@ -367,8 +360,6 @@ function TacticalMapScreen() {
     pendingBlueprintReward,
     setPendingBlueprintReward,
     setShowBlueprintRewardModal,
-    pendingResumeWaypoints,
-    setPendingResumeWaypoints,
     setWaypoints,
     setIsPaused,
     currentRunState,

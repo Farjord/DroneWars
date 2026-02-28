@@ -11,7 +11,6 @@ import DetectionManager from '../../../../logic/detection/DetectionManager.js';
 import EncounterController from '../../../../logic/encounters/EncounterController.js';
 import SalvageController from '../../../../logic/salvage/SalvageController.js';
 import SoundManager from '../../../../managers/SoundManager.js';
-import waypointManager from '../../../../managers/WaypointManager.js';
 import transitionManager from '../../../../managers/TransitionManager.js';
 import gameStateManager from '../../../../managers/GameStateManager.js';
 import { mapTiers } from '../../../../data/mapData.js';
@@ -46,7 +45,6 @@ export function useTacticalMovement({
   setActiveSalvage,
   setShowBlueprintEncounterModal,
   setPendingBlueprintEncounter,
-  setPendingResumeWaypoints,
   currentRunState,
   sharedRefs,
 }) {
@@ -285,15 +283,15 @@ export function useTacticalMovement({
               threatLevel
             );
 
-            // Store remaining waypoints for journey resumption after salvage
+            // Store remaining waypoints in manager for journey resumption after salvage
             const remainingWps = waypoints.slice(wpIndex + 1);
-            debugLog('PATH_HIGHLIGHTING', 'Storing pending waypoints for resume:', {
+            debugLog('PATH_HIGHLIGHTING', 'Storing remaining waypoints in manager for resume:', {
               currentWpIndex: wpIndex,
               totalWaypoints: waypoints.length,
               remainingCount: remainingWps.length,
               remainingDestinations: remainingWps.map(w => w.hex)
             });
-            setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+            tacticalMapStateManager.setState({ waypoints: remainingWps });
             // Signal to skip waypoint removal since loot handler will restore waypoints
             skipWaypointRemovalRef.current = remainingWps.length > 0;
 

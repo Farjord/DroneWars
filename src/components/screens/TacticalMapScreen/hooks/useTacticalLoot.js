@@ -35,8 +35,6 @@ export function useTacticalLoot({
   pendingBlueprintReward,
   setPendingBlueprintReward,
   setShowBlueprintRewardModal,
-  pendingResumeWaypoints,
-  setPendingResumeWaypoints,
   setWaypoints,
   setIsPaused,
   currentRunState,
@@ -54,16 +52,16 @@ export function useTacticalLoot({
       encounterResolveRef.current = null;
     }
 
-    if (pendingResumeWaypoints?.length > 0) {
+    // Read remaining waypoints from manager (stored by useTacticalMovement at PoI arrival)
+    const remainingWaypoints = tacticalMapStateManager.getState()?.waypoints || [];
+    if (remainingWaypoints.length > 0) {
       debugLog('PATH_HIGHLIGHTING', 'Resuming journey after loot/blueprint:', {
-        count: pendingResumeWaypoints?.length,
-        destinations: pendingResumeWaypoints?.map(w => w.hex)
+        count: remainingWaypoints.length,
+        destinations: remainingWaypoints.map(w => w.hex)
       });
-      setWaypoints(pendingResumeWaypoints);
-      tacticalMapStateManager.setState({ waypoints: pendingResumeWaypoints });
-      setPendingResumeWaypoints(null);
+      setWaypoints(remainingWaypoints);
     }
-  }, [encounterResolveRef, pendingResumeWaypoints, setWaypoints, setPendingResumeWaypoints]);
+  }, [encounterResolveRef, setWaypoints]);
 
   /**
    * Handle loot selection confirmation - complete extraction with selected items
