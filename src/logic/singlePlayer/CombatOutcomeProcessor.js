@@ -466,7 +466,7 @@ class CombatOutcomeProcessor {
 
       debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (blockade victory):', {
         backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
-        pendingWaypoints: tacticalMapStateManager.getState()?.pendingWaypoints?.length || 0
+        pendingWaypoints: tacticalMapStateManager.getState()?.waypoints?.length || 0
       });
 
       gameStateManager.setState({
@@ -481,22 +481,18 @@ class CombatOutcomeProcessor {
     } else if (pendingDroneBlueprint) {
       // Regular combat with pending drone blueprint - stay in combat screen
       // WinnerModal will show the DroneBlueprintRewardModal
-      // Update TacticalMapStateManager - PRESERVE waypoint data for restoration after blueprint modal
-      const existingState = tacticalMapStateManager.getState();
+      // Update TacticalMapStateManager (waypoints survive automatically via manager's waypoints field)
       tacticalMapStateManager.setState({
         collectedLoot: updatedRunState.collectedLoot,
         creditsEarned: updatedRunState.creditsEarned,
         aiCoresEarned: updatedRunState.aiCoresEarned,
         pendingPOICombat: currentRunState.pendingPOICombat,
-        pendingSalvageState: currentRunState.pendingSalvageState,
-        // Preserve waypoint data stored by TransitionManager
-        pendingPath: existingState?.pendingPath,
-        pendingWaypointDestinations: existingState?.pendingWaypointDestinations
+        pendingSalvageState: currentRunState.pendingSalvageState
       });
 
       debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (pending blueprint):', {
         backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
-        pendingWaypoints: tacticalMapStateManager.getState()?.pendingPath?.length || 0
+        pendingWaypoints: tacticalMapStateManager.getState()?.waypoints?.length || 0
       });
 
       gameStateManager.setState({
@@ -532,22 +528,18 @@ class CombatOutcomeProcessor {
         detail: 'Regular POI/ambush victory, returning to tactical map'
       });
 
-      // Update TacticalMapStateManager - PRESERVE waypoint data for restoration after loot modal
-      const existingState = tacticalMapStateManager.getState();
+      // Update TacticalMapStateManager (waypoints survive automatically via manager's waypoints field)
       tacticalMapStateManager.setState({
         collectedLoot: updatedRunState.collectedLoot,
         creditsEarned: updatedRunState.creditsEarned,
         aiCoresEarned: updatedRunState.aiCoresEarned,
         pendingPOICombat: currentRunState.pendingPOICombat,
-        pendingSalvageState: currentRunState.pendingSalvageState,
-        // Preserve waypoint data stored by TransitionManager
-        pendingPath: existingState?.pendingPath,
-        pendingWaypointDestinations: existingState?.pendingWaypointDestinations
+        pendingSalvageState: currentRunState.pendingSalvageState
       });
 
       debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (regular victory):', {
         backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
-        pendingPath: tacticalMapStateManager.getState()?.pendingPath?.length || 0
+        pendingWaypoints: tacticalMapStateManager.getState()?.waypoints?.length || 0
       });
 
       gameStateManager.setState({
@@ -576,8 +568,7 @@ class CombatOutcomeProcessor {
     // Debug: Check state before modifying (waypoint debugging)
     debugLog('SP_COMBAT', 'finalizeBlueprintCollection - state before setState', {
       existingPendingPOICombat: !!currentRunState.pendingPOICombat,
-      existingPendingPath: currentRunState.pendingPath?.length || 0,
-      existingPendingWaypointDestinations: currentRunState.pendingWaypointDestinations?.length || 0
+      existingWaypoints: currentRunState.waypoints?.length || 0
     });
 
     // Add blueprint to collectedLoot

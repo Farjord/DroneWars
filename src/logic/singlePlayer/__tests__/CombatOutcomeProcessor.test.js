@@ -1062,20 +1062,15 @@ describe('CombatOutcomeProcessor', () => {
   /**
    * TDD Tests: Waypoint Preservation for Blueprint Victory
    *
-   * BUG FIX: When player wins combat at a Blueprint PoI, waypoint data
-   * (pendingPath and pendingWaypointDestinations) stored by TransitionManager
-   * should NOT be overwritten by the blueprint victory state update.
+   * Waypoints now live on TacticalMapStateManager.waypoints (single source of truth).
+   * setState is a merge, so the waypoints field survives automatically without
+   * explicit preservation in finalizeLootCollection.
    */
   describe('Waypoint Preservation for Blueprint Victory', () => {
-    it('should preserve pendingPath when blueprint modal is pending', () => {
-      // EXPLANATION: When a blueprint victory occurs, waypoint data stored by
-      // TransitionManager must NOT be overwritten. This ensures waypoints restore
-      // after player dismisses the blueprint modal.
-
-      const mockPendingPath = ['0,0', '1,0', '2,0', '3,0']
-      const mockWaypointDestinations = [
-        { hex: '1,0', label: 'waypoint1' },
-        { hex: '3,0', label: 'waypoint2' }
+    it('should not overwrite waypoints field when blueprint modal is pending', () => {
+      const mockWaypoints = [
+        { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+        { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }] }
       ]
 
       tacticalMapStateManager.getState.mockReturnValue({
@@ -1083,8 +1078,7 @@ describe('CombatOutcomeProcessor', () => {
         creditsEarned: 0,
         aiCoresEarned: 0,
         pendingPOICombat: { packType: 'DRONE_BLUEPRINT_FIGHTER' },
-        pendingPath: mockPendingPath,
-        pendingWaypointDestinations: mockWaypointDestinations
+        waypoints: mockWaypoints
       })
 
       gameStateManager.getState.mockReturnValue({
@@ -1097,25 +1091,21 @@ describe('CombatOutcomeProcessor', () => {
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
-      // ASSERT: pendingPath and pendingWaypointDestinations should be preserved
+      // ASSERT: setState should NOT include a waypoints field (merge preserves existing)
       const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
 
-      expect(finalCall.pendingPath).toEqual(mockPendingPath)
-      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+      expect(finalCall).not.toHaveProperty('pendingPath')
+      expect(finalCall).not.toHaveProperty('pendingWaypointDestinations')
+      expect(finalCall).not.toHaveProperty('waypoints')
     })
 
-    it('should preserve pendingWaypointDestinations when blueprint modal is pending', () => {
-      const mockWaypointDestinations = [
-        { hex: '2,-1', label: 'gate' }
-      ]
-
+    it('should not include legacy pendingPath fields in blueprint victory setState', () => {
       tacticalMapStateManager.getState.mockReturnValue({
         collectedLoot: [],
         creditsEarned: 0,
         aiCoresEarned: 0,
-        pendingPath: ['0,0', '1,0', '2,-1'],
-        pendingWaypointDestinations: mockWaypointDestinations
+        waypoints: [{ hex: { q: 2, r: -1 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 2, r: -1 }] }]
       })
 
       gameStateManager.getState.mockReturnValue({
@@ -1128,38 +1118,35 @@ describe('CombatOutcomeProcessor', () => {
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
-      // ASSERT
+      // ASSERT: no legacy fields written
       const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
 
-      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+      expect(finalCall).not.toHaveProperty('pendingPath')
+      expect(finalCall).not.toHaveProperty('pendingWaypointDestinations')
     })
   })
 
   /**
    * TDD Tests: Waypoint Preservation for Regular Victory (Part 3)
    *
-   * BUG FIX: Regular victory path (non-blueprint) also needs to preserve
-   * waypoint data. Line 536-542 was missing pendingPath and pendingWaypointDestinations.
+   * Waypoints now live on TacticalMapStateManager.waypoints (single source of truth).
+   * setState is a merge, so the waypoints field survives automatically without
+   * explicit preservation in finalizeLootCollection.
    */
   describe('Waypoint Preservation for Regular Victory', () => {
-    it('should preserve pendingPath and pendingWaypointDestinations during regular victory', () => {
-      // EXPLANATION: When regular combat victory occurs (no blueprint), waypoint data
-      // stored by TransitionManager must still be preserved for post-modal restoration.
-
-      const mockPendingPath = ['0,0', '1,0', '2,0', '3,0', '4,0']
-      const mockWaypointDestinations = [
-        { hex: { q: 2, r: 0 }, segmentCost: 5 },
-        { hex: { q: 4, r: 0 }, segmentCost: 7 }
+    it('should not overwrite waypoints during regular victory', () => {
+      const mockWaypoints = [
+        { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }] },
+        { hex: { q: 4, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }] }
       ]
 
       tacticalMapStateManager.getState.mockReturnValue({
         collectedLoot: [],
         creditsEarned: 0,
         aiCoresEarned: 0,
-        pendingPOICombat: { packType: 'REGULAR_PACK' },  // Non-blueprint
-        pendingPath: mockPendingPath,
-        pendingWaypointDestinations: mockWaypointDestinations
+        pendingPOICombat: { packType: 'REGULAR_PACK' },
+        waypoints: mockWaypoints
       })
 
       // NO pending drone blueprint - this is regular victory
@@ -1173,12 +1160,13 @@ describe('CombatOutcomeProcessor', () => {
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
-      // ASSERT: pendingPath and pendingWaypointDestinations should be preserved
+      // ASSERT: no legacy fields, no waypoints overwrite
       const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
 
-      expect(finalCall.pendingPath).toEqual(mockPendingPath)
-      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+      expect(finalCall).not.toHaveProperty('pendingPath')
+      expect(finalCall).not.toHaveProperty('pendingWaypointDestinations')
+      expect(finalCall).not.toHaveProperty('waypoints')
     })
   })
 
