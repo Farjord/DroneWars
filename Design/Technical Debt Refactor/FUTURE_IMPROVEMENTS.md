@@ -55,6 +55,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 56 | QuickDeployEditorScreen.jsx:346-417 | Deployment order index remapping duplicated | Audit closure (Phase M) | 2026-02-24 | Low |
 | 57 | Forced Repositioning card | Still uses `additionalCost` flow with `COST_SOURCE_LANE`/`COST_TARGET` location values. Migrating to `secondaryTargeting` requires a chained 4-step targeting engine (select drone → move → select enemy → move). Not feasible with current 2-step secondary targeting model. | Targeting system rework Phase 6 | 2026-02-25 | Low |
 | 58 | CardPlayManager.js | `resolveCardPlay` is dead production code — only its own test calls it. `payCardCosts`/`finishCardPlay` are still used by CardActionStrategy. Extract those 2 methods and delete the rest. | Effect chain Phase 7 completion | 2026-02-25 | Medium |
+| 59 | src/logic/ (5 files) | Remaining `Math.random()` in game logic: `cardBorderUtils.js` (UI delay), `tacticalGenerators.js` + `rumorGenerator.js` (ticker text), `cardPackUtils.js` + `ExtractionController.js` (single-player extraction). Safe for now (UI-only or single-player), but violates the new determinism standard. Categorize each and convert where needed. | Determinism fix review | 2026-02-28 | Low |
 
 ## Audit Findings (2026-02-23)
 
