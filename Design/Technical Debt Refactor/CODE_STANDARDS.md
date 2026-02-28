@@ -186,6 +186,56 @@ The project uses a hybrid CSS approach:
 - **Logs must fire once per event**, not on every render cycle or useEffect update. If a `debugLog` is inside a useEffect, ensure it only triggers on the specific dependency change it's tracking. Guard with condition checks where necessary.
 - When touching a file, ensure its logging is consistent, categorized, and useful for debugging.
 
+## Multiplayer Synchronization
+
+> Full architecture documentation: `Design/MULTIPLAYER_ARCHITECTURE.md`
+
+### Core Principle: Guest Independence
+
+The guest processes ALL actions independently and in real-time. Host broadcasts are for authoritative reconciliation, not for driving the guest's experience. The guest must never feel behind the host.
+
+### Host Authority Model
+
+- The host is the single source of truth for game state
+- Guest processes actions optimistically (immediate local feedback), then reconciles against host state
+- PhaseManager transitions are host-only — the guest infers phase changes from state updates
+- State divergence is resolved by accepting host state at phase boundaries
+
+### Adding New Phases — Checklist
+
+When adding a new phase to the game:
+
+1. **Categorize in PhaseManager**: Add to `SIMULTANEOUS_PHASES`, `SEQUENTIAL_PHASES`, or `AUTOMATIC_PHASES`
+2. **Add guest phase announcement**: Add a pattern match in `GuestMessageQueueService.processStateUpdate()` for the new transition
+3. **Add waiting overlay**: If simultaneous, add to `useMultiplayerSync` commitment monitoring
+4. **Add to phase flow**: Update `GameFlowManager.getNextPhase()` / `getNextRoundPhase()` / `getNextPreGamePhase()`
+5. **Verify broadcast**: Ensure `broadcastStateToGuest()` is called after the phase transition
+6. **Test both roles**: Verify both host and guest see correct announcements and transitions
+
+### Adding New Actions — Checklist
+
+When adding a new action that affects shared game state:
+
+1. **Broadcast after mutation**: Ensure `broadcastStateToGuest()` is called after the state change
+2. **Guest optimistic processing**: Verify the action can be processed locally by the guest without waiting
+3. **Track animations**: If the action produces animations, ensure `OptimisticActionService.trackAction()` is called in the guest flow
+4. **Animation dedup fields**: Verify `OptimisticActionService.filterAnimations()` matches on the correct fields for the new animation type
+5. **State comparison fields**: If adding new state fields, include them in `compareGameStates()`
+
+### Broadcast Rules
+
+- Every state mutation visible to both players **must** be followed by `broadcastStateToGuest()`
+- All broadcast sites must include the host-mode guard: `if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager)`
+- Missing broadcasts cause silent guest state drift — always verify broadcast coverage when touching GameFlowManager or ActionProcessor
+
+### Testing Multiplayer Changes
+
+- Test as both host and guest — phase announcements, animations, and state may differ by role
+- Verify guest phase announcements fire correctly for new transitions
+- Verify optimistic animations are deduped (no double-play on guest)
+- Check that waiting overlays appear/disappear correctly for simultaneous phases
+- If adding state fields, verify `compareGameStates()` detects mismatches
+
 ## Comment Standards
 
 Only three types of comments are permitted:
