@@ -123,17 +123,10 @@ class TriggerProcessor {
           timestamp: Date.now()
         };
 
-        const hasDamageAnims = result.animationEvents.some(e =>
-          ['DRONE_DESTROYED', 'SHIELD_DAMAGE', 'HULL_DAMAGE', 'SECTION_DESTROYED', 'SECTION_DAMAGED'].includes(e.type)
-        );
-
-        if (hasDamageAnims) {
-          // Destructive: events first, then snapshot (targets stay in DOM for animations)
-          allAnimationEvents.push(...result.animationEvents, snapshot);
-        } else {
-          // Additive (draw, stat mod): snapshot first so changes visible during notification
-          allAnimationEvents.push(snapshot, ...result.animationEvents);
-        }
+        // Events first, then snapshot:
+        // - Destructive: targets stay in DOM for damage animations
+        // - Additive: state change appears when announcement completes
+        allAnimationEvents.push(...result.animationEvents, snapshot);
 
         if (result.statModsApplied) {
           anyStatMods = true;
