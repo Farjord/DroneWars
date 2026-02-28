@@ -10,6 +10,7 @@ import EscapeRouteCalculator from '../../../../logic/map/EscapeRouteCalculator.j
 import DetectionManager from '../../../../logic/detection/DetectionManager.js';
 import EncounterController from '../../../../logic/encounters/EncounterController.js';
 import SoundManager from '../../../../managers/SoundManager.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
 import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
 
@@ -165,14 +166,16 @@ export function useTacticalWaypoints({
 
     debugLog('WAYPOINT_MANAGER', `Adding waypoint: +${segmentCost.toFixed(1)}% detection -> ${cumulativeDetection.toFixed(1)}%, encounter risk: ${segmentEncounterRisk.toFixed(1)}% segment -> ${cumulativeEncounterRisk.toFixed(1)}% cumulative`);
 
-    setWaypoints([...waypoints, {
+    const newWaypoints = [...waypoints, {
       hex,
       pathFromPrev: path,
       segmentCost,
       cumulativeDetection,
       segmentEncounterRisk,
       cumulativeEncounterRisk
-    }]);
+    }];
+    setWaypoints(newWaypoints);
+    tacticalMapStateManager.setState({ waypoints: newWaypoints });
 
     return true;
   }, [waypoints, setWaypoints, findWeightedPath, mapData, tierConfig, getLastJourneyPosition, getJourneyEndDetection, getJourneyEndEncounterRisk]);
@@ -180,6 +183,7 @@ export function useTacticalWaypoints({
   const recalculateWaypoints = useCallback((waypointList, fromIndex) => {
     if (waypointList.length === 0) {
       setWaypoints([]);
+      tacticalMapStateManager.setState({ waypoints: [] });
       return;
     }
 
@@ -214,12 +218,15 @@ export function useTacticalWaypoints({
         };
       } else {
         debugLog('WAYPOINT_MANAGER', `[WARN] Path broken at waypoint ${i + 1}, removing subsequent`);
-        setWaypoints(recalculated.slice(0, i));
+        const truncated = recalculated.slice(0, i);
+        setWaypoints(truncated);
+        tacticalMapStateManager.setState({ waypoints: truncated });
         return;
       }
     }
 
     setWaypoints(recalculated);
+    tacticalMapStateManager.setState({ waypoints: recalculated });
   }, [setWaypoints, playerPosition, detection, mapData, tierConfig]);
 
   const removeWaypoint = useCallback((index) => {
@@ -234,6 +241,7 @@ export function useTacticalWaypoints({
   const clearAllWaypoints = useCallback(() => {
     debugLog('WAYPOINT_MANAGER', 'Clearing all waypoints');
     setWaypoints([]);
+    tacticalMapStateManager.setState({ waypoints: [] });
   }, [setWaypoints]);
 
   // --- Hex Interaction Handlers ---

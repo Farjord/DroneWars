@@ -10,6 +10,7 @@ import { debugLog } from '../utils/debugLogger.js';
  * - shipSections (run-specific damage tracking)
  * - collectedLoot, creditsEarned, aiCoresEarned
  * - POI tracking (lootedPOIs, fledPOIs, highAlertPOIs)
+ * - waypoints (single source of truth for waypoint path)
  * - pendingPOICombat, pendingWaypoints
  *
  * Lifecycle:
@@ -128,6 +129,9 @@ class TacticalMapStateManager {
 
       // Combat reputation tracking
       combatReputationEarned: [],  // Array of { aiId, aiDifficulty, deckValue, capUsed, repEarned, wasCapped, timestamp }
+
+      // Waypoints (single source of truth - survives combat transitions)
+      waypoints: [],
 
       // Pending state (for combat transitions)
       pendingPOICombat: null,

@@ -49,6 +49,7 @@ export function useTacticalPostCombat({
     if (waypointsToRestore?.length > 0) {
       debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after combat:', { count: waypointsToRestore?.length });
       setWaypoints(waypointsToRestore);
+      tacticalMapStateManager.setState({ waypoints: waypointsToRestore });
       waypointManager.clearStoredPath();
     }
 

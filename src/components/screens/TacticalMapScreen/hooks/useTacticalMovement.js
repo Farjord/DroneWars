@@ -197,6 +197,7 @@ export function useTacticalMovement({
               pathFromPrev: updated[wpIndex].pathFromPrev.slice(1)
             };
           }
+          tacticalMapStateManager.setState({ waypoints: updated });
           return updated;
         });
 
@@ -260,7 +261,11 @@ export function useTacticalMovement({
             // After modal closes, check if we should continue
             if (shouldStopMovement.current) {
               debugLog('PATH_HIGHLIGHTING', 'Guardian encounter stopped movement, clearing waypoint');
-              setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
+              setWaypoints(prev => {
+                const result = prev.length <= 1 ? [] : prev.slice(1);
+                tacticalMapStateManager.setState({ waypoints: result });
+                return result;
+              });
               break;
             }
           } else {
@@ -311,7 +316,11 @@ export function useTacticalMovement({
             // Check if movement was cancelled while waiting
             if (shouldStopMovement.current) {
               debugLog('PATH_HIGHLIGHTING', 'Salvage combat stopped movement, clearing waypoint');
-              setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
+              setWaypoints(prev => {
+                const result = prev.length <= 1 ? [] : prev.slice(1);
+                tacticalMapStateManager.setState({ waypoints: result });
+                return result;
+              });
               break;
             }
           }
@@ -339,6 +348,7 @@ export function useTacticalMovement({
             count: result.length,
             destinations: result.map(w => w.hex)
           });
+          tacticalMapStateManager.setState({ waypoints: result });
           return result;
         });
       }
@@ -350,6 +360,7 @@ export function useTacticalMovement({
     if (!transitionManager.hasSnapshot() && !escapedWithWaypoints.current && !pendingCombatLoadingRef.current && !skipWaypointRemovalRef.current) {
       debugLog('PATH_HIGHLIGHTING', 'Journey complete - clearing all waypoints');
       setWaypoints([]);
+      tacticalMapStateManager.setState({ waypoints: [] });
     } else if (skipWaypointRemovalRef.current) {
       debugLog('PATH_HIGHLIGHTING', 'Skipping journey complete clear - loot resume in progress');
     } else {

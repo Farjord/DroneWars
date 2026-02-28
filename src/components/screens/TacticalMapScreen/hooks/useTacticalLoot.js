@@ -60,6 +60,7 @@ export function useTacticalLoot({
         destinations: pendingResumeWaypoints?.map(w => w.hex)
       });
       setWaypoints(pendingResumeWaypoints);
+      tacticalMapStateManager.setState({ waypoints: pendingResumeWaypoints });
       setPendingResumeWaypoints(null);
     }
   }, [encounterResolveRef, pendingResumeWaypoints, setWaypoints, setPendingResumeWaypoints]);

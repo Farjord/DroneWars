@@ -318,6 +318,7 @@ export function useTacticalEscape({
     if (pendingResumeWaypoints?.length > 0) {
       debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: pendingResumeWaypoints?.length });
       setWaypoints(pendingResumeWaypoints);
+      tacticalMapStateManager.setState({ waypoints: pendingResumeWaypoints });
       setPendingResumeWaypoints(null);
     }
   }, [currentEncounter, activeSalvage, escapeContext, pendingResumeWaypoints, shouldStopMovement, encounterResolveRef, setShowEscapeLoadingScreen, setEscapeLoadingData, setEscapeContext, setShowPOIModal, setShowSalvageModal, setActiveSalvage, setCurrentEncounter, setIsMoving, setIsScanningHex, setWaypoints, setPendingResumeWaypoints]);
