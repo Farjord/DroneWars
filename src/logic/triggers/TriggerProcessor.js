@@ -4,7 +4,7 @@
 // Unified trigger processing for all triggered abilities.
 // Replaces fragmented patterns: abilityHelpers, MineTriggeredEffectProcessor,
 // AttackProcessor AFTER_ATTACK handler (deleted Phase 6),
-// RoundManager inline, DeploymentProcessor inline, rallyBeaconHelper.
+// RoundManager inline, DeploymentProcessor inline, rallyBeaconHelper (deleted Phase 7).
 //
 // Call sites remain distributed (movement fires ON_MOVE, combat fires ON_ATTACK, etc.)
 // but they all call TriggerProcessor.fireTrigger() instead of bespoke logic.
@@ -198,7 +198,7 @@ class TriggerProcessor {
       for (const [playerId, tier] of [[actingPlayerId, 1], [opponentId, 2]]) {
         this._collectControllerTriggers(
           triggerType, triggeringPlayerId, playerId,
-          playerStates[playerId], card, matches, tier
+          playerStates[playerId], card, matches, tier, lane
         );
       }
     }
@@ -210,7 +210,7 @@ class TriggerProcessor {
   }
 
   /**
-   * Route effects through EffectRouter. Handles destroyAfterTrigger, grantsGoAgain,
+   * Route effects through EffectRouter. Handles destroyAfterTrigger, GO_AGAIN effects,
    * scalingDivisor, and cascading triggers.
    *
    * @returns {Object} { triggered, newPlayerStates, animationEvents, statModsApplied, goAgain }
@@ -297,6 +297,19 @@ class TriggerProcessor {
           continue;
         }
 
+        // GO_AGAIN is a control flow signal, not a state mutation — handle before EffectRouter
+        if (effect.type === 'GO_AGAIN') {
+          goAgain = true;
+          if (logCallback) {
+            logCallback({
+              actionType: 'TRIGGER',
+              source: reactorDrone.name,
+              outcome: `${reactorDrone.name} in ${reactorLane} grants go again!`
+            });
+          }
+          continue;
+        }
+
         // Preprocess scope: 'SELF' → target the reactor drone
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
@@ -334,11 +347,6 @@ class TriggerProcessor {
       if (destroyResult.animationEvents.length > 0) {
         animationEvents.push(...destroyResult.animationEvents);
       }
-    }
-
-    // Handle grantsGoAgain (Rally Beacon)
-    if (ability.grantsGoAgain) {
-      goAgain = true;
     }
 
     return {
@@ -410,8 +418,9 @@ class TriggerProcessor {
 
   /**
    * Collect controller triggers from a player's drones across all lanes.
+   * @param {string|null} eventLane - Lane where the triggering event occurred (for SAME_LANE filtering)
    */
-  _collectControllerTriggers(triggerType, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier) {
+  _collectControllerTriggers(triggerType, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier, eventLane = null) {
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       const drones = playerState?.dronesOnBoard?.[lane] || [];
 
@@ -429,9 +438,7 @@ class TriggerProcessor {
 
           // Validate triggerScope
           if (ability.triggerScope === 'SAME_LANE') {
-            // For controller triggers with SAME_LANE, this requires lane context
-            // Will be fully implemented in Phase 8 (ON_CARD_PLAY)
-            continue;
+            if (!eventLane || lane !== eventLane) continue;
           }
 
           // Validate triggerFilter

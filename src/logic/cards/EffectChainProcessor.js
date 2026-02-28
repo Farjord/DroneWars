@@ -9,6 +9,8 @@ import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffect
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { CHAIN_ONLY_FIELDS, stripChainFields } from './chainConstants.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
 // --- Selection-Time: Position Tracker ---
 
@@ -372,6 +374,23 @@ class EffectChainProcessor {
         value: effectData.value ?? effectData.mod?.value ?? null,
         processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
+    }
+
+    // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing
+    const cardPlayLane = selections[0]?.lane ?? null;
+    const triggerProcessor = new TriggerProcessor();
+    const cardPlayResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+      lane: cardPlayLane,
+      triggeringPlayerId: playerId,
+      actingPlayerId: playerId,
+      card,
+      playerStates: currentStates,
+      placedSections,
+      logCallback: callbacks.logCallback
+    });
+    if (cardPlayResult.triggered) {
+      currentStates = cardPlayResult.newPlayerStates;
+      allAnimationEvents.push(...cardPlayResult.animationEvents);
     }
 
     // 3. Finalize: discard card, determine shouldEndTurn

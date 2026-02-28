@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock TriggerProcessor (imported by EffectChainProcessor for ON_CARD_PLAY)
+vi.mock('../../triggers/TriggerProcessor.js', () => ({
+  default: class MockTriggerProcessor {
+    constructor() {
+      this.fireTrigger = vi.fn().mockReturnValue({
+        triggered: false, newPlayerStates: null, animationEvents: [], goAgain: false
+      });
+    }
+  }
+}));
+vi.mock('../../triggers/triggerConstants.js', () => ({
+  TRIGGER_TYPES: { ON_CARD_PLAY: 'ON_CARD_PLAY' }
+}));
+
 // Mock EffectRouter before importing EffectChainProcessor
 vi.mock('../../EffectRouter.js', () => {
   return {

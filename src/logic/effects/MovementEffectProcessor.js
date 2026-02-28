@@ -14,7 +14,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './movement/animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
-import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
+
 
 /**
  * MovementEffectProcessor
@@ -398,7 +398,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: !card.effects[0].goAgain && !postMoveResult.rallyGoAgain,
+      shouldEndTurn: !card.effects[0].goAgain && !postMoveResult.goAgain,
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
@@ -544,7 +544,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: !(card.effects[0]?.goAgain || postMoveResult.rallyGoAgain),
+      shouldEndTurn: !(card.effects[0]?.goAgain || postMoveResult.goAgain),
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
@@ -554,11 +554,11 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
   /**
    * Shared post-move trigger resolution.
-   * Processes ON_MOVE triggers + aura updates + Rally Beacon + mine triggers.
+   * Processes ON_MOVE triggers + aura updates + ON_LANE_MOVEMENT_IN triggers (mines + Rally Beacon).
    * Used by both executeSingleMove and executeMultiMove.
    *
    * ON_MOVE fires for ALL moved drones including force-moved enemy drones (PRD 3.3).
-   * Rally Beacon and mines only fire for friendly drone moves.
+   * ON_LANE_MOVEMENT_IN (mines, Rally Beacon) only fires for friendly drone moves.
    *
    * @param {Object} config
    * @param {Array} config.movedDrones - Drones that were moved
@@ -570,7 +570,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {Object} config.placedSections - Placed ship sections
    * @param {Function} config.logCallback - Log callback
    * @param {boolean} config.cardGoAgain - Whether the card grants go-again
-   * @returns {Object} { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, rallyGoAgain }
+   * @returns {Object} { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain }
    */
   _resolvePostMoveTriggers({ movedDrones, fromLane, toLane, droneOwnerId, actingPlayerId, newPlayerStates, placedSections, logCallback, cardGoAgain }) {
     const opponentOfDroneOwner = droneOwnerId === 'player1' ? 'player2' : 'player1';
@@ -602,6 +602,31 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       }
     }
 
+    // ON_LANE_MOVEMENT_OUT fires for friendly drones leaving the source lane
+    if (!isEnemyMove) {
+      for (const movedDrone of movedDrones) {
+        const outResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_OUT, {
+          lane: fromLane,
+          triggeringDrone: movedDrone,
+          triggeringPlayerId: droneOwnerId,
+          actingPlayerId: droneOwnerId,
+          playerStates: {
+            [droneOwnerId]: newPlayerStates[droneOwnerId],
+            [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
+          },
+          placedSections,
+          logCallback
+        });
+        if (outResult.triggered) {
+          newPlayerStates[droneOwnerId] = outResult.newPlayerStates[droneOwnerId];
+          newPlayerStates[opponentOfDroneOwner] = outResult.newPlayerStates[opponentOfDroneOwner];
+          if (outResult.animationEvents.length > 0) {
+            healAnimationEvents.push(...outResult.animationEvents);
+          }
+        }
+      }
+    }
+
     // Update auras after movement for drone owner
     newPlayerStates[droneOwnerId].dronesOnBoard = updateAuras(
       newPlayerStates[droneOwnerId],
@@ -619,25 +644,17 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       );
     }
 
-    // Rally Beacon and mines only fire for friendly drone moves
-    let rallyGoAgain = false;
+    // ON_LANE_MOVEMENT_IN triggers (Rally Beacon go-again + mines) only fire for friendly moves
+    let goAgain = false;
     const mineAnimationEvents = [];
-
-    if (!isEnemyMove) {
-      // Check Rally Beacon go-again
-      rallyGoAgain = checkRallyBeaconGoAgain(
-        newPlayerStates[droneOwnerId], toLane, cardGoAgain || false, logCallback
-      );
-    }
 
     // Snapshot state before mine trigger
     const preMineTriggerStates = JSON.parse(JSON.stringify(newPlayerStates));
 
     if (!isEnemyMove) {
-      // Process ON_LANE_MOVEMENT_IN mine triggers
-      // Mines self-destruct, so only the first drone triggers it
+      // Process ON_LANE_MOVEMENT_IN triggers (Rally Beacon + mines in single pass)
       for (const movedDrone of movedDrones) {
-        const mineResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
           lane: toLane,
           triggeringDrone: movedDrone,
           triggeringPlayerId: droneOwnerId,
@@ -650,18 +667,20 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           logCallback
         });
 
-        if (mineResult.triggered) {
-          newPlayerStates[droneOwnerId] = mineResult.newPlayerStates[droneOwnerId];
-          newPlayerStates[opponentOfDroneOwner] = mineResult.newPlayerStates[opponentOfDroneOwner];
-          if (mineResult.animationEvents.length > 0) {
-            mineAnimationEvents.push(...mineResult.animationEvents);
+        if (result.triggered) {
+          newPlayerStates[droneOwnerId] = result.newPlayerStates[droneOwnerId];
+          newPlayerStates[opponentOfDroneOwner] = result.newPlayerStates[opponentOfDroneOwner];
+          if (result.animationEvents.length > 0) {
+            mineAnimationEvents.push(...result.animationEvents);
           }
-          break; // Mine self-destructed
+          if (result.goAgain) {
+            goAgain = true;
+          }
         }
       }
     }
 
-    return { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, rallyGoAgain };
+    return { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain };
   }
 }
 

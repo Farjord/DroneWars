@@ -52,8 +52,7 @@ vi.mock('../../../data/droneData.js', () => ({
         type: 'TRIGGERED',
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_OWNER',
-        grantsGoAgain: true,
-        effects: []
+        effects: [{ type: 'GO_AGAIN' }]
       }]
     },
     {
@@ -139,6 +138,52 @@ vi.mock('../../../data/droneData.js', () => ({
         name: 'Veteran Instincts',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACK',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestRallyBeacon',
+      attack: 0, hull: 1, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Rally Point',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        effects: [{ type: 'GO_AGAIN' }]
+      }]
+    },
+    {
+      name: 'TestCardPlayDrone',
+      attack: 1, hull: 2, shields: 2, speed: 2,
+      abilities: [{
+        name: 'Card Sensor',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_PLAY',
+        triggerOwner: 'CONTROLLER',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestSameLaneCardPlayDrone',
+      attack: 1, hull: 2, shields: 2, speed: 2,
+      abilities: [{
+        name: 'Web Sensor',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_PLAY',
+        triggerOwner: 'CONTROLLER',
+        triggerScope: 'SAME_LANE',
+        triggerFilter: { cardSubType: 'Mine' },
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestLaneExitDrone',
+      attack: 1, hull: 2, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Exit Sensor',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_OUT',
+        triggerOwner: 'LANE_OWNER',
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
     }
@@ -397,7 +442,7 @@ describe('TriggerProcessor', () => {
       );
     });
 
-    it('should return goAgain when trigger has grantsGoAgain', () => {
+    it('should return goAgain when trigger has GO_AGAIN effect', () => {
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
       const rallyDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
 
@@ -954,6 +999,253 @@ describe('TriggerProcessor', () => {
         type: 'MODIFY_STAT',
         mod: { stat: 'attack', value: 1, type: 'permanent' }
       });
+    });
+  });
+
+  // ========================================
+  // RALLY BEACON TRIGGER TESTS (Phase 7)
+  // ========================================
+
+  describe('Rally Beacon via ON_LANE_MOVEMENT_IN', () => {
+    it('friendly drone moves into Rally Beacon lane → goAgain true', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
+      const beacon = { id: 'beacon1', name: 'TestRallyBeacon' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [beacon, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.goAgain).toBe(true);
+    });
+
+    it('enemy drone moves into Rally Beacon lane → goAgain false', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
+      const beacon = { id: 'beacon1', name: 'TestRallyBeacon' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [beacon];
+      basePlayerStates.player2.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player2',
+        actingPlayerId: 'player2',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      // LANE_OWNER means triggering drone must belong to same player as beacon
+      expect(result.goAgain).toBe(false);
+    });
+
+    it('no beacon in lane → goAgain false', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.goAgain).toBe(false);
+    });
+
+    it('Rally Beacon + mine coexistence → goAgain true AND mine effects fire', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 0 };
+      const beacon = { id: 'beacon1', name: 'TestRallyBeacon' };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [beacon, mine, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.goAgain).toBe(true);
+      // Mine damage applied (3 damage to hull 5 → hull 2)
+      const drone = result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'drone1');
+      expect(drone.hull).toBe(2);
+      // Mine self-destructed
+      expect(result.newPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'mine1')).toBeUndefined();
+    });
+  });
+
+  // ========================================
+  // ON_CARD_PLAY triggers (Phase 8)
+  // ========================================
+  describe('ON_CARD_PLAY triggers (Phase 8)', () => {
+    it('CONTROLLER trigger fires on card play', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'sensor1', name: 'TestCardPlayDrone', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const card = { name: 'Test Card', type: 'Action' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+    });
+
+    it('SAME_LANE match fires for mine card in same lane', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'web1', name: 'TestSameLaneCardPlayDrone', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+    });
+
+    it('SAME_LANE mismatch skips when card played in different lane', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'web1', name: 'TestSameLaneCardPlayDrone', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane2',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('triggerFilter cardSubType mismatch skips for non-mine card', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'web1', name: 'TestSameLaneCardPlayDrone', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const nonMineCard = { name: 'Laser Strike', type: 'Action' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: nonMineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('opponent CONTROLLER trigger does not fire on other player card play', () => {
+      basePlayerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'sensor2', name: 'TestCardPlayDrone', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const card = { name: 'Test Card', type: 'Action' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+  });
+
+  // ========================================
+  // ON_LANE_MOVEMENT_OUT triggers (Phase 8)
+  // ========================================
+  describe('ON_LANE_MOVEMENT_OUT triggers (Phase 8)', () => {
+    it('lane trigger fires for drone leaving', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'exit1', name: 'TestLaneExitDrone', attack: 1, hull: 2, shields: 0, isExhausted: false },
+        { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_OUT, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+    });
+
+    it('does not fire for wrong lane', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'exit1', name: 'TestLaneExitDrone', attack: 1, hull: 2, shields: 0, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_OUT, {
+        lane: 'lane2',
+        triggeringDrone: { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('does not fire for enemy drones (LANE_OWNER)', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'exit1', name: 'TestLaneExitDrone', attack: 1, hull: 2, shields: 0, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_OUT, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'enemy1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player2',
+        actingPlayerId: 'player2',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
     });
   });
 });
