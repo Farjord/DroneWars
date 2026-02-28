@@ -1431,11 +1431,11 @@ describe('TriggerProcessor', () => {
         logCallback: vi.fn()
       });
 
-      // STATE_SNAPSHOT comes first for non-damage triggers, then TRIGGER_FIRED, then effect events
+      // TRIGGER_FIRED first, then effect events, then STATE_SNAPSHOT (cause→effect→state)
       expect(result.animationEvents.length).toBeGreaterThanOrEqual(3);
-      expect(result.animationEvents[0].type).toBe('STATE_SNAPSHOT');
-      expect(result.animationEvents[1].type).toBe('TRIGGER_FIRED');
-      expect(result.animationEvents[2].type).toBe('STAT_CHANGE');
+      expect(result.animationEvents[0].type).toBe('TRIGGER_FIRED');
+      expect(result.animationEvents[1].type).toBe('STAT_CHANGE');
+      expect(result.animationEvents[2].type).toBe('STATE_SNAPSHOT');
     });
 
     it('has stable deterministic eventId', () => {
@@ -1528,7 +1528,7 @@ describe('TriggerProcessor', () => {
       expect(snapshots[0].snapshotPlayerStates.player2).toBeDefined();
     });
 
-    it('should place STATE_SNAPSHOT BEFORE TRIGGER_FIRED for non-damage triggers (GO_AGAIN)', () => {
+    it('should place STATE_SNAPSHOT AFTER TRIGGER_FIRED for non-damage triggers (GO_AGAIN)', () => {
       const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
       basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
@@ -1547,7 +1547,7 @@ describe('TriggerProcessor', () => {
       const snapshotIdx = events.findIndex(e => e.type === 'STATE_SNAPSHOT');
       const triggerFiredIdx = events.findIndex(e => e.type === 'TRIGGER_FIRED');
 
-      expect(snapshotIdx).toBeLessThan(triggerFiredIdx);
+      expect(snapshotIdx).toBeGreaterThan(triggerFiredIdx);
     });
 
     it('should place STATE_SNAPSHOT AFTER damage events for DOM-dependent triggers', () => {

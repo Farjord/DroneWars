@@ -116,15 +116,6 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
-        // Check if trigger produced DOM-dependent animations (need target in DOM)
-        const DOM_DEPENDENT_TYPES = new Set([
-          'HULL_DAMAGE', 'SHIELD_DAMAGE', 'DRONE_DESTROYED',
-          'SECTION_DESTROYED', 'SECTION_DAMAGED', 'HEAL_EFFECT'
-        ]);
-        const hasDomDependentAnims = result.animationEvents.some(
-          e => DOM_DEPENDENT_TYPES.has(e.type)
-        );
-
         // Build STATE_SNAPSHOT event (JSON clone for codebase consistency)
         const snapshot = {
           type: 'STATE_SNAPSHOT',
@@ -132,13 +123,10 @@ class TriggerProcessor {
           timestamp: Date.now()
         };
 
-        if (hasDomDependentAnims) {
-          // DOM-dependent: events first (target in DOM), then snapshot
-          allAnimationEvents.push(...result.animationEvents, snapshot);
-        } else {
-          // Non-DOM-dependent: snapshot first (state visible with announcement)
-          allAnimationEvents.push(snapshot, ...result.animationEvents);
-        }
+        // Always: events first (announcement + effects), then snapshot (state applies after).
+        // This ensures the player sees the trigger announcement before its state change.
+        // For damage triggers, this also keeps targets in DOM for their animations.
+        allAnimationEvents.push(...result.animationEvents, snapshot);
 
         if (result.statModsApplied) {
           anyStatMods = true;
