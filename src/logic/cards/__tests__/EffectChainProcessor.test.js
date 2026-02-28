@@ -128,7 +128,7 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
           newPlayerStates: newStates,
           effectResult: { movedDrones: [movedDrone], fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: !card.effects?.[0]?.goAgain,
-          healAnimationEvents: [],
+          triggerAnimationEvents: [],
           mineAnimationEvents: [],
         };
       }
@@ -142,7 +142,7 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
           newPlayerStates: newStates,
           effectResult: { movedDrones: drones, fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: true,
-          healAnimationEvents: [],
+          triggerAnimationEvents: [],
           mineAnimationEvents: [],
         };
       }

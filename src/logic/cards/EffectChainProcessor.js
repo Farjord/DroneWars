@@ -123,6 +123,7 @@ class EffectChainProcessor {
     this.effectRouter = new EffectRouter();
     this.conditionalProcessor = new ConditionalEffectProcessor();
     this.movementProcessor = new MovementEffectProcessor();
+    this.triggerProcessor = new TriggerProcessor();
   }
 
   /**
@@ -376,10 +377,10 @@ class EffectChainProcessor {
       });
     }
 
-    // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing
+    // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.
+    // Lane comes from first selection — multi-lane cards use first target's lane for SAME_LANE matching.
     const cardPlayLane = selections[0]?.lane ?? null;
-    const triggerProcessor = new TriggerProcessor();
-    const cardPlayResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+    const cardPlayResult = this.triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
       lane: cardPlayLane,
       triggeringPlayerId: playerId,
       actingPlayerId: playerId,
@@ -438,7 +439,7 @@ class EffectChainProcessor {
       }
       return {
         newPlayerStates: result.newPlayerStates,
-        animationEvents: [...(result.healAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+        animationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
         effectResult: result.effectResult,
         goAgain: !result.shouldEndTurn,
       };
@@ -456,7 +457,7 @@ class EffectChainProcessor {
     }
     return {
       newPlayerStates: result.newPlayerStates,
-      animationEvents: [...(result.healAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+      animationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
       effectResult: result.effectResult,
       goAgain: !result.shouldEndTurn,
     };

@@ -402,7 +402,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
-      healAnimationEvents: postMoveResult.healAnimationEvents
+      triggerAnimationEvents: postMoveResult.triggerAnimationEvents
     };
   }
 
@@ -548,7 +548,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
-      healAnimationEvents: postMoveResult.healAnimationEvents
+      triggerAnimationEvents: postMoveResult.triggerAnimationEvents
     };
   }
 
@@ -570,13 +570,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {Object} config.placedSections - Placed ship sections
    * @param {Function} config.logCallback - Log callback
    * @param {boolean} config.cardGoAgain - Whether the card grants go-again
-   * @returns {Object} { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain }
+   * @returns {Object} { triggerAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain }
    */
   _resolvePostMoveTriggers({ movedDrones, fromLane, toLane, droneOwnerId, actingPlayerId, newPlayerStates, placedSections, logCallback, cardGoAgain }) {
     const opponentOfDroneOwner = droneOwnerId === 'player1' ? 'player2' : 'player1';
     const isEnemyMove = droneOwnerId !== actingPlayerId;
     const triggerProcessor = new TriggerProcessor();
-    const healAnimationEvents = [];
+    const triggerAnimationEvents = [];
 
     // ON_MOVE triggers fire for ALL moved drones (including force-moved enemy drones per PRD 3.3)
     for (const movedDrone of movedDrones) {
@@ -597,7 +597,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         newPlayerStates[droneOwnerId] = moveResult.newPlayerStates[droneOwnerId];
         newPlayerStates[opponentOfDroneOwner] = moveResult.newPlayerStates[opponentOfDroneOwner];
         if (moveResult.animationEvents.length > 0) {
-          healAnimationEvents.push(...moveResult.animationEvents);
+          triggerAnimationEvents.push(...moveResult.animationEvents);
         }
       }
     }
@@ -621,7 +621,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           newPlayerStates[droneOwnerId] = outResult.newPlayerStates[droneOwnerId];
           newPlayerStates[opponentOfDroneOwner] = outResult.newPlayerStates[opponentOfDroneOwner];
           if (outResult.animationEvents.length > 0) {
-            healAnimationEvents.push(...outResult.animationEvents);
+            triggerAnimationEvents.push(...outResult.animationEvents);
           }
         }
       }
@@ -680,7 +680,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    return { healAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain };
+    return { triggerAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain };
   }
 }
 

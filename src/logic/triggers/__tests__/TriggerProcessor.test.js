@@ -177,6 +177,17 @@ vi.mock('../../../data/droneData.js', () => ({
       }]
     },
     {
+      name: 'TestCardPlayGoAgainDrone',
+      attack: 1, hull: 2, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Card Rally',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_PLAY',
+        triggerOwner: 'CONTROLLER',
+        effects: [{ type: 'GO_AGAIN' }]
+      }]
+    },
+    {
       name: 'TestLaneExitDrone',
       attack: 1, hull: 2, shields: 0, speed: 1,
       abilities: [{
@@ -1186,6 +1197,26 @@ describe('TriggerProcessor', () => {
       });
 
       expect(result.triggered).toBe(false);
+    });
+
+    it('GO_AGAIN effect propagates goAgain from ON_CARD_PLAY trigger', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'rally1', name: 'TestCardPlayGoAgainDrone', attack: 1, hull: 2, shields: 0, isExhausted: false }
+      ];
+
+      const card = { name: 'Test Card', type: 'Action' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.goAgain).toBe(true);
     });
   });
 
