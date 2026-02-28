@@ -109,7 +109,7 @@
 - [x] Add Anansi to droneData.js (CPU 2, Atk 1, Hull 2, Shields 2, Speed 2, Rare, Limit 1)
 - [x] Ability: Web Sensor (ON_CARD_PLAY, CONTROLLER, SAME_LANE, triggerFilter: { cardSubType: 'Mine' })
 - [x] Tests: mine in Anansi's lane → draw, other lane → no draw, non-mine → no draw, opponent mine → no draw
-- [ ] Checkpoint commit
+- [x] Checkpoint commit `ab51f6cf`
 
 ## Phase 10: Trigger Chain Animations
 - [ ] TriggerProcessor emits `TRIGGER_FIRED` animation events
