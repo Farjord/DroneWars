@@ -146,30 +146,24 @@ describe('TacticalMapScreen - Combat Flow', () => {
 
     it('should preserve waypoints through Blueprint PoI combat', () => {
       // Setup: Player traveling to Blueprint PoI with remaining waypoints
-      const waypoints = [
-        { hex: { q: 0, r: 0 }, pathFromPrev: [] },  // Already passed
-        { hex: { q: 5, r: 3 }, pathFromPrev: [] },  // Blueprint PoI (current)
-        { hex: { q: 8, r: 5 }, pathFromPrev: [] },  // Should be preserved
-        { hex: { q: 10, r: 7 }, pathFromPrev: [] }  // Should be preserved
-      ];
-
       const mockTacticalMapState = {
         playerPosition: { q: 5, r: 3 },
-        pendingPath: 'hex:8,5|hex:10,7',  // Remaining path after current position
-        pendingWaypointDestinations: 'hex:8,5|hex:10,7'
+        waypoints: [
+          { hex: { q: 8, r: 5 }, pathFromPrev: [] },  // Should be preserved
+          { hex: { q: 10, r: 7 }, pathFromPrev: [] }   // Should be preserved
+        ]
       };
 
       tacticalMapStateManager.getState.mockReturnValue(mockTacticalMapState);
 
       // After Blueprint PoI combat, waypoints should be restored
-      const hasPendingPath = !!mockTacticalMapState.pendingPath;
-      const hasPendingWaypoints = !!mockTacticalMapState.pendingWaypointDestinations;
+      const hasWaypoints = mockTacticalMapState.waypoints.length > 0;
 
       // Verify waypoints preserved
-      expect(hasPendingPath).toBe(true);
-      expect(hasPendingWaypoints).toBe(true);
-      expect(mockTacticalMapState.pendingPath).toContain('hex:8,5');
-      expect(mockTacticalMapState.pendingPath).toContain('hex:10,7');
+      expect(hasWaypoints).toBe(true);
+      expect(mockTacticalMapState.waypoints).toHaveLength(2);
+      expect(mockTacticalMapState.waypoints[0].hex).toEqual({ q: 8, r: 5 });
+      expect(mockTacticalMapState.waypoints[1].hex).toEqual({ q: 10, r: 7 });
     });
   });
 
@@ -328,17 +322,22 @@ describe('TacticalMapScreen - Combat Flow', () => {
       // Setup: Random encounter during waypoint travel
       const mockTacticalMapState = {
         playerPosition: { q: 4, r: 4 },
-        pendingPath: 'hex:6,6|hex:8,8',
-        pendingWaypointDestinations: 'hex:6,6|hex:8,8'
+        waypoints: [
+          { hex: { q: 6, r: 6 }, pathFromPrev: [] },
+          { hex: { q: 8, r: 8 }, pathFromPrev: [] }
+        ]
       };
 
       tacticalMapStateManager.getState.mockReturnValue(mockTacticalMapState);
 
       // After random encounter, waypoints should be restored
-      const hasPendingPath = !!mockTacticalMapState.pendingPath;
+      const hasWaypoints = mockTacticalMapState.waypoints.length > 0;
 
       // Verify waypoints preserved
-      expect(hasPendingPath).toBe(true);
+      expect(hasWaypoints).toBe(true);
+      expect(mockTacticalMapState.waypoints).toHaveLength(2);
+      expect(mockTacticalMapState.waypoints[0].hex).toEqual({ q: 6, r: 6 });
+      expect(mockTacticalMapState.waypoints[1].hex).toEqual({ q: 8, r: 8 });
     });
   });
 });

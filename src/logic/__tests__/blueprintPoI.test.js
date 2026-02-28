@@ -446,14 +446,10 @@ describe('Blueprint PoI System', () => {
       const initialState = tacticalMapStateManager.getState();
       const initialWaypoints = initialState.waypoints;
 
-      // Store waypoints in pendingWaypoints (simulates pre-combat)
-      tacticalMapStateManager.setState({
-        pendingWaypoints: initialWaypoints
-      });
-
-      // After combat, waypoints should be restored
+      // Waypoints live on TacticalMapStateManager.waypoints (single source of truth)
+      // They survive combat because CombatOutcomeProcessor uses merge setState
       const finalState = tacticalMapStateManager.getState();
-      expect(finalState.pendingWaypoints).toEqual(initialWaypoints);
+      expect(finalState.waypoints).toEqual(initialWaypoints);
     });
 
     it('should preserve Signal Lock value after blueprint combat', () => {

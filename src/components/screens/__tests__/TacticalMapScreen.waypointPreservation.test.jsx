@@ -611,13 +611,16 @@ describe('Path restoration - synthetic waypoint creation', () => {
     expect(pathHexes).toEqual([{ q: 2, r: 0 }, { q: 3, r: 0 }]);
   });
 
-  it('should store pendingPath in TacticalMapStateManager', () => {
-    const remainingPath = ['2,0', '3,0'];
+  it('should store waypoints in TacticalMapStateManager', () => {
+    const remainingWaypoints = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
 
-    tacticalMapStateManager.setState({ pendingPath: remainingPath });
+    tacticalMapStateManager.setState({ waypoints: remainingWaypoints });
 
     expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
-      pendingPath: ['2,0', '3,0']
+      waypoints: remainingWaypoints
     });
   });
 });
@@ -757,18 +760,16 @@ describe('Waypoint marker preservation', () => {
     expect(waypointsToRestore[0].hex).toEqual({ q: 2, r: 0 });
   });
 
-  it('should store both pendingPath and pendingWaypointDestinations', () => {
-    const remainingPath = ['1,0', '2,0', '3,0'];
-    const waypointDestinations = ['2,0', '3,0'];
+  it('should store waypoints array directly in TacticalMapStateManager', () => {
+    const waypointsToStore = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
 
-    tacticalMapStateManager.setState({
-      pendingPath: remainingPath,
-      pendingWaypointDestinations: waypointDestinations
-    });
+    tacticalMapStateManager.setState({ waypoints: waypointsToStore });
 
     expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
-      pendingPath: ['1,0', '2,0', '3,0'],
-      pendingWaypointDestinations: ['2,0', '3,0']
+      waypoints: waypointsToStore
     });
   });
 });
@@ -790,8 +791,8 @@ describe('waypoint restoration - modal paths (TDD)', () => {
   });
 
   it('should have waypointsToRestore available for blueprint modal path', () => {
-    // TEST: When returning from blueprint POI combat, waypointsToRestore should be available
-    // to store in pendingResumeWaypoints for post-modal resumption
+    // TEST: When returning from blueprint POI combat, waypoints should persist
+    // in TacticalMapStateManager for post-modal resumption
 
     tacticalMapStateManager.getState.mockReturnValue({
       pendingPOICombat: {
@@ -799,25 +800,27 @@ describe('waypoint restoration - modal paths (TDD)', () => {
         packType: 'DRONE_BLUEPRINT_FIGHTER',  // Blueprint POI
         poiName: 'Fighter Blueprint Cache'
       },
-      pendingPath: ['0,0', '1,0', '2,0'],  // Waypoints exist
-      pendingWaypointDestinations: [{ hex: '2,0' }]
+      waypoints: [
+        { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+        { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] }
+      ]
     });
 
     const state = tacticalMapStateManager.getState();
 
-    // Preconditions for the bug: waypoints ARE in state manager
-    expect(state.pendingPath).toBeDefined();
-    expect(state.pendingPath.length).toBeGreaterThan(0);
+    // Preconditions: waypoints ARE in state manager
+    expect(state.waypoints).toBeDefined();
+    expect(state.waypoints.length).toBeGreaterThan(0);
 
     // And this is a blueprint POI (triggers the blueprint-only modal path)
     expect(state.pendingPOICombat.packType).toContain('BLUEPRINT');
 
-    // BUG: The blueprint-only path doesn't call setPendingResumeWaypoints()
-    // FIX: After showing blueprint modal, must call setPendingResumeWaypoints(waypointsToRestore)
+    // Waypoints persist in TacticalMapStateManager through combat and modal display
   });
 
   it('should have waypointsToRestore available for generic loot modal path', () => {
-    // TEST: When returning from non-blueprint POI combat, waypointsToRestore should be available
+    // TEST: When returning from non-blueprint POI combat, waypoints should persist
+    // in TacticalMapStateManager for post-modal resumption
 
     tacticalMapStateManager.getState.mockReturnValue({
       pendingPOICombat: {
@@ -825,20 +828,22 @@ describe('waypoint restoration - modal paths (TDD)', () => {
         packType: 'MIXED_PACK',  // Non-blueprint POI
         poiName: 'Salvage Cache'
       },
-      pendingPath: ['0,0', '1,0', '2,0'],
-      pendingWaypointDestinations: [{ hex: '2,0' }]
+      waypoints: [
+        { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+        { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] }
+      ]
     });
 
     const state = tacticalMapStateManager.getState();
 
     // Waypoints are available
-    expect(state.pendingPath).toBeDefined();
+    expect(state.waypoints).toBeDefined();
+    expect(state.waypoints.length).toBeGreaterThan(0);
 
     // This is NOT a blueprint POI (triggers the generic loot modal path)
     expect(state.pendingPOICombat.packType).not.toContain('BLUEPRINT');
 
-    // BUG: The generic loot path doesn't call setPendingResumeWaypoints()
-    // FIX: After showing generic loot modal, must call setPendingResumeWaypoints(waypointsToRestore)
+    // Waypoints persist in TacticalMapStateManager through combat and modal display
   });
 
   it('should restore waypoints when handleBlueprintRewardAccepted is called with pendingResumeWaypoints set', () => {
