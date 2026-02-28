@@ -6,7 +6,6 @@
 
 import { useEffect } from 'react';
 import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
-import waypointManager from '../../../../managers/WaypointManager.js';
 import rewardManager from '../../../../managers/RewardManager.js';
 import HighAlertManager from '../../../../logic/salvage/HighAlertManager.js';
 import SalvageController from '../../../../logic/salvage/SalvageController.js';
@@ -22,7 +21,6 @@ const DEFAULT_POI_THREAT_INCREASE = 10;
  * Processes pending waypoints, POI combat loot, and salvage restoration.
  */
 export function useTacticalPostCombat({
-  setWaypoints,
   setActiveSalvage,
   setShowSalvageModal,
   setPendingBlueprintReward,
@@ -34,27 +32,14 @@ export function useTacticalPostCombat({
     let runState = tacticalMapStateManager.getState();
 
     // Diagnostic logging for state persistence debugging
+    const restoredWaypoints = runState?.waypoints || [];
     debugLog('RUN_STATE', 'TacticalMapScreen MOUNT - checking pending state:', {
       hasRunState: !!runState,
       hasMapData: !!runState?.mapData,
       backgroundIndex: runState?.mapData?.backgroundIndex,
-      pendingWaypoints: runState?.pendingPath?.length || 0,
+      waypointsFromManager: restoredWaypoints.length,
       pendingPOICombat: !!runState?.pendingPOICombat
     });
-
-    // Restore path using WaypointManager (if path was stored before combat)
-    const waypointsToRestore = waypointManager.restorePathAfterCombat();
-
-    // ALWAYS restore waypoints after combat - player sees their route (no auto-movement)
-    if (waypointsToRestore?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after combat:', { count: waypointsToRestore?.length });
-      setWaypoints(waypointsToRestore);
-      tacticalMapStateManager.setState({ waypoints: waypointsToRestore });
-      waypointManager.clearStoredPath();
-    }
-
-    // Re-fetch runState after potential path clearing
-    runState = tacticalMapStateManager.getState();
 
     // Process pending POI combat (ONLY for POI encounters - loot processing)
     if (runState?.pendingPOICombat) {
@@ -218,11 +203,11 @@ export function useTacticalPostCombat({
 
     // Log post-combat state restoration
     runState = tacticalMapStateManager.getState();
-    if (waypointsToRestore || runState?.pendingPOICombat || runState?.pendingBlockadeExtraction) {
+    if (restoredWaypoints.length > 0 || runState?.pendingPOICombat || runState?.pendingBlockadeExtraction) {
       debugLog('COMBAT_FLOW', 'Post-combat state restored', {
         position: { q: runState?.playerPosition?.q, r: runState?.playerPosition?.r },
-        waypointsRestored: waypointsToRestore?.length || 0,
-        waypointDestinations: waypointsToRestore?.map(wp => `(${wp?.hex?.q},${wp?.hex?.r})`).join(' -> '),
+        waypointsFromManager: restoredWaypoints.length,
+        waypointDestinations: restoredWaypoints.map(wp => `(${wp?.hex?.q},${wp?.hex?.r})`).join(' -> '),
         detection: runState?.detection,
         hull: runState?.currentHull,
         pendingPOICombat: !!runState?.pendingPOICombat,

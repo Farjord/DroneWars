@@ -58,8 +58,10 @@ function TacticalMapScreen() {
     return state;
   });
 
-  // Waypoint journey planning state
-  const [waypoints, setWaypoints] = useState([]);           // Array of waypoint objects
+  // Waypoint journey planning state - initialize from manager (survives combat transitions)
+  const [waypoints, setWaypoints] = useState(() => {
+    return tacticalMapStateManager.getState()?.waypoints || [];
+  });
   const [inspectedHex, setInspectedHex] = useState(null);   // Hex being viewed (null = Waypoint List view)
 
   // Movement execution state
@@ -202,9 +204,8 @@ function TacticalMapScreen() {
     currentRunState,
   });
 
-  // --- Post-combat mount effect (waypoint restoration, POI loot, salvage) ---
+  // --- Post-combat mount effect (POI loot, salvage) ---
   useTacticalPostCombat({
-    setWaypoints,
     setActiveSalvage,
     setShowSalvageModal,
     setPendingBlueprintReward,
