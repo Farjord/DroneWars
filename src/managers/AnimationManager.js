@@ -83,7 +83,7 @@ class AnimationManager {
       },
 
       TRIGGER_FIRED: {
-        duration: 500,
+        duration: 1200,
         type: 'TRIGGER_FIRED_EFFECT',
         timing: 'pre-state',
         config: {}

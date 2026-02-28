@@ -121,7 +121,18 @@ export function registerNotificationAnimations(animationManager, {
   });
 
   animationManager.registerVisualHandler('TRIGGER_FIRED_EFFECT', (payload) => {
-    const { droneName, abilityName, onComplete } = payload;
+    const { droneName, abilityName, targetId, onComplete } = payload;
+
+    // Find drone element for positioning above the triggering drone
+    const droneEl = droneRefs.current[targetId];
+    let position = null;
+    if (droneEl) {
+      const rect = droneEl.getBoundingClientRect();
+      position = {
+        left: rect.left + rect.width / 2,
+        top: rect.top
+      };
+    }
 
     const notificationId = `triggerfired-${crypto.randomUUID()}`;
 
@@ -129,6 +140,7 @@ export function registerNotificationAnimations(animationManager, {
       id: notificationId,
       droneName: droneName || 'Unknown',
       abilityName: abilityName || 'Triggered',
+      position,
       onComplete: () => {
         setTriggerFiredNotifications(prev => prev.filter(n => n.id !== notificationId));
         onComplete?.();

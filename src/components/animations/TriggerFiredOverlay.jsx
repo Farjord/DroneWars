@@ -2,8 +2,8 @@
 // TRIGGER FIRED NOTIFICATION OVERLAY
 // ========================================
 // Compact banner announcing a triggered ability activation
-// Amber/orange accent — positioned in upper screen area
-// ~400ms display + 100ms fade-out = 500ms total
+// Amber/orange accent — positioned over the triggering drone
+// ~800ms display + 200ms fade-in/out = 1200ms total budget
 
 import React, { useState, useEffect } from 'react';
 
@@ -11,9 +11,10 @@ import React, { useState, useEffect } from 'react';
  * TriggerFiredOverlay - Compact trigger announcement banner
  * @param {string} droneName - Name of the drone whose trigger activated
  * @param {string} abilityName - Name of the triggered ability
+ * @param {{ left: number, top: number }|null} position - Drone screen position, or null for center fallback
  * @param {Function} onComplete - Callback when animation completes
  */
-const TriggerFiredOverlay = ({ droneName, abilityName, onComplete }) => {
+const TriggerFiredOverlay = ({ droneName, abilityName, position, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -22,27 +23,42 @@ const TriggerFiredOverlay = ({ droneName, abilityName, onComplete }) => {
       setIsVisible(true);
     });
 
-    // Auto-dismiss after 400ms display
+    // Auto-dismiss after 800ms display
     const displayTimer = setTimeout(() => {
       setIsVisible(false);
 
       // Wait for fade-out to complete before cleanup
       const cleanupTimer = setTimeout(() => {
         onComplete?.();
-      }, 100); // 100ms fade-out
+      }, 200);
 
       return () => clearTimeout(cleanupTimer);
-    }, 400);
+    }, 800);
 
     return () => clearTimeout(displayTimer);
   }, [onComplete]);
 
+  // Position: above the drone if position available, else center-screen fallback
+  const positionStyles = position
+    ? {
+        position: 'fixed',
+        left: `${position.left}px`,
+        top: `${position.top}px`,
+        transform: 'translate(-50%, -110%)',
+      }
+    : {
+        position: 'fixed',
+        top: '15%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+      };
+
   return (
     <div
-      className="fixed top-[15%] left-1/2 z-[10000] pointer-events-none"
+      className="z-[10000] pointer-events-none"
       style={{
-        transform: 'translateX(-50%)',
-        transition: 'opacity 100ms ease-out',
+        ...positionStyles,
+        transition: 'opacity 200ms ease-out',
         opacity: isVisible ? 1 : 0
       }}
     >
@@ -52,7 +68,7 @@ const TriggerFiredOverlay = ({ droneName, abilityName, onComplete }) => {
           background: 'linear-gradient(135deg, rgba(30,20,10,0.92) 0%, rgba(50,30,10,0.92) 100%)',
           boxShadow: '0 0 20px rgba(245,158,11,0.3), 0 0 40px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.2)',
           transform: isVisible ? 'scale(1)' : 'scale(0.95)',
-          transition: 'transform 100ms ease-out'
+          transition: 'transform 200ms ease-out'
         }}
       >
         {/* Trigger icon */}
