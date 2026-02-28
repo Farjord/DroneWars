@@ -371,12 +371,17 @@ export function useTacticalEncounters({
     setIsPaused(false);
 
     // Player stays on hex, can move away or try again later
-    // PoI remains available (not marked as looted/visited - handled by Phase 8)
+    // PoI remains available (not marked as looted/visited)
     // NO damage taken, NO loading screens, instant return
 
-    // Resume movement logic
+    // Stop movement so journey doesn't auto-continue to next waypoint
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+
+    // Resolve encounter promise to let movement loop exit cleanly
     if (encounterResolveRef.current) {
       encounterResolveRef.current();
+      encounterResolveRef.current = null;
     }
   }, []);
 

@@ -95,13 +95,12 @@ export function useTacticalEscape({
     setShowPOIModal(false);
     setCurrentEncounter(null);
 
-    // Resume movement if waypoints remain
-    const currentRunState = tacticalMapStateManager.getState();
-    if (currentRunState?.waypoints && currentRunState.waypoints.length > 0) {
-      debugLog('MOVEMENT', 'Resuming movement after evade');
-      setIsMoving(true);
+    // Resolve encounter promise to let movement loop continue naturally
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
     }
-  }, [currentEncounter, setShowPOIModal, setCurrentEncounter, setIsMoving]);
+  }, [currentEncounter, setShowPOIModal, setCurrentEncounter, encounterResolveRef]);
 
   /**
    * Handle threat reduction item usage
