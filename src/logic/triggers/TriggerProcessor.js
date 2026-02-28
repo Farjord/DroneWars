@@ -252,6 +252,20 @@ class TriggerProcessor {
       }, 'triggerProcessor_fire');
     }
 
+    // Emit TRIGGER_FIRED animation event (before effects, so it appears first in the queue)
+    animationEvents.push({
+      type: 'TRIGGER_FIRED',
+      targetId: reactorDrone.id,
+      targetPlayer: reactorPlayerId,
+      targetLane: reactorLane,
+      targetType: 'drone',
+      abilityName: ability.name,
+      triggerType: ability.trigger,
+      chainDepth,
+      eventId: `${reactorDrone.id}:${ability.name}:${chainDepth}`,
+      timestamp: Date.now()
+    });
+
     // Repeat effects for scaling triggers (e.g., Odin: +1 attack per card drawn)
     for (let rep = 0; rep < repeatCount; rep++) {
       for (const effect of effects) {

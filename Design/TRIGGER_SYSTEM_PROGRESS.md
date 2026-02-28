@@ -111,12 +111,12 @@
 - [x] Tests: mine in Anansi's lane → draw, other lane → no draw, non-mine → no draw, opponent mine → no draw
 - [x] Checkpoint commit `ab51f6cf`
 
-## Phase 10: Trigger Chain Animations
-- [ ] TriggerProcessor emits `TRIGGER_FIRED` animation events
-- [ ] Register `TRIGGER_FIRED` in AnimationManager
-- [ ] Action log records each trigger firing
-- [ ] Multiplayer: stable identifiers for deduplication
-- [ ] Tests: animation events in correct depth-first order, chainDepth values correct
+## Phase 10: Trigger Chain Animations ✅
+- [x] TriggerProcessor emits `TRIGGER_FIRED` animation events (before effects, depth-first ordering)
+- [x] Register `TRIGGER_FIRED` in AnimationManager (duration: 0, timing: 'independent')
+- [x] Action log records each trigger firing (already handled by existing logCallback)
+- [x] Multiplayer: stable deterministic eventId (`droneId:abilityName:chainDepth`)
+- [x] Tests: 5 tests — event emitted, ordering before effects, stable eventId, no-match case, multiple triggers
 - [ ] Checkpoint commit
 
 ## Phase 11: Final Cleanup & Descriptions

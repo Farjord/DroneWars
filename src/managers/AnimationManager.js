@@ -75,6 +75,13 @@ class AnimationManager {
         config: { }
       },
 
+      TRIGGER_FIRED: {
+        duration: 0,
+        type: 'TRIGGER_FIRED_EFFECT',
+        timing: 'independent',
+        config: {}
+      },
+
       // Phase announcements
       PHASE_ANNOUNCEMENT: {
         duration: 1500,  // 1.5 second phase announcement

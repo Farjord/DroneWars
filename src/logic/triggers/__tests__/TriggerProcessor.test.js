@@ -1378,4 +1378,124 @@ describe('TriggerProcessor', () => {
       expect(result.triggered).toBe(false);
     });
   });
+
+  // ========================================
+  // TRIGGER CHAIN ANIMATIONS (Phase 10)
+  // ========================================
+  describe('Trigger chain animations (Phase 10)', () => {
+    it('emits TRIGGER_FIRED event on trigger activation', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'self1', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'self1', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      const triggerFired = result.animationEvents.find(e => e.type === 'TRIGGER_FIRED');
+      expect(triggerFired).toBeDefined();
+      expect(triggerFired.targetId).toBe('self1');
+      expect(triggerFired.targetPlayer).toBe('player1');
+      expect(triggerFired.targetLane).toBe('lane1');
+      expect(triggerFired.abilityName).toBe('Test Self Ability');
+      expect(triggerFired.triggerType).toBe('ON_MOVE');
+      expect(triggerFired.chainDepth).toBe(0);
+    });
+
+    it('emits TRIGGER_FIRED before effect events', () => {
+      // Make routeEffect return an animation event so we can check ordering
+      const mockEffectEvent = { type: 'STAT_CHANGE', targetId: 'self1' };
+      processor.effectRouter.routeEffect = vi.fn().mockReturnValue({
+        newPlayerStates: null,
+        animationEvents: [mockEffectEvent]
+      });
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'self1', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'self1', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.animationEvents.length).toBeGreaterThanOrEqual(2);
+      expect(result.animationEvents[0].type).toBe('TRIGGER_FIRED');
+      expect(result.animationEvents[1].type).toBe('STAT_CHANGE');
+    });
+
+    it('has stable deterministic eventId', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'drone42', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'drone42', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const triggerFired = result.animationEvents.find(e => e.type === 'TRIGGER_FIRED');
+      expect(triggerFired.eventId).toBe('drone42:Test Self Ability:0');
+    });
+
+    it('emits no TRIGGER_FIRED when no trigger matches', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'normal1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, isExhausted: false }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'normal1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.animationEvents.length).toBe(0);
+    });
+
+    it('emits ordered TRIGGER_FIRED events for multiple triggers', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'lane1a', name: 'TestLaneTriggerDrone', attack: 1, hull: 2, shields: 0, isExhausted: false },
+        { id: 'lane1b', name: 'TestGoAgainDrone', attack: 0, hull: 1, shields: 0, isExhausted: false }
+      ];
+
+      // Both drones have triggerOwner: LANE_OWNER, so triggering drone must be friendly
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone: { id: 'friendly1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const triggerFiredEvents = result.animationEvents.filter(e => e.type === 'TRIGGER_FIRED');
+      expect(triggerFiredEvents.length).toBe(2);
+      expect(triggerFiredEvents[0].targetId).toBe('lane1a');
+      expect(triggerFiredEvents[0].abilityName).toBe('Test Lane Ability');
+      expect(triggerFiredEvents[1].targetId).toBe('lane1b');
+      expect(triggerFiredEvents[1].abilityName).toBe('Test Rally');
+    });
+  });
 });
