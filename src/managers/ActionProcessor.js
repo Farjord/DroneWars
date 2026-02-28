@@ -747,7 +747,7 @@ setAnimationManager(animationManager) {
       player2: newPlayerStates.player2
     };
 
-    const hasTeleportIn = animations.some(a => a.animationName === 'TELEPORT_IN');
+    const hasTeleportIn = animations.some(a => a.animationName === 'TELEPORT_IN' && a.timing === 'post-state');
 
     if (!hasTeleportIn) {
       // No TELEPORT_IN animations - return complete state
