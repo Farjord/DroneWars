@@ -69,6 +69,26 @@ export const effectDescriptions = {
   // === TRIGGERED EFFECTS ===
   'ON_ATTACK': 'Triggers an effect after a drone completes an attack. Routed through TriggerProcessor. Used for self-destruct mechanics (Firefly) or permanent stat bonuses (Gladiator).',
 
+  'ON_MOVE': 'Self-trigger fired after a drone moves to a new lane. Used for post-movement stat buffs.',
+
+  'ON_DEPLOY': 'Self-trigger fired when a drone is deployed. Used for on-enter abilities like Scanner\'s mark.',
+
+  'ON_ROUND_START': 'Self-trigger fired at the start of each round. Used by Signal Beacon (+threat) and War Machine (+attack).',
+
+  'ON_CARD_DRAWN': 'Controller trigger fired when the owner draws cards. Supports scalingDivisor for proportional effects.',
+
+  'ON_ENERGY_GAINED': 'Controller trigger fired when the owner gains energy. Supports scalingDivisor for proportional effects.',
+
+  'ON_CARD_PLAY': 'Controller trigger fired when the owner plays a card. Supports SAME_LANE scope and triggerFilter for conditional activation.',
+
+  'ON_LANE_MOVEMENT_IN': 'Lane trigger fired when a drone enters the lane. Used by mines and rally beacons. triggerOwner controls friendly/enemy filtering.',
+
+  'ON_LANE_MOVEMENT_OUT': 'Lane trigger fired when a drone leaves the lane. Used for exit-sensor abilities.',
+
+  'GO_AGAIN': 'Trigger effect that grants the acting player another action. Control flow signal, not a state mutation.',
+
+  'TRIGGER_FIRED': 'Animation event emitted when any trigger activates. Duration 0 (data-only, no visual pause yet).',
+
   'REPEATING_EFFECT': 'Executes a set of effects multiple times based on a condition. For example, "Draw 1 card and gain 1 energy" repeated once for each damaged ship section.',
 
   // === KEYWORDS ===

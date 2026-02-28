@@ -272,7 +272,8 @@ describe('DiscardEffectProcessor', () => {
 
         const freshContext = {
           actingPlayerId: 'player1',
-          playerStates: freshMockPlayerStates
+          playerStates: freshMockPlayerStates,
+          gameSeed: i
         };
 
         const effect = { type: 'DISCARD', count: 1, targetPlayer: 'opponent' };
@@ -283,8 +284,7 @@ describe('DiscardEffectProcessor', () => {
         discardedCardIds.add(discardedCard.id);
       }
 
-      // Over 10 runs, we should see some variety (not always the same card)
-      // This is probabilistic, but with 3 cards and 10 runs, we expect > 1 unique card
+      // With varying gameSeed across 10 runs with 3 cards, we expect > 1 unique card
       expect(discardedCardIds.size).toBeGreaterThan(1);
     });
 

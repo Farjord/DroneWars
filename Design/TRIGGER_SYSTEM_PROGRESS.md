@@ -117,16 +117,16 @@
 - [x] Action log records each trigger firing (already handled by existing logCallback)
 - [x] Multiplayer: stable deterministic eventId (`droneId:abilityName:chainDepth`)
 - [x] Tests: 5 tests — event emitted, ordering before effects, stable eventId, no-match case, multiple triggers
-- [ ] Checkpoint commit
+- [x] Checkpoint commit `e1164809`
 
-## Phase 11: Final Cleanup & Descriptions
-- [ ] Update `glossaryDescriptions.js` — trigger-related entries
-- [ ] Update `codePatternDescriptions.js` — remove AFTER_ATTACK, add ON_ATTACK/ON_CARD_PLAY
-- [ ] Verify: MineTriggeredEffectProcessor.js deleted (Phase 4)
-- [ ] Verify: rallyBeaconHelper.js deleted (Phase 7)
-- [ ] Verify: abilityHelpers.js deleted (Phase 5)
-- [ ] Final sweep: grep for orphaned imports, unused constants, stale comments
-- [ ] Checkpoint commit
+## Phase 11: Final Cleanup & Descriptions ✅
+- [x] Update `glossaryDescriptions.js` — trigger-related entries
+- [x] Update `codePatternDescriptions.js` — add all trigger pattern entries
+- [x] Verify: MineTriggeredEffectProcessor.js deleted (Phase 4)
+- [x] Verify: rallyBeaconHelper.js deleted (Phase 7)
+- [x] Verify: abilityHelpers.js deleted (Phase 5)
+- [x] Final sweep: grep for orphaned imports, unused constants, stale comments
+- [x] Checkpoint commit
 
 ---
 

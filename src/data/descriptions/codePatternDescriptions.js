@@ -23,6 +23,54 @@ export const effectPatterns = {
     notes: 'Self-trigger fired after a drone completes an attack. Effects routed through EffectRouter.'
   },
 
+  'ON_MOVE': {
+    validEffects: ['MODIFY_STAT (permanent)'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_MOVE)',
+    notes: 'Self-trigger, no triggerOwner needed.'
+  },
+
+  'ON_DEPLOY': {
+    validEffects: ['MODIFY_STAT', 'MARK_RANDOM_ENEMY'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_DEPLOY)',
+    notes: 'Self-trigger fired when a drone is deployed.'
+  },
+
+  'ON_ROUND_START': {
+    validEffects: ['MODIFY_STAT (permanent)', 'INCREASE_THREAT'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_ROUND_START)',
+    notes: 'Self-trigger, fires for all drones each round.'
+  },
+
+  'ON_CARD_DRAWN': {
+    validEffects: ['MODIFY_STAT (permanent)'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_CARD_DRAWN)',
+    notes: 'Controller trigger, scalingDivisor support.'
+  },
+
+  'ON_ENERGY_GAINED': {
+    validEffects: ['MODIFY_STAT (permanent)'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_ENERGY_GAINED)',
+    notes: 'Controller trigger, scalingDivisor support.'
+  },
+
+  'ON_CARD_PLAY': {
+    validEffects: ['MODIFY_STAT', 'DRAW', 'GO_AGAIN'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_CARD_PLAY)',
+    notes: 'Controller trigger, triggerScope: SAME_LANE, triggerFilter support.'
+  },
+
+  'ON_LANE_MOVEMENT_IN': {
+    validEffects: ['DAMAGE', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GO_AGAIN'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_LANE_MOVEMENT_IN)',
+    notes: 'Lane trigger, triggerOwner: LANE_OWNER, destroyAfterTrigger.'
+  },
+
+  'ON_LANE_MOVEMENT_OUT': {
+    validEffects: ['MODIFY_STAT'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_LANE_MOVEMENT_OUT)',
+    notes: 'Lane trigger, triggerOwner: LANE_OWNER.'
+  },
+
   'DAMAGE': {
     validParameters: {
       value: 'number (damage amount)',
