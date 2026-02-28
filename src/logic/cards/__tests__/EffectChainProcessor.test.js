@@ -115,6 +115,9 @@ vi.mock('../../effects/conditional/ConditionalEffectProcessor.js', () => {
 });
 
 // Mock MovementEffectProcessor
+// Stores mock trigger events to inject for testing trigger deferral
+let mockMoveTriggerEvents = [];
+let mockMoveMineEvents = [];
 vi.mock('../../effects/MovementEffectProcessor.js', () => {
   return {
     default: class MockMovementProcessor {
@@ -126,10 +129,11 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
         newStates[droneOwnerId].dronesOnBoard[toLane].push(movedDrone);
         return {
           newPlayerStates: newStates,
+          postMovementState: JSON.parse(JSON.stringify(newStates)),
           effectResult: { movedDrones: [movedDrone], fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: !card.effects?.[0]?.goAgain,
-          triggerAnimationEvents: [],
-          mineAnimationEvents: [],
+          triggerAnimationEvents: [...mockMoveTriggerEvents],
+          mineAnimationEvents: [...mockMoveMineEvents],
         };
       }
       executeMultiMove(card, drones, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx) {
@@ -140,10 +144,11 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
         }
         return {
           newPlayerStates: newStates,
+          postMovementState: JSON.parse(JSON.stringify(newStates)),
           effectResult: { movedDrones: drones, fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: true,
-          triggerAnimationEvents: [],
-          mineAnimationEvents: [],
+          triggerAnimationEvents: [...mockMoveTriggerEvents],
+          mineAnimationEvents: [...mockMoveMineEvents],
         };
       }
     }
@@ -340,6 +345,8 @@ describe('EffectChainProcessor', () => {
 
   beforeEach(() => {
     processor = new EffectChainProcessor();
+    mockMoveTriggerEvents = [];
+    mockMoveMineEvents = [];
   });
 
   describe('payCardCosts', () => {
@@ -595,6 +602,113 @@ describe('EffectChainProcessor', () => {
       // Both played card and discarded card gone from hand
       expect(result.newPlayerStates.player1.hand).toHaveLength(0);
       expect(result.newPlayerStates.player1.discardPile).toHaveLength(2);
+    });
+  });
+
+  describe('processEffectChain — trigger event deferral', () => {
+    it('defers trigger events with STATE_SNAPSHOT before TRIGGER_FIRED for movement', () => {
+      // Set up mock trigger events that the movement processor will return
+      mockMoveTriggerEvents = [
+        { type: 'TRIGGER_FIRED', triggerName: 'Rally Beacon', timestamp: Date.now() }
+      ];
+
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_move', name: 'Move Card', cost: 1,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // Find STATE_SNAPSHOT and TRIGGER_FIRED in animation events
+      const snapshotIdx = result.animationEvents.findIndex(e => e.type === 'STATE_SNAPSHOT');
+      const triggerIdx = result.animationEvents.findIndex(e => e.type === 'TRIGGER_FIRED');
+
+      expect(snapshotIdx).toBeGreaterThan(-1);
+      expect(triggerIdx).toBeGreaterThan(-1);
+      // STATE_SNAPSHOT must appear BEFORE TRIGGER_FIRED
+      expect(snapshotIdx).toBeLessThan(triggerIdx);
+    });
+
+    it('removes played card from hand in STATE_SNAPSHOT events', () => {
+      mockMoveTriggerEvents = [
+        { type: 'TRIGGER_FIRED', triggerName: 'Rally Beacon', timestamp: Date.now() }
+      ];
+
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_move', name: 'Move Card', cost: 1,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], discardPile: [], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      const snapshotEvent = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshotEvent).toBeDefined();
+      // Card should be removed from hand in the snapshot
+      const snapshotHand = snapshotEvent.snapshotPlayerStates.player1.hand;
+      expect(snapshotHand.some(c => c.instanceId === 'inst_move')).toBe(false);
+      // Card should be in discard pile in the snapshot
+      const snapshotDiscard = snapshotEvent.snapshotPlayerStates.player1.discardPile;
+      expect(snapshotDiscard.some(c => c.instanceId === 'inst_move')).toBe(true);
+    });
+
+    it('CARD_REVEAL and CARD_VISUAL appear before STATE_SNAPSHOT', () => {
+      mockMoveTriggerEvents = [
+        { type: 'TRIGGER_FIRED', triggerName: 'Mine', timestamp: Date.now() }
+      ];
+
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_move2', name: 'Move Card', cost: 0,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      const revealIdx = result.animationEvents.findIndex(e => e.type === 'CARD_REVEAL');
+      const snapshotIdx = result.animationEvents.findIndex(e => e.type === 'STATE_SNAPSHOT');
+      const triggerIdx = result.animationEvents.findIndex(e => e.type === 'TRIGGER_FIRED');
+
+      expect(revealIdx).toBeGreaterThan(-1);
+      expect(snapshotIdx).toBeGreaterThan(-1);
+      // CARD_REVEAL before STATE_SNAPSHOT before TRIGGER_FIRED
+      expect(revealIdx).toBeLessThan(snapshotIdx);
+      expect(snapshotIdx).toBeLessThan(triggerIdx);
+    });
+
+    it('no STATE_SNAPSHOT when there are no trigger events', () => {
+      // No mock trigger events — default empty arrays
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_move3', name: 'Move Card', cost: 0,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      const snapshotEvents = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshotEvents).toHaveLength(0);
     });
   });
 });

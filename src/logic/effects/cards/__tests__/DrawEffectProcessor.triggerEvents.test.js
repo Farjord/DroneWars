@@ -52,7 +52,7 @@ describe('DrawEffectProcessor — trigger event propagation', () => {
     };
   });
 
-  it('should propagate trigger animation events through createResult', () => {
+  it('should return trigger animation events separately from direct animation events', () => {
     const mockTriggerEvents = [
       { type: 'TRIGGER_FIRED', targetId: 'drone1', abilityName: 'Test', timestamp: 1 },
       { type: 'STATE_SNAPSHOT', snapshotPlayerStates: {}, timestamp: 2 }
@@ -76,13 +76,18 @@ describe('DrawEffectProcessor — trigger event propagation', () => {
 
     const result = processor.process(effect, context);
 
-    expect(result.animationEvents).toBeDefined();
-    expect(result.animationEvents.length).toBeGreaterThanOrEqual(2);
-    expect(result.animationEvents.some(e => e.type === 'TRIGGER_FIRED')).toBe(true);
-    expect(result.animationEvents.some(e => e.type === 'STATE_SNAPSHOT')).toBe(true);
+    // Trigger events now returned in triggerAnimationEvents (not animationEvents)
+    expect(result.triggerAnimationEvents).toBeDefined();
+    expect(result.triggerAnimationEvents.length).toBeGreaterThanOrEqual(2);
+    expect(result.triggerAnimationEvents.some(e => e.type === 'TRIGGER_FIRED')).toBe(true);
+    expect(result.triggerAnimationEvents.some(e => e.type === 'STATE_SNAPSHOT')).toBe(true);
+    // Direct animation events should be empty (no direct visual effects from DRAW)
+    expect(result.animationEvents?.length || 0).toBe(0);
+    // preTriggerState should be captured
+    expect(result.preTriggerState).toBeDefined();
   });
 
-  it('should return empty animation events when no triggers fire', () => {
+  it('should return empty trigger events when no triggers fire', () => {
     // mockFireTriggerResult already set to triggered: false in beforeEach
 
     const effect = { type: 'DRAW', value: 1 };
@@ -96,5 +101,6 @@ describe('DrawEffectProcessor — trigger event propagation', () => {
     const result = processor.process(effect, context);
 
     expect(result.animationEvents?.length || 0).toBe(0);
+    expect(result.triggerAnimationEvents?.length || 0).toBe(0);
   });
 });

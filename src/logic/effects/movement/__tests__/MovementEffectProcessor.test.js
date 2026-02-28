@@ -16,7 +16,11 @@ vi.mock('../../../triggers/TriggerProcessor.js', () => ({
   }
 }));
 vi.mock('../../../triggers/triggerConstants.js', () => ({
-  TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE' }
+  TRIGGER_TYPES: {
+    ON_MOVE: 'ON_MOVE',
+    ON_LANE_MOVEMENT_IN: 'ON_LANE_MOVEMENT_IN',
+    ON_LANE_MOVEMENT_OUT: 'ON_LANE_MOVEMENT_OUT'
+  }
 }));
 
 import MovementEffectProcessor from '../../MovementEffectProcessor.js';
@@ -351,6 +355,102 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       // Should allow movement (undefined treated as false)
       expect(result.error).toBeUndefined();
       expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(1);
+    });
+  });
+
+  describe('postMovementState capture', () => {
+    it('executeSingleMove returns postMovementState with pre-trigger board state', () => {
+      const droneToMove = mockPlayerStates.player1.dronesOnBoard.lane1[0];
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeSingleMove(
+        mockCard,
+        droneToMove,
+        'lane1',
+        'lane2',
+        'player1',
+        newPlayerStates,
+        'player2',
+        mockContext
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.postMovementState).toBeDefined();
+      // postMovementState should show drone in lane2 (post-move, pre-trigger)
+      expect(result.postMovementState.player1.dronesOnBoard.lane2).toHaveLength(1);
+      expect(result.postMovementState.player1.dronesOnBoard.lane2[0].id).toBe('drone_1');
+      expect(result.postMovementState.player1.dronesOnBoard.lane1).toHaveLength(0);
+    });
+
+    it('executeMultiMove returns postMovementState with pre-trigger board state', () => {
+      mockPlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'drone_1', name: 'Drone1', hull: 3, isExhausted: false, attack: 2, cannotMove: false },
+        { id: 'drone_2', name: 'Drone2', hull: 3, isExhausted: false, attack: 2, cannotMove: false }
+      ];
+
+      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
+      const multiMoveCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeMultiMove(
+        multiMoveCard,
+        dronesToMove,
+        'lane1',
+        'lane2',
+        'player1',
+        newPlayerStates,
+        'player2',
+        mockContext
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.postMovementState).toBeDefined();
+      expect(result.postMovementState.player1.dronesOnBoard.lane2).toHaveLength(2);
+      expect(result.postMovementState.player1.dronesOnBoard.lane1).toHaveLength(0);
+    });
+  });
+
+  describe('ON_LANE_MOVEMENT_IN fires for enemy force-moves', () => {
+    it('should successfully force-move an enemy drone into a new lane', () => {
+      // Set up: player1 is acting player, moving player2's drone (enemy force-move)
+      const enemyDrone = {
+        id: 'enemy_drone_1',
+        name: 'EnemyDrone',
+        hull: 3,
+        isExhausted: false,
+        attack: 2,
+        cannotMove: false,
+        owner: 'player2'
+      };
+
+      mockPlayerStates.player2.dronesOnBoard.lane1 = [enemyDrone];
+      mockPlayerStates.player2.dronesOnBoard.lane2 = [];
+
+      const enemyMoveCard = {
+        id: 'CARD_ENEMY_MOVE',
+        name: 'Enemy Move Card',
+        effects: [{ type: 'SINGLE_MOVE', properties: ['DO_NOT_EXHAUST'] }]
+      };
+
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeSingleMove(
+        enemyMoveCard,
+        enemyDrone,
+        'lane1',
+        'lane2',
+        'player1',       // actingPlayerId (the one who played the card)
+        newPlayerStates,
+        'player2',        // opponentPlayerId
+        mockContext
+      );
+
+      expect(result.error).toBeUndefined();
+      // The drone ended up in lane2 (movement succeeded)
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane2).toHaveLength(1);
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane1).toHaveLength(0);
+      // postMovementState should also be captured
+      expect(result.postMovementState).toBeDefined();
     });
   });
 });

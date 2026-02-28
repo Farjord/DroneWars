@@ -76,10 +76,12 @@ class DrawEffectProcessor extends BaseEffectProcessor {
 
     const actualCardsDrawn = newHand.length - initialHandSize;
     let triggerAnimationEvents = [];
+    let preTriggerState = null;
     if (actualCardsDrawn > 0) {
       const logCallback = context.callbacks?.logCallback || null;
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
       const triggerProcessor = new TriggerProcessor();
+      preTriggerState = JSON.parse(JSON.stringify(newPlayerStates));
       const drawResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
         lane: null,
         triggeringPlayerId: actingPlayerId,
@@ -96,7 +98,9 @@ class DrawEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    const result = this.createResult(newPlayerStates, triggerAnimationEvents);
+    const result = this.createResult(newPlayerStates);
+    result.triggerAnimationEvents = triggerAnimationEvents;
+    result.preTriggerState = preTriggerState;
 
     this.logProcessComplete(effect, result, context);
 

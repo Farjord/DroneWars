@@ -376,6 +376,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       outcome: `Moved ${isMovingEnemyDrone ? 'enemy ' : ''}${droneToMove.name} from ${fromLane} to ${toLane}.`
     }, 'executeSingleMove');
 
+    // Capture post-movement state before triggers fire
+    const postMovementState = JSON.parse(JSON.stringify(newPlayerStates));
+
     // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
     const postMoveResult = this._resolvePostMoveTriggers({
       movedDrones: [movedDrone],
@@ -391,7 +394,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     return {
       newPlayerStates,
-      preMineTriggerStates: postMoveResult.preMineTriggerStates,
+      postMovementState,
       effectResult: {
         movedDrones: [movedDrone],
         fromLane,
@@ -522,6 +525,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       outcome: `Moved ${dronesToMove.length} drone(s) from ${fromLane} to ${toLane}.`
     }, 'executeMultiMove');
 
+    // Capture post-movement state before triggers fire
+    const postMovementState = JSON.parse(JSON.stringify(newPlayerStates));
+
     // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
     const postMoveResult = this._resolvePostMoveTriggers({
       movedDrones,
@@ -537,7 +543,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     return {
       newPlayerStates,
-      preMineTriggerStates: postMoveResult.preMineTriggerStates,
+      postMovementState,
       effectResult: {
         movedDrones,
         fromLane,
@@ -558,7 +564,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * Used by both executeSingleMove and executeMultiMove.
    *
    * ON_MOVE fires for ALL moved drones including force-moved enemy drones (PRD 3.3).
-   * ON_LANE_MOVEMENT_IN (mines, Rally Beacon) only fires for friendly drone moves.
+   * ON_LANE_MOVEMENT_IN fires for ALL moves (friendly and enemy force-moved).
+   * Trigger matching (LANE_OWNER validation in TriggerProcessor) handles filtering.
    *
    * @param {Object} config
    * @param {Array} config.movedDrones - Drones that were moved
@@ -570,7 +577,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {Object} config.placedSections - Placed ship sections
    * @param {Function} config.logCallback - Log callback
    * @param {boolean} config.cardGoAgain - Whether the card grants go-again
-   * @returns {Object} { triggerAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain }
+   * @returns {Object} { triggerAnimationEvents, mineAnimationEvents, goAgain }
    */
   _resolvePostMoveTriggers({ movedDrones, fromLane, toLane, droneOwnerId, actingPlayerId, newPlayerStates, placedSections, logCallback, cardGoAgain }) {
     const opponentOfDroneOwner = droneOwnerId === 'player1' ? 'player2' : 'player1';
@@ -644,43 +651,39 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       );
     }
 
-    // ON_LANE_MOVEMENT_IN triggers (Rally Beacon go-again + mines) only fire for friendly moves
+    // ON_LANE_MOVEMENT_IN triggers (Rally Beacon go-again + mines) fire for ALL moves.
+    // Trigger matching (LANE_OWNER in TriggerProcessor) handles filtering —
+    // e.g., Rally Beacon won't fire for enemy drones, but mines will detonate on enemy force-move.
     let goAgain = false;
     const mineAnimationEvents = [];
 
-    // Snapshot state before mine trigger
-    const preMineTriggerStates = JSON.parse(JSON.stringify(newPlayerStates));
+    for (const movedDrone of movedDrones) {
+      const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: toLane,
+        triggeringDrone: movedDrone,
+        triggeringPlayerId: droneOwnerId,
+        actingPlayerId: droneOwnerId,
+        playerStates: {
+          [droneOwnerId]: newPlayerStates[droneOwnerId],
+          [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
+        },
+        placedSections,
+        logCallback
+      });
 
-    if (!isEnemyMove) {
-      // Process ON_LANE_MOVEMENT_IN triggers (Rally Beacon + mines in single pass)
-      for (const movedDrone of movedDrones) {
-        const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
-          lane: toLane,
-          triggeringDrone: movedDrone,
-          triggeringPlayerId: droneOwnerId,
-          actingPlayerId: droneOwnerId,
-          playerStates: {
-            [droneOwnerId]: newPlayerStates[droneOwnerId],
-            [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
-          },
-          placedSections,
-          logCallback
-        });
-
-        if (result.triggered) {
-          newPlayerStates[droneOwnerId] = result.newPlayerStates[droneOwnerId];
-          newPlayerStates[opponentOfDroneOwner] = result.newPlayerStates[opponentOfDroneOwner];
-          if (result.animationEvents.length > 0) {
-            mineAnimationEvents.push(...result.animationEvents);
-          }
-          if (result.goAgain) {
-            goAgain = true;
-          }
+      if (result.triggered) {
+        newPlayerStates[droneOwnerId] = result.newPlayerStates[droneOwnerId];
+        newPlayerStates[opponentOfDroneOwner] = result.newPlayerStates[opponentOfDroneOwner];
+        if (result.animationEvents.length > 0) {
+          mineAnimationEvents.push(...result.animationEvents);
+        }
+        if (result.goAgain) {
+          goAgain = true;
         }
       }
     }
 
-    return { triggerAnimationEvents, mineAnimationEvents, preMineTriggerStates, goAgain };
+    return { triggerAnimationEvents, mineAnimationEvents, goAgain };
   }
 }
 

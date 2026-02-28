@@ -222,8 +222,14 @@ class ActionProcessor {
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => (events || [])
-        .filter(event => event.type !== 'STATE_SNAPSHOT')  // Guest doesn't need intermediate state
         .map(event => {
+          if (event.type === 'STATE_SNAPSHOT') {
+            return {
+              animationName: 'STATE_SNAPSHOT',
+              timing: 'pre-state',
+              payload: event
+            };
+          }
           const animDef = ap.animationManager?.animations[event.type];
           return {
             animationName: event.type,
@@ -237,7 +243,8 @@ class ActionProcessor {
       captureAnimationsForBroadcast: (animations) => {
         const gameMode = ap.gameStateManager.get('gameMode');
         if (gameMode === 'host' && animations.length > 0) {
-          ap.pendingActionAnimations.push(...animations);
+          const broadcastAnimations = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
+          ap.pendingActionAnimations.push(...broadcastAnimations);
         }
       },
 

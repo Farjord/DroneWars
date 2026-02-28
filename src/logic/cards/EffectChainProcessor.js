@@ -177,12 +177,13 @@ class EffectChainProcessor {
       energyCost: card.cost ?? 0, momentumCost: card.momentumCost ?? 0,
       effectCount: effects.length, selectionCount: selections.length,
     });
-    const allAnimationEvents = [];
+    const cardAnimationEvents = [];       // CARD_REVEAL, CARD_VISUAL, direct effect anims
+    const deferredTriggerEvents = [];     // all trigger events, deferred after card effects
     let dynamicGoAgain = false;
     const effectResults = [];
 
     // CARD_REVEAL animation
-    allAnimationEvents.push({
+    cardAnimationEvents.push({
       type: 'CARD_REVEAL',
       cardId: card.id,
       cardName: card.name,
@@ -234,7 +235,7 @@ class EffectChainProcessor {
       }
 
       if (targetPlayer && targetType) {
-        allAnimationEvents.push({
+        cardAnimationEvents.push({
           type: 'CARD_VISUAL',
           cardId: card.id,
           cardName: card.name,
@@ -293,7 +294,7 @@ class EffectChainProcessor {
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;
-            allAnimationEvents.push(...(addResult.animationEvents || []));
+            cardAnimationEvents.push(...(addResult.animationEvents || []));
           }
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
@@ -327,7 +328,19 @@ class EffectChainProcessor {
       }
 
       currentStates = result.newPlayerStates;
-      allAnimationEvents.push(...(result.animationEvents || []));
+      cardAnimationEvents.push(...(result.animationEvents || []));
+
+      // Collect deferred trigger events with leading STATE_SNAPSHOT
+      if (result.triggerAnimationEvents?.length > 0) {
+        if (result.preTriggerState) {
+          deferredTriggerEvents.push({
+            type: 'STATE_SNAPSHOT',
+            snapshotPlayerStates: JSON.parse(JSON.stringify(result.preTriggerState)),
+            timestamp: Date.now()
+          });
+        }
+        deferredTriggerEvents.push(...result.triggerAnimationEvents);
+      }
 
       // Resolve POST conditionals
       if (conditionals && conditionals.length > 0) {
@@ -343,7 +356,7 @@ class EffectChainProcessor {
           conditionals, postContext, result.effectResult || null
         );
         currentStates = postResult.newPlayerStates;
-        allAnimationEvents.push(...(postResult.animationEvents || []));
+        cardAnimationEvents.push(...(postResult.animationEvents || []));
         if (postResult.grantsGoAgain) {
           dynamicGoAgain = true;
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional granted goAgain`, { card: card.name });
@@ -356,7 +369,7 @@ class EffectChainProcessor {
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;
-            allAnimationEvents.push(...(addResult.animationEvents || []));
+            cardAnimationEvents.push(...(addResult.animationEvents || []));
           }
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
@@ -384,6 +397,7 @@ class EffectChainProcessor {
     // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.
     // Lane comes from first selection — multi-lane cards use first target's lane for SAME_LANE matching.
     const cardPlayLane = selections[0]?.lane ?? null;
+    const preCardPlayTriggerState = JSON.parse(JSON.stringify(currentStates));
     const cardPlayResult = this.triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
       lane: cardPlayLane,
       triggeringPlayerId: playerId,
@@ -395,8 +409,31 @@ class EffectChainProcessor {
     });
     if (cardPlayResult.triggered) {
       currentStates = cardPlayResult.newPlayerStates;
-      allAnimationEvents.push(...cardPlayResult.animationEvents);
+      deferredTriggerEvents.push({
+        type: 'STATE_SNAPSHOT',
+        snapshotPlayerStates: JSON.parse(JSON.stringify(preCardPlayTriggerState)),
+        timestamp: Date.now()
+      });
+      deferredTriggerEvents.push(...cardPlayResult.animationEvents);
     }
+
+    // Post-process STATE_SNAPSHOT events: remove played card from hand so it appears
+    // discarded during trigger animations (card is still in hand in intermediate states
+    // because finishCardPlay hasn't run yet)
+    for (const event of deferredTriggerEvents) {
+      if (event.type === 'STATE_SNAPSHOT' && event.snapshotPlayerStates) {
+        const acting = event.snapshotPlayerStates[playerId];
+        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
+          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
+          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
+            acting.discardPile = [...acting.discardPile, card];
+          }
+        }
+      }
+    }
+
+    // Build final animation array: card effects first, then deferred triggers
+    const allAnimationEvents = [...cardAnimationEvents, ...deferredTriggerEvents];
 
     // 3. Finalize: discard card, determine shouldEndTurn
     const finish = this.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
@@ -406,6 +443,7 @@ class EffectChainProcessor {
       effectsProcessed: effectResults.filter(r => r !== null).length,
       effectsSkipped: effectResults.filter(r => r === null).length,
       animationCount: allAnimationEvents.length,
+      deferredTriggerCount: deferredTriggerEvents.length,
     });
 
     return {
@@ -443,7 +481,9 @@ class EffectChainProcessor {
       }
       return {
         newPlayerStates: result.newPlayerStates,
-        animationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+        animationEvents: [],
+        triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+        preTriggerState: result.postMovementState,
         effectResult: result.effectResult,
         goAgain: !result.shouldEndTurn,
       };
@@ -461,7 +501,9 @@ class EffectChainProcessor {
     }
     return {
       newPlayerStates: result.newPlayerStates,
-      animationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+      animationEvents: [],
+      triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+      preTriggerState: result.postMovementState,
       effectResult: result.effectResult,
       goAgain: !result.shouldEndTurn,
     };
