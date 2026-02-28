@@ -222,7 +222,7 @@ class ActionProcessor {
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => (events || [])
-        .map(event => {
+        .map((event, idx) => {
           if (event.type === 'STATE_SNAPSHOT') {
             return {
               animationName: 'STATE_SNAPSHOT',
@@ -231,9 +231,14 @@ class ActionProcessor {
             };
           }
           const animDef = ap.animationManager?.animations[event.type];
+          let timing = animDef?.timing || 'pre-state';
+          // TELEPORT_IN preceded by STATE_SNAPSHOT: drone already in DOM from snapshot
+          if (event.type === 'TELEPORT_IN' && idx > 0 && events[idx - 1]?.type === 'STATE_SNAPSHOT') {
+            timing = 'pre-state';
+          }
           return {
             animationName: event.type,
-            timing: animDef?.timing || 'pre-state',
+            timing,
             payload: {
               ...event,
               droneId: event.sourceId || event.targetId

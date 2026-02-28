@@ -383,6 +383,12 @@ class AnimationManager {
       }
     });
 
+    debugLog('TRIGGERS', 'Timing split:', {
+      pre: preState.map(a => a.animationName),
+      post: postState.map(a => a.animationName),
+      ind: independent.map(a => a.animationName)
+    });
+
     return { preState, postState, independent };
   }
 

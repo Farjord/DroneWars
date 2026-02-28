@@ -432,8 +432,46 @@ class EffectChainProcessor {
       }
     }
 
-    // Build final animation array: card effects first, then deferred triggers
-    const allAnimationEvents = [...cardAnimationEvents, ...deferredTriggerEvents];
+    debugLog('TRIGGERS', 'Animation pipeline:', {
+      cardEvents: cardAnimationEvents.map(e => e.type),
+      deferredEvents: deferredTriggerEvents.map(e => e.type),
+      total: cardAnimationEvents.length + deferredTriggerEvents.length
+    });
+
+    // Separate TELEPORT_IN from other card animation events
+    const teleportEvents = cardAnimationEvents.filter(e => e.type === 'TELEPORT_IN');
+    const nonTeleportCardEvents = cardAnimationEvents.filter(e => e.type !== 'TELEPORT_IN');
+
+    const allAnimationEvents = [...nonTeleportCardEvents];
+
+    // Insert STATE_SNAPSHOT so teleported tokens exist in DOM before animation
+    if (teleportEvents.length > 0 || deferredTriggerEvents.length > 0) {
+      allAnimationEvents.push({
+        type: 'STATE_SNAPSHOT',
+        snapshotPlayerStates: JSON.parse(JSON.stringify(currentStates)),
+        timestamp: Date.now()
+      });
+    }
+
+    // TELEPORT_IN plays after snapshot (drone exists in DOM)
+    allAnimationEvents.push(...teleportEvents);
+
+    // Then deferred trigger events
+    allAnimationEvents.push(...deferredTriggerEvents);
+
+    // Post-process: ensure the intermediate STATE_SNAPSHOT also has card removed from hand
+    // (the deferred snapshots were already cleaned above, but the new intermediate one wasn't)
+    for (const event of allAnimationEvents) {
+      if (event.type === 'STATE_SNAPSHOT' && event.snapshotPlayerStates) {
+        const acting = event.snapshotPlayerStates[playerId];
+        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
+          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
+          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
+            acting.discardPile = [...acting.discardPile, card];
+          }
+        }
+      }
+    }
 
     // 3. Finalize: discard card, determine shouldEndTurn
     const finish = this.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);

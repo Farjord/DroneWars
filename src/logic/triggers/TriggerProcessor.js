@@ -123,10 +123,17 @@ class TriggerProcessor {
           timestamp: Date.now()
         };
 
-        // Always: events first (announcement + effects), then snapshot (state applies after).
-        // This ensures the player sees the trigger announcement before its state change.
-        // For damage triggers, this also keeps targets in DOM for their animations.
-        allAnimationEvents.push(...result.animationEvents, snapshot);
+        const hasDamageAnims = result.animationEvents.some(e =>
+          ['DRONE_DESTROYED', 'SHIELD_DAMAGE', 'HULL_DAMAGE', 'SECTION_DESTROYED', 'SECTION_DAMAGED'].includes(e.type)
+        );
+
+        if (hasDamageAnims) {
+          // Destructive: events first, then snapshot (targets stay in DOM for animations)
+          allAnimationEvents.push(...result.animationEvents, snapshot);
+        } else {
+          // Additive (draw, stat mod): snapshot first so changes visible during notification
+          allAnimationEvents.push(snapshot, ...result.animationEvents);
+        }
 
         if (result.statModsApplied) {
           anyStatMods = true;
@@ -314,6 +321,17 @@ class TriggerProcessor {
           const routeResult = this.effectRouter.routeEffect(effect, triggeringContext);
           if (routeResult?.newPlayerStates) currentStates = routeResult.newPlayerStates;
           if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
+          // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
+          if (routeResult?.triggerAnimationEvents?.length > 0) {
+            if (routeResult.preTriggerState) {
+              animationEvents.push({
+                type: 'STATE_SNAPSHOT',
+                snapshotPlayerStates: JSON.parse(JSON.stringify(routeResult.preTriggerState)),
+                timestamp: Date.now()
+              });
+            }
+            animationEvents.push(...routeResult.triggerAnimationEvents);
+          }
           if (effect.type === 'MODIFY_STAT') {
             statModsApplied = true;
           }
@@ -356,6 +374,24 @@ class TriggerProcessor {
         if (result?.animationEvents?.length > 0) {
           animationEvents.push(...result.animationEvents);
         }
+
+        // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
+        if (result?.triggerAnimationEvents?.length > 0) {
+          if (result.preTriggerState) {
+            animationEvents.push({
+              type: 'STATE_SNAPSHOT',
+              snapshotPlayerStates: JSON.parse(JSON.stringify(result.preTriggerState)),
+              timestamp: Date.now()
+            });
+          }
+          animationEvents.push(...result.triggerAnimationEvents);
+        }
+
+        debugLog('TRIGGERS', `Effect routed: ${processedEffect.type}`, {
+          animEvents: result?.animationEvents?.length || 0,
+          triggerAnimEvents: result?.triggerAnimationEvents?.length || 0,
+          cascadeTypes: result?.triggerAnimationEvents?.map(e => e.type) || []
+        });
 
         if (processedEffect.type === 'MODIFY_STAT') {
           statModsApplied = true;
