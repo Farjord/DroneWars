@@ -10,8 +10,8 @@ import { debugLog } from '../utils/debugLogger.js';
  * - shipSections (run-specific damage tracking)
  * - collectedLoot, creditsEarned, aiCoresEarned
  * - POI tracking (lootedPOIs, fledPOIs, highAlertPOIs)
- * - waypoints (single source of truth for waypoint path)
- * - pendingPOICombat, pendingWaypoints
+ * - waypoints (single source of truth for waypoint path, survives combat transitions)
+ * - pendingPOICombat
  *
  * Lifecycle:
  * - State is null when no run is active
@@ -135,7 +135,6 @@ class TacticalMapStateManager {
 
       // Pending state (for combat transitions)
       pendingPOICombat: null,
-      pendingWaypoints: null,
       pendingQuickDeploy: null,
       pendingSalvageLoot: null,
       pendingSalvageState: null,

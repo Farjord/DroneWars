@@ -668,7 +668,7 @@ describe('TransitionManager', () => {
         expect(transitionManager.hasSnapshot()).toBe(false);
       });
 
-      it('should NOT clear pending path in returnFromCombat (WaypointManager handles clearing)', () => {
+      it('should NOT clear waypoints in returnFromCombat (TacticalMapStateManager preserves them)', () => {
         const waypointContext = createMockWaypointContext();
         prepareSnapshot(waypointContext);
 

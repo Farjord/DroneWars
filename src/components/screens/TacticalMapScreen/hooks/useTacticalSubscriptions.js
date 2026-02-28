@@ -152,7 +152,7 @@ export const useTacticalSubscriptions = ({
       appState: gameStateManager.getState().appState,
       hasRunState: !!runState,
       playerPosition: runState?.playerPosition,
-      hasPendingPath: !!runState?.pendingPath,
+      hasWaypoints: !!runState?.waypoints?.length,
       hasPendingPOICombat: !!runState?.pendingPOICombat,
       hasPendingBlockadeExtraction: !!runState?.pendingBlockadeExtraction
     });
