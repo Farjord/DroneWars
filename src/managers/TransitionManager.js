@@ -98,21 +98,9 @@ class TransitionManager {
       // Create snapshot
       const snapshot = this._createSnapshot(context, tacticalState);
 
-      // Store waypoint data if provided
-      if (context.waypointContext) {
-        snapshot.waypointData = this._captureWaypointState(context.waypointContext);
-
-        // Persist to TacticalMapStateManager
-        // Use pendingWaypointDestinations (not pendingWaypointIndexes) for WaypointManager compatibility
-        if (snapshot.waypointData) {
-          tacticalMapStateManager.setState({
-            pendingPath: snapshot.waypointData.pathHexes,
-            pendingWaypointDestinations: this._buildWaypointDestinations(context.waypointContext)
-          });
-        }
-      } else {
-        snapshot.waypointData = null;
-      }
+      // Waypoints are already persisted in TacticalMapStateManager.waypoints (Phase 1 sync)
+      // No need to flatten/store them separately
+      snapshot.waypointData = context.waypointContext ? { hasWaypoints: true } : null;
 
       // Capture salvage state if provided
       if (context.salvageState) {
@@ -221,10 +209,10 @@ class TransitionManager {
         result.hasPendingBlueprint = true;
       }
 
-      // Restore waypoints if requested
+      // Waypoints are already in TacticalMapStateManager.waypoints (Phase 1 sync)
+      // TacticalMapScreen reads them on mount via useState initializer
       if (outcome.shouldRestoreWaypoints && this.currentSnapshot.waypointData) {
-        result.restoredWaypoints = this._restoreWaypoints(currentState);
-        result.waypointsRestored = result.restoredWaypoints !== null;
+        result.waypointsRestored = true;
       }
 
       // Restore salvage if requested
@@ -244,10 +232,6 @@ class TransitionManager {
       type: outcome.type,
       timestamp: Date.now()
     });
-
-    // NOTE: Do NOT clear pendingPath here!
-    // WaypointManager.restorePathAfterCombat() is responsible for clearing it
-    // after TacticalMapScreen reads and restores the waypoints.
 
     // Clear snapshot and transition flag
     this.currentSnapshot = null;
@@ -282,64 +266,6 @@ class TransitionManager {
     };
   }
 
-  _captureWaypointState(waypointContext) {
-    const { waypoints, currentWaypointIndex, currentHexIndex, isAtPOI } = waypointContext;
-
-    // Handle null/empty waypoints
-    if (!waypoints || waypoints.length === 0) {
-      return null;
-    }
-
-    const pathHexes = [];
-    const waypointIndexes = [];
-
-    // Determine starting point based on whether we're at POI
-    const startWaypointIndex = isAtPOI ? currentWaypointIndex + 1 : currentWaypointIndex;
-
-    // If no remaining waypoints, return null
-    if (startWaypointIndex >= waypoints.length) {
-      return null;
-    }
-
-    // Build flat hex list
-    // First, add remaining hexes from current waypoint (if mid-path)
-    if (!isAtPOI && waypoints[currentWaypointIndex]?.pathFromPrev) {
-      const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
-      for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
-        pathHexes.push(`${currentPath[i].q},${currentPath[i].r}`);
-      }
-      // Mark current waypoint destination
-      if (pathHexes.length > 0) {
-        waypointIndexes.push(pathHexes.length - 1);
-      }
-    }
-
-    // Add hexes from subsequent waypoints
-    for (let wp = startWaypointIndex + (isAtPOI ? 0 : 1); wp < waypoints.length; wp++) {
-      const wpPath = waypoints[wp].pathFromPrev;
-      if (wpPath) {
-        // Skip first hex (it's the previous waypoint's destination, already included)
-        for (let i = 1; i < wpPath.length; i++) {
-          pathHexes.push(`${wpPath[i].q},${wpPath[i].r}`);
-        }
-        // Mark this waypoint's destination index
-        waypointIndexes.push(pathHexes.length - 1);
-      }
-    }
-
-    // If no remaining path, return null
-    if (pathHexes.length === 0) {
-      return null;
-    }
-
-    return {
-      pathHexes,
-      waypointIndexes,
-      currentHexIndex,
-      isAtPOI
-    };
-  }
-
   _captureSalvageState(salvageState) {
     // Deep clone salvage state
     const captured = JSON.parse(JSON.stringify(salvageState));
@@ -366,47 +292,6 @@ class TransitionManager {
     captured.revealedLoot = revealedLoot;
 
     return captured;
-  }
-
-  /**
-   * Build waypoint destinations array for WaypointManager compatibility
-   *
-   * Creates the pendingWaypointDestinations array that WaypointManager.restorePathAfterCombat()
-   * expects, preserving all waypoint properties (segmentCost, detection, etc.)
-   *
-   * @param {Object} waypointContext - Waypoint context from prepareForCombat
-   * @returns {Array} Array of waypoint destination objects
-   */
-  _buildWaypointDestinations(waypointContext) {
-    const { waypoints, currentWaypointIndex, isAtPOI } = waypointContext;
-
-    // Handle null/empty waypoints
-    if (!waypoints || waypoints.length === 0) {
-      return [];
-    }
-
-    // Determine starting waypoint based on whether we're at POI
-    const startIdx = isAtPOI ? currentWaypointIndex + 1 : currentWaypointIndex;
-
-    // If no remaining waypoints, return empty array
-    if (startIdx >= waypoints.length) {
-      return [];
-    }
-
-    const destinations = [];
-
-    for (let wp = startIdx; wp < waypoints.length; wp++) {
-      const waypoint = waypoints[wp];
-      destinations.push({
-        hex: waypoint.hex,
-        segmentCost: waypoint.segmentCost,
-        cumulativeDetection: waypoint.cumulativeDetection,
-        segmentEncounterRisk: waypoint.segmentEncounterRisk,
-        cumulativeEncounterRisk: waypoint.cumulativeEncounterRisk
-      });
-    }
-
-    return destinations;
   }
 
   // ============================================================
@@ -463,50 +348,6 @@ class TransitionManager {
     tacticalMapStateManager.setState(updates);
   }
 
-  _restoreWaypoints(currentState) {
-    const { pathHexes, waypointIndexes } = this.currentSnapshot.waypointData;
-    const playerPosition = currentState.playerPosition;
-
-    if (!pathHexes || pathHexes.length === 0) {
-      return null;
-    }
-
-    // Parse hex strings to objects
-    const hexes = pathHexes.map(coord => {
-      const [q, r] = coord.split(',').map(Number);
-      return { q, r };
-    });
-
-    // Reconstruct waypoints
-    const waypoints = [];
-    let currentPath = [playerPosition];
-    let hexIndex = 0;
-    let waypointIdx = 0;
-
-    while (hexIndex < hexes.length && waypointIdx < waypointIndexes.length) {
-      const destinationIdx = waypointIndexes[waypointIdx];
-
-      // Collect hexes until destination
-      while (hexIndex <= destinationIdx) {
-        currentPath.push(hexes[hexIndex]);
-        hexIndex++;
-      }
-
-      // Create waypoint
-      const destination = currentPath[currentPath.length - 1];
-      waypoints.push({
-        hex: destination,
-        pathFromPrev: [...currentPath]
-      });
-
-      // Next waypoint starts from this destination
-      currentPath = [destination];
-      waypointIdx++;
-    }
-
-    return waypoints;
-  }
-
   _restoreSalvageState() {
     if (!this.currentSnapshot.salvageState) {
       return null;
@@ -555,11 +396,7 @@ class TransitionManager {
         credits: tacticalMapState.creditsEarned,
         cores: tacticalMapState.aiCoresEarned
       },
-      waypoints: waypointData ? {
-        hexCount: waypointData.pathHexes.length,
-        destinationCount: waypointData.waypointIndexes.length,
-        isAtPOI: waypointData.isAtPOI
-      } : null,
+      hasWaypoints: !!waypointData,
       salvage: salvageState ? {
         slotsRevealed: `${salvageState.slots.filter(s => s.revealed).length}/${salvageState.totalSlots}`,
         currentSlot: salvageState.currentSlotIndex

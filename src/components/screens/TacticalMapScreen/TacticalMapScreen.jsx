@@ -52,8 +52,7 @@ function TacticalMapScreen() {
       hasState: !!state,
       hasMapData: !!state?.mapData,
       backgroundIndex: state?.mapData?.backgroundIndex,
-      hasPendingWaypoints: !!state?.pendingPath,
-      pendingWaypointsCount: state?.pendingPath?.length
+      waypointCount: state?.waypoints?.length || 0
     });
     return state;
   });

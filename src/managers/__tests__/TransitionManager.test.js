@@ -195,7 +195,7 @@ describe('TransitionManager', () => {
         expect(snapshot.tacticalMapState.shipSections).toBeDefined();
       });
 
-      it('should store simplified waypoint format (flat list + markers)', () => {
+      it('should store waypoint presence flag when waypoints exist', () => {
         const waypointContext = createMockWaypointContext();
 
         const snapshot = transitionManager.prepareForCombat({
@@ -204,48 +204,25 @@ describe('TransitionManager', () => {
           waypointContext
         });
 
+        // Waypoints are stored in TacticalMapStateManager.waypoints (Phase 1 sync)
+        // TransitionManager just records that waypoints exist
         expect(snapshot.waypointData).toBeDefined();
-        // Flat hex list
-        expect(snapshot.waypointData.pathHexes).toBeInstanceOf(Array);
-        expect(snapshot.waypointData.pathHexes.every(h => typeof h === 'string')).toBe(true);
-        // Waypoint markers (indexes into pathHexes)
-        expect(snapshot.waypointData.waypointIndexes).toBeInstanceOf(Array);
-        expect(snapshot.waypointData.waypointIndexes.every(i => typeof i === 'number')).toBe(true);
-        // Current position
-        expect(snapshot.waypointData.currentHexIndex).toBe(2);
+        expect(snapshot.waypointData.hasWaypoints).toBe(true);
       });
 
-      it('should correctly flatten waypoint paths to hex list', () => {
-        const waypointContext = createMockWaypointContext({
-          currentWaypointIndex: 0,
-          currentHexIndex: 2, // At hex index 2 of waypoint 0
-          isAtPOI: false
-        });
-
+      it('should set waypointData to null when no waypoint context', () => {
         const snapshot = transitionManager.prepareForCombat({
           entryReason: 'poi_encounter',
-          aiId: 'AI_SCOUT_1',
-          waypointContext
+          aiId: 'AI_SCOUT_1'
         });
 
-        // Should include: remaining hexes from current waypoint + all hexes from next waypoints
-        // Current waypoint path: [5,3], [6,4], [7,5], [8,6], [10,10] - we're at index 2 (7,5)
-        // Remaining: [8,6], [10,10]
-        // Next waypoint path: [10,10], [12,12], [15,15] - skip first (duplicate)
-        // Final: ['8,6', '10,10', '12,12', '15,15']
-        expect(snapshot.waypointData.pathHexes).toEqual([
-          '8,6', '10,10', '12,12', '15,15'
-        ]);
-
-        // Waypoint destination indexes (where each waypoint ends)
-        // 10,10 is at index 1, 15,15 is at index 3
-        expect(snapshot.waypointData.waypointIndexes).toEqual([1, 3]);
+        expect(snapshot.waypointData).toBeNull();
       });
 
-      it('should handle at-POI waypoint context correctly', () => {
+      it('should set waypointData presence flag for at-POI context', () => {
         const waypointContext = createMockWaypointContext({
           currentWaypointIndex: 0,
-          currentHexIndex: 4, // At POI destination
+          currentHexIndex: 4,
           isAtPOI: true
         });
 
@@ -255,13 +232,8 @@ describe('TransitionManager', () => {
           waypointContext
         });
 
-        // When at POI, skip current waypoint entirely
-        // Next waypoint path: [10,10], [12,12], [15,15] - skip first (duplicate destination)
-        expect(snapshot.waypointData.pathHexes).toEqual([
-          '12,12', '15,15'
-        ]);
-        expect(snapshot.waypointData.waypointIndexes).toEqual([1]);
-        expect(snapshot.waypointData.isAtPOI).toBe(true);
+        expect(snapshot.waypointData).toBeDefined();
+        expect(snapshot.waypointData.hasWaypoints).toBe(true);
       });
 
       it('should capture salvage state when mid-salvage', () => {
@@ -398,7 +370,7 @@ describe('TransitionManager', () => {
         expect(transitionManager.getCurrentSnapshot()).toBeDefined();
       });
 
-      it('should store waypoint data in TacticalMapStateManager', () => {
+      it('should not write pendingPath to TacticalMapStateManager (waypoints live in waypoints field)', () => {
         const waypointContext = createMockWaypointContext();
 
         transitionManager.prepareForCombat({
@@ -407,13 +379,12 @@ describe('TransitionManager', () => {
           waypointContext
         });
 
-        // Uses pendingWaypointDestinations (not pendingWaypointIndexes) for WaypointManager compatibility
-        expect(tacticalMapStateManager.setState).toHaveBeenCalledWith(
-          expect.objectContaining({
-            pendingPath: expect.any(Array),
-            pendingWaypointDestinations: expect.any(Array)
-          })
-        );
+        // Should NOT write pendingPath/pendingWaypointDestinations
+        // Waypoints are already in TacticalMapStateManager.waypoints via Phase 1 sync
+        const setStateCalls = tacticalMapStateManager.setState.mock.calls;
+        const allUpdates = setStateCalls.map(c => c[0]);
+        const hasPendingPath = allUpdates.some(u => u.pendingPath !== undefined);
+        expect(hasPendingPath).toBe(false);
       });
     });
   });
@@ -504,7 +475,7 @@ describe('TransitionManager', () => {
         );
       });
 
-      it('should restore waypoints from simplified format', () => {
+      it('should mark waypoints as restored when snapshot has waypoint data', () => {
         const waypointContext = createMockWaypointContext();
         prepareSnapshot(waypointContext);
 
@@ -514,23 +485,12 @@ describe('TransitionManager', () => {
           shouldRestoreWaypoints: true
         });
 
+        // Waypoints are in TacticalMapStateManager.waypoints - just verify flag
         expect(result.waypointsRestored).toBe(true);
-        expect(result.restoredWaypoints).toBeDefined();
-        expect(result.restoredWaypoints.length).toBeGreaterThan(0);
       });
 
-      it('should reconstruct waypoints with correct pathFromPrev', () => {
-        const waypointContext = createMockWaypointContext();
-        prepareSnapshot(waypointContext);
-
-        // Mock state after combat (player moved back to last position)
-        tacticalMapStateManager.getState.mockReturnValue(
-          createMockTacticalMapState({
-            playerPosition: { q: 7, r: 5 }, // Where they were when combat started
-            pendingPath: ['8,6', '10,10', '12,12', '15,15'],
-            pendingWaypointIndexes: [1, 3]
-          })
-        );
+      it('should not mark waypoints as restored when no waypoint data', () => {
+        prepareSnapshot(null);
 
         const result = transitionManager.returnFromCombat({
           result: 'victory',
@@ -538,11 +498,7 @@ describe('TransitionManager', () => {
           shouldRestoreWaypoints: true
         });
 
-        // First waypoint should have path from current position to first destination
-        expect(result.restoredWaypoints[0].hex).toEqual({ q: 10, r: 10 });
-        expect(result.restoredWaypoints[0].pathFromPrev[0]).toEqual({ q: 7, r: 5 }); // Start
-        expect(result.restoredWaypoints[0].pathFromPrev).toContainEqual({ q: 8, r: 6 });
-        expect(result.restoredWaypoints[0].pathFromPrev).toContainEqual({ q: 10, r: 10 }); // End
+        expect(result.waypointsRestored).toBe(false);
       });
 
       it('should restore salvage state for mid-salvage combat', () => {
@@ -725,13 +681,10 @@ describe('TransitionManager', () => {
           shouldRestoreWaypoints: true
         });
 
-        // returnFromCombat should NOT clear pendingPath - WaypointManager.restorePathAfterCombat() does that
-        // This ensures the path survives until TacticalMapScreen mounts and restores it
+        // returnFromCombat should NOT modify waypoints - they survive in TacticalMapStateManager
         const setStateCalls = tacticalMapStateManager.setState.mock.calls;
-        const clearedPath = setStateCalls.some(call =>
-          call[0].pendingPath === null && call[0].pendingWaypointDestinations === null
-        );
-        expect(clearedPath).toBe(false);
+        const modifiedWaypoints = setStateCalls.some(call => call[0].waypoints !== undefined);
+        expect(modifiedWaypoints).toBe(false);
       });
     });
   });
@@ -826,7 +779,7 @@ describe('TransitionManager', () => {
       );
     });
 
-    it('Mid-path encounter: waypoints stored and restored correctly', () => {
+    it('Mid-path encounter: waypoints presence flag stored and restored correctly', () => {
       const waypointContext = createMockWaypointContext({
         currentWaypointIndex: 0,
         currentHexIndex: 2,
@@ -840,20 +793,9 @@ describe('TransitionManager', () => {
         waypointContext
       });
 
-      // Verify flat hex list is correct
-      expect(snapshot.waypointData.pathHexes).toEqual([
-        '8,6', '10,10', '12,12', '15,15'
-      ]);
-      expect(snapshot.waypointData.waypointIndexes).toEqual([1, 3]);
-
-      // Mock state for return
-      tacticalMapStateManager.getState.mockReturnValue(
-        createMockTacticalMapState({
-          playerPosition: { q: 7, r: 5 },
-          pendingPath: ['8,6', '10,10', '12,12', '15,15'],
-          pendingWaypointIndexes: [1, 3]
-        })
-      );
+      // Waypoints are in TacticalMapStateManager.waypoints, not flattened
+      expect(snapshot.waypointData).toBeDefined();
+      expect(snapshot.waypointData.hasWaypoints).toBe(true);
 
       // Return
       const result = transitionManager.returnFromCombat({
@@ -862,10 +804,8 @@ describe('TransitionManager', () => {
         shouldRestoreWaypoints: true
       });
 
-      // Verify waypoints reconstructed correctly
-      expect(result.restoredWaypoints.length).toBe(2);
-      expect(result.restoredWaypoints[0].hex).toEqual({ q: 10, r: 10 });
-      expect(result.restoredWaypoints[1].hex).toEqual({ q: 15, r: 15 });
+      // Verify waypoints restoration flagged
+      expect(result.waypointsRestored).toBe(true);
     });
   });
 
@@ -883,41 +823,25 @@ describe('TransitionManager', () => {
       expect(snapshot.waypointData).toBeNull();
     });
 
-    it('should handle empty waypoints array', () => {
+    it('should handle empty waypoints context with hasWaypoints flag', () => {
       const snapshot = transitionManager.prepareForCombat({
         entryReason: 'poi_encounter',
         aiId: 'AI_SCOUT_1',
-        waypointContext: {
-          waypoints: [],
-          currentWaypointIndex: 0,
-          currentHexIndex: 0,
-          isAtPOI: false
-        }
+        waypointContext: { hasWaypoints: true }
       });
 
-      expect(snapshot.waypointData).toBeNull();
+      // Any truthy waypointContext gets stored
+      expect(snapshot.waypointData).toBeDefined();
+      expect(snapshot.waypointData.hasWaypoints).toBe(true);
     });
 
-    it('should handle last waypoint with no remaining path', () => {
-      const waypointContext = {
-        waypoints: [
-          {
-            hex: { q: 10, r: 10 },
-            pathFromPrev: [{ q: 5, r: 3 }, { q: 10, r: 10 }]
-          }
-        ],
-        currentWaypointIndex: 0,
-        currentHexIndex: 1, // At destination
-        isAtPOI: true
-      };
-
+    it('should handle null waypoint context', () => {
       const snapshot = transitionManager.prepareForCombat({
         entryReason: 'poi_encounter',
         aiId: 'AI_SCOUT_1',
-        waypointContext
+        waypointContext: null
       });
 
-      // No remaining path
       expect(snapshot.waypointData).toBeNull();
     });
 
@@ -1035,50 +959,27 @@ describe('TransitionManager', () => {
       });
     });
 
-    it('should NOT clear pendingPath in returnFromCombat - let WaypointManager clear it', () => {
-      // Setup: store waypoints via prepareForCombat
-      const waypoints = [
-        {
-          hex: { q: 5, r: 5 },
-          pathFromPrev: [{ q: 0, r: 0 }, { q: 5, r: 5 }],
-          segmentCost: 10,
-          cumulativeDetection: 15,
-          segmentEncounterRisk: 5,
-          cumulativeEncounterRisk: 5
-        },
-        {
-          hex: { q: 10, r: 10 },
-          pathFromPrev: [{ q: 5, r: 5 }, { q: 10, r: 10 }],
-          segmentCost: 12,
-          cumulativeDetection: 25,
-          segmentEncounterRisk: 6,
-          cumulativeEncounterRisk: 11
-        }
-      ];
-
+    it('should NOT modify waypoints field in returnFromCombat - TacticalMapScreen reads on mount', () => {
       transitionManager.prepareForCombat({
         entryReason: 'poi_encounter',
         aiId: 'test-ai',
-        waypointContext: { waypoints, currentWaypointIndex: 0, currentHexIndex: 0, isAtPOI: false }
+        waypointContext: { hasWaypoints: true }
       });
 
-      // Verify pendingPath was stored
-      const stateAfterPrepare = tacticalMapStateManager.getState();
-      expect(stateAfterPrepare.pendingPath).not.toBeNull();
-      expect(stateAfterPrepare.pendingPath.length).toBeGreaterThan(0);
+      // Clear mock to track only returnFromCombat calls
+      tacticalMapStateManager.setState.mockClear();
 
-      // Call returnFromCombat
       transitionManager.returnFromCombat({
         result: 'victory',
         type: 'regular',
         shouldRestoreWaypoints: true
       });
 
-      // CRITICAL: pendingPath should STILL exist after returnFromCombat
-      // WaypointManager.restorePathAfterCombat() is responsible for clearing it
-      const stateAfterReturn = tacticalMapStateManager.getState();
-      expect(stateAfterReturn.pendingPath).not.toBeNull();
-      expect(stateAfterReturn.pendingPath.length).toBeGreaterThan(0);
+      // CRITICAL: returnFromCombat should NOT write waypoints - they survive in the manager
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls;
+      const allUpdates = setStateCalls.map(c => c[0]);
+      const hasWaypointUpdate = allUpdates.some(u => u.waypoints !== undefined);
+      expect(hasWaypointUpdate).toBe(false);
     });
   });
 
@@ -1120,50 +1021,21 @@ describe('TransitionManager', () => {
     });
   });
 
-  describe('Bug Fix: Should use pendingWaypointDestinations not pendingWaypointIndexes', () => {
-    beforeEach(() => {
-      const currentState = createMockTacticalMapState();
-      tacticalMapStateManager.getState.mockReturnValue(currentState);
-      tacticalMapStateManager.isRunActive.mockReturnValue(true);
-
-      tacticalMapStateManager.setState.mockImplementation((updates) => {
-        Object.assign(currentState, updates);
-      });
-    });
-
-    it('should store pendingWaypointDestinations for WaypointManager compatibility', () => {
-      const waypoints = [
-        {
-          hex: { q: 5, r: 5 },
-          pathFromPrev: [{ q: 0, r: 0 }, { q: 5, r: 5 }],
-          segmentCost: 10,
-          cumulativeDetection: 15,
-          segmentEncounterRisk: 5,
-          cumulativeEncounterRisk: 5
-        },
-        {
-          hex: { q: 10, r: 10 },
-          pathFromPrev: [{ q: 5, r: 5 }, { q: 10, r: 10 }],
-          segmentCost: 12,
-          cumulativeDetection: 25,
-          segmentEncounterRisk: 6,
-          cumulativeEncounterRisk: 11
-        }
-      ];
-
+  describe('Waypoint persistence uses TacticalMapStateManager.waypoints field', () => {
+    it('should not write pendingPath or pendingWaypointDestinations (removed in refactor)', () => {
       transitionManager.prepareForCombat({
         entryReason: 'poi_encounter',
         aiId: 'test-ai',
-        waypointContext: { waypoints, currentWaypointIndex: 0, currentHexIndex: 0, isAtPOI: false }
+        waypointContext: { hasWaypoints: true }
       });
 
-      // CRITICAL: Should use pendingWaypointDestinations (not pendingWaypointIndexes)
-      const state = tacticalMapStateManager.getState();
-      expect(state.pendingWaypointDestinations).toBeDefined();
-      expect(state.pendingWaypointDestinations).not.toBeNull();
-      expect(state.pendingWaypointDestinations.length).toBeGreaterThan(0);
-      expect(state.pendingWaypointDestinations[0].hex).toBeDefined();
-      expect(state.pendingWaypointDestinations[0].segmentCost).toBeDefined();
+      // Should NOT write legacy pendingPath/pendingWaypointDestinations fields
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls;
+      const allUpdates = setStateCalls.map(c => c[0]);
+      const hasPendingPath = allUpdates.some(u => u.pendingPath !== undefined);
+      const hasPendingWaypointDestinations = allUpdates.some(u => u.pendingWaypointDestinations !== undefined);
+      expect(hasPendingPath).toBe(false);
+      expect(hasPendingWaypointDestinations).toBe(false);
     });
   });
 
@@ -1182,18 +1054,18 @@ describe('TransitionManager', () => {
     });
 
     it('should reset transitionInProgress if prepareForCombat throws after setting flag', () => {
-      // Arrange: Mock _captureWaypointState to throw AFTER flag is set
-      const originalCapture = transitionManager._captureWaypointState.bind(transitionManager);
-      transitionManager._captureWaypointState = () => {
-        throw new Error('Simulated waypoint capture failure');
+      // Arrange: Mock _captureSalvageState to throw AFTER flag is set
+      const originalCapture = transitionManager._captureSalvageState.bind(transitionManager);
+      transitionManager._captureSalvageState = () => {
+        throw new Error('Simulated salvage capture failure');
       };
 
-      // Act: Call prepareForCombat with waypoint context (triggers the throwing method)
+      // Act: Call prepareForCombat with salvage state (triggers the throwing method)
       try {
         transitionManager.prepareForCombat({
-          entryReason: 'poi_encounter',
+          entryReason: 'salvage_encounter',
           aiId: 'AI_SCOUT_1',
-          waypointContext: createMockWaypointContext()
+          salvageState: createMockSalvageState()
         });
       } catch (e) {
         // Expected to throw
@@ -1203,7 +1075,7 @@ describe('TransitionManager', () => {
       expect(transitionManager.transitionInProgress).toBe(false);
 
       // Cleanup
-      transitionManager._captureWaypointState = originalCapture;
+      transitionManager._captureSalvageState = originalCapture;
     });
 
     it('should allow new transition after prepareForCombat failure', () => {

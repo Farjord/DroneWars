@@ -720,16 +720,9 @@ export function useTacticalEncounters({
         sourceLocation: 'TacticalMapScreen:handleLoadingEncounterComplete',
         aiId,
         poi: currentEncounter?.poi,
-        waypointContext: waypoints.length > 0 ? {
-          waypoints,
-          // After path trimming, current waypoint is always at index 0
-          // and current position is always at start of pathFromPrev (hexIndex 0)
-          currentWaypointIndex: 0,
-          currentHexIndex: 0,
-          isAtPOI: currentEncounter?.fromSalvage || false,
-          // Include ref values for debugging/logging purposes
-          originalProgress: pathProgressRef.current
-        } : null,
+        // Waypoints are already in TacticalMapStateManager.waypoints (Phase 1 sync)
+        // Just signal that waypoints exist so TransitionManager knows to restore them
+        waypointContext: waypoints.length > 0 ? { hasWaypoints: true } : null,
         salvageState: currentEncounter?.fromSalvage ? activeSalvage : null,
         isBlockade: currentEncounter?.isBlockade || false,
         isBlueprintPoI: currentEncounter?.fromBlueprintPoI || false,
@@ -793,8 +786,7 @@ export function useTacticalEncounters({
       position: { q: updatedRunState?.playerPosition?.q, r: updatedRunState?.playerPosition?.r },
       detection: updatedRunState?.detection,
       hull: updatedRunState?.currentHull,
-      hasPendingPath: !!updatedRunState?.pendingPath,
-      pendingPathHexCount: updatedRunState?.pendingPath?.length || 0
+      waypointCount: updatedRunState?.waypoints?.length || 0
     });
 
     // Initialize combat with optional quick deploy
