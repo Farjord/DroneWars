@@ -770,8 +770,10 @@ const fullDroneCollection = [
       {
         name: 'Rally Point',
         description: 'When a friendly drone moves into this lane, go again.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'RALLY_BEACON' }
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        effects: [{ type: 'GO_AGAIN' }]
       },
       {
         name: 'Inert',
@@ -990,6 +992,29 @@ const fullDroneCollection = [
       effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
     }],
     upgradeSlots: 1
+  },
+  {
+    name: 'Anansi',
+    class: 2,
+    limit: 1,
+    rebuildRate: 1.0,
+    rarity: 'Rare',
+    attack: 1,
+    hull: 2,
+    shields: 2,
+    speed: 2,
+    image: '/DroneWars/img/Anansi.png',
+    abilities: [{
+      name: 'Web Sensor',
+      description: 'When you play a Mine card in this lane, draw a card.',
+      type: 'TRIGGERED',
+      trigger: 'ON_CARD_PLAY',
+      triggerOwner: 'CONTROLLER',
+      triggerScope: 'SAME_LANE',
+      triggerFilter: { cardSubType: 'Mine' },
+      effects: [{ type: 'DRAW', value: 1 }]
+    }],
+    upgradeSlots: 2
   },
 ];
 

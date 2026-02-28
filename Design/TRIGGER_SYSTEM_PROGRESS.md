@@ -105,10 +105,10 @@
 - [x] Tests: ON_CARD_PLAY (5 tests), ON_LANE_MOVEMENT_OUT (3 tests)
 - [ ] Checkpoint commit
 
-## Phase 9: Add Anansi Drone
-- [ ] Add Anansi to droneData.js (CPU 2, Atk 1, Hull 2, Shields 2, Speed 2, Rare, Limit 1)
-- [ ] Ability: Web Sensor (ON_CARD_PLAY, CONTROLLER, SAME_LANE, triggerFilter: { cardSubType: 'Mine' })
-- [ ] Tests: mine in Anansi's lane → draw, other lane → no draw, non-mine → no draw, opponent mine → no draw
+## Phase 9: Add Anansi Drone ✅
+- [x] Add Anansi to droneData.js (CPU 2, Atk 1, Hull 2, Shields 2, Speed 2, Rare, Limit 1)
+- [x] Ability: Web Sensor (ON_CARD_PLAY, CONTROLLER, SAME_LANE, triggerFilter: { cardSubType: 'Mine' })
+- [x] Tests: mine in Anansi's lane → draw, other lane → no draw, non-mine → no draw, opponent mine → no draw
 - [ ] Checkpoint commit
 
 ## Phase 10: Trigger Chain Animations

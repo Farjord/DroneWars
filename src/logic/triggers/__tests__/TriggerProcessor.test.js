@@ -197,6 +197,19 @@ vi.mock('../../../data/droneData.js', () => ({
         triggerOwner: 'LANE_OWNER',
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
+    },
+    {
+      name: 'Anansi',
+      attack: 1, hull: 2, shields: 2, speed: 2,
+      abilities: [{
+        name: 'Web Sensor',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_PLAY',
+        triggerOwner: 'CONTROLLER',
+        triggerScope: 'SAME_LANE',
+        triggerFilter: { cardSubType: 'Mine' },
+        effects: [{ type: 'DRAW', value: 1 }]
+      }]
     }
   ]
 }));
@@ -1217,6 +1230,92 @@ describe('TriggerProcessor', () => {
 
       expect(result.triggered).toBe(true);
       expect(result.goAgain).toBe(true);
+    });
+  });
+
+  // ========================================
+  // Anansi — Web Sensor (Phase 9)
+  // ========================================
+  describe('Anansi — Web Sensor (Phase 9)', () => {
+    it('mine in Anansi lane triggers draw', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      const routeEffect = processor.effectRouter.routeEffect;
+      expect(routeEffect).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'DRAW', value: 1 }),
+        expect.anything()
+      );
+    });
+
+    it('mine in other lane does not trigger', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane2',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('non-mine card in same lane does not trigger', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const actionCard = { name: 'Laser Strike', type: 'Action' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: actionCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('opponent plays mine in Anansi lane does not trigger', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player2',
+        actingPlayerId: 'player2',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
     });
   });
 
