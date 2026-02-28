@@ -75,6 +75,7 @@ class DrawEffectProcessor extends BaseEffectProcessor {
     actingPlayerState.discardPile = newDiscard;
 
     const actualCardsDrawn = newHand.length - initialHandSize;
+    let triggerAnimationEvents = [];
     if (actualCardsDrawn > 0) {
       const logCallback = context.callbacks?.logCallback || null;
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
@@ -91,10 +92,11 @@ class DrawEffectProcessor extends BaseEffectProcessor {
       if (drawResult.triggered) {
         newPlayerStates[actingPlayerId] = drawResult.newPlayerStates[actingPlayerId];
         newPlayerStates[opponentId] = drawResult.newPlayerStates[opponentId];
+        triggerAnimationEvents = drawResult.animationEvents || [];
       }
     }
 
-    const result = this.createResult(newPlayerStates);
+    const result = this.createResult(newPlayerStates, triggerAnimationEvents);
 
     this.logProcessComplete(effect, result, context);
 

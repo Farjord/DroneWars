@@ -11,6 +11,7 @@ import CardRevealOverlay from '../animations/CardRevealOverlay.jsx';
 import ShipAbilityRevealOverlay from '../animations/ShipAbilityRevealOverlay.jsx';
 import PassNotificationOverlay from '../animations/PassNotificationOverlay.jsx';
 import GoAgainOverlay from '../animations/GoAgainOverlay.jsx';
+import TriggerFiredOverlay from '../animations/TriggerFiredOverlay.jsx';
 import StatusConsumptionOverlay from '../animations/StatusConsumptionOverlay.jsx';
 import CardWarningOverlay from '../animations/CardWarningOverlay.jsx';
 import PhaseAnnouncementOverlay from '../animations/PhaseAnnouncementOverlay.jsx';
@@ -35,6 +36,7 @@ const AnimationLayer = ({
   phaseAnnouncements,
   passNotifications,
   goAgainNotifications,
+  triggerFiredNotifications,
   cardPlayWarning,
   laserEffects,
   teleportEffects,
@@ -130,6 +132,14 @@ const AnimationLayer = ({
         key={notification.id}
         label={notification.label}
         isLocalPlayer={notification.isLocalPlayer}
+        onComplete={notification.onComplete}
+      />
+    ))}
+    {triggerFiredNotifications.map(notification => (
+      <TriggerFiredOverlay
+        key={notification.id}
+        droneName={notification.droneName}
+        abilityName={notification.abilityName}
         onComplete={notification.onComplete}
       />
     ))}

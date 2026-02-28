@@ -75,10 +75,17 @@ class AnimationManager {
         config: { }
       },
 
-      TRIGGER_FIRED: {
+      STATE_SNAPSHOT: {
         duration: 0,
+        type: 'STATE_SNAPSHOT',
+        timing: 'pre-state',
+        config: {}
+      },
+
+      TRIGGER_FIRED: {
+        duration: 500,
         type: 'TRIGGER_FIRED_EFFECT',
-        timing: 'independent',
+        timing: 'pre-state',
         config: {}
       },
 
@@ -227,7 +234,7 @@ class AnimationManager {
       });
 
       debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing pre-state + independent animations...');
-      await this.executeAnimations(preAnimations, executor.getAnimationSource());
+      await this.executeAnimations(preAnimations, executor.getAnimationSource(), executor);
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Pre-state + independent animations complete');
 
       timingLog('[ANIM MGR] Pre-state complete', {
@@ -274,7 +281,7 @@ class AnimationManager {
       });
 
       debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing non-teleport post-state animations...');
-      await this.executeAnimations(otherPostState, executor.getAnimationSource());
+      await this.executeAnimations(otherPostState, executor.getAnimationSource(), executor);
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Non-teleport post-state animations complete');
 
       timingLog('[ANIM MGR] Post-state complete', {
@@ -379,7 +386,7 @@ class AnimationManager {
     return { preState, postState, independent };
   }
 
-  async executeAnimations(effects, source = 'unknown') {
+  async executeAnimations(effects, source = 'unknown', executor = null) {
     const gameMode = this.gameStateManager?.getState()?.gameMode;
 
     timingLog('[ANIM MGR] executeAnimations called', {
@@ -424,6 +431,16 @@ class AnimationManager {
       let i = 0;
       while (i < effects.length) {
         const effect = effects[i];
+
+        // Handle STATE_SNAPSHOT: apply intermediate state and continue
+        if (effect.animationName === 'STATE_SNAPSHOT') {
+          if (executor?.applyIntermediateState) {
+            executor.applyIntermediateState(effect.payload.snapshotPlayerStates);
+            await this.waitForReactRender();
+          }
+          i++;
+          continue;
+        }
 
         // Check if this is an animation sequence with precise timing
         if (effect.animationName === 'ANIMATION_SEQUENCE') {

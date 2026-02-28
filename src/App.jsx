@@ -141,6 +141,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [railgunBeams, setRailgunBeams] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
   const [goAgainNotifications, setGoAgainNotifications] = useState([]);
+  const [triggerFiredNotifications, setTriggerFiredNotifications] = useState([]);
   const [statusConsumptions, setStatusConsumptions] = useState([]);
   const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
@@ -226,6 +227,7 @@ const App = ({ phaseAnimationQueue }) => {
   setTeleportEffects,
   setPassNotifications,
   setGoAgainNotifications,
+  setTriggerFiredNotifications,
   setOverflowProjectiles,
   setSplashEffects,
   setBarrageImpacts,
@@ -940,6 +942,7 @@ const App = ({ phaseAnimationQueue }) => {
        phaseAnnouncements={phaseAnnouncements}
        passNotifications={passNotifications}
        goAgainNotifications={goAgainNotifications}
+       triggerFiredNotifications={triggerFiredNotifications}
        cardPlayWarning={cardPlayWarning}
        laserEffects={laserEffects}
        teleportEffects={teleportEffects}

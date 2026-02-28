@@ -221,17 +221,19 @@ class ActionProcessor {
       executeAnimationPhase: (anims, states) => ap._executeAnimationPhase(anims, states),
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
-      mapAnimationEvents: (events) => (events || []).map(event => {
-        const animDef = ap.animationManager?.animations[event.type];
-        return {
-          animationName: event.type,
-          timing: animDef?.timing || 'pre-state',
-          payload: {
-            ...event,
-            droneId: event.sourceId || event.targetId
-          }
-        };
-      }),
+      mapAnimationEvents: (events) => (events || [])
+        .filter(event => event.type !== 'STATE_SNAPSHOT')  // Guest doesn't need intermediate state
+        .map(event => {
+          const animDef = ap.animationManager?.animations[event.type];
+          return {
+            animationName: event.type,
+            timing: animDef?.timing || 'pre-state',
+            payload: {
+              ...event,
+              droneId: event.sourceId || event.targetId
+            }
+          };
+        }),
       captureAnimationsForBroadcast: (animations) => {
         const gameMode = ap.gameStateManager.get('gameMode');
         if (gameMode === 'host' && animations.length > 0) {
@@ -803,6 +805,18 @@ setAnimationManager(animationManager) {
    * @param {Array} animations - All animations being played
    * @returns {Object} Modified player states with isTeleporting flags
    */
+  /**
+   * Apply intermediate trigger state (called by AnimationManager when encountering STATE_SNAPSHOT)
+   * Allows per-trigger state visibility during animation playback
+   * @param {Object} playerStates - Intermediate player states { player1, player2 }
+   */
+  applyIntermediateState(playerStates) {
+    if (playerStates) {
+      debugLog('ANIMATIONS', '[STATE_SNAPSHOT] Applying intermediate trigger state');
+      this.gameStateManager.setPlayerStates(playerStates.player1, playerStates.player2);
+    }
+  }
+
   /**
    * Apply pending state update (called by AnimationManager during orchestration)
    * Used by AnimationManager.executeWithStateUpdate() to apply state at correct timing

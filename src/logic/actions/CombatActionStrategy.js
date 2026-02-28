@@ -8,7 +8,6 @@ import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 import { calculateAiInterception } from '../combat/InterceptionProcessor.js';
 import AbilityResolver from '../abilities/AbilityResolver.js';
 import { gameEngine } from '../gameLogic.js';
-import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -411,7 +410,7 @@ export async function processMove(payload, ctx) {
 
   debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
 
-  // If drone was destroyed by mine, end turn immediately (no rally beacon check)
+  // If drone was destroyed by mine, end turn immediately
   if (droneDestroyedByMine) {
     return {
       success: true,
@@ -423,20 +422,16 @@ export async function processMove(payload, ctx) {
     };
   }
 
-  // Check if a Rally Beacon in the destination lane grants go-again
-  const rallyGoAgain = checkRallyBeaconGoAgain(
-    finalPlayerState, toLane, false,
-    (entry) => ctx.addLogEntry(entry)
-  );
+  // Rally Beacon go-again comes from ON_LANE_MOVEMENT_IN trigger result
+  const goAgain = mineResult.goAgain;
 
-  // Show Go Again notification if Rally Beacon triggered
-  if (rallyGoAgain) {
+  if (goAgain) {
     await ctx.executeGoAgainAnimation(playerId);
   }
 
   return {
     success: true,
-    shouldEndTurn: !rallyGoAgain,
+    shouldEndTurn: !goAgain,
     message: `${drone.name} moved from ${fromLane} to ${toLane}`,
     drone: drone,
     fromLane: fromLane,

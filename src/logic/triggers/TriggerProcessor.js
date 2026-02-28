@@ -116,8 +116,28 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
-        if (result.animationEvents.length > 0) {
-          allAnimationEvents.push(...result.animationEvents);
+        // Check if trigger produced DOM-dependent animations (need target in DOM)
+        const DOM_DEPENDENT_TYPES = new Set([
+          'HULL_DAMAGE', 'SHIELD_DAMAGE', 'DRONE_DESTROYED',
+          'SECTION_DESTROYED', 'SECTION_DAMAGED', 'HEAL_EFFECT'
+        ]);
+        const hasDomDependentAnims = result.animationEvents.some(
+          e => DOM_DEPENDENT_TYPES.has(e.type)
+        );
+
+        // Build STATE_SNAPSHOT event (JSON clone for codebase consistency)
+        const snapshot = {
+          type: 'STATE_SNAPSHOT',
+          snapshotPlayerStates: JSON.parse(JSON.stringify(currentStates)),
+          timestamp: Date.now()
+        };
+
+        if (hasDomDependentAnims) {
+          // DOM-dependent: events first (target in DOM), then snapshot
+          allAnimationEvents.push(...result.animationEvents, snapshot);
+        } else {
+          // Non-DOM-dependent: snapshot first (state visible with announcement)
+          allAnimationEvents.push(snapshot, ...result.animationEvents);
         }
 
         if (result.statModsApplied) {
@@ -259,6 +279,7 @@ class TriggerProcessor {
       targetPlayer: reactorPlayerId,
       targetLane: reactorLane,
       targetType: 'drone',
+      droneName: reactorDrone.name,
       abilityName: ability.name,
       triggerType: ability.trigger,
       chainDepth,

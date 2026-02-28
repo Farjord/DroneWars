@@ -44,7 +44,7 @@ vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({
     return availability;
   })
 }));
-vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn() }));
+
 
 describe('ActionProcessor — processCommitment', () => {
   let ap;

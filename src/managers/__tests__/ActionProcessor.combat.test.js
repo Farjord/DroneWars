@@ -65,7 +65,7 @@ vi.mock('../../utils/debugLogger.js', () => ({
 vi.mock('../../data/shipSectionData.js', () => ({ shipComponentCollection: [] }));
 vi.mock('../../utils/seededRandom.js', () => ({ default: {} }));
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initializeForCombat: vi.fn() }));
-vi.mock('../../logic/utils/rallyBeaconHelper.js', () => ({ checkRallyBeaconGoAgain: vi.fn(() => false) }));
+
 vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {

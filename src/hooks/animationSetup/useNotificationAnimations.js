@@ -18,7 +18,8 @@ export function registerNotificationAnimations(animationManager, {
   setPhaseAnnouncements,
   setTeleportEffects,
   setPassNotifications,
-  setGoAgainNotifications
+  setGoAgainNotifications,
+  setTriggerFiredNotifications
 }) {
   animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {
     const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
@@ -114,6 +115,22 @@ export function registerNotificationAnimations(animationManager, {
       isLocalPlayer,
       onComplete: () => {
         setGoAgainNotifications(prev => prev.filter(n => n.id !== notificationId));
+        onComplete?.();
+      }
+    }]);
+  });
+
+  animationManager.registerVisualHandler('TRIGGER_FIRED_EFFECT', (payload) => {
+    const { droneName, abilityName, onComplete } = payload;
+
+    const notificationId = `triggerfired-${crypto.randomUUID()}`;
+
+    setTriggerFiredNotifications(prev => [...prev, {
+      id: notificationId,
+      droneName: droneName || 'Unknown',
+      abilityName: abilityName || 'Triggered',
+      onComplete: () => {
+        setTriggerFiredNotifications(prev => prev.filter(n => n.id !== notificationId));
         onComplete?.();
       }
     }]);

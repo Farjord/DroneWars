@@ -1431,9 +1431,11 @@ describe('TriggerProcessor', () => {
         logCallback: vi.fn()
       });
 
-      expect(result.animationEvents.length).toBeGreaterThanOrEqual(2);
-      expect(result.animationEvents[0].type).toBe('TRIGGER_FIRED');
-      expect(result.animationEvents[1].type).toBe('STAT_CHANGE');
+      // STATE_SNAPSHOT comes first for non-damage triggers, then TRIGGER_FIRED, then effect events
+      expect(result.animationEvents.length).toBeGreaterThanOrEqual(3);
+      expect(result.animationEvents[0].type).toBe('STATE_SNAPSHOT');
+      expect(result.animationEvents[1].type).toBe('TRIGGER_FIRED');
+      expect(result.animationEvents[2].type).toBe('STAT_CHANGE');
     });
 
     it('has stable deterministic eventId', () => {
@@ -1496,6 +1498,163 @@ describe('TriggerProcessor', () => {
       expect(triggerFiredEvents[0].abilityName).toBe('Test Lane Ability');
       expect(triggerFiredEvents[1].targetId).toBe('lane1b');
       expect(triggerFiredEvents[1].abilityName).toBe('Test Rally');
+    });
+  });
+
+  // ========================================
+  // STATE_SNAPSHOT EVENT TESTS
+  // ========================================
+
+  describe('STATE_SNAPSHOT events', () => {
+    it('should emit STATE_SNAPSHOT with current playerStates after each trigger', () => {
+      const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBe(1);
+      expect(snapshots[0].snapshotPlayerStates).toBeDefined();
+      expect(snapshots[0].snapshotPlayerStates.player1).toBeDefined();
+      expect(snapshots[0].snapshotPlayerStates.player2).toBeDefined();
+    });
+
+    it('should place STATE_SNAPSHOT BEFORE TRIGGER_FIRED for non-damage triggers (GO_AGAIN)', () => {
+      const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const events = result.animationEvents;
+      const snapshotIdx = events.findIndex(e => e.type === 'STATE_SNAPSHOT');
+      const triggerFiredIdx = events.findIndex(e => e.type === 'TRIGGER_FIRED');
+
+      expect(snapshotIdx).toBeLessThan(triggerFiredIdx);
+    });
+
+    it('should place STATE_SNAPSHOT AFTER damage events for DOM-dependent triggers', () => {
+      // Mine drone owned by player1, triggering drone owned by player2 (enemy movement)
+      const mineDrone = { id: 'mine1', name: 'TestMineDamageDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 10, shields: 0 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [mineDrone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [triggeringDrone];
+
+      // TestMineDamageDrone has triggerOwner: LANE_OWNER, but triggers on enemy movement
+      // Actually, its triggerOwner is LANE_OWNER which means the triggering drone must be friendly
+      // Let's use TestLaneTriggerDrone instead which also has LANE_OWNER
+      // Wait — LANE_OWNER means triggeringPlayerId === reactorPlayerId, so we need friendly trigger
+      // For enemy damage mine: need to set up with the correct ownership
+      // The mine must detect enemy movement, so triggerOwner should be LANE_ENEMY
+      // TestMineDamageDrone has LANE_OWNER — it triggers on friendly drones
+
+      // Use friendly triggering so the mine triggers
+      basePlayerStates.player1.dronesOnBoard.lane1 = [mineDrone, triggeringDrone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const events = result.animationEvents;
+      const snapshotIdx = events.findIndex(e => e.type === 'STATE_SNAPSHOT');
+      const droneDestroyedIdx = events.findIndex(e => e.type === 'DRONE_DESTROYED');
+
+      // Drone takes 3 damage, hull 10 > 3, so no DRONE_DESTROYED for triggeringDrone
+      // But mine self-destructs (destroyAfterTrigger), which emits DRONE_DESTROYED
+      expect(droneDestroyedIdx).toBeGreaterThanOrEqual(0);
+      expect(snapshotIdx).toBeGreaterThan(droneDestroyedIdx);
+    });
+
+    it('should emit one STATE_SNAPSHOT per trigger in a multi-trigger chain', () => {
+      // Two drones with triggers in the same lane
+      const mine1 = { id: 'mine1', name: 'TestLaneTriggerDrone' };
+      const goAgain = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 10, shields: 0 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [mine1, goAgain, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBe(2); // One per trigger
+    });
+
+    it('should include snapshotPlayerStates as a deep clone (independent of further mutations)', () => {
+      const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const snapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
+      // Mutate the returned states
+      result.newPlayerStates.player1.name = 'MUTATED';
+      // Snapshot should be unaffected
+      expect(snapshot.snapshotPlayerStates.player1.name).toBe('Player 1');
+    });
+  });
+
+  // ========================================
+  // TRIGGER_FIRED droneName FIELD TESTS
+  // ========================================
+
+  describe('TRIGGER_FIRED droneName field', () => {
+    it('should include droneName on TRIGGER_FIRED events', () => {
+      const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const triggerFired = result.animationEvents.find(e => e.type === 'TRIGGER_FIRED');
+      expect(triggerFired.droneName).toBe('TestGoAgainDrone');
     });
   });
 });
