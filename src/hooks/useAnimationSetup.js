@@ -4,6 +4,7 @@ import { registerProjectileAnimations } from './animationSetup/useProjectileAnim
 import { registerStatusAnimations } from './animationSetup/useStatusAnimations.js';
 import { registerCardAnimations } from './animationSetup/useCardAnimations.js';
 import { registerNotificationAnimations } from './animationSetup/useNotificationAnimations.js';
+import { registerMovementAnimations } from './animationSetup/useMovementAnimations.js';
 
 export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setTriggerFiredNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, setStatusConsumptions) {
   useEffect(() => {
@@ -80,6 +81,11 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       setPassNotifications,
       setGoAgainNotifications,
       setTriggerFiredNotifications
+    });
+
+    registerMovementAnimations(animationManager, {
+      ...sharedDeps,
+      setFlyingDrones
     });
 
     const unsubscribe = gameStateManager.subscribe((event) => {

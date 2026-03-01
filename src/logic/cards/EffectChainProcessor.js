@@ -575,7 +575,7 @@ class EffectChainProcessor {
       }
       return {
         newPlayerStates: result.newPlayerStates,
-        animationEvents: [],
+        animationEvents: result.animationEvents || [],
         triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
         triggerSteps: result.triggerSteps,
         preTriggerState: result.postMovementState,
@@ -596,7 +596,7 @@ class EffectChainProcessor {
     }
     return {
       newPlayerStates: result.newPlayerStates,
-      animationEvents: [],
+      animationEvents: result.animationEvents || [],
       triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
       triggerSteps: result.triggerSteps,
       preTriggerState: result.postMovementState,

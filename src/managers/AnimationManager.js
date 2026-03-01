@@ -52,6 +52,14 @@ class AnimationManager {
         config: { }
       },
 
+      // Movement animations
+      DRONE_MOVEMENT: {
+        duration: 800,
+        type: 'DRONE_MOVEMENT_EFFECT',
+        timing: 'pre-state',
+        config: {}
+      },
+
       // Status consumption
       STATUS_CONSUMPTION: {
         duration: 1000,

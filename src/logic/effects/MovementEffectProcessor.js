@@ -379,6 +379,14 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     // Capture post-movement state before triggers fire
     const postMovementState = JSON.parse(JSON.stringify(newPlayerStates));
 
+    // Build movement animation event (drone slides from old lane to new lane)
+    const movementAnimation = buildDefaultMovementAnimation({
+      drone: droneToMove,
+      fromLane,
+      toLane,
+      actingPlayerId: droneOwnerId
+    });
+
     // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
     const postMoveResult = this._resolvePostMoveTriggers({
       movedDrones: [movedDrone],
@@ -397,6 +405,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     return {
       newPlayerStates,
       postMovementState,
+      animationEvents: movementAnimation,
       effectResult: {
         movedDrones: [movedDrone],
         fromLane,
@@ -531,6 +540,16 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     // Capture post-movement state before triggers fire
     const postMovementState = JSON.parse(JSON.stringify(newPlayerStates));
 
+    // Build movement animation events (one per drone)
+    const movementAnimation = movedDrones.flatMap(d =>
+      buildDefaultMovementAnimation({
+        drone: d,
+        fromLane,
+        toLane,
+        actingPlayerId
+      })
+    );
+
     // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
     const postMoveResult = this._resolvePostMoveTriggers({
       movedDrones,
@@ -549,6 +568,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     return {
       newPlayerStates,
       postMovementState,
+      animationEvents: movementAnimation,
       effectResult: {
         movedDrones,
         fromLane,
