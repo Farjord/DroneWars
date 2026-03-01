@@ -72,6 +72,7 @@ class TriggerProcessor {
 
     let currentStates = playerStates;
     const allAnimationEvents = [];
+    const triggerSteps = [];
     let anyTriggered = false;
     let anyStatMods = false;
     let goAgain = false;
@@ -122,6 +123,21 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
+        // Build triggerStep for structured action list
+        triggerSteps.push({
+          type: 'TRIGGER',
+          reactorId: reactorDrone.id,
+          reactorName: reactorDrone.name,
+          abilityName: ability.name,
+          triggerType: ability.trigger,
+          chainDepth,
+          animations: result.directAnimations,
+          stateAfter: JSON.parse(JSON.stringify(result.stateAfterDirectEffects))
+        });
+        if (result.cascadeSteps?.length > 0) {
+          triggerSteps.push(...result.cascadeSteps);
+        }
+
         // Build STATE_SNAPSHOT event — use pre-cascade state for additive triggers
         // so cascade changes (e.g., Odin +1 attack from ON_CARD_DRAWN) don't appear
         // until their own nested snapshot
@@ -169,6 +185,7 @@ class TriggerProcessor {
       triggered: anyTriggered,
       newPlayerStates: currentStates,
       animationEvents: allAnimationEvents,
+      triggerSteps,
       statModsApplied: anyStatMods,
       goAgain
     };
@@ -257,6 +274,9 @@ class TriggerProcessor {
   ) {
     let currentStates = playerStates;
     const animationEvents = [];
+    const directAnimations = [];
+    const cascadeSteps = [];
+    let stateAfterDirectEffects = null;
     let statModsApplied = false;
     let goAgain = false;
     let preCascadePlayerStates = null;
@@ -289,7 +309,7 @@ class TriggerProcessor {
     }
 
     // Emit TRIGGER_FIRED animation event (before effects, so it appears first in the queue)
-    animationEvents.push({
+    const triggerFiredEvent = {
       type: 'TRIGGER_FIRED',
       targetId: reactorDrone.id,
       targetPlayer: reactorPlayerId,
@@ -301,7 +321,9 @@ class TriggerProcessor {
       chainDepth,
       eventId: `${reactorDrone.id}:${ability.name}:${chainDepth}`,
       timestamp: Date.now()
-    });
+    };
+    animationEvents.push(triggerFiredEvent);
+    directAnimations.push(triggerFiredEvent);
 
     // Repeat effects for scaling triggers (e.g., Odin: +1 attack per card drawn)
     for (let rep = 0; rep < repeatCount; rep++) {
@@ -344,16 +366,25 @@ class TriggerProcessor {
           };
           const routeResult = this.effectRouter.routeEffect(effect, triggeringContext);
           if (routeResult?.newPlayerStates) currentStates = routeResult.newPlayerStates;
-          if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
+          if (routeResult?.animationEvents?.length > 0) {
+            animationEvents.push(...routeResult.animationEvents);
+            directAnimations.push(...routeResult.animationEvents);
+          }
           // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
           if (routeResult?.triggerAnimationEvents?.length > 0) {
             if (!preCascadePlayerStates && routeResult.preTriggerState) {
               preCascadePlayerStates = routeResult.preTriggerState;
             }
+            if (!stateAfterDirectEffects && routeResult.preTriggerState) {
+              stateAfterDirectEffects = routeResult.preTriggerState;
+            }
             animationEvents.push(
               { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
               ...routeResult.triggerAnimationEvents
             );
+            if (routeResult.triggerSteps?.length > 0) {
+              cascadeSteps.push(...routeResult.triggerSteps);
+            }
           }
           if (effect.type === 'MODIFY_STAT') {
             statModsApplied = true;
@@ -399,6 +430,7 @@ class TriggerProcessor {
 
         if (result?.animationEvents?.length > 0) {
           animationEvents.push(...result.animationEvents);
+          directAnimations.push(...result.animationEvents);
         }
 
         // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
@@ -406,10 +438,16 @@ class TriggerProcessor {
           if (!preCascadePlayerStates && result.preTriggerState) {
             preCascadePlayerStates = result.preTriggerState;
           }
+          if (!stateAfterDirectEffects && result.preTriggerState) {
+            stateAfterDirectEffects = result.preTriggerState;
+          }
           animationEvents.push(
             { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
             ...result.triggerAnimationEvents
           );
+          if (result.triggerSteps?.length > 0) {
+            cascadeSteps.push(...result.triggerSteps);
+          }
         }
 
         debugLog('TRIGGERS', `Effect routed: ${processedEffect.type}`, {
@@ -430,6 +468,7 @@ class TriggerProcessor {
       currentStates = destroyResult.newStates;
       if (destroyResult.animationEvents.length > 0) {
         animationEvents.push(...destroyResult.animationEvents);
+        directAnimations.push(...destroyResult.animationEvents);
       }
     }
 
@@ -439,7 +478,10 @@ class TriggerProcessor {
       preCascadePlayerStates,
       animationEvents,
       statModsApplied,
-      goAgain
+      goAgain,
+      directAnimations,
+      cascadeSteps,
+      stateAfterDirectEffects: stateAfterDirectEffects || JSON.parse(JSON.stringify(currentStates))
     };
   }
 

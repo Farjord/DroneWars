@@ -76,6 +76,7 @@ class DrawEffectProcessor extends BaseEffectProcessor {
 
     const actualCardsDrawn = newHand.length - initialHandSize;
     let triggerAnimationEvents = [];
+    let triggerSteps = [];
     let preTriggerState = null;
     if (actualCardsDrawn > 0) {
       const logCallback = context.callbacks?.logCallback || null;
@@ -100,11 +101,13 @@ class DrawEffectProcessor extends BaseEffectProcessor {
         newPlayerStates[opponentId] = drawResult.newPlayerStates[opponentId];
         triggerAnimationEvents = drawResult.animationEvents || [];
       }
+      triggerSteps = drawResult.triggerSteps || [];
     }
 
     const result = this.createResult(newPlayerStates);
     result.triggerAnimationEvents = triggerAnimationEvents;
     result.preTriggerState = preTriggerState;
+    result.triggerSteps = triggerSteps;
 
     this.logProcessComplete(effect, result, context);
 

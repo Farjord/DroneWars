@@ -607,6 +607,55 @@ class AnimationManager {
     }
   }
 
+  /**
+   * Execute structured action steps sequentially.
+   * Each step is self-contained: apply state, wait for render, play animations, pause.
+   *
+   * @param {Array} steps - Array of { type, animations, stateAfter, ... }
+   * @param {Object} executor - Object with applyIntermediateState() and getAnimationSource()
+   */
+  async executeActionSteps(steps, executor) {
+    if (!steps || steps.length === 0) return;
+
+    debugLog('ANIMATIONS', `[ACTION STEPS] Processing ${steps.length} step(s)`);
+    this.setBlocking(true);
+
+    try {
+      for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+
+        // 1. Apply step state → React re-renders
+        if (step.stateAfter && executor.applyIntermediateState) {
+          executor.applyIntermediateState(step.stateAfter);
+          await this.waitForReactRender();
+        }
+
+        // 2. Map and play step's animations
+        if (step.animations && step.animations.length > 0) {
+          const mapped = step.animations.map(event => {
+            const animDef = this.animations[event.type];
+            return {
+              animationName: event.type,
+              timing: animDef?.timing || 'pre-state',
+              payload: { ...event, droneId: event.sourceId || event.targetId }
+            };
+          });
+          await this.executeAnimations(mapped, executor.getAnimationSource?.() || 'ACTION_STEPS', executor);
+        }
+
+        // 3. Pause between steps (not after last)
+        if (i < steps.length - 1) {
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    } finally {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      this.setBlocking(false);
+    }
+
+    debugLog('ANIMATIONS', '[ACTION STEPS] All steps complete');
+  }
+
   setBlocking(blocking) {
     debugLog('ANIMATIONS', `🔒 [ANIMATION BLOCKING] Setting blocking to: ${blocking}`);
     this.isBlocking = blocking;

@@ -57,6 +57,7 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
 
     const actualEnergyGained = newEnergy - oldEnergy;
     let triggerAnimationEvents = [];
+    let triggerSteps = [];
     let preTriggerState = null;
     if (actualEnergyGained > 0) {
       const logCallback = context.callbacks?.logCallback || null;
@@ -81,11 +82,13 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
         newPlayerStates[opponentId] = energyResult.newPlayerStates[opponentId];
         triggerAnimationEvents = energyResult.animationEvents || [];
       }
+      triggerSteps = energyResult.triggerSteps || [];
     }
 
     const result = this.createResult(newPlayerStates);
     result.triggerAnimationEvents = triggerAnimationEvents;
     result.preTriggerState = preTriggerState;
+    result.triggerSteps = triggerSteps;
 
     this.logProcessComplete(effect, result, context);
 

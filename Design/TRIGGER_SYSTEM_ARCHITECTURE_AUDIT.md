@@ -238,14 +238,14 @@ Each `stateAfter` snapshot requires deep cloning (~50-200KB per step). For typic
 
 ### Must Fix (Before or During Refactor)
 
-1. **Propagate `pairSet` across cascade boundaries** — Pass through EffectRouter to all effect processors that call `fireTrigger()`
-2. **Enforce `MAX_CHAIN_DEPTH`** — Add a constant and check in `fireTrigger()`
-3. **Track `sourceId` correctly** — Pass the reactor drone as source for cascade triggers, not `'system'`
+1. [FIXED] **Propagate `pairSet` across cascade boundaries** — pairSet/chainDepth passed through TriggerProcessor → EffectRouter → effect processors → nested fireTrigger
+2. [FIXED] **Enforce `MAX_CHAIN_DEPTH`** — Added MAX_CHAIN_DEPTH=20 in triggerConstants.js, depth guard in fireTrigger()
+3. [FIXED] **Track `sourceId` correctly** — triggeringDrone=reactorDrone passed through EffectRouter context into nested fireTrigger calls
 
 ### Refactor (Structured Action List)
 
-4. Build step-based action list in logic phase
-5. Replace `STATE_SNAPSHOT` insertion with per-step `stateAfter`
-6. New animation player method that walks the action list
-7. Remove accumulated timing workarounds
-8. Profile deep-clone cost for cascade chains
+4. [FIXED] Build step-based action list in logic phase — triggerSteps returned from fireTrigger/executeTriggerEffects alongside animationEvents
+5. [FIXED] Replace `STATE_SNAPSHOT` insertion with per-step `stateAfter` — each triggerStep carries stateAfter snapshot
+6. [FIXED] New animation player method that walks the action list — AnimationManager.executeActionSteps()
+7. **Partially done** — Old workarounds kept for non-card-play consumers (attacks, deployments, round-start). CardActionStrategy uses new path when actionSteps present.
+8. Not yet profiled — typical chains (2-4 triggers) expected to be negligible

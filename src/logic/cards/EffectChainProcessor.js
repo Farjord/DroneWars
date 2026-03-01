@@ -179,6 +179,7 @@ class EffectChainProcessor {
     });
     const cardAnimationEvents = [];       // CARD_REVEAL, CARD_VISUAL, direct effect anims
     const deferredTriggerEvents = [];     // all trigger events, deferred after card effects
+    const actionSteps = [];               // structured step list (Phase 2 #65)
     let dynamicGoAgain = false;
     const effectResults = [];
     let stateBeforeTriggers = null;       // first state before any trigger mutations
@@ -339,6 +340,11 @@ class EffectChainProcessor {
         deferredTriggerEvents.push(...result.triggerAnimationEvents);
       }
 
+      // Collect structured trigger steps (Phase 2 #65)
+      if (result.triggerSteps?.length > 0) {
+        actionSteps.push(...result.triggerSteps);
+      }
+
       // Resolve POST conditionals
       if (conditionals && conditionals.length > 0) {
         const postContext = {
@@ -411,6 +417,9 @@ class EffectChainProcessor {
       currentStates = cardPlayResult.newPlayerStates;
       deferredTriggerEvents.push(...cardPlayResult.animationEvents);
     }
+    if (cardPlayResult.triggerSteps?.length > 0) {
+      actionSteps.push(...cardPlayResult.triggerSteps);
+    }
 
     // Post-process STATE_SNAPSHOT events: remove played card from hand so it appears
     // discarded during trigger animations (card is still in hand in intermediate states
@@ -454,6 +463,14 @@ class EffectChainProcessor {
     // TELEPORT_IN plays after snapshot (drone exists in DOM)
     allAnimationEvents.push(...teleportEvents);
 
+    // Breathing room after intermediate state so player can register
+    // visual changes (e.g., drone lane change) before triggers fire
+    if (deferredTriggerEvents.length > 0) {
+      allAnimationEvents.push(
+        { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() }
+      );
+    }
+
     // Then deferred trigger events
     allAnimationEvents.push(...deferredTriggerEvents);
 
@@ -471,6 +488,43 @@ class EffectChainProcessor {
       }
     }
 
+    // Post-process actionSteps: remove played card from hand in stateAfter snapshots
+    // (card is still in hand in intermediate states because finishCardPlay hasn't run yet)
+    for (const step of actionSteps) {
+      if (step.stateAfter) {
+        const acting = step.stateAfter[playerId];
+        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
+          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
+          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
+            acting.discardPile = [...acting.discardPile, card];
+          }
+        }
+      }
+    }
+
+    // Build card-only animation events for actionSteps path
+    // (card-level animations without deferred trigger events or breathing room pause)
+    let cardOnlyAnimationEvents;
+    let cleanedStateBeforeTriggers;
+    if (actionSteps.length > 0) {
+      // Strip deferred trigger events + breathing room TRIGGER_CHAIN_PAUSE from the end
+      const stripCount = deferredTriggerEvents.length + (deferredTriggerEvents.length > 0 ? 1 : 0);
+      cardOnlyAnimationEvents = stripCount > 0
+        ? allAnimationEvents.slice(0, allAnimationEvents.length - stripCount)
+        : [...allAnimationEvents];
+
+      // Build pre-trigger state with played card removed from hand
+      const rawState = stateBeforeTriggers || currentStates;
+      cleanedStateBeforeTriggers = JSON.parse(JSON.stringify(rawState));
+      const actingState = cleanedStateBeforeTriggers[playerId];
+      if (actingState?.hand?.some(c => c.instanceId === card.instanceId)) {
+        actingState.hand = actingState.hand.filter(c => c.instanceId !== card.instanceId);
+        if (!actingState.discardPile.some(c => c.instanceId === card.instanceId)) {
+          actingState.discardPile = [...actingState.discardPile, card];
+        }
+      }
+    }
+
     // 3. Finalize: discard card, determine shouldEndTurn
     const finish = this.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
 
@@ -480,12 +534,16 @@ class EffectChainProcessor {
       effectsSkipped: effectResults.filter(r => r === null).length,
       animationCount: allAnimationEvents.length,
       deferredTriggerCount: deferredTriggerEvents.length,
+      actionStepCount: actionSteps.length,
     });
 
     return {
       newPlayerStates: finish.newPlayerStates,
       shouldEndTurn: finish.shouldEndTurn,
       animationEvents: allAnimationEvents,
+      actionSteps: actionSteps.length > 0 ? actionSteps : undefined,
+      cardOnlyAnimationEvents,
+      stateBeforeTriggers: cleanedStateBeforeTriggers,
     };
   }
 
@@ -519,6 +577,7 @@ class EffectChainProcessor {
         newPlayerStates: result.newPlayerStates,
         animationEvents: [],
         triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+        triggerSteps: result.triggerSteps,
         preTriggerState: result.postMovementState,
         effectResult: result.effectResult,
         goAgain: !result.shouldEndTurn,
@@ -539,6 +598,7 @@ class EffectChainProcessor {
       newPlayerStates: result.newPlayerStates,
       animationEvents: [],
       triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+      triggerSteps: result.triggerSteps,
       preTriggerState: result.postMovementState,
       effectResult: result.effectResult,
       goAgain: !result.shouldEndTurn,

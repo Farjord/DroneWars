@@ -219,6 +219,7 @@ class ActionProcessor {
       // Animation (late-bound via getters since set after construction)
       getAnimationManager: () => ap.animationManager,
       executeAnimationPhase: (anims, states) => ap._executeAnimationPhase(anims, states),
+      executeActionSteps: (steps) => ap.animationManager.executeActionSteps(steps, ap),
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => (events || [])

@@ -782,5 +782,51 @@ describe('EffectChainProcessor', () => {
       const finalController = result.newPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'shrike');
       expect(finalController.attack).toBe(3);
     });
+
+    it('inserts TRIGGER_CHAIN_PAUSE between STATE_SNAPSHOT and deferred trigger events', () => {
+      mockMoveTriggerEvents = [
+        { type: 'TRIGGER_FIRED', triggerName: 'Mine', timestamp: Date.now() }
+      ];
+
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_pause1', name: 'Move Card', cost: 0,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      const snapshotIdx = result.animationEvents.findIndex(e => e.type === 'STATE_SNAPSHOT');
+      const pauseIdx = result.animationEvents.findIndex(e => e.type === 'TRIGGER_CHAIN_PAUSE');
+      const triggerIdx = result.animationEvents.findIndex(e => e.type === 'TRIGGER_FIRED');
+
+      expect(pauseIdx).toBeGreaterThan(-1);
+      expect(pauseIdx).toBeGreaterThan(snapshotIdx);
+      expect(pauseIdx).toBeLessThan(triggerIdx);
+      expect(result.animationEvents[pauseIdx].duration).toBe(400);
+    });
+
+    it('does not insert TRIGGER_CHAIN_PAUSE when there are no deferred trigger events', () => {
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_pause2', name: 'Move Card', cost: 0,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      const pauseEvents = result.animationEvents.filter(e => e.type === 'TRIGGER_CHAIN_PAUSE');
+      expect(pauseEvents).toHaveLength(0);
+    });
   });
 });
