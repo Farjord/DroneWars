@@ -17,13 +17,11 @@ const ShipSectionCompact = ({
   onClick,
   onAbilityClick,
   onViewFullCard,
-  isInteractive,
   isOpponent,
   isHovered,
   onMouseEnter,
   onMouseLeave,
   isCardTarget,
-  isInMiddleLane,
   columnIndex,
   isTargetingMode,
   reallocationState,
@@ -47,7 +45,6 @@ const ShipSectionCompact = ({
     );
   }
 
-  const sectionStatus = gameEngine.getShipStatus(stats);
   const fc = isOpponent ? FACTION_COLORS.opponent : FACTION_COLORS.player;
   const clipPath = getShipClipPath(isOpponent, columnIndex);
 
@@ -191,7 +188,7 @@ const ShipSectionCompact = ({
         <div style={{ display: 'flex', gap: '0.12vw', justifyContent: 'center' }}>
           {Array.from({ length: stats.maxHull }).map((_, i) => {
             const hullPoint = i + 1;
-            const { critical, damaged } = stats.thresholds;
+            const { critical } = stats.thresholds;
             const isFilled = i < stats.hull;
             let bgColor;
             if (!isFilled) {
