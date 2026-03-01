@@ -90,7 +90,7 @@ const DEBUG_CONFIG = {
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
-    MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
+    MOVEMENT_EFFECT: true,        // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation
     AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
     SINGLE_MOVE_FLOW: false,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
@@ -117,7 +117,7 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
-    TRIGGERS: false,                     // Unified trigger system (TriggerProcessor)
+    TRIGGERS: true,                     // Unified trigger system (TriggerProcessor)
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration

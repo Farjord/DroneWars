@@ -6,6 +6,22 @@ import EffectChainProcessor from '../cards/EffectChainProcessor.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
+// --- Diagnostic Helpers ---
+
+function _snapshotDrones(playerStates) {
+  if (!playerStates) return null;
+  const positions = {};
+  for (const pid of ['player1', 'player2']) {
+    const board = playerStates[pid]?.dronesOnBoard || {};
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      for (const d of (board[lane] || [])) {
+        positions[d.id] = `${pid}/${lane}`;
+      }
+    }
+  }
+  return positions;
+}
+
 // --- Chain Engine Card Processing ---
 // All cards route through EffectChainProcessor.processEffectChain.
 
@@ -94,6 +110,12 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
 
   let animations;
   if (result.actionSteps) {
+    debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: actionSteps path', {
+      stateBeforeTriggersDrones: _snapshotDrones(result.stateBeforeTriggers),
+      cardOnlyAnimationTypes: result.cardOnlyAnimationEvents?.map(e => e.type ?? e.animationName),
+      actionStepCount: result.actionSteps.length,
+    });
+
     // New path: card animations + structured trigger steps
     animations = ctx.mapAnimationEvents(result.cardOnlyAnimationEvents);
     ctx.captureAnimationsForBroadcast(animations);
@@ -105,6 +127,10 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     // Apply final state (after finishCardPlay - card in discard, turn state updated)
     ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
   } else {
+    debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: flat animation path', {
+      animationTypes: result.animationEvents?.map(e => e.type),
+    });
+
     // Old path: flat animation array with STATE_SNAPSHOT/TRIGGER_CHAIN_PAUSE
     animations = ctx.mapAnimationEvents(result.animationEvents);
     ctx.captureAnimationsForBroadcast(animations);

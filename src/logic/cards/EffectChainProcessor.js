@@ -116,6 +116,21 @@ function isTargetAlive(target, playerStates) {
   return false;
 }
 
+// --- Diagnostic Helpers ---
+
+function _snapshotDronePositions(playerStates) {
+  const positions = {};
+  for (const pid of ['player1', 'player2']) {
+    const board = playerStates[pid]?.dronesOnBoard || {};
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      for (const d of (board[lane] || [])) {
+        positions[d.id] = `${pid}/${lane}`;
+      }
+    }
+  }
+  return positions;
+}
+
 // --- Main Processor ---
 
 class EffectChainProcessor {
@@ -395,6 +410,13 @@ class EffectChainProcessor {
         value: effectData.value ?? effectData.mod?.value ?? null,
         processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
+
+      debugLog('MOVEMENT_EFFECT', `[DIAG] After effect [${i}]`, {
+        stateBeforeTriggersCapture: !!stateBeforeTriggers,
+        actionStepsLength: actionSteps.length,
+        dronePositions: _snapshotDronePositions(currentStates),
+        stateBeforeTriggersDrones: stateBeforeTriggers ? _snapshotDronePositions(stateBeforeTriggers) : null,
+      });
     }
 
     // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.
@@ -535,6 +557,14 @@ class EffectChainProcessor {
       animationCount: allAnimationEvents.length,
       deferredTriggerCount: deferredTriggerEvents.length,
       actionStepCount: actionSteps.length,
+    });
+
+    debugLog('MOVEMENT_EFFECT', '[DIAG] processEffectChain return', {
+      stateBeforeTriggersDrones: cleanedStateBeforeTriggers ? _snapshotDronePositions(cleanedStateBeforeTriggers) : null,
+      cardOnlyAnimationTypes: cardOnlyAnimationEvents?.map(e => e.type) ?? null,
+      actionStepCount: actionSteps.length,
+      actionStepTypes: actionSteps.map(s => s.type),
+      finalDrones: _snapshotDronePositions(finish.newPlayerStates),
     });
 
     return {

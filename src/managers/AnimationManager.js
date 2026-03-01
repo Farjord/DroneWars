@@ -633,6 +633,25 @@ class AnimationManager {
         const step = steps[i];
         const source = executor.getAnimationSource?.() || 'ACTION_STEPS';
 
+        // Diagnostic: log drone positions in this step's stateAfter
+        if (step.stateAfter) {
+          const drones = {};
+          for (const pid of ['player1', 'player2']) {
+            const board = step.stateAfter[pid]?.dronesOnBoard || {};
+            for (const lane of ['lane1', 'lane2', 'lane3']) {
+              for (const d of (board[lane] || [])) {
+                drones[d.id] = `${pid}/${lane}`;
+              }
+            }
+          }
+          debugLog('MOVEMENT_EFFECT', `[DIAG] executeActionSteps step ${i}`, {
+            type: step.type,
+            animationCount: step.animations?.length ?? 0,
+            animationTypes: step.animations?.map(a => a.type),
+            stateAfterDrones: drones,
+          });
+        }
+
         // 1. Map animations and split by timing
         let preAnimations = [];
         let postAnimations = [];
