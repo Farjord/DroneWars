@@ -1,40 +1,14 @@
 // ========================================
 // SHIP SECTION COMPACT COMPONENT
 // ========================================
-// Compact ship section display for in-game use
-// Vertically stacked layout with click-to-view full card modal
-// Removes detailed stats text, keeps shields/hull/ability button
+// Compact ship section display for in-game use.
+// Chevron clip-path with 11 decorative layers (visual, clipped)
+// and a separate unclipped content layer for interactive elements.
 
 import React from 'react';
 import ShipAbilityIcon from './ShipAbilityIcon.jsx';
+import { FACTION_COLORS, getShipClipPath, ShipSectionVisualLayers } from './ShipSectionLayers.jsx';
 
-/**
- * SHIP SECTION COMPACT COMPONENT
- * Compact display for ship sections during gameplay.
- * Click section to view full card details in modal.
- * @param {Object} section - Section identifier
- * @param {Object} stats - Section stats and configuration
- * @param {boolean} isPlayer - Whether this is the player's section
- * @param {boolean} isPlaceholder - Whether this is a placeholder slot
- * @param {Function} onClick - Callback when section is clicked (for shield allocation/targeting)
- * @param {Function} onAbilityClick - Callback when ability is activated
- * @param {Function} onViewFullCard - Callback to open modal with full card details
- * @param {boolean} isInteractive - Whether section should be interactive
- * @param {boolean} isOpponent - Whether this is opponent's section
- * @param {boolean} isHovered - Whether section is currently hovered
- * @param {Function} onMouseEnter - Mouse enter event handler
- * @param {Function} onMouseLeave - Mouse leave event handler
- * @param {boolean} isCardTarget - Whether section is targeted by current action
- * @param {boolean} isInMiddleLane - Whether section is in center lane (bonus)
- * @param {string} reallocationState - Current shield reallocation state
- * @param {Object} gameEngine - Game engine instance for status calculations
- * @param {string} turnPhase - Current turn phase
- * @param {Function} isMyTurn - Function to check if it's player's turn
- * @param {Object} passInfo - Pass information object
- * @param {Function} getLocalPlayerId - Function to get local player ID
- * @param {Object} localPlayerState - Local player state
- * @param {Object} shipAbilityMode - Current ship ability mode
- */
 const ShipSectionCompact = ({
   section,
   stats,
@@ -50,6 +24,7 @@ const ShipSectionCompact = ({
   onMouseLeave,
   isCardTarget,
   isInMiddleLane,
+  columnIndex,
   isTargetingMode,
   reallocationState,
   gameEngine,
@@ -73,150 +48,125 @@ const ShipSectionCompact = ({
   }
 
   const sectionStatus = gameEngine.getShipStatus(stats);
+  const fc = isOpponent ? FACTION_COLORS.opponent : FACTION_COLORS.player;
+  const clipPath = getShipClipPath(isOpponent, columnIndex);
 
-  const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
-  let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-red-500' : 'border-cyan-500');
-  const shadowColor = isOpponent ? 'shadow-red-500/20' : 'shadow-cyan-500/20';
-  const hoverEffect = isHovered ? 'shadow-xl' : '';
-
-  // Override border color for shield reallocation states
+  // Reallocation visual state
   let reallocationEffect = '';
   if (reallocationState) {
     switch (reallocationState) {
       case 'can-remove':
-        borderColor = 'border-orange-400';
         reallocationEffect = 'ring-2 ring-orange-400/50 shadow-lg shadow-orange-400/30';
         break;
       case 'removed-from':
-        borderColor = 'border-orange-600';
-        reallocationEffect = 'ring-4 ring-orange-600/80 shadow-lg shadow-orange-600/50 bg-orange-900/20';
+        reallocationEffect = 'ring-4 ring-orange-600/80 shadow-lg shadow-orange-600/50';
         break;
       case 'cannot-remove':
-        borderColor = 'border-gray-600';
+      case 'cannot-add':
         reallocationEffect = 'opacity-50';
         break;
       case 'can-add':
-        borderColor = 'border-green-400';
         reallocationEffect = 'ring-2 ring-green-400/50 shadow-lg shadow-green-400/30';
         break;
       case 'added-to':
-        borderColor = 'border-green-600';
-        reallocationEffect = 'ring-4 ring-green-600/80 shadow-lg shadow-green-600/50 bg-green-900/20';
-        break;
-      case 'cannot-add':
-        borderColor = 'border-gray-600';
-        reallocationEffect = 'opacity-50';
+        reallocationEffect = 'ring-4 ring-green-600/80 shadow-lg shadow-green-600/50';
         break;
     }
   }
 
-  const cardTargetEffect = isCardTarget ? 'shadow-xl shadow-cyan-400/80 animate-pulse' : '';
+  const hoverEffect = isHovered ? 'shadow-xl' : '';
+  const shadowColor = isOpponent ? 'shadow-red-500/20' : 'shadow-cyan-500/20';
 
-  const backgroundImageStyle = {
-    backgroundImage: `url(${stats.image})`,
-    backgroundPosition: 'center center',
-    backgroundRepeat: 'no-repeat',
-    backgroundSize: 'cover',
-  };
-
-  // Handle clicks - shield allocation/targeting takes priority, then view full card
+  // Handle clicks — shield allocation/targeting takes priority, then view full card
   const handleClick = (e) => {
-    // If onClick returns true it consumed the click (e.g., started targeting)
     const consumed = onClick ? onClick(e) === true : false;
-
-    // Only open modal when NOT consumed, NOT targeting, NOT reallocating, NOT allocating shields, and modal handler exists
     if (!consumed && !isTargetingMode && !reallocationState && turnPhase !== 'allocateShields' && onViewFullCard) {
       onViewFullCard();
     }
   };
 
-  // Determine the accent color for the corner based on current state
-  const getAccentColor = () => {
-    if (reallocationState) {
-      if (reallocationState.includes('orange')) return 'rgba(251, 146, 60, 0.7)';
-      if (reallocationState.includes('green')) return 'rgba(74, 222, 128, 0.7)';
-      return 'rgba(107, 114, 128, 0.5)';
-    }
-    if (sectionStatus === 'critical') return 'rgba(239, 68, 68, 0.7)';
-    if (sectionStatus === 'damaged') return 'rgba(234, 179, 8, 0.7)';
-    return isOpponent ? 'rgba(239, 68, 68, 0.5)' : 'rgba(6, 182, 212, 0.5)';
-  };
-
   return (
+    // Outer container — unclipped, sized, receives events and state effects
     <div
       ref={sectionRef}
       className={`
-        relative rounded-sm shadow-lg ${shadowColor} border-2 h-full
-        transition-all duration-300 overflow-hidden cursor-pointer
-        ${borderColor}
-        ${hoverEffect}
-        ${cardTargetEffect}
+        relative h-full cursor-pointer
+        transition-all duration-300
+        ${shadowColor} ${hoverEffect}
         ${reallocationEffect}
       `}
-      style={backgroundImageStyle}
       onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {/* Angular corner accent */}
+      {/* Clipped visual layer — 11 decorative layers + ship art, no interaction */}
       <div
-        className="absolute top-0 left-0 w-3 h-3 z-20 pointer-events-none"
-        style={{
-          borderTop: `2px solid ${getAccentColor()}`,
-          borderLeft: `2px solid ${getAccentColor()}`
-        }}
-      />
-      <div className={`absolute inset-0 ${overlayColor}`}></div>
+        className={isCardTarget ? 'animate-pulse' : ''}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      >
+        <ShipSectionVisualLayers
+          isOpponent={isOpponent}
+          columnIndex={columnIndex}
+          clipPath={clipPath}
+          shipImage={stats.image}
+        />
+      </div>
 
-      {/* 3-Column Grid Layout: Left (empty) | Middle (content) | Right (ability) */}
-      <div className="relative z-10 grid grid-cols-[1fr_2fr_1fr] gap-2 h-full p-3">
-        {/* Left Section - Empty for spacing/balance */}
-        <div></div>
+      {/* Content layer — unclipped, interactive, constrained to safe zone */}
+      <div style={{
+        position: 'absolute',
+        top: isOpponent ? '10%' : '42%',
+        bottom: isOpponent ? '42%' : '10%',
+        left: '15%',
+        right: '15%',
+        zIndex: 10,
+        pointerEvents: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: '0.3vh',
+      }}>
+        {/* Ship Name */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <span style={{
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 'clamp(0.5rem, 1vw, 1rem)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.14em',
+            textShadow: `0 0 0.8vw ${fc.primary}aa, 0 0 1.5vw ${fc.primary}44, 0 1px 3px rgba(0,0,0,0.9)`,
+            textAlign: 'center',
+          }}>
+            {stats.type}
+          </span>
+        </div>
 
-        {/* Middle Section - Title, Status, Shields, Hull (all centered) */}
-        <div className="flex flex-col items-center justify-center gap-2 h-full">
-          {/* Title */}
-          <p className="font-orbitron text-lg uppercase tracking-widest text-white text-center">{stats.type}</p>
-
-          {/* Status Badge */}
-          <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-cyan-500/20 text-cyan-300' : sectionStatus === 'damaged' ? 'bg-cyan-700/20 text-cyan-500' : 'bg-red-500/20 text-red-300'}`}>
-            {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
-          </div>
-
-          {/* Shields */}
-          <div className="flex gap-1 items-center">
+        {/* Shields + Action Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+          <div style={{ display: 'flex', gap: '0.4vw', justifyContent: 'center', alignItems: 'center' }}>
             {Array(stats.shields).fill(0).map((_, i) => (
-              i < stats.allocatedShields
-                ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" fillOpacity="0.6" className="text-cyan-300"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path></svg>
-                : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path></svg>
+              <svg key={i} style={{
+                width: '1.2vw', height: '1.4vw',
+                minWidth: '10px', minHeight: '12px',
+                filter: i < stats.allocatedShields ? `drop-shadow(0 0 0.4vw ${fc.primary}88)` : 'none',
+              }} viewBox="0 0 20 23">
+                <polygon
+                  points="10,1 19,6 19,17 10,22 1,17 1,6"
+                  fill={i < stats.allocatedShields ? fc.primary : 'transparent'}
+                  stroke={fc.primary}
+                  strokeWidth="1.5"
+                  opacity={i < stats.allocatedShields ? 0.95 : 0.15}
+                />
+                {i < stats.allocatedShields && (
+                  <polygon points="10,4 16,7.5 16,15 10,19 4,15 4,7.5" fill={fc.bright} opacity="0.25" />
+                )}
+              </svg>
             ))}
           </div>
 
-          {/* Hull */}
-          <div className="flex justify-center gap-1">
-            {Array.from({ length: stats.maxHull }).map((_, i) => {
-              const hullPoint = i + 1;
-              const { critical, damaged } = stats.thresholds;
-              let thresholdColor;
-              if (hullPoint <= critical) {
-                thresholdColor = 'bg-red-500';
-              } else if (hullPoint <= damaged) {
-                thresholdColor = 'bg-cyan-600';
-              } else {
-                thresholdColor = 'bg-cyan-400';
-              }
-              const isFilled = i < stats.hull;
-              return (
-                <div key={i} className={`h-4 w-4 rounded-sm ${isFilled ? thresholdColor : 'bg-gray-400'} border border-black/50`}></div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Section - Ability Button and Name (centered) */}
-        <div className="flex flex-col items-center justify-center gap-2 h-full">
+          {/* Ability button — absolute right */}
           {isPlayer && stats.ability && (
-            <>
+            <div style={{ position: 'absolute', right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2vh' }}>
               <ShipAbilityIcon
                 ability={stats.ability}
                 isUsable={
@@ -224,7 +174,6 @@ const ShipSectionCompact = ({
                   isMyTurn() &&
                   !passInfo[`${getLocalPlayerId()}Passed`] &&
                   localPlayerState.energy >= stats.ability.cost.energy &&
-                  // Check activation limit (per-round usage)
                   (stats.ability.activationLimit == null ||
                     (localPlayerState.shipSections?.[section]?.abilityActivationCount || 0) < stats.ability.activationLimit)
                 }
@@ -234,9 +183,37 @@ const ShipSectionCompact = ({
                   onAbilityClick(e, {...stats, name: section}, stats.ability);
                 }}
               />
-              <p className="font-bold text-xs text-purple-400 leading-tight text-center">{stats.ability.name}</p>
-            </>
+            </div>
           )}
+        </div>
+
+        {/* Hull Bar */}
+        <div style={{ display: 'flex', gap: '0.12vw', justifyContent: 'center' }}>
+          {Array.from({ length: stats.maxHull }).map((_, i) => {
+            const hullPoint = i + 1;
+            const { critical, damaged } = stats.thresholds;
+            const isFilled = i < stats.hull;
+            let bgColor;
+            if (!isFilled) {
+              bgColor = 'rgba(255,255,255,0.03)';
+            } else if (hullPoint <= critical) {
+              bgColor = `linear-gradient(180deg, ${FACTION_COLORS.opponent.bright}, ${FACTION_COLORS.opponent.primary})`;
+            } else {
+              bgColor = `linear-gradient(180deg, ${fc.bright}, ${fc.primary})`;
+            }
+            return (
+              <div key={i} style={{
+                width: '0.65vw', height: '0.7vw',
+                minWidth: '5px', minHeight: '5px',
+                background: bgColor,
+                borderRadius: '1px',
+                boxShadow: isFilled
+                  ? `0 0 0.3vw ${fc.primary}88, 0 0 0.6vw ${fc.primary}33`
+                  : `inset 0 0 0.1vw rgba(255,255,255,0.03)`,
+                border: isFilled ? 'none' : `0.03vw solid rgba(255,255,255,0.05)`,
+              }} />
+            );
+          })}
         </div>
       </div>
     </div>

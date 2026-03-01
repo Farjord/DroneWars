@@ -22,6 +22,7 @@ const ShipSectionSlot = ({
   player,
   isPlayer,
   sectionIndex,
+  columnIndex,
   placedSections,
   onSectionClick,
   onAbilityClick,
@@ -137,6 +138,7 @@ const ShipSectionSlot = ({
         stats={displayStats}
         isPlayer={isPlayer}
         isOpponent={!isPlayer}
+        columnIndex={columnIndex}
         isTargetingMode={isTargetingMode}
         onClick={() => {
           debugLog('SHIELD_CLICKS', `🖱️ ShipSection clicked: ${sectionName}`, {
@@ -304,6 +306,7 @@ const BattleColumn = ({
   // Shared props for ShipSectionSlot
   const sharedSectionProps = {
     sectionIndex,
+    columnIndex: sectionIndex,
     validCardTargets,
     selectedDrone,
     gameEngine,
