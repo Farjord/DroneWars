@@ -1610,6 +1610,70 @@ describe('TriggerProcessor', () => {
       expect(snapshots.length).toBe(2); // One per trigger
     });
 
+    it('should use pre-cascade state for outer snapshot when cascades produce preTriggerState', () => {
+      // Anansi in lane1: ON_CARD_PLAY (mine) → DRAW effect → cascades ON_CARD_DRAWN
+      // TestControllerTriggerDrone also present (ON_CARD_DRAWN → +1 attack)
+      const anansi = { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false };
+      const odin = { id: 'odin1', name: 'TestControllerTriggerDrone', attack: 1, hull: 2, shields: 0, isExhausted: false };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [anansi, odin];
+
+      // Pre-cascade state: after draw but BEFORE Odin's +1 attack
+      const preTriggerState = JSON.parse(JSON.stringify(basePlayerStates));
+
+      // Post-cascade state: Odin has +1 attack from ON_CARD_DRAWN
+      const postCascadeState = JSON.parse(JSON.stringify(basePlayerStates));
+      postCascadeState.player1.dronesOnBoard.lane1.find(d => d.id === 'odin1').attack = 2;
+
+      // Nested cascade events (what DrawEffectProcessor would produce)
+      const nestedSnapshot = {
+        type: 'STATE_SNAPSHOT',
+        snapshotPlayerStates: JSON.parse(JSON.stringify(postCascadeState)),
+        timestamp: Date.now()
+      };
+      const nestedTriggerFired = {
+        type: 'TRIGGER_FIRED',
+        targetId: 'odin1',
+        abilityName: 'Test Controller Ability',
+        chainDepth: 1,
+        timestamp: Date.now()
+      };
+      const nestedStatChange = {
+        type: 'STAT_CHANGE',
+        targetId: 'odin1',
+        timestamp: Date.now()
+      };
+
+      // Mock routeEffect for DRAW to return cascade data with preTriggerState
+      processor.effectRouter.routeEffect = vi.fn().mockReturnValue({
+        newPlayerStates: postCascadeState,
+        animationEvents: [{ type: 'CARD_REVEAL', timestamp: Date.now() }],
+        triggerAnimationEvents: [nestedSnapshot, nestedTriggerFired, nestedStatChange],
+        preTriggerState
+      });
+
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBe(2);
+
+      // Outer snapshot (first) uses pre-cascade state — Odin still at attack: 1
+      const outerOdin = snapshots[0].snapshotPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'odin1');
+      expect(outerOdin.attack).toBe(1);
+
+      // Nested snapshot (second) includes cascade change — Odin at attack: 2
+      const nestedOdin = snapshots[1].snapshotPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'odin1');
+      expect(nestedOdin.attack).toBe(2);
+    });
+
     it('should include snapshotPlayerStates as a deep clone (independent of further mutations)', () => {
       const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };

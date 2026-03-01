@@ -116,10 +116,13 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
-        // Build STATE_SNAPSHOT event (JSON clone for codebase consistency)
+        // Build STATE_SNAPSHOT event — use pre-cascade state for additive triggers
+        // so cascade changes (e.g., Odin +1 attack from ON_CARD_DRAWN) don't appear
+        // until their own nested snapshot
+        const snapshotState = result.preCascadePlayerStates || currentStates;
         const snapshot = {
           type: 'STATE_SNAPSHOT',
-          snapshotPlayerStates: JSON.parse(JSON.stringify(currentStates)),
+          snapshotPlayerStates: JSON.parse(JSON.stringify(snapshotState)),
           timestamp: Date.now()
         };
 
@@ -240,6 +243,7 @@ class TriggerProcessor {
     const animationEvents = [];
     let statModsApplied = false;
     let goAgain = false;
+    let preCascadePlayerStates = null;
 
     // Normalize effects: support both effect{} and effects[]
     const effects = ability.effects || (ability.effect ? [ability.effect] : []);
@@ -324,6 +328,9 @@ class TriggerProcessor {
           if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
           // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
           if (routeResult?.triggerAnimationEvents?.length > 0) {
+            if (!preCascadePlayerStates && routeResult.preTriggerState) {
+              preCascadePlayerStates = routeResult.preTriggerState;
+            }
             animationEvents.push(...routeResult.triggerAnimationEvents);
           }
           if (effect.type === 'MODIFY_STAT') {
@@ -371,6 +378,9 @@ class TriggerProcessor {
 
         // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
         if (result?.triggerAnimationEvents?.length > 0) {
+          if (!preCascadePlayerStates && result.preTriggerState) {
+            preCascadePlayerStates = result.preTriggerState;
+          }
           animationEvents.push(...result.triggerAnimationEvents);
         }
 
@@ -398,6 +408,7 @@ class TriggerProcessor {
     return {
       triggered: true,
       newPlayerStates: currentStates,
+      preCascadePlayerStates,
       animationEvents,
       statModsApplied,
       goAgain
