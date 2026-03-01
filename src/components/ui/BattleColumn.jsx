@@ -11,6 +11,8 @@ import SingleLaneView from './SingleLaneView.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
+const SECTION_SLOT_HEIGHT = 'clamp(143px, 6.25vw, 184px)';
+
 /**
  * Renders the ShipSectionCompact for a single section within a column.
  * Extracts per-section stat resolution, shield display, and targeting logic
@@ -63,7 +65,7 @@ const ShipSectionSlot = ({
         className="bg-black/20 rounded-lg border-2 border-dashed border-gray-700"
         style={{
           width: '100%',
-          height: 'clamp(143px, 6.25vw, 184px)'
+          height: SECTION_SLOT_HEIGHT
         }}
       />
     );
@@ -111,7 +113,7 @@ const ShipSectionSlot = ({
     <div
       style={{
         width: '100%',
-        height: 'clamp(143px, 6.25vw, 184px)'
+        height: SECTION_SLOT_HEIGHT
       }}
       onMouseUp={() => {
         if (draggedActionCard && handleActionCardDragEnd) {

@@ -50,10 +50,8 @@ const renderDronesOnBoard = ({
           const affectedDroneMatch = affectedDroneIds?.includes(drone.id) ?? false;
           const isActionTarget = abilityTargetMatch || cardTargetMatch || affectedDroneMatch;
 
-          const activeCostTargeting = null;
-
-          const targetingAffinity = activeCostTargeting?.affinity || selectedCard?.targeting?.affinity || selectedCard?.effects?.[0]?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
-          const targetingType = activeCostTargeting?.type || selectedCard?.targeting?.type || selectedCard?.effects?.[0]?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
+          const targetingAffinity = selectedCard?.targeting?.affinity || selectedCard?.effects?.[0]?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
+          const targetingType = selectedCard?.targeting?.type || selectedCard?.effects?.[0]?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
 
           const currentEffect = effectChainState?.effects?.[effectChainState.currentIndex]
             || draggedActionCard?.card?.effects?.[0]

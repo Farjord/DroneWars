@@ -38,14 +38,6 @@ vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: (stats) => stats
 }));
 
-// Helper to find section wrapper elements (the divs with onMouseUp)
-const getSectionWrappers = (container, side) => {
-  const prefix = side === 'player' ? 'section-' : 'section-';
-  const sectionElements = container.querySelectorAll(`[data-testid^="${prefix}"]`);
-  // Filter to only get player or opponent sections based on DOM position
-  return Array.from(sectionElements).map(el => el.parentElement);
-};
-
 // Helper to get player section wrappers (bottom of column)
 const getPlayerSectionWrapper = (container) => {
   const sectionElements = container.querySelectorAll('[data-testid^="section-"]');
