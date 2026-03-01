@@ -336,13 +336,6 @@ class EffectChainProcessor {
         if (!stateBeforeTriggers && result.preTriggerState) {
           stateBeforeTriggers = JSON.parse(JSON.stringify(result.preTriggerState));
         }
-        if (result.preTriggerState) {
-          deferredTriggerEvents.push({
-            type: 'STATE_SNAPSHOT',
-            snapshotPlayerStates: JSON.parse(JSON.stringify(result.preTriggerState)),
-            timestamp: Date.now()
-          });
-        }
         deferredTriggerEvents.push(...result.triggerAnimationEvents);
       }
 
@@ -416,11 +409,6 @@ class EffectChainProcessor {
         stateBeforeTriggers = JSON.parse(JSON.stringify(preCardPlayTriggerState));
       }
       currentStates = cardPlayResult.newPlayerStates;
-      deferredTriggerEvents.push({
-        type: 'STATE_SNAPSHOT',
-        snapshotPlayerStates: JSON.parse(JSON.stringify(preCardPlayTriggerState)),
-        timestamp: Date.now()
-      });
       deferredTriggerEvents.push(...cardPlayResult.animationEvents);
     }
 

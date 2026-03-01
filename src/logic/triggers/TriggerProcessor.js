@@ -123,10 +123,18 @@ class TriggerProcessor {
           timestamp: Date.now()
         };
 
-        // Events first, then snapshot:
-        // - Destructive: targets stay in DOM for damage animations
-        // - Additive: state change appears when announcement completes
-        allAnimationEvents.push(...result.animationEvents, snapshot);
+        const effects = ability.effects || (ability.effect ? [ability.effect] : []);
+        const isDestructive = ability.destroyAfterTrigger ||
+          effects.some(e => e.type === 'DAMAGE' || e.type === 'DESTROY');
+
+        if (isDestructive) {
+          // Destructive: events first so targets stay in DOM for damage/destroy animations
+          allAnimationEvents.push(...result.animationEvents, snapshot);
+        } else {
+          // Additive: snapshot first so state changes (drawn cards, stat boosts)
+          // appear when the announcement animation starts
+          allAnimationEvents.push(snapshot, ...result.animationEvents);
+        }
 
         if (result.statModsApplied) {
           anyStatMods = true;
@@ -316,13 +324,6 @@ class TriggerProcessor {
           if (routeResult?.animationEvents?.length > 0) animationEvents.push(...routeResult.animationEvents);
           // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
           if (routeResult?.triggerAnimationEvents?.length > 0) {
-            if (routeResult.preTriggerState) {
-              animationEvents.push({
-                type: 'STATE_SNAPSHOT',
-                snapshotPlayerStates: JSON.parse(JSON.stringify(routeResult.preTriggerState)),
-                timestamp: Date.now()
-              });
-            }
             animationEvents.push(...routeResult.triggerAnimationEvents);
           }
           if (effect.type === 'MODIFY_STAT') {
@@ -370,13 +371,6 @@ class TriggerProcessor {
 
         // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
         if (result?.triggerAnimationEvents?.length > 0) {
-          if (result.preTriggerState) {
-            animationEvents.push({
-              type: 'STATE_SNAPSHOT',
-              snapshotPlayerStates: JSON.parse(JSON.stringify(result.preTriggerState)),
-              timestamp: Date.now()
-            });
-          }
           animationEvents.push(...result.triggerAnimationEvents);
         }
 

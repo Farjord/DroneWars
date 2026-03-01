@@ -1431,11 +1431,10 @@ describe('TriggerProcessor', () => {
         logCallback: vi.fn()
       });
 
-      // Events first, then snapshot: state change appears after announcement
+      // Snapshot first: additive state change appears when announcement starts
       expect(result.animationEvents.length).toBeGreaterThanOrEqual(3);
-      expect(result.animationEvents[0].type).toBe('TRIGGER_FIRED');
-      expect(result.animationEvents[1].type).toBe('STAT_CHANGE');
-      expect(result.animationEvents[result.animationEvents.length - 1].type).toBe('STATE_SNAPSHOT');
+      expect(result.animationEvents[0].type).toBe('STATE_SNAPSHOT');
+      expect(result.animationEvents[1].type).toBe('TRIGGER_FIRED');
     });
 
     it('has stable deterministic eventId', () => {
@@ -1528,7 +1527,7 @@ describe('TriggerProcessor', () => {
       expect(snapshots[0].snapshotPlayerStates.player2).toBeDefined();
     });
 
-    it('should place STATE_SNAPSHOT AFTER TRIGGER_FIRED for non-damage triggers (GO_AGAIN)', () => {
+    it('should place STATE_SNAPSHOT BEFORE TRIGGER_FIRED for non-damage triggers (GO_AGAIN)', () => {
       const goAgainDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
       basePlayerStates.player1.dronesOnBoard.lane1 = [goAgainDrone, triggeringDrone];
@@ -1547,8 +1546,8 @@ describe('TriggerProcessor', () => {
       const snapshotIdx = events.findIndex(e => e.type === 'STATE_SNAPSHOT');
       const triggerFiredIdx = events.findIndex(e => e.type === 'TRIGGER_FIRED');
 
-      // Events first, then snapshot: state change appears after announcement
-      expect(snapshotIdx).toBeGreaterThan(triggerFiredIdx);
+      // Snapshot first: state change appears when announcement starts
+      expect(snapshotIdx).toBeLessThan(triggerFiredIdx);
     });
 
     it('should place STATE_SNAPSHOT AFTER damage events for DOM-dependent triggers', () => {
