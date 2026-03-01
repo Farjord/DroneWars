@@ -623,14 +623,11 @@ class AnimationManager {
     try {
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
+        const source = executor.getAnimationSource?.() || 'ACTION_STEPS';
 
-        // 1. Apply step state → React re-renders
-        if (step.stateAfter && executor.applyIntermediateState) {
-          executor.applyIntermediateState(step.stateAfter);
-          await this.waitForReactRender();
-        }
-
-        // 2. Map and play step's animations
+        // 1. Map animations and split by timing
+        let preAnimations = [];
+        let postAnimations = [];
         if (step.animations && step.animations.length > 0) {
           const mapped = step.animations.map(event => {
             const animDef = this.animations[event.type];
@@ -640,10 +637,30 @@ class AnimationManager {
               payload: { ...event, droneId: event.sourceId || event.targetId }
             };
           });
-          await this.executeAnimations(mapped, executor.getAnimationSource?.() || 'ACTION_STEPS', executor);
+          const { preState, postState, independent } = this.splitByTiming(mapped);
+          preAnimations = [...independent, ...preState];
+          postAnimations = postState;
         }
 
-        // 3. Pause between steps (not after last)
+        // 2. Play pre-state + independent animations (drones still in DOM)
+        if (preAnimations.length > 0) {
+          debugLog('ANIMATIONS', `[ACTION STEPS] Step ${i}: playing ${preAnimations.length} pre-state animation(s)`);
+          await this.executeAnimations(preAnimations, source, executor);
+        }
+
+        // 3. Apply step state → React re-renders
+        if (step.stateAfter && executor.applyIntermediateState) {
+          executor.applyIntermediateState(step.stateAfter);
+          await this.waitForReactRender();
+        }
+
+        // 4. Play post-state animations (e.g. TELEPORT_IN after drone appears)
+        if (postAnimations.length > 0) {
+          debugLog('ANIMATIONS', `[ACTION STEPS] Step ${i}: playing ${postAnimations.length} post-state animation(s)`);
+          await this.executeAnimations(postAnimations, source, executor);
+        }
+
+        // 5. Pause between steps (not after last)
         if (i < steps.length - 1) {
           await new Promise(r => setTimeout(r, 400));
         }
