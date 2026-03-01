@@ -94,7 +94,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Trigger mouseUp on center lane (lane2)
@@ -119,7 +119,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[0]);
@@ -142,7 +142,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Test lane1 (left)
@@ -175,7 +175,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[1]);
@@ -196,7 +196,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[1]);
@@ -213,7 +213,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       expect(() => {
@@ -232,12 +232,12 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
-      // Lanes should have targeting highlight when dragging LANE card
+      // Lanes should have targeting pulse child when dragging LANE card
       lanes.forEach(lane => {
-        expect(lane.className).toMatch(/ring|pulse|cyan/i);
+        expect(lane.querySelector('.lane-target-pulse')).toBeTruthy();
       });
     });
 
@@ -251,7 +251,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Lanes should NOT have action card targeting highlight when targets cleared
@@ -273,7 +273,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.click(lanes[1]);
@@ -297,7 +297,7 @@ describe('DroneLanesDisplay action card drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[1]);

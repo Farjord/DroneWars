@@ -8,21 +8,11 @@
 import React from 'react';
 import DroneToken from './DroneToken.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import { LANE_COLORS, getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
   (effect.type === 'SINGLE_MOVE' || effect.type === 'MULTI_MOVE') && !!effect.destination;
-
-// Hex grid SVG patterns for lane backgrounds
-const createHexGridPattern = (strokeColor) => {
-  const svg = `<svg width="56" height="32" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14,0 L42,0 L56,16 L42,32 L14,32 L0,16 Z" fill="none" stroke="${strokeColor}" stroke-width="0.5" opacity="0.2"/>
-  </svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-};
-
-const cyanHexGrid = createHexGridPattern('#06b6d4');
-const redHexGrid = createHexGridPattern('#ef4444');
 
 /**
  * Renders all drones within a lane with proper positioning and interaction handlers.
@@ -39,10 +29,7 @@ const renderDronesOnBoard = ({
   selectedCard, hoveredLane,
 }) => {
   return (
-    <div
-      className="flex flex-wrap gap-8 justify-center items-center"
-      style={{ minHeight: 'clamp(130px, 6.77vw, 175px)', paddingTop: '2px' }}
-    >
+    <>
      {drones.map((drone) => {
           const droneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           const abilityTargetMatch = validAbilityTargets.some(t => t.id === drone.id && t.owner === droneOwner);
@@ -151,7 +138,7 @@ const renderDronesOnBoard = ({
                />
           );
       })}
-    </div>
+    </>
   );
 };
 
@@ -220,24 +207,18 @@ const SingleLaneView = ({
   const isHoveredTarget = isTargetable && hoveredLane?.id === laneId && hoveredLane?.owner === owner;
 
   const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
-  const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
 
-  // Lane control state for visual indicators
+  // Clip-path: isPlayer in SingleLaneView means local player's lane.
+  // Visual "opponent-style" (narrow top) when !isPlayer.
+  const clipPath = getLaneClipPath(!isPlayer);
+
+  // Lane control state for decorative layer intensity
   const laneControlState = laneControl[laneId];
   const localPlayerId = getLocalPlayerId();
-  const opponentPlayerId = getOpponentPlayerId();
   const isPlayerControlled = laneControlState === localPlayerId;
-  const isOpponentControlled = laneControlState === opponentPlayerId;
-
-  let laneBorderClass = 'border-2 border-gray-700/30';
-  let laneBackgroundClass = baseBackgroundColor;
-
-  if (isPlayer && isPlayerControlled) {
-    laneBorderClass = 'border-[3px] border-cyan-400/70 shadow-[0_0_20px_rgba(6,182,212,0.4)]';
-    laneBackgroundClass = 'bg-cyan-400/15';
-  } else if (!isPlayer && isOpponentControlled) {
-    laneBorderClass = 'border-[3px] border-red-400/70 shadow-[0_0_20px_rgba(239,68,68,0.4)]';
-  }
+  const isOpponentControlled = laneControlState === getOpponentPlayerId();
+  const controlledOwner = (isPlayer && isPlayerControlled) || (!isPlayer && isOpponentControlled)
+    ? laneControlState : null;
 
   return (
     <div
@@ -305,63 +286,64 @@ const SingleLaneView = ({
           });
         }
       }}
-      className={`flex-1 rounded-lg p-2 relative ${laneBorderClass}
-        ${laneBackgroundClass}
-        ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
-       ${isHoveredTarget ? 'scale-[1.01] z-10 transition-transform duration-200 ease-out' : 'transition-transform duration-200 ease-in-out'}
+      className={`rounded-lg relative
+        ${isInteractivePlayerLane ? 'cursor-pointer' : ''}
+        ${isHoveredTarget ? 'scale-[1.01] z-10 transition-transform duration-200 ease-out' : 'transition-transform duration-200 ease-in-out'}
       `}
-      style={{
-        backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,
-        backgroundSize: '56px 32px'
-      }}
+      style={{ overflow: 'visible', width: '100%', height: '100%' }}
     >
-      {isTargetable && (
-        <div
-          className="absolute inset-0 rounded-lg lane-target-pulse pointer-events-none z-[-1]"
-          style={{
-            backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,
-            backgroundSize: '56px 32px',
-            backgroundColor: isPlayer ? 'rgba(34, 211, 238, 0.1)' : 'rgba(239, 68, 68, 0.1)'
-          }}
-        />
-      )}
-      <div className="relative">
-      {renderDronesOnBoard({
-        drones: player.dronesOnBoard[laneId],
-        isPlayer,
-        lane: laneId,
-        localPlayerState,
-        opponentPlayerState,
-        localPlacedSections,
-        opponentPlacedSections,
-        gameEngine,
-        getPlacedSectionsForEngine,
-        handleTokenClick,
-        handleAbilityIconClick,
-        selectedDrone,
-        recentlyHitDrones,
-        potentialInterceptors,
-        potentialGuardians,
-        droneRefs,
-        mandatoryAction,
-        validAbilityTargets,
-        validCardTargets,
-        affectedDroneIds,
-        setHoveredTarget,
-        hoveredTarget,
-        interceptedBadge,
-        draggedDrone,
-        handleDroneDragStart,
-        handleDroneDragEnd,
-        draggedActionCard,
-        handleActionCardDragEnd,
-        getLocalPlayerId,
-        getOpponentPlayerId,
-        abilityMode,
-        effectChainState,
-        selectedCard,
-        hoveredLane,
-      })}
+      {/* Clipped visual layer — decorative, no interaction */}
+      <div
+        className={`absolute inset-0 ${isTargetable ? 'lane-target-pulse' : ''}`}
+        style={{ pointerEvents: 'none' }}
+      >
+        <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} />
+      </div>
+
+      {/* Content layer — unclipped, interactive */}
+      <div style={{
+        position: 'absolute', left: '2%', right: '2%',
+        top: 0, bottom: 0,
+        pointerEvents: 'auto', zIndex: 10,
+        display: 'flex', flexWrap: 'wrap', gap: '0',
+        justifyContent: 'space-evenly', alignItems: 'center', alignContent: 'center',
+      }}>
+        {renderDronesOnBoard({
+          drones: player.dronesOnBoard[laneId],
+          isPlayer,
+          lane: laneId,
+          localPlayerState,
+          opponentPlayerState,
+          localPlacedSections,
+          opponentPlacedSections,
+          gameEngine,
+          getPlacedSectionsForEngine,
+          handleTokenClick,
+          handleAbilityIconClick,
+          selectedDrone,
+          recentlyHitDrones,
+          potentialInterceptors,
+          potentialGuardians,
+          droneRefs,
+          mandatoryAction,
+          validAbilityTargets,
+          validCardTargets,
+          affectedDroneIds,
+          setHoveredTarget,
+          hoveredTarget,
+          interceptedBadge,
+          draggedDrone,
+          handleDroneDragStart,
+          handleDroneDragEnd,
+          draggedActionCard,
+          handleActionCardDragEnd,
+          getLocalPlayerId,
+          getOpponentPlayerId,
+          abilityMode,
+          effectChainState,
+          selectedCard,
+          hoveredLane,
+        })}
       </div>
     </div>
   );

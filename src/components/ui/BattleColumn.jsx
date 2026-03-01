@@ -66,7 +66,7 @@ const ShipSectionSlot = ({
         className="bg-black/20 rounded-lg border-2 border-dashed border-gray-700"
         style={{
           width: '100%',
-          height: SECTION_SLOT_HEIGHT
+          height: '100%'
         }}
       />
     );
@@ -114,7 +114,7 @@ const ShipSectionSlot = ({
     <div
       style={{
         width: '100%',
-        height: SECTION_SLOT_HEIGHT
+        height: '100%'
       }}
       onMouseUp={() => {
         if (draggedActionCard && handleActionCardDragEnd) {
@@ -324,60 +324,71 @@ const BattleColumn = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-2 min-w-0">
-      {/* Opponent Ship Section */}
-      <ShipSectionSlot
-        player={opponentPlayerState}
-        isPlayer={false}
-        placedSections={opponentPlacedSections}
-        onTargetClick={handleTargetClick}
-        onViewFullCard={onViewShipSection}
-        isInteractive={false}
-        reallocationPhase={null}
-        pendingShieldAllocations={null}
-        pendingShieldChanges={null}
-        draggedDrone={draggedDrone}
-        handleDroneDragEnd={handleDroneDragEnd}
-        playerEffectiveStats={opponentEffectiveStats}
-        {...sharedSectionProps}
-      />
+    <div className="flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
+      {/* Opponent Ship Section — 30% height, behind lanes */}
+      <div style={{ height: '30%', width: '100%', position: 'relative', zIndex: 1 }}>
+        <ShipSectionSlot
+          player={opponentPlayerState}
+          isPlayer={false}
+          placedSections={opponentPlacedSections}
+          onTargetClick={handleTargetClick}
+          onViewFullCard={onViewShipSection}
+          isInteractive={false}
+          reallocationPhase={null}
+          pendingShieldAllocations={null}
+          pendingShieldChanges={null}
+          draggedDrone={draggedDrone}
+          handleDroneDragEnd={handleDroneDragEnd}
+          playerEffectiveStats={opponentEffectiveStats}
+          {...sharedSectionProps}
+        />
+      </div>
 
-      {/* Opponent Lane */}
-      <SingleLaneView
-        laneId={laneId}
-        isPlayer={false}
-        player={opponentPlayerState}
-        {...sharedLaneProps}
-      />
+      {/* Opponent Lane — 29% height, overlaps ship by -10% margin */}
+      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: 5 }}>
+        <SingleLaneView
+          laneId={laneId}
+          isPlayer={false}
+          player={opponentPlayerState}
+          {...sharedLaneProps}
+        />
+      </div>
 
-      {/* Player Lane */}
-      <SingleLaneView
-        laneId={laneId}
-        isPlayer={true}
-        player={localPlayerState}
-        draggedCard={draggedCard}
-        handleCardDragEnd={handleCardDragEnd}
-        {...sharedLaneProps}
-      />
+      {/* Centre gap */}
+      <div style={{ height: '5%', width: '100%' }} />
 
-      {/* Player Ship Section */}
-      <ShipSectionSlot
-        player={localPlayerState}
-        isPlayer={true}
-        placedSections={localPlacedSections}
-        onSectionClick={handleShipSectionClick}
-        onAbilityClick={handleShipAbilityClick}
-        onTargetClick={handleTargetClick}
-        onViewFullCard={onViewShipSection}
-        isInteractive={playerShipInteractive}
-        reallocationPhase={reallocationPhase}
-        pendingShieldAllocations={pendingShieldAllocations}
-        pendingShieldChanges={pendingShieldChanges}
-        draggedDrone={null}
-        handleDroneDragEnd={null}
-        playerEffectiveStats={localEffectiveStats}
-        {...sharedSectionProps}
-      />
+      {/* Player Lane — 29% height */}
+      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: 5 }}>
+        <SingleLaneView
+          laneId={laneId}
+          isPlayer={true}
+          player={localPlayerState}
+          draggedCard={draggedCard}
+          handleCardDragEnd={handleCardDragEnd}
+          {...sharedLaneProps}
+        />
+      </div>
+
+      {/* Player Ship Section — 30% height, overlaps lane by -10% margin, behind lanes */}
+      <div style={{ height: '30%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: 1 }}>
+        <ShipSectionSlot
+          player={localPlayerState}
+          isPlayer={true}
+          placedSections={localPlacedSections}
+          onSectionClick={handleShipSectionClick}
+          onAbilityClick={handleShipAbilityClick}
+          onTargetClick={handleTargetClick}
+          onViewFullCard={onViewShipSection}
+          isInteractive={playerShipInteractive}
+          reallocationPhase={reallocationPhase}
+          pendingShieldAllocations={pendingShieldAllocations}
+          pendingShieldChanges={pendingShieldChanges}
+          draggedDrone={null}
+          handleDroneDragEnd={null}
+          playerEffectiveStats={localEffectiveStats}
+          {...sharedSectionProps}
+        />
+      </div>
     </div>
   );
 };

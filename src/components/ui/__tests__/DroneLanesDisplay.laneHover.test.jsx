@@ -126,7 +126,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
       const { container } = render(<DroneLanesDisplay {...props} />);
 
       // Find lane containers
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
       // Simulate mouse enter on lane1
@@ -146,7 +146,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
       // Simulate mouse leave on lane1
@@ -165,7 +165,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
       // Simulate mouse enter/leave
@@ -186,7 +186,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
       // Simulate mouse enter
@@ -207,7 +207,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane2 = laneContainers[1]; // lane2 is NOT a valid target
 
       // Simulate mouse enter on non-target lane
@@ -350,7 +350,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
       // Targetable lane gets a pulse overlay child with lane-target-pulse class

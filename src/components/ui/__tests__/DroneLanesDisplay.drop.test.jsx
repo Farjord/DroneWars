@@ -75,7 +75,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
 
       // Find center lane (lane2) and trigger mouseUp
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
       expect(lanes.length).toBe(3);
 
@@ -96,7 +96,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Test lane1 (left)
@@ -119,7 +119,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[1]);
@@ -139,7 +139,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.mouseUp(lanes[1]);
@@ -156,7 +156,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Should not throw
@@ -176,12 +176,12 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
-      // All lanes should have targeting highlight when dragging
+      // All lanes should have targeting pulse child when dragging
       lanes.forEach(lane => {
-        expect(lane.className).toMatch(/ring|pulse|cyan/i);
+        expect(lane.querySelector('.lane-target-pulse')).toBeTruthy();
       });
     });
 
@@ -195,7 +195,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       // Opponent lanes should NOT have the drag targeting highlight
@@ -218,7 +218,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       const lanes = screen.getAllByRole('generic').filter(el =>
-        el.className.includes('flex-1') && el.className.includes('rounded-lg')
+        el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
       fireEvent.click(lanes[1]);

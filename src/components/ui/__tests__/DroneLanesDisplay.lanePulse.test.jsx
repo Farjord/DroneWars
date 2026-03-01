@@ -101,8 +101,8 @@ describe('DroneLanesDisplay lane targeting styles', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      // Find lane containers - they are the flex-1 divs
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      // Find lane containers by data-testid
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
 
       // Check that NO lane container has animate-pulse class
       laneContainers.forEach(lane => {
@@ -119,7 +119,7 @@ describe('DroneLanesDisplay lane targeting styles', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0]; // First lane
 
       // Lane should have a pulse overlay child (not ring classes on the container)
@@ -137,13 +137,13 @@ describe('DroneLanesDisplay lane targeting styles', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
 
-      const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
+      const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0]; // First lane
 
-      // Pulse overlay should have a backgroundColor style (inline, not class)
+      // Pulse overlay should exist and contain decorative layers
       const pulseOverlay = lane1.querySelector('.lane-target-pulse');
       expect(pulseOverlay).not.toBeNull();
-      expect(pulseOverlay.style.backgroundColor).toBeTruthy();
+      expect(pulseOverlay.children.length).toBeGreaterThan(0);
     });
   });
 
