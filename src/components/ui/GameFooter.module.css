@@ -34,7 +34,7 @@
 }
 
 .contentOpen {
-  height: 215px;
+  height: 100%;
   @apply opacity-100;
 }
 
@@ -181,7 +181,7 @@
 
 .handCardsContainer {
   @apply relative flex justify-center items-start;
-  height: 205px;
+  height: calc(100% - 10px);
   padding-top: 5px;
   overflow: visible;
 }

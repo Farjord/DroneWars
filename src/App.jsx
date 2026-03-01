@@ -903,7 +903,8 @@ const App = ({ phaseAnimationQueue }) => {
   const currentBackground = getBackgroundById(selectedBackground);
 
   return (
-    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => {
+    <div className="h-screen w-screen bg-black flex items-center justify-center">
+    <div className="relative w-full max-h-full aspect-video overflow-hidden flex flex-col text-white font-sans select-none" ref={gameAreaRef} onClick={() => {
       cancelAbilityMode();
       cancelCardSelection('game-area-click');
     }}>
@@ -955,6 +956,7 @@ const App = ({ phaseAnimationQueue }) => {
        setBarrageImpacts={setBarrageImpacts}
      />
 
+      <div style={{ flex: '0 0 15%' }}>
       <GameHeader
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}
@@ -1021,6 +1023,7 @@ const App = ({ phaseAnimationQueue }) => {
         localPlayerHullIntegrity={localPlayerHullIntegrity}
         opponentHullIntegrity={opponentHullIntegrity}
       />
+      </div>
 
       <GameBattlefield
         localPlayerState={localPlayerState}
@@ -1075,6 +1078,7 @@ const App = ({ phaseAnimationQueue }) => {
         laneControl={laneControl}
       />
 
+      <div style={{ flex: '0 0 25%', maxHeight: '25%' }}>
       <GameFooter
         gameMode={gameState.gameMode}
         localPlayerState={localPlayerState}
@@ -1130,6 +1134,7 @@ const App = ({ phaseAnimationQueue }) => {
         onCardPlayWarning={showCardPlayWarning}
         onCardPlayWarningClear={clearCardPlayWarning}
       />
+      </div>
 
       <ModalLayer
         // Modal state
@@ -1262,6 +1267,7 @@ const App = ({ phaseAnimationQueue }) => {
         />
       )}
 
+    </div>
     </div>
   );
 
