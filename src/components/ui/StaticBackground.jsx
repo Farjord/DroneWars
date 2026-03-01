@@ -14,7 +14,7 @@ import React from 'react';
 const StaticBackground = ({ imagePath }) => {
   return (
     <div
-      className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+      className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
       style={{
         backgroundImage: `url(${imagePath})`,
         backgroundColor: '#0a0a1a' // Fallback color while image loads

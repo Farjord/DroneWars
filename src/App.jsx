@@ -903,8 +903,10 @@ const App = ({ phaseAnimationQueue }) => {
   const currentBackground = getBackgroundById(selectedBackground);
 
   return (
-    <div className="h-screen w-screen bg-black flex items-center justify-center">
-    <div className="relative w-full max-h-full aspect-video overflow-hidden flex flex-col text-white font-sans select-none" ref={gameAreaRef} onClick={() => {
+    <div className="h-screen w-screen bg-black flex flex-col items-center overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden flex flex-col text-white font-sans select-none"
+      style={{ maxWidth: 'calc(100vh * 2)' }}
+      ref={gameAreaRef} onClick={() => {
       cancelAbilityMode();
       cancelCardSelection('game-area-click');
     }}>

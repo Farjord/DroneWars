@@ -132,7 +132,7 @@ const SpaceBackground = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 -z-10"
+      className="absolute inset-0 z-0"
       style={{ background: '#0a0a1a' }}
     />
   );

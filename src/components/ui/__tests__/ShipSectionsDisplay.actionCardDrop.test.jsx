@@ -1,14 +1,15 @@
 // ========================================
-// SHIP SECTIONS DISPLAY ACTION CARD DROP TESTS
+// BATTLE COLUMN — SHIP SECTION ACTION CARD DROP TESTS
 // ========================================
-// TDD tests for action card ship section targeting via drag-and-drop
 // Tests that SHIP_SECTION targeting cards (like Shield Boost) can be
-// dropped on ship sections to trigger the card play.
+// dropped on ship sections via mouseUp within BattleColumn.
+// Originally tested ShipSectionsDisplay; ported to BattleColumn after
+// the 3-column grid restructure.
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ShipSectionsDisplay from '../ShipSectionsDisplay.jsx';
+import BattleColumn from '../BattleColumn.jsx';
 
 // Mock dependencies
 vi.mock('../ShipSectionCompact.jsx', () => ({
@@ -23,10 +24,10 @@ vi.mock('../ShipSectionCompact.jsx', () => ({
   )
 }));
 
-vi.mock('../../../hooks/useGameData.js', () => ({
-  useGameData: () => ({
-    getEffectiveShipStats: () => ({ bySection: {} })
-  })
+vi.mock('../SingleLaneView.jsx', () => ({
+  default: ({ laneId, isPlayer }) => (
+    <div data-testid={`lane-${laneId}-${isPlayer ? 'player' : 'opponent'}`} />
+  )
 }));
 
 vi.mock('../../../utils/debugLogger.js', () => ({
@@ -38,14 +39,30 @@ vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
 }));
 
 // Helper to find section wrapper elements (the divs with onMouseUp)
-const getSectionWrappers = (container) => {
-  // Find the mock section elements and get their parent divs
-  const sectionElements = container.querySelectorAll('[data-testid^="section-"]');
+const getSectionWrappers = (container, side) => {
+  const prefix = side === 'player' ? 'section-' : 'section-';
+  const sectionElements = container.querySelectorAll(`[data-testid^="${prefix}"]`);
+  // Filter to only get player or opponent sections based on DOM position
   return Array.from(sectionElements).map(el => el.parentElement);
 };
 
-describe('ShipSectionsDisplay action card drop', () => {
-  // Mock Shield Boost card - SHIP_SECTION targeting with FRIENDLY affinity
+// Helper to get player section wrappers (bottom of column)
+const getPlayerSectionWrapper = (container) => {
+  const sectionElements = container.querySelectorAll('[data-testid^="section-"]');
+  // In BattleColumn: opponent section is first, player section is last
+  // There are exactly 2 sections rendered per column
+  const all = Array.from(sectionElements).map(el => el.parentElement);
+  return all[1]; // Player section is the second one
+};
+
+// Helper to get opponent section wrappers (top of column)
+const getOpponentSectionWrapper = (container) => {
+  const sectionElements = container.querySelectorAll('[data-testid^="section-"]');
+  const all = Array.from(sectionElements).map(el => el.parentElement);
+  return all[0]; // Opponent section is the first one
+};
+
+describe('BattleColumn ship section action card drop', () => {
   const mockShipSectionCard = {
     id: 'CARD037',
     instanceId: 'CARD037-inst-1',
@@ -56,7 +73,6 @@ describe('ShipSectionsDisplay action card drop', () => {
     effect: { type: 'RESTORE_SECTION_SHIELDS', value: 2 }
   };
 
-  // Mock a DRONE targeting card (should NOT trigger section drop)
   const mockDroneTargetCard = {
     id: 'CARD001',
     instanceId: 'CARD001-inst-1',
@@ -68,43 +84,70 @@ describe('ShipSectionsDisplay action card drop', () => {
   };
 
   const defaultProps = {
-    player: {
+    laneId: 'lane1',
+    sectionIndex: 0,
+    localPlayerState: {
+      energy: 5,
       shipSections: {
-        bridge: { hull: 8, maxHull: 8, shields: 2, allocatedShields: 1 },
-        powerCell: { hull: 6, maxHull: 6, shields: 2, allocatedShields: 0 },
-        droneControlHub: { hull: 10, maxHull: 10, shields: 2, allocatedShields: 2 }
+        bridge: { hull: 8, maxHull: 8, shields: 2, allocatedShields: 1 }
       }
     },
-    isPlayer: true,
-    placedSections: ['bridge', 'powerCell', 'droneControlHub'],
-    onSectionClick: vi.fn(),
-    onAbilityClick: vi.fn(),
-    onTargetClick: vi.fn(),
-    onViewFullCard: vi.fn(),
-    isInteractive: false,
+    opponentPlayerState: {
+      shipSections: {
+        weapons: { hull: 6, maxHull: 6, shields: 2, allocatedShields: 0 }
+      }
+    },
+    localPlacedSections: ['bridge', 'powerCell', 'droneControlHub'],
+    opponentPlacedSections: ['weapons', 'engines', 'cargo'],
+    selectedCard: null,
     validCardTargets: [
       { id: 'bridge', owner: 'player1' },
-      { id: 'powerCell', owner: 'player1' },
-      { id: 'droneControlHub', owner: 'player1' }
+      { id: 'weapons', owner: 'player2' }
     ],
-    selectedDrone: null,
+    affectedDroneIds: [],
+    abilityMode: null,
+    validAbilityTargets: [],
+    effectChainState: null,
+    turnPhase: 'action',
     reallocationPhase: null,
     pendingShieldAllocations: null,
     pendingShieldChanges: null,
-    gameEngine: {
-      getEffectiveSectionMaxShields: vi.fn()
-    },
-    turnPhase: 'action',
-    isMyTurn: () => true,
-    passInfo: {},
-    getLocalPlayerId: () => 'player1',
-    localPlayerState: { energy: 5 },
     shipAbilityMode: null,
     hoveredTarget: null,
-    setHoveredTarget: vi.fn(),
+    selectedDrone: null,
+    recentlyHitDrones: [],
+    potentialInterceptors: [],
+    potentialGuardians: [],
+    droneRefs: { current: {} },
     sectionRefs: { current: {} },
+    mandatoryAction: null,
+    gameEngine: { getEffectiveSectionMaxShields: vi.fn(), getShipStatus: vi.fn() },
+    getLocalPlayerId: () => 'player1',
+    getOpponentPlayerId: () => 'player2',
+    isMyTurn: () => true,
+    getPlacedSectionsForEngine: vi.fn(),
+    passInfo: {},
+    handleTargetClick: vi.fn(),
+    handleLaneClick: vi.fn(),
+    handleShipSectionClick: vi.fn(),
+    handleShipAbilityClick: vi.fn(),
+    handleTokenClick: vi.fn(),
+    handleAbilityIconClick: vi.fn(),
+    setHoveredTarget: vi.fn(),
+    onViewShipSection: vi.fn(),
+    interceptedBadge: null,
+    draggedCard: null,
+    handleCardDragEnd: vi.fn(),
     draggedDrone: null,
-    handleDroneDragEnd: vi.fn()
+    handleDroneDragStart: vi.fn(),
+    handleDroneDragEnd: vi.fn(),
+    draggedActionCard: null,
+    handleActionCardDragEnd: vi.fn(),
+    hoveredLane: null,
+    setHoveredLane: vi.fn(),
+    laneControl: { lane1: null, lane2: null, lane3: null },
+    opponentEffectiveStats: { bySection: {} },
+    localEffectiveStats: { bySection: {} },
   };
 
   beforeEach(() => {
@@ -115,18 +158,15 @@ describe('ShipSectionsDisplay action card drop', () => {
     it('should call handleActionCardDragEnd with section for SHIP_SECTION targeting card', () => {
       const mockHandleActionCardDragEnd = vi.fn();
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
           draggedActionCard={{ card: mockShipSectionCard }}
           handleActionCardDragEnd={mockHandleActionCardDragEnd}
         />
       );
 
-      // Find the section wrapper divs (the ones with onMouseUp)
-      const sectionWrappers = getSectionWrappers(container);
-
-      // Trigger mouseUp on the first section (bridge)
-      fireEvent.mouseUp(sectionWrappers[0]);
+      const playerSection = getPlayerSectionWrapper(container);
+      fireEvent.mouseUp(playerSection);
 
       expect(mockHandleActionCardDragEnd).toHaveBeenCalledWith(
         { id: 'bridge', name: 'bridge' },
@@ -138,61 +178,62 @@ describe('ShipSectionsDisplay action card drop', () => {
     it('should call handleActionCardDragEnd with correct owner for opponent section', () => {
       const mockHandleActionCardDragEnd = vi.fn();
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
-          isPlayer={false}
-          validCardTargets={[
-            { id: 'bridge', owner: 'player2' },
-            { id: 'powerCell', owner: 'player2' },
-            { id: 'droneControlHub', owner: 'player2' }
-          ]}
           draggedActionCard={{ card: mockShipSectionCard }}
           handleActionCardDragEnd={mockHandleActionCardDragEnd}
         />
       );
 
-      const sectionWrappers = getSectionWrappers(container);
-      fireEvent.mouseUp(sectionWrappers[1]); // powerCell
+      const opponentSection = getOpponentSectionWrapper(container);
+      fireEvent.mouseUp(opponentSection);
 
       expect(mockHandleActionCardDragEnd).toHaveBeenCalledWith(
-        { id: 'powerCell', name: 'powerCell' },
+        { id: 'weapons', name: 'weapons' },
         'section',
         'player2'
       );
     });
 
-    it('should call handleActionCardDragEnd with correct section IDs for all sections', () => {
+    it('should call handleActionCardDragEnd with correct section IDs across columns', () => {
       const mockHandleActionCardDragEnd = vi.fn();
-      const { container } = render(
-        <ShipSectionsDisplay
+
+      // Render column 0 (bridge / weapons)
+      const { container: c0 } = render(
+        <BattleColumn
           {...defaultProps}
+          sectionIndex={0}
           draggedActionCard={{ card: mockShipSectionCard }}
           handleActionCardDragEnd={mockHandleActionCardDragEnd}
         />
       );
-
-      const sectionWrappers = getSectionWrappers(container);
-
-      // Test bridge (index 0)
-      fireEvent.mouseUp(sectionWrappers[0]);
+      fireEvent.mouseUp(getPlayerSectionWrapper(c0));
       expect(mockHandleActionCardDragEnd).toHaveBeenLastCalledWith(
         { id: 'bridge', name: 'bridge' },
         'section',
         'player1'
       );
 
-      // Test powerCell (index 1)
-      fireEvent.mouseUp(sectionWrappers[1]);
+      // Render column 1 (powerCell / engines)
+      const { container: c1 } = render(
+        <BattleColumn
+          {...defaultProps}
+          laneId="lane2"
+          sectionIndex={1}
+          localPlayerState={{
+            ...defaultProps.localPlayerState,
+            shipSections: {
+              ...defaultProps.localPlayerState.shipSections,
+              powerCell: { hull: 6, maxHull: 6, shields: 2, allocatedShields: 0 }
+            }
+          }}
+          draggedActionCard={{ card: mockShipSectionCard }}
+          handleActionCardDragEnd={mockHandleActionCardDragEnd}
+        />
+      );
+      fireEvent.mouseUp(getPlayerSectionWrapper(c1));
       expect(mockHandleActionCardDragEnd).toHaveBeenLastCalledWith(
         { id: 'powerCell', name: 'powerCell' },
-        'section',
-        'player1'
-      );
-
-      // Test droneControlHub (index 2)
-      fireEvent.mouseUp(sectionWrappers[2]);
-      expect(mockHandleActionCardDragEnd).toHaveBeenLastCalledWith(
-        { id: 'droneControlHub', name: 'droneControlHub' },
         'section',
         'player1'
       );
@@ -203,15 +244,15 @@ describe('ShipSectionsDisplay action card drop', () => {
     it('should NOT call handleActionCardDragEnd for DRONE targeting card on section', () => {
       const mockHandleActionCardDragEnd = vi.fn();
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
           draggedActionCard={{ card: mockDroneTargetCard }}
           handleActionCardDragEnd={mockHandleActionCardDragEnd}
         />
       );
 
-      const sectionWrappers = getSectionWrappers(container);
-      fireEvent.mouseUp(sectionWrappers[0]);
+      const playerSection = getPlayerSectionWrapper(container);
+      fireEvent.mouseUp(playerSection);
 
       expect(mockHandleActionCardDragEnd).not.toHaveBeenCalled();
     });
@@ -221,32 +262,32 @@ describe('ShipSectionsDisplay action card drop', () => {
     it('should NOT call handleActionCardDragEnd when draggedActionCard is null', () => {
       const mockHandleActionCardDragEnd = vi.fn();
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
           draggedActionCard={null}
           handleActionCardDragEnd={mockHandleActionCardDragEnd}
         />
       );
 
-      const sectionWrappers = getSectionWrappers(container);
-      fireEvent.mouseUp(sectionWrappers[0]);
+      const playerSection = getPlayerSectionWrapper(container);
+      fireEvent.mouseUp(playerSection);
 
       expect(mockHandleActionCardDragEnd).not.toHaveBeenCalled();
     });
 
     it('should NOT throw if handleActionCardDragEnd prop is not provided', () => {
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
           draggedActionCard={{ card: mockShipSectionCard }}
-          // handleActionCardDragEnd not provided
+          handleActionCardDragEnd={undefined}
         />
       );
 
-      const sectionWrappers = getSectionWrappers(container);
+      const playerSection = getPlayerSectionWrapper(container);
 
       expect(() => {
-        fireEvent.mouseUp(sectionWrappers[0]);
+        fireEvent.mouseUp(playerSection);
       }).not.toThrow();
     });
   });
@@ -256,16 +297,15 @@ describe('ShipSectionsDisplay action card drop', () => {
       const mockHandleDroneDragEnd = vi.fn();
       const mockDrone = { id: 'drone-1', name: 'Dart' };
       const { container } = render(
-        <ShipSectionsDisplay
+        <BattleColumn
           {...defaultProps}
-          isPlayer={false}
           draggedDrone={mockDrone}
           handleDroneDragEnd={mockHandleDroneDragEnd}
         />
       );
 
-      const sectionWrappers = getSectionWrappers(container);
-      fireEvent.mouseUp(sectionWrappers[0]); // bridge
+      const opponentSection = getOpponentSectionWrapper(container);
+      fireEvent.mouseUp(opponentSection);
 
       expect(mockHandleDroneDragEnd).toHaveBeenCalled();
     });
