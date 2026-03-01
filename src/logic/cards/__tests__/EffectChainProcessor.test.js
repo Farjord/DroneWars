@@ -133,10 +133,16 @@ vi.mock('../../effects/conditional/ConditionalEffectProcessor.js', () => {
 // Stores mock trigger events to inject for testing trigger deferral
 let mockMoveTriggerEvents = [];
 let mockMoveMineEvents = [];
+let mockMoveTriggerSteps = [];
+// Per-effect overrides: { [effectIndex]: { triggerEvents, mineEvents, triggerSteps } }
+let mockMovePerEffect = {};
+let mockMoveEffectCounter = 0;
 vi.mock('../../effects/MovementEffectProcessor.js', () => {
   return {
     default: class MockMovementProcessor {
       executeSingleMove(card, drone, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx) {
+        const effectIdx = mockMoveEffectCounter++;
+        const perEffect = mockMovePerEffect[effectIdx];
         const droneOwnerId = drone.owner || actingPlayerId;
         newStates[droneOwnerId].dronesOnBoard[fromLane] =
           newStates[droneOwnerId].dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
@@ -147,11 +153,14 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
           postMovementState: JSON.parse(JSON.stringify(newStates)),
           effectResult: { movedDrones: [movedDrone], fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: !card.effects?.[0]?.goAgain,
-          triggerAnimationEvents: [...mockMoveTriggerEvents],
-          mineAnimationEvents: [...mockMoveMineEvents],
+          triggerAnimationEvents: perEffect?.triggerEvents ?? [...mockMoveTriggerEvents],
+          mineAnimationEvents: perEffect?.mineEvents ?? [...mockMoveMineEvents],
+          triggerSteps: perEffect?.triggerSteps ?? [...mockMoveTriggerSteps],
         };
       }
       executeMultiMove(card, drones, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx) {
+        const effectIdx = mockMoveEffectCounter++;
+        const perEffect = mockMovePerEffect[effectIdx];
         for (const drone of drones) {
           newStates[actingPlayerId].dronesOnBoard[fromLane] =
             newStates[actingPlayerId].dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
@@ -162,8 +171,9 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
           postMovementState: JSON.parse(JSON.stringify(newStates)),
           effectResult: { movedDrones: drones, fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: true,
-          triggerAnimationEvents: [...mockMoveTriggerEvents],
-          mineAnimationEvents: [...mockMoveMineEvents],
+          triggerAnimationEvents: perEffect?.triggerEvents ?? [...mockMoveTriggerEvents],
+          mineAnimationEvents: perEffect?.mineEvents ?? [...mockMoveMineEvents],
+          triggerSteps: perEffect?.triggerSteps ?? [...mockMoveTriggerSteps],
         };
       }
     }
@@ -362,6 +372,9 @@ describe('EffectChainProcessor', () => {
     processor = new EffectChainProcessor();
     mockMoveTriggerEvents = [];
     mockMoveMineEvents = [];
+    mockMoveTriggerSteps = [];
+    mockMovePerEffect = {};
+    mockMoveEffectCounter = 0;
     mockTriggerResult = null;
   });
 
@@ -827,6 +840,134 @@ describe('EffectChainProcessor', () => {
 
       const pauseEvents = result.animationEvents.filter(e => e.type === 'TRIGGER_CHAIN_PAUSE');
       expect(pauseEvents).toHaveLength(0);
+    });
+  });
+
+  describe('processEffectChain — forward-propagation of card movements', () => {
+    it('stateBeforeTriggers shows enemy drone in new lane after Forced Reposition', () => {
+      // Forced Repositioning: effect[0] moves friendly (triggers mine on friendly),
+      // effect[1] moves enemy. stateBeforeTriggers is captured during effect[0] and
+      // must be patched to include effect[1]'s enemy movement.
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const enemy = createDrone({ id: 'e1', owner: 'player2' });
+      const card = {
+        id: 'forced_repo', instanceId: 'inst_fr_prop', name: 'Forced Repo', cost: 1,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+        { dronesOnBoard: { lane1: [enemy], lane2: [], lane3: [] } },
+      );
+      const selections = [
+        { target: friendly, lane: 'lane1', destination: 'lane2' },
+        { target: enemy, lane: 'lane1', destination: 'lane3' },
+      ];
+
+      // effect[0] triggers a mine (so stateBeforeTriggers gets captured)
+      mockMovePerEffect = {
+        0: {
+          triggerEvents: [{ type: 'TRIGGER_FIRED', triggerName: 'Proximity Mine', timestamp: Date.now() }],
+          triggerSteps: [],
+          mineEvents: [],
+        },
+        1: { triggerEvents: [], triggerSteps: [], mineEvents: [] },
+      };
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // stateBeforeTriggers (exposed via STATE_SNAPSHOT in animationEvents) must show
+      // enemy drone in lane3, not lane1
+      const snapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshot).toBeDefined();
+      const snapshotP2Board = snapshot.snapshotPlayerStates.player2.dronesOnBoard;
+      expect(snapshotP2Board.lane1).toHaveLength(0);
+      expect(snapshotP2Board.lane3).toHaveLength(1);
+      expect(snapshotP2Board.lane3[0].id).toBe('e1');
+
+      // stateBeforeTriggers is only returned when actionSteps exist (none here),
+      // so the STATE_SNAPSHOT assertion above covers the propagation path.
+    });
+
+    it('forward-propagates movement into earlier trigger steps stateAfter', () => {
+      // effect[0] moves friendly, has trigger steps with stateAfter
+      // effect[1] moves enemy — earlier steps' stateAfter must include enemy move
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const enemy = createDrone({ id: 'e1', owner: 'player2' });
+      const card = {
+        id: 'forced_repo', instanceId: 'inst_fr_steps', name: 'Forced Repo', cost: 1,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+        { dronesOnBoard: { lane1: [enemy], lane2: [], lane3: [] } },
+      );
+      const selections = [
+        { target: friendly, lane: 'lane1', destination: 'lane2' },
+        { target: enemy, lane: 'lane1', destination: 'lane3' },
+      ];
+
+      // effect[0] returns trigger steps with stateAfter showing enemy still in lane1
+      const staleStateAfter = JSON.parse(JSON.stringify(states));
+      // Simulate friendly already moved to lane2 in stateAfter
+      staleStateAfter.player1.dronesOnBoard.lane1 = [];
+      staleStateAfter.player1.dronesOnBoard.lane2 = [{ ...friendly }];
+      // But enemy is still in lane1 (stale)
+      mockMovePerEffect = {
+        0: {
+          triggerEvents: [{ type: 'TRIGGER_FIRED', triggerName: 'Heal Drone', timestamp: Date.now() }],
+          triggerSteps: [{ type: 'TRIGGER', triggerName: 'Heal Drone', stateAfter: staleStateAfter }],
+          mineEvents: [],
+        },
+        1: { triggerEvents: [], triggerSteps: [], mineEvents: [] },
+      };
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // The trigger step's stateAfter must now show enemy in lane3
+      expect(result.actionSteps).toBeDefined();
+      expect(result.actionSteps).toHaveLength(1);
+      const stepStateAfter = result.actionSteps[0].stateAfter;
+      expect(stepStateAfter.player2.dronesOnBoard.lane1).toHaveLength(0);
+      expect(stepStateAfter.player2.dronesOnBoard.lane3).toHaveLength(1);
+      expect(stepStateAfter.player2.dronesOnBoard.lane3[0].id).toBe('e1');
+    });
+
+    it('no forward-propagation needed for single-effect cards', () => {
+      // Single move with triggers — no later effects to propagate
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const card = {
+        id: 'move_card', instanceId: 'inst_single', name: 'Single Move', cost: 0,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+      );
+      const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
+
+      mockMovePerEffect = {
+        0: {
+          triggerEvents: [{ type: 'TRIGGER_FIRED', triggerName: 'Mine', timestamp: Date.now() }],
+          triggerSteps: [],
+          mineEvents: [],
+        },
+      };
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // Snapshot should show drone in lane2 (normal — captured from effect[0]'s postMovementState)
+      const snapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshot).toBeDefined();
+      const board = snapshot.snapshotPlayerStates.player1.dronesOnBoard;
+      expect(board.lane1).toHaveLength(0);
+      expect(board.lane2).toHaveLength(1);
     });
   });
 });

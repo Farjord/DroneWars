@@ -116,19 +116,29 @@ function isTargetAlive(target, playerStates) {
   return false;
 }
 
-// --- Diagnostic Helpers ---
+// --- Forward-Propagation Helper ---
 
-function _snapshotDronePositions(playerStates) {
-  const positions = {};
+/**
+ * Move a drone by ID to a new lane within a playerStates snapshot.
+ * Mutates playerStates in-place. Used to forward-propagate card movements
+ * into earlier snapshots that were captured before the move occurred.
+ */
+function _applyDroneMovement(playerStates, droneId, toLane) {
   for (const pid of ['player1', 'player2']) {
-    const board = playerStates[pid]?.dronesOnBoard || {};
+    const board = playerStates[pid]?.dronesOnBoard;
+    if (!board) continue;
     for (const lane of ['lane1', 'lane2', 'lane3']) {
-      for (const d of (board[lane] || [])) {
-        positions[d.id] = `${pid}/${lane}`;
+      const drones = board[lane] || [];
+      const idx = drones.findIndex(d => d.id === droneId);
+      if (idx !== -1) {
+        if (lane === toLane) return;
+        const [drone] = drones.splice(idx, 1);
+        if (!board[toLane]) board[toLane] = [];
+        board[toLane].push(drone);
+        return;
       }
     }
   }
-  return positions;
 }
 
 // --- Main Processor ---
@@ -198,6 +208,9 @@ class EffectChainProcessor {
     let dynamicGoAgain = false;
     const effectResults = [];
     let stateBeforeTriggers = null;       // first state before any trigger mutations
+    let stateBeforeTriggersEffectIdx = -1; // which effect captured stateBeforeTriggers
+    const cardMovements = [];              // {droneId, toLane, effectIndex} for forward-propagation
+    const effectStepBounds = [];           // {effectIndex, startIdx} maps effects to actionSteps ranges
 
     // CARD_REVEAL animation
     cardAnimationEvents.push({
@@ -321,6 +334,16 @@ class EffectChainProcessor {
       let result;
       if (effectData.type === 'SINGLE_MOVE' || effectData.type === 'MULTI_MOVE') {
         result = this.executeChainMovement(effectData, selection, playerId, currentStates, ctx);
+        // Record card movements for forward-propagation into earlier snapshots
+        if (effectData.type === 'SINGLE_MOVE') {
+          cardMovements.push({ droneId: selection.target.id, toLane: selection.destination, effectIndex: i });
+        } else {
+          // MULTI_MOVE: all drones share the same destination lane
+          const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
+          for (const d of drones) {
+            cardMovements.push({ droneId: d.id, toLane: selection.destination, effectIndex: i });
+          }
+        }
       } else if (effectData.type === 'DISCARD_CARD') {
         result = this.executeChainDiscard(selection, playerId, currentStates);
       } else {
@@ -351,12 +374,14 @@ class EffectChainProcessor {
       if (result.triggerAnimationEvents?.length > 0) {
         if (!stateBeforeTriggers && result.preTriggerState) {
           stateBeforeTriggers = JSON.parse(JSON.stringify(result.preTriggerState));
+          stateBeforeTriggersEffectIdx = i;
         }
         deferredTriggerEvents.push(...result.triggerAnimationEvents);
       }
 
       // Collect structured trigger steps (Phase 2 #65)
       if (result.triggerSteps?.length > 0) {
+        effectStepBounds.push({ effectIndex: i, startIdx: actionSteps.length });
         actionSteps.push(...result.triggerSteps);
       }
 
@@ -411,12 +436,31 @@ class EffectChainProcessor {
         processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
 
-      debugLog('MOVEMENT_EFFECT', `[DIAG] After effect [${i}]`, {
-        stateBeforeTriggersCapture: !!stateBeforeTriggers,
-        actionStepsLength: actionSteps.length,
-        dronePositions: _snapshotDronePositions(currentStates),
-        stateBeforeTriggersDrones: stateBeforeTriggers ? _snapshotDronePositions(stateBeforeTriggers) : null,
-      });
+    }
+
+    // Forward-propagate later card movements into stateBeforeTriggers and earlier steps' stateAfter.
+    // When effect[0] captures stateBeforeTriggers but effect[1] moves a drone, the snapshot is stale.
+    // This patches all earlier snapshots so drones appear in their correct lanes before triggers fire.
+    if (cardMovements.length > 0) {
+      if (stateBeforeTriggers && stateBeforeTriggersEffectIdx >= 0) {
+        for (const move of cardMovements) {
+          if (move.effectIndex > stateBeforeTriggersEffectIdx) {
+            _applyDroneMovement(stateBeforeTriggers, move.droneId, move.toLane);
+          }
+        }
+      }
+      for (const bound of effectStepBounds) {
+        const laterMoves = cardMovements.filter(m => m.effectIndex > bound.effectIndex);
+        if (laterMoves.length === 0) continue;
+        const nextStart = effectStepBounds.find(b => b.effectIndex > bound.effectIndex)?.startIdx ?? actionSteps.length;
+        for (let si = bound.startIdx; si < nextStart; si++) {
+          if (actionSteps[si]?.stateAfter) {
+            for (const move of laterMoves) {
+              _applyDroneMovement(actionSteps[si].stateAfter, move.droneId, move.toLane);
+            }
+          }
+        }
+      }
     }
 
     // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.
@@ -557,14 +601,6 @@ class EffectChainProcessor {
       animationCount: allAnimationEvents.length,
       deferredTriggerCount: deferredTriggerEvents.length,
       actionStepCount: actionSteps.length,
-    });
-
-    debugLog('MOVEMENT_EFFECT', '[DIAG] processEffectChain return', {
-      stateBeforeTriggersDrones: cleanedStateBeforeTriggers ? _snapshotDronePositions(cleanedStateBeforeTriggers) : null,
-      cardOnlyAnimationTypes: cardOnlyAnimationEvents?.map(e => e.type) ?? null,
-      actionStepCount: actionSteps.length,
-      actionStepTypes: actionSteps.map(s => s.type),
-      finalDrones: _snapshotDronePositions(finish.newPlayerStates),
     });
 
     return {
