@@ -38,6 +38,11 @@ The redesign changes the header structure and container styling around these but
 
 **Rationale**: Eliminates the performance concern of 42+ blurred elements (6 ship sections + 6 lanes + 30 drone tokens). The header is a single element; the existing footer already uses `backdrop-blur-sm`. No performance profiling needed with this constraint.
 
+### 8. DroneToken — No Visual Changes
+`DroneToken.jsx` is excluded from the redesign. The current visual styling (stat hexagons, ability buttons, special ability icons, shields, hull pips, faction colouring) is approved as-is.
+
+Only responsive scaling fixes are permitted if the layout restructuring (Phase A unit conversion or Phase B column layout) requires them. No decorative layers, no gradient changes, no clip-path additions.
+
 ---
 
 ## Technical Constraints Discovered
@@ -106,3 +111,8 @@ The codebase has zero tests for `useDragMechanics` or `useClickHandlers`. The co
 **Spec describes**: Lane effect slots with active/hostile states, icons, and gameplay implications.
 **Implementation**: Empty slot UI only. No game logic, no active states.
 **Reason**: Spec §7 explicitly states game logic is out of scope. The component structure supports future activation.
+
+### Drone Token Visual Treatment Excluded (Decision §8)
+**Spec §6 describes**: Translucent faction gradients, top edge highlight, corner accent dots, hexagon shield pips, exhausted state changes for drone tokens.
+**Implementation**: No visual changes to `DroneToken.jsx`. Current styling retained exactly.
+**Reason**: User reviewed the existing DroneToken styling and confirmed it is exactly as desired. Only scaling fixes permitted if layout restructuring requires them.

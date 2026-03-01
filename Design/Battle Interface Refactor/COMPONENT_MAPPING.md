@@ -16,7 +16,7 @@ Maps every section of the spec to existing source files. Required by Section 1 o
 | §3 Page Layout — Vertical Sections | `src/App.jsx`, `src/components/ui/GameBattlefield.jsx` (253 lines) | Structural — flex split to 15/60/25 |
 | §4 Game Area — Grid Layout | `src/components/ui/GameBattlefield.jsx` | Structural — row layout → 3-column CSS Grid |
 | §5 Ship Sections | `src/components/ui/ShipSectionsDisplay.jsx` (244 lines), `src/components/ui/ShipSectionCompact.jsx` (246 lines) | Visual — chevron clip-path, 11 decorative layers |
-| §6 Drone Lanes | `src/components/ui/DroneLanesDisplay.jsx` (484 lines), `src/components/ui/DroneToken.jsx` (464 lines) | Visual — trapezoid clip-path, 9 lane layers; token reskin |
+| §6 Drone Lanes | `src/components/ui/DroneLanesDisplay.jsx` (484 lines) | Visual — trapezoid clip-path, 9 lane layers |
 | §7 Lane Effects (NEW) | None — new component | Additive — new `LaneEffects.jsx` |
 | §8 Header Bar | `src/components/ui/GameHeader.jsx` (617 lines), `src/components/ui/gameheader/PhaseStatusText.jsx`, `src/components/ui/gameheader/ActionPhaseButtons.jsx`, `src/components/ui/gameheader/InitPhaseButtons.jsx`, `src/components/ui/gameheader/SettingsDropdown.jsx` | Visual — SVG polyline border, trapezoid phase banner, backdrop-filter |
 | §9 Font & Typography | All UI components | Visual only — font/sizing rules |
@@ -56,8 +56,8 @@ Maps every section of the spec to existing source files. Required by Section 1 o
 - The `renderDronesOnBoard` helper function is the key extraction target.
 
 ### `src/components/ui/DroneToken.jsx` (464 lines)
-- **§6**: Visual reskin. Most infrastructure already exists (stat hexagons, ability buttons, special ability icons, shields, hull pips).
-- Changes: translucent faction gradients, top edge highlight, corner accent dots, hexagon shield pips, exhausted state styling.
+- **Excluded from redesign.** Current visual styling is approved as-is.
+- Only scaling-related changes permitted if the responsive unit conversion (Phase A) or column restructuring (Phase B) requires them.
 - No structural changes — component already receives single-drone data.
 
 ### `src/components/ui/GameHeader.jsx` (617 lines) + subcomponents

@@ -11,7 +11,7 @@
 
 Visual reskin of the battle interface with one structural change (row→column layout) and one additive feature (Lane Effects). No functional changes to game logic, state management, or event handlers.
 
-Eight phases, ordered by dependency. Each phase should have its own implementation document when ready.
+Seven phases, ordered by dependency. Each phase should have its own implementation document when ready.
 
 ---
 
@@ -85,33 +85,13 @@ Eight phases, ordered by dependency. Each phase should have its own implementati
 
 **Dependencies**: Phase B (lanes must be in column layout). Can parallel with Phase C.
 
-**Scope boundary**: Lane containers and drone positioning only. Drone token visual changes are Phase E.
+**Scope boundary**: Lane containers and drone positioning only. DroneToken is not modified — current styling is approved as-is (see DESIGN_DECISIONS.md §8).
 
 **Risk**: MEDIUM. clip-path clips all children regardless of overflow — requires the container/visual/content layer separation pattern. DnD drop zones must use the unclipped content layer (`pointer-events: auto` on content, `pointer-events: none` on clipped visual). Lane hover scale applies to outer container.
 
 ---
 
-## Phase E — Drone Token Reskin
-
-**Scope**: Visual treatment changes to individual drone tokens.
-
-**What changes**:
-- Translucent faction background gradients in `DroneToken.jsx` (spec §6)
-- Faction-coloured border
-- Top edge highlight, corner accent dots, inner gradient overlay
-- Shield hexagon pips (replace current SVG shields)
-- Hull square pips styling
-- Exhausted state visual change
-
-**Dependencies**: Phase D (lane clip-path separation must be in place so tokens can overflow).
-
-**Scope boundary**: Visual changes only. All stat display, ability buttons, special ability icons, interception badges already exist and remain functionally identical.
-
-**Risk**: LOW. Most infrastructure already in place. Changes are additive CSS/styling.
-
----
-
-## Phase F — Header Redesign
+## Phase E — Header Redesign
 
 **Scope**: SVG polyline border, trapezoid phase banner, resource area styling.
 
@@ -124,7 +104,7 @@ Eight phases, ordered by dependency. Each phase should have its own implementati
 - Three-tier trapezoid phase banner using clip-path
 - Resource badge area re-styling
 
-**Dependencies**: Phase A (header must be in 15% container). Independent of Phases B–E.
+**Dependencies**: Phase A (header must be in 15% container). Independent of Phases B–D.
 
 **Scope boundary**: Visual container changes only. ALL existing buttons (`ActionPhaseButtons`, `InitPhaseButtons`), `PhaseStatusText`, `SettingsDropdown`, and `KPIChangePopup` remain functionally identical. The trapezoid phase banner in the spec is a placeholder — existing button functionality is retained exactly.
 
@@ -132,7 +112,7 @@ Eight phases, ordered by dependency. Each phase should have its own implementati
 
 ---
 
-## Phase G — Lane Effects
+## Phase F — Lane Effects
 
 **Scope**: New `LaneEffects` component with placeholder data.
 
@@ -151,7 +131,8 @@ Eight phases, ordered by dependency. Each phase should have its own implementati
 
 ---
 
-## Phase H — Footer Scaling
+## Phase G — Footer Scaling
+
 
 **Scope**: Container percentage sizing, content overflow fixes.
 
@@ -174,14 +155,14 @@ Eight phases, ordered by dependency. Each phase should have its own implementati
 ```
 A ──→ B ──→ C (ship reskin)
        │  ↗ (can parallel C & D)
-       └──→ D ──→ E (drone token reskin)
-       │       ↘
-       │        G (lane effects, after D)
+       └──→ D (drone lane reskin)
+       │    ↘
+       │     F (lane effects, after D)
        │
-A ──→ F (header, independent of B-E)
-A ──→ H (footer, independent of B-G)
+A ──→ E (header, independent of B-D)
+A ──→ G (footer, independent of B-F)
 ```
 
-**Critical path**: A → B → D → E (structural foundation → column layout → lane separation → token overflow).
+**Critical path**: A → B → D (structural foundation → column layout → lane separation).
 
-**Parallelizable**: F and H are independent of the battlefield phases (B–G) after Phase A.
+**Parallelizable**: E and G are independent of the battlefield phases (B–F) after Phase A.
