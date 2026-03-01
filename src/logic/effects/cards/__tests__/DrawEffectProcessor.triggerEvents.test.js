@@ -16,6 +16,7 @@ vi.mock('../../../triggers/TriggerProcessor.js', () => ({
 }));
 
 import DrawEffectProcessor from '../DrawEffectProcessor.js';
+import TriggerProcessor from '../../../triggers/TriggerProcessor.js';
 
 describe('DrawEffectProcessor — trigger event propagation', () => {
   let processor;
@@ -102,5 +103,69 @@ describe('DrawEffectProcessor — trigger event propagation', () => {
 
     expect(result.animationEvents?.length || 0).toBe(0);
     expect(result.triggerAnimationEvents?.length || 0).toBe(0);
+  });
+
+  it('should forward pairSet and chainDepth from context to fireTrigger', () => {
+    mockFireTriggerResult = {
+      triggered: true,
+      newPlayerStates: mockPlayerStates,
+      animationEvents: [],
+      statModsApplied: false,
+      goAgain: false
+    };
+
+    const pairSet = new Set(['reactor1:source1']);
+    const cascadeSource = { id: 'src1', name: 'SourceDrone' };
+
+    const effect = { type: 'DRAW', value: 1 };
+    const context = {
+      actingPlayerId: 'player1',
+      playerStates: mockPlayerStates,
+      placedSections: {},
+      callbacks: { logCallback: vi.fn() },
+      pairSet,
+      chainDepth: 3,
+      triggeringDrone: cascadeSource
+    };
+
+    processor.process(effect, context);
+
+    // Get the fireTrigger mock from the constructed TriggerProcessor instance
+    const triggerProcessorInstance = TriggerProcessor.mock.results[0].value;
+    const fireTriggerCall = triggerProcessorInstance.fireTrigger.mock.calls[0];
+    const triggerContext = fireTriggerCall[1];
+
+    expect(triggerContext.pairSet).toBe(pairSet);
+    expect(triggerContext.chainDepth).toBe(3);
+    expect(triggerContext.triggeringDrone).toBe(cascadeSource);
+  });
+
+  it('should default pairSet and chainDepth when not in context', () => {
+    mockFireTriggerResult = {
+      triggered: true,
+      newPlayerStates: mockPlayerStates,
+      animationEvents: [],
+      statModsApplied: false,
+      goAgain: false
+    };
+
+    const effect = { type: 'DRAW', value: 1 };
+    const context = {
+      actingPlayerId: 'player1',
+      playerStates: mockPlayerStates,
+      placedSections: {},
+      callbacks: { logCallback: vi.fn() }
+    };
+
+    processor.process(effect, context);
+
+    const triggerProcessorInstance = TriggerProcessor.mock.results[0].value;
+    const fireTriggerCall = triggerProcessorInstance.fireTrigger.mock.calls[0];
+    const triggerContext = fireTriggerCall[1];
+
+    expect(triggerContext.pairSet).toBeInstanceOf(Set);
+    expect(triggerContext.pairSet.size).toBe(0);
+    expect(triggerContext.chainDepth).toBe(0);
+    expect(triggerContext.triggeringDrone).toBeNull();
   });
 });

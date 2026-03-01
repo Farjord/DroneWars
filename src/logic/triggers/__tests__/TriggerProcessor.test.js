@@ -241,7 +241,7 @@ vi.mock('../../EffectRouter.js', () => {
 });
 
 import TriggerProcessor from '../TriggerProcessor.js';
-import { TRIGGER_TYPES } from '../triggerConstants.js';
+import { TRIGGER_TYPES, MAX_CHAIN_DEPTH } from '../triggerConstants.js';
 import { onDroneDestroyed } from '../../utils/droneStateUtils.js';
 import { updateAuras } from '../../utils/auraManager.js';
 
@@ -1720,6 +1720,109 @@ describe('TriggerProcessor', () => {
 
       const triggerFired = result.animationEvents.find(e => e.type === 'TRIGGER_FIRED');
       expect(triggerFired.droneName).toBe('TestGoAgainDrone');
+    });
+  });
+
+  // ========================================
+  // CASCADE DEPTH GUARD (#63)
+  // ========================================
+  describe('MAX_CHAIN_DEPTH enforcement', () => {
+    it('should return early when chainDepth >= MAX_CHAIN_DEPTH', () => {
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        chainDepth: MAX_CHAIN_DEPTH
+      });
+
+      expect(result.triggered).toBe(false);
+      expect(result.animationEvents).toEqual([]);
+    });
+
+    it('should still fire at depth MAX_CHAIN_DEPTH - 1', () => {
+      // Place a controller trigger drone so it can match ON_CARD_DRAWN
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'ctrl1', name: 'TestControllerTriggerDrone', attack: 1, hull: 2, shields: 0, speed: 1 }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 1,
+        chainDepth: MAX_CHAIN_DEPTH - 1
+      });
+
+      expect(result.triggered).toBe(true);
+    });
+  });
+
+  // ========================================
+  // CASCADE CONTEXT PROPAGATION (#62, #64)
+  // ========================================
+  describe('cascade context propagation', () => {
+    it('should pass pairSet and chainDepth+1 to EffectRouter context (normal path)', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'ctrl1', name: 'TestControllerTriggerDrone', attack: 1, hull: 2, shields: 0, speed: 1 }
+      ];
+
+      const pairSet = new Set(['existing:pair']);
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        scalingAmount: 1,
+        pairSet,
+        chainDepth: 3
+      });
+
+      // The mock EffectRouter's routeEffect should have been called with cascade context
+      const routeEffectCalls = processor.effectRouter.routeEffect.mock.calls;
+      expect(routeEffectCalls.length).toBeGreaterThan(0);
+
+      const lastContext = routeEffectCalls[routeEffectCalls.length - 1][1];
+      expect(lastContext.pairSet).toBe(pairSet);
+      expect(lastContext.chainDepth).toBe(4); // 3 + 1
+      expect(lastContext.triggeringDrone.id).toBe('ctrl1');
+    });
+
+    it('should pass pairSet and chainDepth+1 to EffectRouter context (TRIGGERING_DRONE path)', () => {
+      // Set up a TRIGGERING_DRONE scoped trigger (mine with EXHAUST_DRONE)
+      const triggeringDrone = { id: 'td1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'mine1', name: 'TestMineExhaustDrone', attack: 0, hull: 1, shields: 0, speed: 0 },
+        triggeringDrone
+      ];
+
+      const pairSet = new Set();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn(),
+        pairSet,
+        chainDepth: 5
+      });
+
+      const routeEffectCalls = processor.effectRouter.routeEffect.mock.calls;
+      expect(routeEffectCalls.length).toBeGreaterThan(0);
+
+      const lastContext = routeEffectCalls[routeEffectCalls.length - 1][1];
+      expect(lastContext.pairSet).toBe(pairSet);
+      expect(lastContext.chainDepth).toBe(6); // 5 + 1
+      expect(lastContext.triggeringDrone.id).toBe('mine1'); // reactor becomes source for cascades
     });
   });
 });

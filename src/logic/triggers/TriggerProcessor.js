@@ -19,7 +19,8 @@ import {
   TRIGGER_OWNERS,
   SELF_TRIGGER_TYPES,
   CONTROLLER_TRIGGER_TYPES,
-  LANE_TRIGGER_TYPES
+  LANE_TRIGGER_TYPES,
+  MAX_CHAIN_DEPTH
 } from './triggerConstants.js';
 
 class TriggerProcessor {
@@ -63,6 +64,11 @@ class TriggerProcessor {
       pairSet = new Set(),
       chainDepth = 0
     } = context;
+
+    if (chainDepth >= MAX_CHAIN_DEPTH) {
+      debugLog('TRIGGERS', `MAX_CHAIN_DEPTH (${MAX_CHAIN_DEPTH}) exceeded`, { triggerType, chainDepth });
+      return { triggered: false, newPlayerStates: playerStates, animationEvents: [], statModsApplied: false, goAgain: false };
+    }
 
     let currentStates = playerStates;
     const allAnimationEvents = [];
@@ -331,7 +337,10 @@ class TriggerProcessor {
             sourceDroneId: reactorDrone.id,
             lane: reactorLane,
             target: triggeringTarget,
-            callbacks: { logCallback }
+            callbacks: { logCallback },
+            pairSet,
+            chainDepth: chainDepth + 1,
+            triggeringDrone: reactorDrone
           };
           const routeResult = this.effectRouter.routeEffect(effect, triggeringContext);
           if (routeResult?.newPlayerStates) currentStates = routeResult.newPlayerStates;
@@ -368,7 +377,7 @@ class TriggerProcessor {
         // Preprocess scope: 'SELF' → target the reactor drone
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
-        const context = {
+        const effectContext = {
           actingPlayerId: reactorPlayerId,
           playerStates: currentStates,
           placedSections,
@@ -376,10 +385,13 @@ class TriggerProcessor {
           sourceDroneId: reactorDrone.id,
           lane: reactorLane,
           target: this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates),
-          callbacks: { logCallback }
+          callbacks: { logCallback },
+          pairSet,
+          chainDepth: chainDepth + 1,
+          triggeringDrone: reactorDrone
         };
 
-        const result = this.effectRouter.routeEffect(processedEffect, context);
+        const result = this.effectRouter.routeEffect(processedEffect, effectContext);
 
         if (result?.newPlayerStates) {
           currentStates = result.newPlayerStates;

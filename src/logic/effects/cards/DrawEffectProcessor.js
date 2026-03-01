@@ -80,16 +80,20 @@ class DrawEffectProcessor extends BaseEffectProcessor {
     if (actualCardsDrawn > 0) {
       const logCallback = context.callbacks?.logCallback || null;
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+      const { pairSet, chainDepth = 0, triggeringDrone: cascadeSource } = context;
       const triggerProcessor = new TriggerProcessor();
       preTriggerState = JSON.parse(JSON.stringify(newPlayerStates));
       const drawResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
         lane: null,
+        triggeringDrone: cascadeSource || null,
         triggeringPlayerId: actingPlayerId,
         actingPlayerId,
         playerStates: newPlayerStates,
         placedSections: context.placedSections,
         logCallback,
-        scalingAmount: actualCardsDrawn
+        scalingAmount: actualCardsDrawn,
+        pairSet: pairSet || new Set(),
+        chainDepth: chainDepth || 0
       });
       if (drawResult.triggered) {
         newPlayerStates[actingPlayerId] = drawResult.newPlayerStates[actingPlayerId];

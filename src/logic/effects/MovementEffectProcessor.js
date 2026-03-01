@@ -389,7 +389,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       newPlayerStates,
       placedSections,
       logCallback,
-      cardGoAgain: card.effects[0].goAgain
+      cardGoAgain: card.effects[0].goAgain,
+      pairSet: context.pairSet,
+      chainDepth: context.chainDepth
     });
 
     return {
@@ -538,7 +540,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       newPlayerStates,
       placedSections,
       logCallback,
-      cardGoAgain: card.effects[0]?.goAgain || false
+      cardGoAgain: card.effects[0]?.goAgain || false,
+      pairSet: context.pairSet,
+      chainDepth: context.chainDepth
     });
 
     return {
@@ -579,7 +583,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {boolean} config.cardGoAgain - Whether the card grants go-again
    * @returns {Object} { triggerAnimationEvents, mineAnimationEvents, goAgain }
    */
-  _resolvePostMoveTriggers({ movedDrones, fromLane, toLane, droneOwnerId, actingPlayerId, newPlayerStates, placedSections, logCallback, cardGoAgain }) {
+  _resolvePostMoveTriggers({ movedDrones, fromLane, toLane, droneOwnerId, actingPlayerId, newPlayerStates, placedSections, logCallback, cardGoAgain, pairSet, chainDepth = 0 }) {
     const opponentOfDroneOwner = droneOwnerId === 'player1' ? 'player2' : 'player1';
     const isEnemyMove = droneOwnerId !== actingPlayerId;
     const triggerProcessor = new TriggerProcessor();
@@ -597,7 +601,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
         },
         placedSections,
-        logCallback
+        logCallback,
+        pairSet: pairSet || new Set(),
+        chainDepth: chainDepth || 0
       });
 
       if (moveResult.triggered) {
@@ -622,7 +628,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
             [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
           },
           placedSections,
-          logCallback
+          logCallback,
+          pairSet: pairSet || new Set(),
+          chainDepth: chainDepth || 0
         });
         if (outResult.triggered) {
           newPlayerStates[droneOwnerId] = outResult.newPlayerStates[droneOwnerId];
@@ -668,7 +676,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           [opponentOfDroneOwner]: newPlayerStates[opponentOfDroneOwner]
         },
         placedSections,
-        logCallback
+        logCallback,
+        pairSet: pairSet || new Set(),
+        chainDepth: chainDepth || 0
       });
 
       if (result.triggered) {

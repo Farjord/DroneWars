@@ -61,16 +61,20 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
     if (actualEnergyGained > 0) {
       const logCallback = context.callbacks?.logCallback || null;
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+      const { pairSet, chainDepth = 0, triggeringDrone: cascadeSource } = context;
       const triggerProcessor = new TriggerProcessor();
       preTriggerState = JSON.parse(JSON.stringify(newPlayerStates));
       const energyResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ENERGY_GAINED, {
         lane: null,
+        triggeringDrone: cascadeSource || null,
         triggeringPlayerId: actingPlayerId,
         actingPlayerId,
         playerStates: newPlayerStates,
         placedSections,
         logCallback,
-        scalingAmount: actualEnergyGained
+        scalingAmount: actualEnergyGained,
+        pairSet: pairSet || new Set(),
+        chainDepth: chainDepth || 0
       });
       if (energyResult.triggered) {
         newPlayerStates[actingPlayerId] = energyResult.newPlayerStates[actingPlayerId];

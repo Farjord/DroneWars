@@ -81,3 +81,9 @@ export const LANE_TRIGGER_TYPES = Object.freeze(new Set([
   TRIGGER_TYPES.ON_LANE_DEPLOYMENT,
   TRIGGER_TYPES.ON_LANE_ATTACK
 ]));
+
+/**
+ * Maximum cascade chain depth — safety net against unbounded recursion.
+ * Should never trigger in normal gameplay.
+ */
+export const MAX_CHAIN_DEPTH = 20;
