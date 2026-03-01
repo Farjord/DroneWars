@@ -135,8 +135,12 @@ class TriggerProcessor {
           allAnimationEvents.push(...result.animationEvents, snapshot);
         } else {
           // Additive: snapshot first so state changes (drawn cards, stat boosts)
-          // appear when the announcement animation starts
-          allAnimationEvents.push(snapshot, ...result.animationEvents);
+          // are visible before the announcement animation plays
+          allAnimationEvents.push(
+            snapshot,
+            { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+            ...result.animationEvents
+          );
         }
 
         if (result.statModsApplied) {
@@ -147,6 +151,12 @@ class TriggerProcessor {
           goAgain = true;
         }
       }
+    }
+
+    // Strip trailing pauses — no pause needed after the last event in a chain
+    while (allAnimationEvents.length > 0 &&
+           allAnimationEvents[allAnimationEvents.length - 1].type === 'TRIGGER_CHAIN_PAUSE') {
+      allAnimationEvents.pop();
     }
 
     return {
@@ -331,7 +341,10 @@ class TriggerProcessor {
             if (!preCascadePlayerStates && routeResult.preTriggerState) {
               preCascadePlayerStates = routeResult.preTriggerState;
             }
-            animationEvents.push(...routeResult.triggerAnimationEvents);
+            animationEvents.push(
+              { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+              ...routeResult.triggerAnimationEvents
+            );
           }
           if (effect.type === 'MODIFY_STAT') {
             statModsApplied = true;
@@ -381,7 +394,10 @@ class TriggerProcessor {
           if (!preCascadePlayerStates && result.preTriggerState) {
             preCascadePlayerStates = result.preTriggerState;
           }
-          animationEvents.push(...result.triggerAnimationEvents);
+          animationEvents.push(
+            { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+            ...result.triggerAnimationEvents
+          );
         }
 
         debugLog('TRIGGERS', `Effect routed: ${processedEffect.type}`, {

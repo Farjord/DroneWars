@@ -230,6 +230,13 @@ class ActionProcessor {
               payload: event
             };
           }
+          if (event.type === 'TRIGGER_CHAIN_PAUSE') {
+            return {
+              animationName: 'TRIGGER_CHAIN_PAUSE',
+              timing: 'pre-state',
+              payload: event
+            };
+          }
           const animDef = ap.animationManager?.animations[event.type];
           let timing = animDef?.timing || 'pre-state';
           // TELEPORT_IN preceded by STATE_SNAPSHOT: drone already in DOM from snapshot

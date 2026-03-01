@@ -443,13 +443,14 @@ class AnimationManager {
           if (executor?.applyIntermediateState) {
             executor.applyIntermediateState(effect.payload.snapshotPlayerStates);
             await this.waitForReactRender();
-            // Breathing room before trigger announcements — let the player see
-            // the state change (drawn card, stat boost) before the next announcement
-            const nextEffect = effects[i + 1];
-            if (nextEffect?.animationName === 'TRIGGER_FIRED') {
-              await new Promise(resolve => setTimeout(resolve, 400));
-            }
           }
+          i++;
+          continue;
+        }
+
+        // Handle TRIGGER_CHAIN_PAUSE: wait for specified duration between trigger chain steps
+        if (effect.animationName === 'TRIGGER_CHAIN_PAUSE') {
+          await new Promise(resolve => setTimeout(resolve, effect.payload.duration));
           i++;
           continue;
         }

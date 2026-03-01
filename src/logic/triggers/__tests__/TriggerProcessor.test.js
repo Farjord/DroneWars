@@ -1431,10 +1431,11 @@ describe('TriggerProcessor', () => {
         logCallback: vi.fn()
       });
 
-      // Snapshot first: additive state change appears when announcement starts
-      expect(result.animationEvents.length).toBeGreaterThanOrEqual(3);
+      // Snapshot first, then pause for player to see the state change, then announcement
+      expect(result.animationEvents.length).toBeGreaterThanOrEqual(4);
       expect(result.animationEvents[0].type).toBe('STATE_SNAPSHOT');
-      expect(result.animationEvents[1].type).toBe('TRIGGER_FIRED');
+      expect(result.animationEvents[1].type).toBe('TRIGGER_CHAIN_PAUSE');
+      expect(result.animationEvents[2].type).toBe('TRIGGER_FIRED');
     });
 
     it('has stable deterministic eventId', () => {
