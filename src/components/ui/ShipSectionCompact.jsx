@@ -46,7 +46,6 @@ const ShipSectionCompact = ({
   }
 
   const fc = isOpponent ? FACTION_COLORS.opponent : FACTION_COLORS.player;
-  const pc = FACTION_COLORS.player; // Shields & hull always use player colours
   const clipPath = getShipClipPath(isOpponent, columnIndex);
 
   // Reallocation visual state
@@ -147,18 +146,14 @@ const ShipSectionCompact = ({
               <svg key={i} style={{
                 width: '1.2vw', height: '1.4vw',
                 minWidth: '10px', minHeight: '12px',
-                filter: i < stats.allocatedShields ? `drop-shadow(0 0 0.4vw ${pc.primary}88)` : 'none',
               }} viewBox="0 0 20 23">
                 <polygon
                   points="10,1 19,6 19,17 10,22 1,17 1,6"
-                  fill={i < stats.allocatedShields ? pc.primary : 'transparent'}
-                  stroke={pc.primary}
+                  fill={i < stats.allocatedShields ? '#67e8f9' : 'none'}
+                  fillOpacity={i < stats.allocatedShields ? 0.6 : 1}
+                  stroke={i < stats.allocatedShields ? '#67e8f9' : '#4b5563'}
                   strokeWidth="1.5"
-                  opacity={i < stats.allocatedShields ? 0.95 : 0.15}
                 />
-                {i < stats.allocatedShields && (
-                  <polygon points="10,4 16,7.5 16,15 10,19 4,15 4,7.5" fill={pc.bright} opacity="0.25" />
-                )}
               </svg>
             ))}
           </div>
@@ -194,24 +189,21 @@ const ShipSectionCompact = ({
             const isFilled = i < stats.hull;
             let bgColor;
             if (!isFilled) {
-              bgColor = 'rgba(255,255,255,0.03)';
+              bgColor = '#9ca3af';
             } else if (hullPoint <= critical) {
-              bgColor = 'linear-gradient(180deg, #FF6666, #FF2A2A)';
+              bgColor = '#ef4444';
             } else if (hullPoint <= damaged) {
-              bgColor = 'linear-gradient(180deg, #6688FF, #3355DD)';
+              bgColor = '#0891b2';
             } else {
-              bgColor = `linear-gradient(180deg, ${pc.bright}, ${pc.primary})`;
+              bgColor = '#22d3ee';
             }
             return (
               <div key={i} style={{
                 width: '0.65vw', height: '0.7vw',
                 minWidth: '5px', minHeight: '5px',
                 background: bgColor,
-                borderRadius: '1px',
-                boxShadow: isFilled
-                  ? `0 0 0.3vw ${pc.primary}88, 0 0 0.6vw ${pc.primary}33`
-                  : `inset 0 0 0.1vw rgba(255,255,255,0.03)`,
-                border: isFilled ? 'none' : `0.03vw solid rgba(255,255,255,0.05)`,
+                borderRadius: '2px',
+                border: '1px solid rgba(0,0,0,0.5)',
               }} />
             );
           })}
