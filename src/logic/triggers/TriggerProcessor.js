@@ -11,7 +11,11 @@
 
 import EffectRouter from '../EffectRouter.js';
 import fullDroneCollection from '../../data/droneData.js';
+import fullTechCollection from '../../data/techData.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
+
+// Combined collection for ability lookups — Tech drones live in techData.js
+const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
 import { updateAuras } from '../utils/auraManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import {
@@ -209,7 +213,7 @@ class TriggerProcessor {
 
     // Tier 1: Self-triggers on the acting drone
     if (SELF_TRIGGER_TYPES.has(triggerType) && triggeringDrone) {
-      const baseDrone = fullDroneCollection.find(d => d.name === triggeringDrone.name);
+      const baseDrone = allDroneDefinitions.find(d => d.name === triggeringDrone.name);
       if (baseDrone?.abilities) {
         for (const ability of baseDrone.abilities) {
           if (ability.type === 'TRIGGERED' && ability.trigger === triggerType) {
@@ -225,17 +229,30 @@ class TriggerProcessor {
       }
     }
 
-    // Tier 2 & 3: Lane triggers (actor's drones first, then opponent's)
+    // Tier 0.5: Tech triggers — Tech drones in techSlots fire before other lane drones
     if (LANE_TRIGGER_TYPES.has(triggerType)) {
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
 
-      // Actor's lane triggers (Tier 2)
+      // Actor's Tech triggers
+      this._collectTechTriggers(
+        triggerType, lane, triggeringDrone, triggeringPlayerId,
+        actingPlayerId, playerStates[actingPlayerId], card, matches, 0.5
+      );
+
+      // Opponent's Tech triggers
+      this._collectTechTriggers(
+        triggerType, lane, triggeringDrone, triggeringPlayerId,
+        opponentId, playerStates[opponentId], card, matches, 0.5
+      );
+
+      // Tier 1 & 2: Lane triggers (actor's drones first, then opponent's)
+      // Actor's lane triggers (Tier 1)
       this._collectLaneTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
         actingPlayerId, playerStates[actingPlayerId], card, matches, 1
       );
 
-      // Opponent's lane triggers (Tier 3)
+      // Opponent's lane triggers (Tier 2)
       this._collectLaneTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
         opponentId, playerStates[opponentId], card, matches, 2
@@ -561,7 +578,10 @@ class TriggerProcessor {
    */
   _isDroneAlive(droneId, playerId, lane, playerStates) {
     const drones = playerStates[playerId]?.dronesOnBoard?.[lane] || [];
-    return drones.some(d => d.id === droneId);
+    if (drones.some(d => d.id === droneId)) return true;
+    // Also check techSlots
+    const techs = playerStates[playerId]?.techSlots?.[lane] || [];
+    return techs.some(d => d.id === droneId);
   }
 
   /**
@@ -575,7 +595,7 @@ class TriggerProcessor {
       // Skip the triggering drone (self-triggers handled in Tier 1)
       if (drone.id === triggeringDrone?.id) continue;
 
-      const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+      const baseDrone = allDroneDefinitions.find(d => d.name === drone.name);
       if (!baseDrone?.abilities) continue;
 
       for (const ability of baseDrone.abilities) {
@@ -597,6 +617,33 @@ class TriggerProcessor {
   }
 
   /**
+   * Collect Tech triggers from a player's techSlots for a specific lane.
+   * Tech drones fire at a priority tier between Self and Other Drones.
+   */
+  _collectTechTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier) {
+    const techs = playerState?.techSlots?.[eventLane] || [];
+
+    for (const drone of techs) {
+      const baseDrone = allDroneDefinitions.find(d => d.name === drone.name);
+      if (!baseDrone?.abilities) continue;
+
+      for (const ability of baseDrone.abilities) {
+        if (ability.type !== 'TRIGGERED' || ability.trigger !== triggerType) continue;
+
+        if (!this._validateTriggerOwner(ability.triggerOwner, scanPlayerId, triggeringPlayerId, drone, playerState)) {
+          continue;
+        }
+
+        if (!this._validateTriggerFilter(ability.triggerFilter, card, triggeringDrone)) {
+          continue;
+        }
+
+        matches.push({ drone, ability, playerId: scanPlayerId, lane: eventLane, tier });
+      }
+    }
+  }
+
+  /**
    * Collect controller triggers from a player's drones across all lanes.
    * @param {string|null} eventLane - Lane where the triggering event occurred (for SAME_LANE filtering)
    */
@@ -605,7 +652,7 @@ class TriggerProcessor {
       const drones = playerState?.dronesOnBoard?.[lane] || [];
 
       for (const drone of drones) {
-        const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+        const baseDrone = allDroneDefinitions.find(d => d.name === drone.name);
         if (!baseDrone?.abilities) continue;
 
         for (const ability of baseDrone.abilities) {
@@ -823,9 +870,10 @@ class TriggerProcessor {
    * @returns {Object} { newStates, animationEvents }
    */
   _destroyDrone(droneId, playerId, lane, playerStates, placedSections, logCallback) {
-    const drones = playerStates[playerId]?.dronesOnBoard?.[lane];
     const animationEvents = [];
 
+    // First check dronesOnBoard
+    const drones = playerStates[playerId]?.dronesOnBoard?.[lane];
     if (drones) {
       const index = drones.findIndex(d => d.id === droneId);
       if (index !== -1) {
@@ -833,14 +881,15 @@ class TriggerProcessor {
         debugLog('TRIGGERS', `Destroying drone after trigger: ${drone.name} (${droneId})`);
         drones.splice(index, 1);
 
-        // Update availability/rebuild tracking
-        Object.assign(playerStates[playerId], onDroneDestroyed(playerStates[playerId], drone));
+        // Update availability/rebuild tracking (not for Tech — they are card-created)
+        if (!drone.isTech) {
+          Object.assign(playerStates[playerId], onDroneDestroyed(playerStates[playerId], drone));
+        }
 
         // Update auras after removal
         const opponentId = playerId === 'player1' ? 'player2' : 'player1';
         playerStates[playerId].dronesOnBoard = updateAuras(playerStates[playerId], playerStates[opponentId], placedSections);
 
-        // Generate destruction animation
         animationEvents.push({
           type: 'DRONE_DESTROYED',
           targetId: droneId,
@@ -854,6 +903,40 @@ class TriggerProcessor {
           logCallback({
             player: playerStates[playerId].name,
             actionType: 'MINE_DESTROYED',
+            source: drone.name,
+            target: drone.name,
+            outcome: `${drone.name} self-destructed after triggering.`
+          }, 'triggerProcessor_destroy');
+        }
+
+        return { newStates: playerStates, animationEvents };
+      }
+    }
+
+    // Then check techSlots
+    const techs = playerStates[playerId]?.techSlots?.[lane];
+    if (techs) {
+      const index = techs.findIndex(d => d.id === droneId);
+      if (index !== -1) {
+        const drone = techs[index];
+        debugLog('TRIGGERS', `Destroying Tech after trigger: ${drone.name} (${droneId})`);
+        techs.splice(index, 1);
+
+        // Tech drones do NOT participate in availability/rebuild tracking
+
+        animationEvents.push({
+          type: 'TECH_DESTROY',
+          targetId: droneId,
+          targetPlayer: playerId,
+          targetLane: lane,
+          targetType: 'tech',
+          timestamp: Date.now()
+        });
+
+        if (logCallback) {
+          logCallback({
+            player: playerStates[playerId].name,
+            actionType: 'TECH_DESTROYED',
             source: drone.name,
             target: drone.name,
             outcome: `${drone.name} self-destructed after triggering.`

@@ -333,6 +333,13 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             targetInState = defenderPlayerState.dronesOnBoard[laneKey].find(d => d.id === finalTarget.id);
             if (targetInState) break;
         }
+        // Also search techSlots for Tech attack targets
+        if (!targetInState && defenderPlayerState.techSlots) {
+            for (const laneKey in defenderPlayerState.techSlots) {
+                targetInState = defenderPlayerState.techSlots[laneKey].find(d => d.id === finalTarget.id);
+                if (targetInState) break;
+            }
+        }
         if (targetInState) {
             // Use damage type helper for all damage calculations
             const damageResult = calculateDamageByType(
@@ -474,24 +481,49 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Apply damage to defender
     if (finalTargetType === 'drone') {
         let droneDestroyed = false;
+        let foundTarget = false;
+
+        // Search dronesOnBoard first
         for (const laneKey in newPlayerStates[defendingPlayerId].dronesOnBoard) {
             const targetIndex = newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === finalTarget.id);
             if (targetIndex !== -1) {
+                foundTarget = true;
                 if ((newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].hull - hullDamage) <= 0) {
                     droneDestroyed = true;
-                    // Explosion animation already handled by DRONE_DESTROYED event in animationEvents array
                     const destroyedDrone = newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex];
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey] =
                         newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey].filter(d => d.id !== finalTarget.id);
-                    Object.assign(newPlayerStates[defendingPlayerId], onDroneDestroyed(newPlayerStates[defendingPlayerId], destroyedDrone));
+                    if (!destroyedDrone.isTech) {
+                        Object.assign(newPlayerStates[defendingPlayerId], onDroneDestroyed(newPlayerStates[defendingPlayerId], destroyedDrone));
+                    }
                 } else {
-                    // Hit animation already handled by HULL_DAMAGE event in animationEvents array
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].hull -= hullDamage;
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].currentShields -= shieldDamage;
                 }
                 break;
             }
         }
+
+        // Search techSlots if not found in dronesOnBoard
+        if (!foundTarget && newPlayerStates[defendingPlayerId].techSlots) {
+            for (const laneKey in newPlayerStates[defendingPlayerId].techSlots) {
+                const targetIndex = newPlayerStates[defendingPlayerId].techSlots[laneKey].findIndex(d => d.id === finalTarget.id);
+                if (targetIndex !== -1) {
+                    foundTarget = true;
+                    if ((newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].hull - hullDamage) <= 0) {
+                        droneDestroyed = true;
+                        newPlayerStates[defendingPlayerId].techSlots[laneKey] =
+                            newPlayerStates[defendingPlayerId].techSlots[laneKey].filter(d => d.id !== finalTarget.id);
+                        // Tech drones do NOT participate in availability/rebuild tracking
+                    } else {
+                        newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].hull -= hullDamage;
+                        newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].currentShields -= shieldDamage;
+                    }
+                    break;
+                }
+            }
+        }
+
         if (droneDestroyed) {
             const opponentState = defendingPlayerId === 'player1' ? newPlayerStates.player2 : newPlayerStates.player1;
             newPlayerStates[defendingPlayerId].dronesOnBoard = updateAuras(

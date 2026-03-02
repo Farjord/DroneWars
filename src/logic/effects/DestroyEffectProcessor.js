@@ -298,28 +298,40 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     let droneDestroyed = null;
 
     if (laneId) {
-      const droneToDestroy = targetPlayerState.dronesOnBoard[laneId].find(d => d.id === target.id);
+      // Search dronesOnBoard first, then techSlots
+      let droneToDestroy = targetPlayerState.dronesOnBoard[laneId]?.find(d => d.id === target.id);
+      let inTechSlots = false;
+
+      if (!droneToDestroy && targetPlayerState.techSlots?.[laneId]) {
+        droneToDestroy = targetPlayerState.techSlots[laneId].find(d => d.id === target.id);
+        inTechSlots = true;
+      }
 
       if (droneToDestroy) {
         droneDestroyed = droneToDestroy;
 
-        debugLog('EFFECT_PROCESSING', `[DESTROY] Single drone destroy: ${droneToDestroy.name} in ${laneId}`);
+        debugLog('EFFECT_PROCESSING', `[DESTROY] Single ${inTechSlots ? 'Tech' : 'drone'} destroy: ${droneToDestroy.name} in ${laneId}`);
 
-        // Add destruction animation event
         animationEvents.push({
-          type: 'DRONE_DESTROYED',
+          type: inTechSlots ? 'TECH_DESTROY' : 'DRONE_DESTROYED',
           targetId: droneToDestroy.id,
           targetPlayer: opponentId,
           targetLane: laneId,
-          targetType: 'drone',
+          targetType: inTechSlots ? 'tech' : 'drone',
           timestamp: Date.now()
         });
 
-        // Update deployment counts and availability
-        this.applyDestroyCleanup(targetPlayerState, droneToDestroy);
+        // Tech drones skip availability/rebuild tracking
+        if (!droneToDestroy.isTech) {
+          this.applyDestroyCleanup(targetPlayerState, droneToDestroy);
+        }
 
-        // Remove drone from lane
-        targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
+        // Remove from appropriate structure
+        if (inTechSlots) {
+          targetPlayerState.techSlots[laneId] = targetPlayerState.techSlots[laneId].filter(d => d.id !== target.id);
+        } else {
+          targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
+        }
       }
     }
 
