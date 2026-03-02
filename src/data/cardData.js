@@ -645,10 +645,9 @@ const fullCardCollection = [
     description: 'Create an Inhibitor Mine in an enemy lane. (Inhibitor Mine: 0/1. When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
     effects: [
       {
-        type: 'CREATE_TOKENS',
+        type: 'CREATE_TECH',
         tokenName: 'Inhibitor Mine',
         targetOwner: 'OPPONENT',
-        ignoresCPULimit: true,
         targeting: { type: 'LANE', affinity: 'ENEMY' },
       },
     ],
@@ -668,10 +667,9 @@ const fullCardCollection = [
     description: 'Create a Jitter Mine in an enemy lane. (Jitter Mine: 0/1. When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
     effects: [
       {
-        type: 'CREATE_TOKENS',
+        type: 'CREATE_TECH',
         tokenName: 'Jitter Mine',
         targetOwner: 'OPPONENT',
-        ignoresCPULimit: true,
         targeting: { type: 'LANE', affinity: 'ENEMY' },
       },
     ],
@@ -691,10 +689,9 @@ const fullCardCollection = [
     description: 'Create a Proximity Mine in an enemy lane. (Proximity Mine: 0/1. When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
     effects: [
       {
-        type: 'CREATE_TOKENS',
+        type: 'CREATE_TECH',
         tokenName: 'Proximity Mine',
         targetOwner: 'OPPONENT',
-        ignoresCPULimit: true,
         targeting: { type: 'LANE', affinity: 'ENEMY' },
       },
     ],
@@ -1302,7 +1299,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/RallyBeacon.png',
     description: 'Create a Rally Beacon token in a friendly lane. (Rally Beacon: 0/1, Speed 1. When a friendly drone moves into this lane, go again.)',
     effects: [
-      { type: 'CREATE_TOKENS', tokenName: 'Rally Beacon', ignoresCPULimit: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+      { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
 
 
@@ -1629,7 +1626,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/DeployJammers.png',
     description: 'Create a Jammer drone token in each of your lanes. (Jammer: 0/1, Speed 1. Opponent card effects can only target Jammer drones.)',
     effects: [
-      { type: 'CREATE_TOKENS', tokenName: 'Jammer', locations: ['lane1', 'lane2', 'lane3'], ignoresCPULimit: true, targeting: { type: 'NONE' } },
+      { type: 'CREATE_TECH', tokenName: 'Jammer', locations: ['lane1', 'lane2', 'lane3'], targeting: { type: 'NONE' } },
     ],
 
   },

@@ -85,7 +85,7 @@ describe('effectsAdapter — simple cards', () => {
   it('Deploy Jammers (no targeting field) produces NONE targeting', () => {
     const card = findCard('CARD030');
     expect(card.effects).toHaveLength(1);
-    expect(card.effects[0].type).toBe('CREATE_TOKENS');
+    expect(card.effects[0].type).toBe('CREATE_TECH');
     expect(card.effects[0].targeting.type).toBe('NONE');
   });
 

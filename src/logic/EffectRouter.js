@@ -21,6 +21,7 @@ import DestroyUpgradeEffectProcessor from './effects/upgrades/DestroyUpgradeEffe
 import RepeatingEffectProcessor from './effects/meta/RepeatingEffectProcessor.js';
 import CompositeEffectProcessor from './effects/meta/CompositeEffectProcessor.js';
 import TokenCreationProcessor from './effects/TokenCreationProcessor.js';
+import TechCreationProcessor from './effects/TechCreationProcessor.js';
 import SearchAndDrawProcessor from './effects/cards/SearchAndDrawProcessor.js';
 import DrawThenDiscardProcessor from './effects/cards/DrawThenDiscardProcessor.js';
 import MovementEffectProcessor from './effects/MovementEffectProcessor.js';
@@ -79,6 +80,7 @@ class EffectRouter {
       REPEATING_EFFECT: new RepeatingEffectProcessor(),
       COMPOSITE_EFFECT: new CompositeEffectProcessor(),
       CREATE_TOKENS: new TokenCreationProcessor(),
+      CREATE_TECH: new TechCreationProcessor(),
       SEARCH_AND_DRAW: new SearchAndDrawProcessor(),
       DRAW_THEN_DISCARD: new DrawThenDiscardProcessor(),
       // Phase 9.4A: Marking effects - COMPLETE
