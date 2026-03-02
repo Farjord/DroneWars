@@ -2,17 +2,21 @@
 // GAME HEADER COMPONENT
 // ========================================
 // Header section showing player resources, game phase, and controls
-// Extracted from App.jsx for better component organization
+// Phase E reskin: 3-column grid, translucent blur, trapezoid phase banner,
+// SVG polyline borders, faction accent washes.
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Power, Files, Cpu, ShieldCheck, ChevronsUp, AlertTriangle } from 'lucide-react';
-import { debugLog } from '../../utils/debugLogger.js';
 import HullIntegrityBadge from './HullIntegrityBadge.jsx';
 import KPIChangePopup from '../animations/KPIChangePopup.jsx';
 import PhaseStatusText from './gameheader/PhaseStatusText.jsx';
 import ActionPhaseButtons from './gameheader/ActionPhaseButtons.jsx';
 import InitPhaseButtons from './gameheader/InitPhaseButtons.jsx';
 import SettingsDropdown from './gameheader/SettingsDropdown.jsx';
+import GameHeaderLayers from './GameHeaderLayers.jsx';
+import { FACTION_COLORS } from './ShipSectionLayers.jsx';
+
+const playerPri = FACTION_COLORS.player.primary;
 
 /**
  * Hook to track the previous value of a state/prop
@@ -67,9 +71,11 @@ const ResourceBadge = React.forwardRef(({ icon: Icon, value, max, iconColor, isP
     </div>
   );
 });
+ResourceBadge.displayName = 'ResourceBadge';
 
 /**
  * GameHeader - Top header displaying player resources and game state
+ * Phase E: 3-column CSS grid with decorative layers and trapezoid phase banner
  */
 function GameHeader({
   localPlayerState,
@@ -249,8 +255,29 @@ function GameHeader({
     };
   }, []);
 
+  // Determine turn context text for tier 2
+  const getTurnContextText = () => {
+    if (turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) {
+      return isMyTurn() ? 'Your Turn' : (isMultiplayer() ? "Opponent's Turn" : 'AI Thinking');
+    }
+    return 'Initialising';
+  };
+
+  const isPlayerTurn = (turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) && isMyTurn();
+  const turnContextText = getTurnContextText();
+
   return (
-    <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-2">
+    <header style={{
+      width: '100%', height: '100%',
+      background: 'rgba(2, 2, 6, 0.7)',
+      backdropFilter: 'blur(12px)',
+      position: 'relative', zIndex: 20,
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: '1%',
+      padding: '0 1.2%',
+      alignItems: 'start',
+    }}>
       {/* Test Mode Indicator */}
       {testMode && (
         <div
@@ -275,148 +302,171 @@ function GameHeader({
         </div>
       )}
 
-      {/* Opponent Resources */}
-      <div className="flex flex-col gap-1.5">
-        <h2
-          className="text-base font-bold uppercase tracking-wider flex items-center gap-2"
-          style={{
-            backgroundImage: 'linear-gradient(45deg, #ef4444, #f87171)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}
-        >
-          Opponent
-          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getOpponentPlayerId() && (
-            <span className="text-base font-semibold text-yellow-300">(First Player)</span>
-          )}
-          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getOpponentPlayerId()}Passed`] && (
-            <span className="text-base font-semibold text-red-400">(Passed)</span>
-          )}
-        </h2>
-        <div className="flex items-center gap-2">
-          {turnPhase === 'deployment' && (
+      {/* ─── Decorative Layers ─── */}
+      <GameHeaderLayers />
+
+      {/* ═══ COLUMN 1: Opponent Resources ═══ */}
+      <div style={{ padding: '1.5% 1%', position: 'relative', zIndex: 3 }}>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className="text-sm font-bold uppercase tracking-wider"
+              style={{ color: 'rgba(239, 68, 68, 0.7)' }}
+            >
+              Opponent
+            </span>
+            {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getOpponentPlayerId() && (
+              <span className="text-xs font-semibold text-yellow-300">(1st)</span>
+            )}
+            {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getOpponentPlayerId()}Passed`] && (
+              <span className="text-xs font-semibold text-red-400">(Passed)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {turnPhase === 'deployment' && (
+              <ResourceBadge
+                ref={opponentDeploymentRef}
+                icon={Power}
+                value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
+                iconColor="text-purple-400"
+                isPlayer={false}
+              />
+            )}
             <ResourceBadge
-              ref={opponentDeploymentRef}
+              ref={opponentEnergyRef}
               icon={Power}
-              value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
-              iconColor="text-purple-400"
+              value={opponentPlayerState.energy}
+              max={opponentPlayerEffectiveStats.totals.maxEnergy}
+              iconColor="text-yellow-300"
               isPlayer={false}
             />
-          )}
-          <ResourceBadge
-            ref={opponentEnergyRef}
-            icon={Power}
-            value={opponentPlayerState.energy}
-            max={opponentPlayerEffectiveStats.totals.maxEnergy}
-            iconColor="text-yellow-300"
-            isPlayer={false}
-          />
-          <ResourceBadge
-            ref={opponentMomentumRef}
-            icon={ChevronsUp}
-            value={opponentPlayerState.momentum || 0}
-            iconColor="text-blue-400"
-            isPlayer={false}
-          />
-          <div
-            onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
-            className={AI_HAND_DEBUG_MODE ? 'cursor-pointer' : ''}
-          >
             <ResourceBadge
-              ref={opponentHandRef}
-              icon={Files}
-              value={opponentPlayerState.hand.length}
-              max={opponentPlayerEffectiveStats.totals.handLimit}
-              iconColor="text-cyan-300"
+              ref={opponentMomentumRef}
+              icon={ChevronsUp}
+              value={opponentPlayerState.momentum || 0}
+              iconColor="text-blue-400"
               isPlayer={false}
             />
+            <div
+              onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
+              className={AI_HAND_DEBUG_MODE ? 'cursor-pointer' : ''}
+            >
+              <ResourceBadge
+                ref={opponentHandRef}
+                icon={Files}
+                value={opponentPlayerState.hand.length}
+                max={opponentPlayerEffectiveStats.totals.handLimit}
+                iconColor="text-cyan-300"
+                isPlayer={false}
+              />
+            </div>
+            <div
+              onClick={() => setTimeout(() => onShowOpponentDrones(), 100)}
+              className="cursor-pointer hover:scale-105 transition-transform"
+            >
+              <ResourceBadge
+                icon={Cpu}
+                value={totalOpponentPlayerDrones}
+                max={opponentPlayerEffectiveStats.totals.cpuLimit}
+                iconColor="text-cyan-400"
+                isPlayer={false}
+              />
+            </div>
+            {/* Hull Integrity - Win Condition Progress */}
+            {opponentHullIntegrity && (
+              <HullIntegrityBadge
+                current={opponentHullIntegrity.remainingToWin}
+                threshold={opponentHullIntegrity.damageThreshold}
+                isPlayer={false}
+              />
+            )}
           </div>
-          <div
-            onClick={() => setTimeout(() => onShowOpponentDrones(), 100)}
-            className="cursor-pointer hover:scale-105 transition-transform"
-          >
-            <ResourceBadge
-              icon={Cpu}
-              value={totalOpponentPlayerDrones}
-              max={opponentPlayerEffectiveStats.totals.cpuLimit}
-              iconColor="text-cyan-400"
-              isPlayer={false}
-            />
-          </div>
-          {/* Hull Integrity - Win Condition Progress */}
-          {opponentHullIntegrity && (
-            <HullIntegrityBadge
-              current={opponentHullIntegrity.remainingToWin}
-              threshold={opponentHullIntegrity.damageThreshold}
-              isPlayer={false}
-            />
-          )}
         </div>
       </div>
 
-      {/* Center Phase and Turn Indicator */}
-      <div className="text-center flex flex-col items-center gap-2">
-        {/* Phase Display */}
-        <PhaseStatusText
-          turnPhase={turnPhase}
-          shieldsToAllocate={shieldsToAllocate}
-          pendingShieldsRemaining={pendingShieldsRemaining}
-          reallocationPhase={reallocationPhase}
-          shieldsToRemove={shieldsToRemove}
-          shieldsToAdd={shieldsToAdd}
-          mandatoryAction={mandatoryAction}
-          excessCards={excessCards}
-          excessDrones={excessDrones}
-          optionalDiscardCount={optionalDiscardCount}
-          localPlayerEffectiveStats={localPlayerEffectiveStats}
-          interceptionModeActive={interceptionModeActive}
-          effectChainState={effectChainState}
-        />
+      {/* ═══ COLUMN 2: Trapezoid Phase Banner ═══ */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: '0.8% 0', position: 'relative', zIndex: 3,
+      }}>
+        {/* ─── Tier 1: Phase name ─── */}
+        <div style={{
+          width: '100%',
+          clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
+          background: 'linear-gradient(180deg, rgba(12,30,48,0.9), rgba(8,20,32,0.95))',
+          padding: '1.5% 2%', textAlign: 'center', position: 'relative',
+          border: `0.06vw solid ${playerPri}22`,
+        }}>
+          {/* Top accent line */}
+          <div style={{
+            position: 'absolute', top: 0, left: '3%', right: '3%', height: '0.1vw',
+            background: `linear-gradient(90deg, transparent, ${playerPri}44, ${playerPri}66, ${playerPri}44, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          {/* Bottom accent line */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: '8%', right: '8%', height: '0.06vw',
+            background: `linear-gradient(90deg, transparent, ${playerPri}22, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          {/* Sheen overlay */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%, rgba(255,255,255,0.01))',
+            pointerEvents: 'none',
+          }} />
+          {/* Phase status content */}
+          <PhaseStatusText
+            turnPhase={turnPhase}
+            shieldsToAllocate={shieldsToAllocate}
+            pendingShieldsRemaining={pendingShieldsRemaining}
+            reallocationPhase={reallocationPhase}
+            shieldsToRemove={shieldsToRemove}
+            shieldsToAdd={shieldsToAdd}
+            mandatoryAction={mandatoryAction}
+            excessCards={excessCards}
+            excessDrones={excessDrones}
+            optionalDiscardCount={optionalDiscardCount}
+            localPlayerEffectiveStats={localPlayerEffectiveStats}
+            interceptionModeActive={interceptionModeActive}
+            effectChainState={effectChainState}
+          />
+        </div>
 
-        {/* Turn Indicator - Always show */}
-        <div className="flex items-center gap-3">
+        {/* ─── Tier 2: Turn context ─── */}
+        <div style={{
+          width: '75%',
+          clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
+          background: 'linear-gradient(180deg, rgba(8,20,32,0.9), rgba(12,30,48,0.85))',
+          padding: '0.8% 2%', textAlign: 'center', marginTop: '-1px', position: 'relative',
+          border: `0.05vw solid ${playerPri}15`,
+        }}>
+          {/* Bottom accent line */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: '6%', right: '6%', height: '0.05vw',
+            background: `linear-gradient(90deg, transparent, ${playerPri}20, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            color: isPlayerTurn ? playerPri : '#ef4444',
+            fontWeight: 700,
+            fontSize: 'clamp(0.55rem, 0.95vw, 0.95rem)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            textShadow: isPlayerTurn
+              ? `0 0 0.7vw ${playerPri}77, 0 0 1.5vw ${playerPri}33`
+              : '0 0 0.7vw rgba(239,68,68,0.47), 0 0 1.5vw rgba(239,68,68,0.2)',
+          }}>
+            {turnContextText}
+          </div>
+        </div>
+
+        {/* ─── Gap ─── */}
+        <div style={{ height: '0.6vh' }} />
+
+        {/* ─── Tier 3: Action buttons ─── */}
+        <div style={{ position: 'relative', zIndex: 4 }}>
           {(turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) ? (
-            <>
-              {isMyTurn() ? (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
-                    style={{
-                      backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
-                      backgroundSize: '300% auto',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                      WebkitTextStroke: '1px black',
-                      textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
-                      filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
-                    }}
-                  >
-                    Your Turn
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine animate-pulse"
-                    style={{
-                      backgroundImage: 'linear-gradient(45deg, #ef4444, #f87171, #ef4444)',
-                      backgroundSize: '200% auto',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                      WebkitTextStroke: '1px black',
-                      textShadow: '0 0 30px rgba(239, 68, 68, 0.5), 0 0 60px rgba(248, 113, 113, 0.3)',
-                      filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.4))',
-                      animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                    }}
-                  >
-                    {isMultiplayer() ? "Opponent's Turn" : "AI Thinking"}
-                  </span>
-                </div>
-              )}
-
             <ActionPhaseButtons
               isMyTurn={isMyTurn}
               mandatoryAction={mandatoryAction}
@@ -436,167 +486,136 @@ function GameHeader({
               handleConfirmChainMultiSelect={handleConfirmChainMultiSelect}
               handleCancelEffectChain={handleCancelEffectChain}
             />
-            </>
           ) : (
-            // Initialising phase - show in cyan/white colors for both players
-            <>
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
-                  style={{
-                    backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
-                    backgroundSize: '300% auto',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    WebkitTextStroke: '1px black',
-                    textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
-                    filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
-                  }}
-                >
-                  Initialising
-                </span>
-              </div>
-
-              <InitPhaseButtons
-                turnPhase={turnPhase}
-                excessCards={excessCards}
-                excessDrones={excessDrones}
-                handleResetShields={handleResetShields}
-                handleConfirmShields={handleConfirmShields}
-                handleRoundStartDraw={handleRoundStartDraw}
-                handleMandatoryDiscardContinue={handleMandatoryDiscardContinue}
-                handleMandatoryDroneRemovalContinue={handleMandatoryDroneRemovalContinue}
-              />
-            </>
+            <InitPhaseButtons
+              turnPhase={turnPhase}
+              excessCards={excessCards}
+              excessDrones={excessDrones}
+              handleResetShields={handleResetShields}
+              handleConfirmShields={handleConfirmShields}
+              handleRoundStartDraw={handleRoundStartDraw}
+              handleMandatoryDiscardContinue={handleMandatoryDiscardContinue}
+              handleMandatoryDroneRemovalContinue={handleMandatoryDroneRemovalContinue}
+            />
           )}
         </div>
       </div>
 
-      {/* Player Resources */}
-      <div className="flex flex-col gap-1.5 items-end">
-        <h2
-          className="text-base font-bold uppercase tracking-wider flex items-center gap-2 phase-announcement-shine"
-          style={{
-            backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
-            backgroundSize: '300% auto',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}
-        >
-          Your Resources
-          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getLocalPlayerId() && (
-            <span className="text-base font-semibold text-yellow-300">(First Player)</span>
-          )}
-          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getLocalPlayerId()}Passed`] && (
-            <span className="text-base font-semibold text-red-400">(Passed)</span>
-          )}
-        </h2>
-        <div className="flex items-center gap-2">
-          {/* Hull Integrity - Win Condition Progress (far left for player) */}
-          {localPlayerHullIntegrity && (
-            <HullIntegrityBadge
-              current={localPlayerHullIntegrity.remainingToWin}
-              threshold={localPlayerHullIntegrity.damageThreshold}
-              isPlayer={true}
-            />
-          )}
-          {turnPhase === 'deployment' && (() => {
-            debugLog('RESOURCE_RESET', '🎨 [GAMEHEADER] Deployment badge rendering', {
-              roundNumber,
-              isRound1: roundNumber === 1,
-              localPlayerState_initialDeploymentBudget: localPlayerState?.initialDeploymentBudget,
-              localPlayerState_deploymentBudget: localPlayerState?.deploymentBudget,
-              calculatedValue: roundNumber === 1 ? localPlayerState?.initialDeploymentBudget : localPlayerState?.deploymentBudget
-            });
-            return null;
-          })()}
-          {turnPhase === 'deployment' && (
+      {/* ═══ COLUMN 3: Player Resources ═══ */}
+      <div style={{
+        padding: '1.5% 1%', position: 'relative', zIndex: 3,
+        display: 'flex', justifyContent: 'flex-end',
+      }}>
+        <div className="flex flex-col gap-1.5 items-end">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span
+              className="text-sm font-bold uppercase tracking-wider"
+              style={{ color: 'rgba(6, 182, 212, 0.7)' }}
+            >
+              Your Resources
+            </span>
+            {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getLocalPlayerId() && (
+              <span className="text-xs font-semibold text-yellow-300">(1st)</span>
+            )}
+            {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getLocalPlayerId()}Passed`] && (
+              <span className="text-xs font-semibold text-red-400">(Passed)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Hull Integrity - Win Condition Progress (far left for player) */}
+            {localPlayerHullIntegrity && (
+              <HullIntegrityBadge
+                current={localPlayerHullIntegrity.remainingToWin}
+                threshold={localPlayerHullIntegrity.damageThreshold}
+                isPlayer={true}
+              />
+            )}
+            {turnPhase === 'deployment' && (
+              <ResourceBadge
+                ref={playerDeploymentRef}
+                icon={Power}
+                value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
+                iconColor="text-purple-400"
+                isPlayer={true}
+              />
+            )}
             <ResourceBadge
-              ref={playerDeploymentRef}
+              ref={playerEnergyRef}
               icon={Power}
-              value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
-              iconColor="text-purple-400"
+              value={localPlayerState.energy}
+              max={localPlayerEffectiveStats.totals.maxEnergy}
+              iconColor="text-yellow-300"
               isPlayer={true}
             />
-          )}
-          <ResourceBadge
-            ref={playerEnergyRef}
-            icon={Power}
-            value={localPlayerState.energy}
-            max={localPlayerEffectiveStats.totals.maxEnergy}
-            iconColor="text-yellow-300"
-            isPlayer={true}
-          />
-          <ResourceBadge
-            ref={playerMomentumRef}
-            icon={ChevronsUp}
-            value={localPlayerState.momentum || 0}
-            iconColor="text-blue-400"
-            isPlayer={true}
-          />
-          <ResourceBadge
-            icon={Cpu}
-            value={totalLocalPlayerDrones}
-            max={localPlayerEffectiveStats.totals.cpuLimit}
-            iconColor="text-cyan-400"
-            isPlayer={true}
-          />
-          {/* Threat KPI - Only show in Extraction mode */}
-          {isExtractionMode && currentRunState && (
             <ResourceBadge
-              ref={playerThreatRef}
-              icon={AlertTriangle}
-              value={Math.round(currentRunState.detection || 0)}
-              max={100}
-              iconColor={
-                currentRunState.detection >= 80 ? 'text-red-500' :
-                currentRunState.detection >= 50 ? 'text-yellow-400' :
-                'text-green-400'
-              }
+              ref={playerMomentumRef}
+              icon={ChevronsUp}
+              value={localPlayerState.momentum || 0}
+              iconColor="text-blue-400"
               isPlayer={true}
             />
-          )}
-          {turnPhase === 'allocateShields' && (
             <ResourceBadge
-              icon={ShieldCheck}
-              value={pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate}
-              iconColor="text-cyan-300"
+              icon={Cpu}
+              value={totalLocalPlayerDrones}
+              max={localPlayerEffectiveStats.totals.cpuLimit}
+              iconColor="text-cyan-400"
               isPlayer={true}
             />
-          )}
-          {reallocationPhase === 'removing' && (
-            <ResourceBadge
-              icon={ShieldCheck}
-              value={shieldsToRemove}
-              iconColor="text-orange-300"
-              isPlayer={true}
-            />
-          )}
-          {reallocationPhase === 'adding' && (
-            <ResourceBadge
-              icon={ShieldCheck}
-              value={shieldsToAdd}
-              iconColor="text-green-300"
-              isPlayer={true}
-            />
-          )}
+            {/* Threat KPI - Only show in Extraction mode */}
+            {isExtractionMode && currentRunState && (
+              <ResourceBadge
+                ref={playerThreatRef}
+                icon={AlertTriangle}
+                value={Math.round(currentRunState.detection || 0)}
+                max={100}
+                iconColor={
+                  currentRunState.detection >= 80 ? 'text-red-500' :
+                  currentRunState.detection >= 50 ? 'text-yellow-400' :
+                  'text-green-400'
+                }
+                isPlayer={true}
+              />
+            )}
+            {turnPhase === 'allocateShields' && (
+              <ResourceBadge
+                icon={ShieldCheck}
+                value={pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate}
+                iconColor="text-cyan-300"
+                isPlayer={true}
+              />
+            )}
+            {reallocationPhase === 'removing' && (
+              <ResourceBadge
+                icon={ShieldCheck}
+                value={shieldsToRemove}
+                iconColor="text-orange-300"
+                isPlayer={true}
+              />
+            )}
+            {reallocationPhase === 'adding' && (
+              <ResourceBadge
+                icon={ShieldCheck}
+                value={shieldsToAdd}
+                iconColor="text-green-300"
+                isPlayer={true}
+              />
+            )}
 
-          {/* Settings Dropdown */}
-          <SettingsDropdown
-            showSettingsDropdown={showSettingsDropdown}
-            setShowSettingsDropdown={setShowSettingsDropdown}
-            dropdownRef={dropdownRef}
-            selectedBackground={selectedBackground}
-            onBackgroundChange={onBackgroundChange}
-            onShowDebugModal={onShowDebugModal}
-            onShowAddCardModal={onShowAddCardModal}
-            onForceWin={onForceWin}
-            onShowGlossary={onShowGlossary}
-            onShowAIStrategy={onShowAIStrategy}
-            handleExitGame={handleExitGame}
-          />
+            {/* Settings Dropdown */}
+            <SettingsDropdown
+              showSettingsDropdown={showSettingsDropdown}
+              setShowSettingsDropdown={setShowSettingsDropdown}
+              dropdownRef={dropdownRef}
+              selectedBackground={selectedBackground}
+              onBackgroundChange={onBackgroundChange}
+              onShowDebugModal={onShowDebugModal}
+              onShowAddCardModal={onShowAddCardModal}
+              onForceWin={onForceWin}
+              onShowGlossary={onShowGlossary}
+              onShowAIStrategy={onShowAIStrategy}
+              handleExitGame={handleExitGame}
+            />
+          </div>
         </div>
       </div>
 
