@@ -11,6 +11,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
+import { MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 
 /**
  * DeploymentProcessor
@@ -137,6 +138,21 @@ class DeploymentProcessor {
           message: `No ${drone.name} copies are ready. ${availability.rebuildingCount} rebuilding.`
         };
       }
+    }
+
+    // Check lane capacity limit (all drones + tokens)
+    if (targetLane && player.dronesOnBoard[targetLane]?.length >= MAX_DRONES_PER_LANE) {
+      debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: Lane Full`, {
+        droneName: drone?.name,
+        targetLane,
+        droneCount: player.dronesOnBoard[targetLane].length,
+        maxDronesPerLane: MAX_DRONES_PER_LANE
+      });
+      return {
+        isValid: false,
+        reason: "Lane Full",
+        message: `This lane is full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones).`
+      };
     }
 
     // Check maxPerLane restriction if applicable

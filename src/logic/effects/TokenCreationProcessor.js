@@ -10,7 +10,7 @@
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import fullDroneCollection from '../../data/droneData.js';
-import { countDroneTypeInLane } from '../utils/gameEngineUtils.js';
+import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 
 /**
  * Processor for CREATE_TOKENS effect type
@@ -79,6 +79,21 @@ class TokenCreationProcessor extends BaseEffectProcessor {
 
     // Create tokens in specified lanes
     locations.forEach(laneId => {
+      // Check lane capacity limit before creating token
+      if ((targetPlayerState.dronesOnBoard[laneId]?.length || 0) >= MAX_DRONES_PER_LANE) {
+        debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] ⚠️ Cannot create ${effect.tokenName} in ${laneId} (lane full: ${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE})`);
+
+        if (callbacks?.logCallback) {
+          callbacks.logCallback({
+            player: actingPlayerState.name,
+            actionType: 'TOKEN_BLOCKED',
+            outcome: `Could not create ${effect.tokenName} token in ${laneId} (lane full: ${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones)`
+          });
+        }
+
+        return; // Skip to next lane
+      }
+
       // Check maxPerLane restriction before creating token (check on the target player's board)
       if (baseDrone.maxPerLane) {
         const currentCountInLane = countDroneTypeInLane(targetPlayerState, baseDrone.name, laneId);

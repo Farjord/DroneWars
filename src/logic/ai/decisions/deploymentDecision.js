@@ -14,6 +14,7 @@ import {
 } from '../helpers/index.js';
 
 import { THREAT_DRONES } from '../aiConstants.js';
+import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 import { calculateLaneScore } from '../scoring/index.js';
 
@@ -110,6 +111,16 @@ const currentLaneScores = {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
 
         // Crash is intentional to catch data issues if drone not found
+
+        // Check lane capacity limit
+        if ((player2.dronesOnBoard[laneId]?.length || 0) >= MAX_DRONES_PER_LANE) {
+          possibleDeployments.push({
+            drone, laneId, score: -999,
+            instigator: drone.name, targetName: laneId,
+            logic: [`Lane full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones)`]
+          });
+          continue;
+        }
 
         // Check maxPerLane restriction
         if (baseDrone.maxPerLane) {

@@ -5,7 +5,7 @@
 // Extracted from gameLogic.js Phase 7B
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
-import { countDroneTypeInLane } from '../utils/gameEngineUtils.js';
+import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 import { updateAuras } from '../utils/auraManager.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
@@ -114,6 +114,14 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
       for (const toLane of ['lane1', 'lane2', 'lane3']) {
         if (fromLane === toLane) continue;
+
+        // Check lane capacity — skip full destination lanes
+        const destCount = aiState.dronesOnBoard[toLane]?.length || 0;
+        if (effect.type === 'SINGLE_MOVE' && destCount >= MAX_DRONES_PER_LANE) continue;
+        if (effect.type === 'MULTI_MOVE') {
+          const batchSize = Math.min(effect.count || 3, nonSnaredDrones.length);
+          if (destCount + batchSize > MAX_DRONES_PER_LANE) continue;
+        }
 
         // For SINGLE_MOVE, check adjacency
         if (effect.type === 'SINGLE_MOVE') {
@@ -316,6 +324,16 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       };
     }
 
+    // Check lane capacity limit before moving
+    if ((droneOwnerState.dronesOnBoard[toLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+      return {
+        newPlayerStates: newPlayerStates,
+        error: `Cannot move to ${toLane} — lane is full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones).`,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true
+      };
+    }
+
     // Check maxPerLane restriction before moving
     const baseDrone = fullDroneCollection.find(d => d.name === droneToMove.name);
     if (baseDrone && baseDrone.maxPerLane) {
@@ -467,6 +485,17 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         newPlayerStates: newPlayerStates,
         error: `Drones cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
         shouldShowErrorModal: true,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true
+      };
+    }
+
+    // Check lane capacity limit for the entire batch
+    const currentCount = actingPlayerState.dronesOnBoard[toLane]?.length || 0;
+    if (currentCount + dronesToMove.length > MAX_DRONES_PER_LANE) {
+      return {
+        newPlayerStates: newPlayerStates,
+        error: `Cannot move ${dronesToMove.length} drone(s) to ${toLane} — lane is full (${currentCount}/${MAX_DRONES_PER_LANE} drones).`,
         shouldCancelCardSelection: true,
         shouldClearMultiSelectState: true
       };

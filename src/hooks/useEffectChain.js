@@ -13,6 +13,7 @@ import {
   isCompoundEffect,
   hasSkippedRef,
 } from '../logic/cards/chainTargetResolver.js';
+import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 /**
  * Check if an effect requires multi-target selection.
  */
@@ -112,6 +113,19 @@ function advanceToNextSelection(state, context) {
 }
 
 /**
+ * Filter destination lane targets to exclude full lanes.
+ * For SINGLE_MOVE/MULTI_MOVE, the batch size affects which lanes are valid.
+ */
+function filterFullDestinations(destTargets, playerStates, batchSize = 1) {
+  return destTargets.filter(t => {
+    const state = playerStates[t.owner];
+    if (!state) return true;
+    const currentCount = state.dronesOnBoard[t.id]?.length || 0;
+    return currentCount + batchSize <= 5;
+  });
+}
+
+/**
  * Hook for managing effect chain UI state.
  *
  * @param {Object} options
@@ -164,11 +178,12 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
       const effect = effects[0];
 
       if (isCompoundEffect(effect)) {
-        const destTargets = computeDestinationTargets(
+        const rawDestTargets = computeDestinationTargets(
           effect.destination,
           { target: initialTarget, lane: initialLane },
           actingPlayerId
         );
+        const destTargets = filterFullDestinations(rawDestTargets, playerStates);
         setChainState({
           ...base,
           subPhase: 'destination',
@@ -202,11 +217,12 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
 
     if (isCompoundEffect(effect)) {
       const resolvedDest = resolveDestinationRefs(effect.destination, chainState.selections);
-      const destTargets = computeDestinationTargets(
+      const rawDestTargets = computeDestinationTargets(
         resolvedDest,
         { target, lane },
         actingPlayerId
       );
+      const destTargets = filterFullDestinations(rawDestTargets, playerStates);
 
       // Auto-select when destination ref resolved to a concrete lane (exactly 1 target)
       const lanes = ['lane1', 'lane2', 'lane3'];
@@ -356,11 +372,12 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
 
     if (isCompoundEffect(effect)) {
       // Advance to destination selection
-      const destTargets = computeDestinationTargets(
+      const rawDestTargets = computeDestinationTargets(
         effect.destination,
         { target: targets, lane: sourceLane },
         actingPlayerId
       );
+      const destTargets = filterFullDestinations(rawDestTargets, playerStates, targets.length);
       setChainState(prev => ({
         ...prev,
         subPhase: 'destination',

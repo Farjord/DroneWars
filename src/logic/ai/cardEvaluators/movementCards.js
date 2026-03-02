@@ -7,6 +7,7 @@ import fullDroneCollection from '../../../data/droneData.js';
 import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
+import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 /**
  * Evaluate a SINGLE_MOVE card
@@ -35,6 +36,12 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
 
   // Detect if this is an enemy drone (Tactical Repositioning) or friendly drone
   const isEnemyDrone = player1.dronesOnBoard[fromLane]?.some(d => d.id === drone.id);
+
+  // Check lane capacity limit
+  const destinationOwner = isEnemyDrone ? player1 : player2;
+  if ((destinationOwner.dronesOnBoard[toLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: [`⛔ Destination lane full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones)`] };
+  }
 
   if (isEnemyDrone) {
     // ENEMY DRONE MOVEMENT (Tactical Repositioning card)

@@ -15,6 +15,7 @@ import {
 } from '../helpers/index.js';
 
 import { DRONE_PACING, THRUSTER_INHIBITOR } from '../aiConstants.js';
+import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 import { evaluateCardPlay } from '../cardEvaluators/index.js';
 import { evaluateDroneAttack, evaluateShipAttack } from '../attackEvaluators/index.js';
@@ -217,6 +218,11 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
               const toLane = `lane${toLaneIndex}`;
               const fromLane = drone.lane;
 
+              // Check lane capacity limit
+              if ((player2.dronesOnBoard[toLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+                return; // Skip — lane full
+              }
+
               const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
               if (baseDrone && baseDrone.maxPerLane) {
                 const currentCountInTarget = countDroneTypeInLane(player2, drone.name, toLane);
@@ -293,6 +299,11 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
         if (toLaneIndex >= 1 && toLaneIndex <= 3) {
           const toLane = `lane${toLaneIndex}`;
+
+          // Check lane capacity limit
+          if ((player2.dronesOnBoard[toLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+            return; // Skip — lane full
+          }
 
           // Check maxPerLane restriction
           const baseDrone = fullDroneCollection.find(d => d.name === drone.name);

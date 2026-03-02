@@ -9,6 +9,7 @@ import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
 import { calculateAllValidTargets, calculateAffectedDroneIds } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
+import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 
 // Vertical pixel offset from card top to arrow start point
 const ARROW_START_Y_OFFSET = 20;
@@ -670,6 +671,13 @@ const useDragMechanics = ({
       const targetLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
 
       if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
+        // Check lane capacity before allowing move
+        if (isLaneFull(localPlayerState, targetLane)) {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - destination lane full', { targetLane });
+          setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
+          return;
+        }
+
         debugLog('DRAG_DROP_DEPLOY', '🏃 Move initiated via drag', { drone: attackerDrone.name, from: sourceLane, to: targetLane });
 
         const moveConfData = {

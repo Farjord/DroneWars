@@ -60,6 +60,9 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 61 | EffectChainProcessor.js | Deep-clone cost in trigger deferral: each trigger batch produces 2+ `JSON.parse(JSON.stringify(...))` snapshots of the full player state (preTriggerState at processor level + preCardPlayTriggerState in chain + fireTrigger's own STATE_SNAPSHOTs). A card with movement + ON_CARD_PLAY triggers generates 3+ deep clones per play. Consider a structural-sharing snapshot (immutable state) or lazy snapshot that only clones on first mutation. | Trigger animation deferral code review | 2026-02-28 | Low |
 | 62 | GameHeader.jsx | At 636 lines — KPI popup logic (~90 lines, 8 near-identical useEffect hooks) is a strong extraction candidate into `useKPIPopups` custom hook | Phase E code review | 2026-03-02 | Medium |
 | 63 | GameHeader.jsx | Opponent faction colors hardcoded as `rgba(239,68,68,...)` inline — should use `FACTION_COLORS.opponent.primary` consistently | Phase E code review | 2026-03-02 | Low |
+| 64 | SingleLaneView.jsx | Lane capacity badge: show `3/5` counter per lane, warning color at 5/5, full-lane styling (dimmed overlay or border) | Lane capacity limit | 2026-03-02 | Medium |
+| 65 | useDragMechanics.js | Suppress drop-zone highlighting for full lanes during card drags and drone drags | Lane capacity limit | 2026-03-02 | Low |
+| 66 | Card targeting UI | Full lanes should not highlight as valid targets for token deployment cards; show disabled/greyed state | Lane capacity limit | 2026-03-02 | Low |
 
 ## Audit Findings (2026-02-23)
 

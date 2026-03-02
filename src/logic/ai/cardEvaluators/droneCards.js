@@ -7,7 +7,7 @@ import fullDroneCollection from '../../../data/droneData.js';
 import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE, THRUSTER_INHIBITOR, PROXIMITY_MINE, INHIBITOR_MINE, JITTER_MINE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasJammerInLane } from '../helpers/jammerHelpers.js';
-import { countDroneTypeInLane } from '../../utils/gameEngineUtils.js';
+import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 /**
  * Evaluate a READY_DRONE card
@@ -230,6 +230,11 @@ const evaluateRallyBeaconCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
+  // Check lane capacity limit
+  if ((player2.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  }
+
   // Check if lane already has a Rally Beacon (maxPerLane: 1)
   const dronesInLane = player2.dronesOnBoard[targetLane] || [];
   const hasBeacon = dronesInLane.some(d => d.isToken && d.name === 'Rally Beacon');
@@ -304,6 +309,11 @@ const evaluateThrusterInhibitorCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
+  // Check lane capacity limit
+  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  }
+
   // Check if lane already has a Thruster Inhibitor (maxPerLane: 1)
   const dronesInLane = player1.dronesOnBoard[targetLane] || [];
   const hasInhibitor = dronesInLane.some(d => d.isToken && d.name === 'Thruster Inhibitor');
@@ -358,6 +368,11 @@ const evaluateProximityMineCard = (card, target, context) => {
   const targetLane = target?.id;
   if (!targetLane) {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check lane capacity limit
+  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
   }
 
   // Check if lane already has a Proximity Mine
@@ -415,6 +430,11 @@ const evaluateInhibitorMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
+  // Check lane capacity limit
+  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  }
+
   // Check if lane already has an Inhibitor Mine
   const dronesInLane = player1.dronesOnBoard[targetLane] || [];
   const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Inhibitor Mine');
@@ -459,6 +479,11 @@ const evaluateJitterMineCard = (card, target, context) => {
   const targetLane = target?.id;
   if (!targetLane) {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check lane capacity limit
+  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
   }
 
   // Check if lane already has a Jitter Mine

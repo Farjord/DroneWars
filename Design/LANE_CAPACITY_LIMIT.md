@@ -166,7 +166,7 @@ For Deploy Jammers (all 3 lanes), apply "resolve up to what you can" — create 
 
 Show a small counter on each lane: e.g., `3/5` in the lane header area. When the lane reaches 5/5, the indicator turns a warning color (red/orange).
 
-**Location:** `DroneLanesDisplay.jsx` — add a capacity badge to each lane's rendered output.
+**Location:** `SingleLaneView.jsx` — add a capacity badge to each lane's rendered output.
 
 ### Full-Lane Visual State
 
@@ -176,7 +176,7 @@ When a lane is at capacity:
 - Tooltip on hover: "Lane full — 5/5 drones."
 
 **Files:**
-- `src/components/ui/DroneLanesDisplay.jsx` — conditional styling per lane
+- `src/components/ui/SingleLaneView.jsx` — conditional styling per lane
 - `src/hooks/useDragMechanics.js` — suppress drop-zone highlighting for full lanes during card drags and drone drags
 - CSS adjustments in the relevant stylesheet
 
@@ -220,7 +220,7 @@ This keeps the magic number in one place and makes tests straightforward.
 | AI card eval | `src/logic/ai/cardEvaluators/movementCards.js` | Skip full destinations |
 | AI token eval | `src/logic/ai/cardEvaluators/droneCards.js` | Skip full lanes |
 | Quick deploy | `src/logic/quickDeploy/QuickDeployValidator.js` | Capacity validation |
-| UI indicator | `src/components/ui/DroneLanesDisplay.jsx` | Capacity badge, full-lane styling |
+| UI indicator | `src/components/ui/SingleLaneView.jsx` | Capacity badge, full-lane styling |
 | UI drag feedback | `src/hooks/useDragMechanics.js` | Suppress drop highlights on full lanes |
 
 ---

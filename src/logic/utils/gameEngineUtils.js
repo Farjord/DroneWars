@@ -4,6 +4,32 @@
 // Shared helper functions for targeting and game logic
 // Extracted from gameLogic.js for reuse across modular processors
 
+/** Maximum drones (including tokens) allowed per player per lane */
+export const MAX_DRONES_PER_LANE = 5;
+
+/**
+ * Check if a lane is at capacity for a given player
+ *
+ * @param {Object} playerState - Player state to check
+ * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
+ * @returns {boolean} True if lane has >= MAX_DRONES_PER_LANE drones
+ */
+export const isLaneFull = (playerState, laneId) => {
+  return (playerState.dronesOnBoard[laneId]?.length || 0) >= MAX_DRONES_PER_LANE;
+};
+
+/**
+ * Get lane capacity information for a given player
+ *
+ * @param {Object} playerState - Player state to check
+ * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
+ * @returns {{ count: number, max: number, isFull: boolean }}
+ */
+export const getLaneCapacity = (playerState, laneId) => {
+  const count = playerState.dronesOnBoard[laneId]?.length || 0;
+  return { count, max: MAX_DRONES_PER_LANE, isFull: count >= MAX_DRONES_PER_LANE };
+};
+
 /**
  * Find which lane a drone is in
  *

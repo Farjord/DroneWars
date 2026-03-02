@@ -5,6 +5,7 @@
 
 import fullDroneCollection from '../../data/droneData.js';
 import { calculateEffectiveShipStats } from '../statsCalculator.js';
+import { MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -137,6 +138,21 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
           });
         }
       }
+    }
+  }
+
+  // 5. Lane capacity limit - total drones per lane
+  for (const [laneIndex, drones] of Object.entries(laneGroups)) {
+    if (drones.length > MAX_DRONES_PER_LANE) {
+      reasons.push({
+        type: 'lane_capacity_exceeded',
+        message: `Lane ${laneIndex} has ${drones.length} drones (max ${MAX_DRONES_PER_LANE})`,
+        details: {
+          lane: parseInt(laneIndex),
+          count: drones.length,
+          maxDronesPerLane: MAX_DRONES_PER_LANE
+        }
+      });
     }
   }
 
