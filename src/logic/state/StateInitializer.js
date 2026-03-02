@@ -153,6 +153,7 @@ class StateInitializer {
         discardPile: [],
         activeDronePool: activeDronePool,
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        techSlots: { lane1: [], lane2: [], lane3: [] },
         deployedDroneCounts: {},
         totalDronesDeployed: 0,  // Global deployment counter for deterministic IDs
         appliedUpgrades: appliedUpgrades,

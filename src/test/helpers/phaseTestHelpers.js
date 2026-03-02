@@ -96,6 +96,7 @@ export const createMockPlayer = (name) => {
     deck: [],
     discard: [],
     dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+    techSlots: { lane1: [], lane2: [], lane3: [] },
     shipSections: {
       section1: {
         hull: 10,

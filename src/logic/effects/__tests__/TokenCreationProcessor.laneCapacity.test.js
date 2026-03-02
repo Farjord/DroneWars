@@ -47,7 +47,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Proximity Mine',
+      tokenName: 'Thruster Inhibitor',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };
@@ -68,7 +68,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Proximity Mine',
+      tokenName: 'Thruster Inhibitor',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };
@@ -79,7 +79,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
     expect(result.animationEvents).toHaveLength(1);
   });
 
-  it('should handle multi-lane token with one full lane (Deploy Jammers)', () => {
+  it('should handle multi-lane token with one full lane (Deploy Thruster Inhibitors)', () => {
     // lane1 full, lane2 and lane3 have room
     mockContext.playerStates.player2.dronesOnBoard.lane1 = makeDrones(5);
     mockContext.playerStates.player2.dronesOnBoard.lane2 = makeDrones(2);
@@ -87,7 +87,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Jammer',
+      tokenName: 'Thruster Inhibitor',
       targetOwner: 'OPPONENT',
       locations: ['lane1', 'lane2', 'lane3'],
     };
@@ -108,7 +108,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Jammer',
+      tokenName: 'Thruster Inhibitor',
       targetOwner: 'OPPONENT',
       locations: ['lane1', 'lane2', 'lane3'],
     };
@@ -122,12 +122,12 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
     // Lane is full, AND maxPerLane would also block — capacity check fires first
     mockContext.playerStates.player2.dronesOnBoard.lane1 = [
       ...makeDrones(4),
-      { id: 'jammer_0', name: 'Jammer', hull: 1, isToken: true }, // already has one Jammer
+      { id: 'jammer_0', name: 'Thruster Inhibitor', hull: 1, isToken: true }, // already has one Jammer
     ];
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Jammer',
+      tokenName: 'Thruster Inhibitor',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };

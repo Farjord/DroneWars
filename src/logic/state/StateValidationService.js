@@ -74,11 +74,12 @@ class StateValidationService {
     validatePlayerValues(player1, 'player1');
     validatePlayerValues(player2, 'player2');
 
-    // Check for duplicate drone IDs
+    // Check for duplicate drone IDs (across dronesOnBoard and techSlots)
     const allDroneIds = new Set();
     [player1, player2].forEach((player, playerIndex) => {
-      if (player?.dronesOnBoard) {
-        Object.values(player.dronesOnBoard).forEach(lane => {
+      const structures = [player?.dronesOnBoard, player?.techSlots].filter(Boolean);
+      for (const structure of structures) {
+        Object.values(structure).forEach(lane => {
           lane.forEach(drone => {
             if (allDroneIds.has(drone.id)) {
               debugLog('VALIDATION', `🚨 Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);

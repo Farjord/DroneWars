@@ -1,9 +1,9 @@
 // ========================================
-// LANE EFFECTS COMPONENT
+// TECH SLOTS COMPONENT
 // ========================================
-// Renders 5 circular effect token slots at the centre-facing edge of a lane.
+// Renders 5 circular Tech Slots at the centre-facing edge of a lane.
 // Positioned to straddle the gap between opponent and player lanes.
-// Currently renders empty slots only — active effect styling deferred until game logic ships.
+// Empty slots show a subtle ring; filled slots show Tech drone art with faction border.
 
 import React from 'react';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
@@ -26,8 +26,8 @@ const getContainerStyle = (faction) => ({
   pointerEvents: 'none',
 });
 
-const getSlotStyle = (effect, faction) => {
-  if (effect) {
+const getSlotStyle = (techDrone, faction) => {
+  if (techDrone) {
     const fc = FACTION_COLORS[faction];
     return {
       width: SLOT_SIZE,
@@ -43,16 +43,16 @@ const getSlotStyle = (effect, faction) => {
     width: SLOT_SIZE,
     height: SLOT_SIZE,
     borderRadius: '50%',
-    background: '#2a2a32',
-    border: '0.08vw solid #48485a',
+    background: 'rgba(200,200,210,0.08)',
+    border: '0.08vw solid rgba(200,200,210,0.7)',
   };
 };
 
-export default function LaneEffects({ faction, effects = [] }) {
+export default function TechSlots({ faction, techDrones = [] }) {
   return (
     <div style={getContainerStyle(faction)}>
       {Array.from({ length: SLOT_COUNT }, (_, i) => (
-        <div key={i} style={getSlotStyle(effects[i], faction)} />
+        <div key={i} style={getSlotStyle(techDrones[i], faction)} />
       ))}
     </div>
   );

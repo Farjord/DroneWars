@@ -7,6 +7,9 @@
 /** Maximum drones (including tokens) allowed per player per lane */
 export const MAX_DRONES_PER_LANE = 5;
 
+/** Maximum Tech drones allowed per player per lane (separate from combat drones) */
+export const MAX_TECH_PER_LANE = 5;
+
 /**
  * Check if a lane is at capacity for a given player
  *
@@ -43,6 +46,14 @@ export const getLaneOfDrone = (droneId, playerState) => {
             return lane;
         }
     }
+    // Also search techSlots
+    if (playerState.techSlots) {
+        for (const [lane, techs] of Object.entries(playerState.techSlots)) {
+            if (techs.some(d => d.id === droneId)) {
+                return lane;
+            }
+        }
+    }
     return null;
 };
 
@@ -67,22 +78,31 @@ export const hasJammerKeyword = (drone) => {
  * @returns {boolean} True if lane has at least one ready Jammer
  */
 export const hasJammerInLane = (playerState, lane) => {
-    return (playerState.dronesOnBoard[lane] || []).some(drone =>
+    const boardJammer = (playerState.dronesOnBoard[lane] || []).some(drone =>
+        hasJammerKeyword(drone) && !drone.isExhausted
+    );
+    if (boardJammer) return true;
+    // Also check techSlots
+    return (playerState.techSlots?.[lane] || []).some(drone =>
         hasJammerKeyword(drone) && !drone.isExhausted
     );
 };
 
 /**
- * Get all ready Jammer drones from a lane
+ * Get all ready Jammer drones from a lane (searches both dronesOnBoard and techSlots)
  *
  * @param {Object} playerState - Player state to search
  * @param {string} lane - Lane ID to search ('lane1', 'lane2', 'lane3')
  * @returns {Array} Array of ready Jammer drones in the lane
  */
 export const getJammerDronesInLane = (playerState, lane) => {
-    return (playerState.dronesOnBoard[lane] || []).filter(drone =>
+    const boardJammers = (playerState.dronesOnBoard[lane] || []).filter(drone =>
         hasJammerKeyword(drone) && !drone.isExhausted
     );
+    const techJammers = (playerState.techSlots?.[lane] || []).filter(drone =>
+        hasJammerKeyword(drone) && !drone.isExhausted
+    );
+    return [...boardJammers, ...techJammers];
 };
 
 /**
@@ -94,8 +114,7 @@ export const getJammerDronesInLane = (playerState, lane) => {
  * @returns {number} Count of matching drones in the lane
  */
 export const countDroneTypeInLane = (playerState, droneName, laneId) => {
-    if (!playerState.dronesOnBoard[laneId]) {
-        return 0;
-    }
-    return playerState.dronesOnBoard[laneId].filter(d => d.name === droneName).length;
+    const boardCount = (playerState.dronesOnBoard[laneId] || []).filter(d => d.name === droneName).length;
+    const techCount = (playerState.techSlots?.[laneId] || []).filter(d => d.name === droneName).length;
+    return boardCount + techCount;
 };

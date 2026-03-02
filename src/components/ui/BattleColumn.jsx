@@ -8,7 +8,7 @@
 import React from 'react';
 import ShipSectionCompact from './ShipSectionCompact.jsx';
 import SingleLaneView from './SingleLaneView.jsx';
-import LaneEffects from './LaneEffects.jsx';
+import TechSlots from './TechSlots.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
@@ -353,7 +353,7 @@ const BattleColumn = ({
           player={opponentPlayerState}
           {...sharedLaneProps}
         />
-        <LaneEffects faction="opponent" />
+        <TechSlots faction="opponent" />
       </div>
 
       {/* Centre gap */}
@@ -369,7 +369,7 @@ const BattleColumn = ({
           handleCardDragEnd={handleCardDragEnd}
           {...sharedLaneProps}
         />
-        <LaneEffects faction="player" />
+        <TechSlots faction="player" />
       </div>
 
       {/* Player Ship Section — 27.5% height, overlaps lane by -10% margin, behind lanes */}

@@ -196,6 +196,13 @@ class GuestMessageQueueService {
         if (!dronesMatch(drones1, drones2, `${player}.${lane}`)) {
           return false;
         }
+
+        // Compare techSlots
+        const tech1 = p1.techSlots?.[lane] || [];
+        const tech2 = p2.techSlots?.[lane] || [];
+        if (!dronesMatch(tech1, tech2, `${player}.techSlots.${lane}`)) {
+          return false;
+        }
       }
     }
 
