@@ -33,10 +33,10 @@ function ActionPhaseButtons({
   return (
     <>
       {/* Pass Button - Hide during reallocation */}
-      {isMyTurn() && !mandatoryAction && !reallocationPhase && !effectChainState && (
+      {!mandatoryAction && !reallocationPhase && !effectChainState && (
         <button
           onClick={handlePlayerPass}
-          disabled={passInfo[`${getLocalPlayerId()}Passed`]}
+          disabled={!isMyTurn() || passInfo[`${getLocalPlayerId()}Passed`]}
           className="dw-btn dw-btn-danger dw-btn--sm"
         >
           Pass
