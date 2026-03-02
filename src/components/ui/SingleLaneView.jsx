@@ -305,8 +305,11 @@ const SingleLaneView = ({
         position: 'absolute', left: '2%', right: '2%',
         top: 0, bottom: 0,
         pointerEvents: 'auto', zIndex: 10,
-        display: 'flex', flexWrap: 'wrap', gap: '0',
-        justifyContent: 'space-evenly', alignItems: 'center', alignContent: 'center',
+        display: 'flex', flexWrap: 'wrap', gap: '2rem',
+        justifyContent: 'center',
+        alignItems: isPlayer ? 'flex-start' : 'center',
+        alignContent: isPlayer ? 'flex-start' : 'center',
+        paddingTop: isPlayer ? '6%' : 0,
       }}>
         {renderDronesOnBoard({
           drones: player.dronesOnBoard[laneId],
