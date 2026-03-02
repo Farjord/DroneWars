@@ -75,9 +75,9 @@ const DECISION_CSV_HEADERS = [
  */
 const extractContext = (gameState) => ({
   aiEnergy: gameState?.player2?.energy ?? 'N/A',
-  aiCPU: gameState?.player2 ? Object.values(gameState.player2.dronesOnBoard || {}).flat().length : 'N/A',
+  aiCPU: gameState?.player2 ? Object.values(gameState.player2.dronesOnBoard || {}).flat().length + Object.values(gameState.player2.techSlots || {}).flat().length : 'N/A',
   opponentEnergy: gameState?.player1?.energy ?? 'N/A',
-  opponentCPU: gameState?.player1 ? Object.values(gameState.player1.dronesOnBoard || {}).flat().length : 'N/A'
+  opponentCPU: gameState?.player1 ? Object.values(gameState.player1.dronesOnBoard || {}).flat().length + Object.values(gameState.player1.techSlots || {}).flat().length : 'N/A'
 });
 
 /**

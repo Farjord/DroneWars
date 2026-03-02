@@ -834,11 +834,13 @@ class GameStateManager {
       gameState: {
         player1: {
           energy: gameState?.player1?.energy,
-          dronesOnBoard: gameState?.player1?.dronesOnBoard
+          dronesOnBoard: gameState?.player1?.dronesOnBoard,
+          techSlots: gameState?.player1?.techSlots
         },
         player2: {
           energy: gameState?.player2?.energy,
-          dronesOnBoard: gameState?.player2?.dronesOnBoard
+          dronesOnBoard: gameState?.player2?.dronesOnBoard,
+          techSlots: gameState?.player2?.techSlots
         }
       }
     };

@@ -161,7 +161,7 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
       const player1ShipStats = gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
       const player2ShipStats = gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
 
-      // Get effective drone stats for all drones on board
+      // Get effective drone stats for all drones on board (including Tech slots)
       const player1DroneStats = {};
       const player2DroneStats = {};
 
@@ -170,10 +170,21 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
           drone: drone.name,
           effectiveStats: gameDataService.getEffectiveStats(drone, lane)
         }));
+        const p1Tech = (gameState.player1.techSlots?.[lane] || []).map(drone => ({
+          drone: `[Tech] ${drone.name}`,
+          effectiveStats: { attack: 0, hull: drone.hull || 1, shields: 0, speed: 0 }
+        }));
+        player1DroneStats[lane] = [...player1DroneStats[lane], ...p1Tech];
+
         player2DroneStats[lane] = gameState.player2.dronesOnBoard[lane].map(drone => ({
           drone: drone.name,
           effectiveStats: gameDataService.getEffectiveStats(drone, lane)
         }));
+        const p2Tech = (gameState.player2.techSlots?.[lane] || []).map(drone => ({
+          drone: `[Tech] ${drone.name}`,
+          effectiveStats: { attack: 0, hull: drone.hull || 1, shields: 0, speed: 0 }
+        }));
+        player2DroneStats[lane] = [...player2DroneStats[lane], ...p2Tech];
       });
 
       // Get cache statistics if available

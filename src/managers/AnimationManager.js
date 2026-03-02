@@ -97,6 +97,13 @@ class AnimationManager {
         config: {}
       },
 
+      MOVEMENT_BLOCKED: {
+        duration: 1200,
+        type: 'MOVEMENT_BLOCKED_EFFECT',
+        timing: 'pre-state',
+        config: {}
+      },
+
       // Phase announcements
       PHASE_ANNOUNCEMENT: {
         duration: 1500,  // 1.5 second phase announcement
@@ -190,6 +197,26 @@ class AnimationManager {
         type: 'RAILGUN_BEAM',
         timing: 'pre-state',  // Needs existing elements for beam endpoints
         config: {}
+      },
+
+      // Tech Slot animations
+      TECH_DEPLOY: {
+        duration: 600,
+        type: 'TELEPORT_EFFECT',  // Reuse teleport glow for Tech deploy
+        timing: 'post-state',  // Needs new Tech to exist in DOM
+        config: { revealAt: 0.7 }
+      },
+      TECH_DESTROY: {
+        duration: 800,
+        type: 'EXPLOSION_EFFECT',  // Small flash/pop at slot position
+        timing: 'pre-state',  // Needs existing Tech before removal
+        config: { size: 'small' }
+      },
+      TECH_TRIGGER_FIRE: {
+        duration: 600,
+        type: 'FLASH_EFFECT',  // Brief bright flash when trigger activates
+        timing: 'pre-state',  // Needs existing Tech to flash
+        config: { color: '#ff6600', intensity: 0.8 }
       }
     };
   }
