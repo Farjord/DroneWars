@@ -14,6 +14,7 @@ import MandatoryActionModal from '../modals/MandatoryActionModal.jsx';
 import WinnerModal from '../modals/WinnerModal.jsx';
 import AIDecisionLogModal from '../modals/AIDecisionLogModal.jsx';
 import ViewShipSectionModal from '../modals/ViewShipSectionModal.jsx';
+import ViewTechDetailModal from '../modals/ViewTechDetailModal.jsx';
 import DeploymentConfirmationModal from '../modals/DeploymentConfirmationModal.jsx';
 import MoveConfirmationModal from '../modals/MoveConfirmationModal.jsx';
 import AttackConfirmationModal from '../modals/AttackConfirmationModal.jsx';
@@ -53,6 +54,7 @@ function ModalLayer({
   showWinnerModal,
   showAbandonRunModal,
   viewShipSectionModal,
+  viewTechDetailModal,
   mandatoryAction,
   localPlayerEffectiveStats,
   showMandatoryActionModal,
@@ -106,6 +108,7 @@ function ModalLayer({
   onCancelAbandonRun,
   onConfirmAbandonRun,
   onCloseViewShipSection,
+  onCloseViewTechDetail,
   onCloseMandatoryActionModal,
   onCancelCardConfirmation,
   onConfirmCardPlay,
@@ -305,6 +308,12 @@ function ModalLayer({
         isOpen={!!viewShipSectionModal}
         onClose={onCloseViewShipSection}
         data={viewShipSectionModal}
+      />
+
+      <ViewTechDetailModal
+        isOpen={!!viewTechDetailModal}
+        onClose={onCloseViewTechDetail}
+        techDrone={viewTechDetailModal}
       />
 
       <MandatoryActionModal

@@ -247,6 +247,7 @@ const BattleColumn = ({
   handleAbilityIconClick,
   setHoveredTarget,
   onViewShipSection,
+  onViewTechDetail,
   interceptedBadge,
   // Drag-and-drop
   draggedCard,
@@ -356,6 +357,7 @@ const BattleColumn = ({
         <TechSlots
           faction="opponent"
           techDrones={opponentPlayerState.techSlots?.[laneId] || []}
+          onTechClick={onViewTechDetail}
         />
       </div>
 
@@ -375,6 +377,7 @@ const BattleColumn = ({
         <TechSlots
           faction="player"
           techDrones={localPlayerState.techSlots?.[laneId] || []}
+          onTechClick={onViewTechDetail}
         />
       </div>
 

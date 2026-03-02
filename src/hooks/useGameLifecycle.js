@@ -68,6 +68,7 @@ export default function useGameLifecycle({
   // --- UI modal state ---
   setSelectedBackground,
   setViewShipSectionModal,
+  setViewTechDetailModal,
   setShowOpponentDronesModal,
 
   // --- External ---
@@ -547,6 +548,10 @@ export default function useGameLifecycle({
     setViewShipSectionModal(sectionData);
   };
 
+  const handleViewTechDetail = (techDrone) => {
+    setViewTechDetailModal(techDrone);
+  };
+
   const handleShowOpponentDrones = () => {
     setShowOpponentDronesModal(true);
   };
@@ -573,6 +578,7 @@ export default function useGameLifecycle({
     handleFooterButtonClick,
     handleBackgroundChange,
     handleViewShipSection,
+    handleViewTechDetail,
     handleShowOpponentDrones,
   };
 }

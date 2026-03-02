@@ -123,6 +123,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAbandonRunModal, setShowAbandonRunModal] = useState(false);
   const [viewShipSectionModal, setViewShipSectionModal] = useState(null);
+  const [viewTechDetailModal, setViewTechDetailModal] = useState(null);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
@@ -142,6 +143,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [passNotifications, setPassNotifications] = useState([]);
   const [goAgainNotifications, setGoAgainNotifications] = useState([]);
   const [triggerFiredNotifications, setTriggerFiredNotifications] = useState([]);
+  const [movementBlockedNotifications, setMovementBlockedNotifications] = useState([]);
   const [statusConsumptions, setStatusConsumptions] = useState([]);
   const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
@@ -228,6 +230,7 @@ const App = ({ phaseAnimationQueue }) => {
   setPassNotifications,
   setGoAgainNotifications,
   setTriggerFiredNotifications,
+  setMovementBlockedNotifications,
   setOverflowProjectiles,
   setSplashEffects,
   setBarrageImpacts,
@@ -666,7 +669,7 @@ const App = ({ phaseAnimationQueue }) => {
     cancelAllActions, opponentPlayerState, gameState, gameDataService,
     getPlacedSectionsForEngine,
     droneRefs, setMoveConfirmation, resolveAttack, getEffectiveStats, selectedDrone,
-    abilityMode,
+    abilityMode, addLogEntry,
   });
 
   // Positioned after useDragMechanics — depends on draggedActionCard (useDragMechanics)
@@ -807,7 +810,7 @@ const App = ({ phaseAnimationQueue }) => {
     checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy,
     downloadLogAsCSV, handleCardInfoClick,
     handleFooterViewToggle, handleFooterButtonClick,
-    handleBackgroundChange, handleViewShipSection, handleShowOpponentDrones,
+    handleBackgroundChange, handleViewShipSection, handleViewTechDetail, handleShowOpponentDrones,
   } = useGameLifecycle({
     // Game state
     gameState, localPlayerState, opponentPlayerState, turnPhase, passInfo,
@@ -829,7 +832,7 @@ const App = ({ phaseAnimationQueue }) => {
     // Footer state
     footerView, isFooterOpen, setFooterView, setIsFooterOpen,
     // UI modal state
-    setSelectedBackground, setViewShipSectionModal, setShowOpponentDronesModal,
+    setSelectedBackground, setViewShipSectionModal, setViewTechDetailModal, setShowOpponentDronesModal,
     // External
     gameStateManager, phaseAnimationQueue, gameLog,
   });
@@ -915,6 +918,7 @@ const App = ({ phaseAnimationQueue }) => {
      ) : (
        <StaticBackground imagePath={currentBackground.path} />
      )}
+     <div className="absolute inset-0 z-0 bg-black/50 pointer-events-none" />
      <TargetingArrowLayer
        arrowState={arrowState}
        cardDragArrowState={cardDragArrowState}
@@ -946,6 +950,7 @@ const App = ({ phaseAnimationQueue }) => {
        passNotifications={passNotifications}
        goAgainNotifications={goAgainNotifications}
        triggerFiredNotifications={triggerFiredNotifications}
+       movementBlockedNotifications={movementBlockedNotifications}
        cardPlayWarning={cardPlayWarning}
        laserEffects={laserEffects}
        teleportEffects={teleportEffects}
@@ -1065,6 +1070,7 @@ const App = ({ phaseAnimationQueue }) => {
         handleAbilityIconClick={handleAbilityIconClick}
         setHoveredTarget={handleSetHoveredTarget}
         onViewShipSection={handleViewShipSection}
+        onViewTechDetail={handleViewTechDetail}
         interceptedBadge={interceptedBadge}
         draggedCard={draggedCard}
         handleCardDragEnd={handleCardDragEnd}
@@ -1157,6 +1163,7 @@ const App = ({ phaseAnimationQueue }) => {
         showWinnerModal={showWinnerModal}
         showAbandonRunModal={showAbandonRunModal}
         viewShipSectionModal={viewShipSectionModal}
+        viewTechDetailModal={viewTechDetailModal}
         mandatoryAction={mandatoryAction}
         localPlayerEffectiveStats={localPlayerEffectiveStats}
         showMandatoryActionModal={showMandatoryActionModal}
@@ -1209,6 +1216,7 @@ const App = ({ phaseAnimationQueue }) => {
         onCancelAbandonRun={() => setShowAbandonRunModal(false)}
         onConfirmAbandonRun={handleConfirmAbandonRun}
         onCloseViewShipSection={() => setViewShipSectionModal(null)}
+        onCloseViewTechDetail={() => setViewTechDetailModal(null)}
         onCloseMandatoryActionModal={() => setShowMandatoryActionModal(false)}
         onCancelCardConfirmation={() => {
           setCardConfirmation(null);

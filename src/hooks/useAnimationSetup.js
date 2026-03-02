@@ -6,7 +6,7 @@ import { registerCardAnimations } from './animationSetup/useCardAnimations.js';
 import { registerNotificationAnimations } from './animationSetup/useNotificationAnimations.js';
 import { registerMovementAnimations } from './animationSetup/useMovementAnimations.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setTriggerFiredNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, setStatusConsumptions) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setTriggerFiredNotifications, setMovementBlockedNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, setStatusConsumptions) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -33,6 +33,11 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         const localPlayerId = gameStateManager.getLocalPlayerId();
         const prefix = playerId === localPlayerId ? 'local' : 'opponent';
         return sectionRefs.current[`${prefix}-${entityId}`] || null;
+      }
+
+      // For tech slots, use data-drone-id attribute (not in droneRefs)
+      if (entityType === 'tech') {
+        return document.querySelector(`[data-drone-id="${entityId}"]`) || null;
       }
 
       return null;
@@ -80,7 +85,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       setTeleportEffects,
       setPassNotifications,
       setGoAgainNotifications,
-      setTriggerFiredNotifications
+      setTriggerFiredNotifications,
+      setMovementBlockedNotifications
     });
 
     registerMovementAnimations(animationManager, {

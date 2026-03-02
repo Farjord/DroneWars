@@ -18,7 +18,8 @@ export function registerNotificationAnimations(animationManager, {
   setTeleportEffects,
   setPassNotifications,
   setGoAgainNotifications,
-  setTriggerFiredNotifications
+  setTriggerFiredNotifications,
+  setMovementBlockedNotifications
 }) {
   animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {
     const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
@@ -123,7 +124,9 @@ export function registerNotificationAnimations(animationManager, {
     const { droneName, abilityName, targetId, onComplete } = payload;
 
     // Find drone element for positioning above the triggering drone
-    const droneEl = droneRefs.current[targetId];
+    // Fall back to data-drone-id query for Tech slots (not in droneRefs)
+    const droneEl = droneRefs.current[targetId]
+      || document.querySelector(`[data-drone-id="${targetId}"]`);
     let position = null;
     if (droneEl) {
       const rect = droneEl.getBoundingClientRect();
@@ -142,6 +145,35 @@ export function registerNotificationAnimations(animationManager, {
       position,
       onComplete: () => {
         setTriggerFiredNotifications(prev => prev.filter(n => n.id !== notificationId));
+        onComplete?.();
+      }
+    }]);
+  });
+
+  animationManager.registerVisualHandler('MOVEMENT_BLOCKED_EFFECT', (payload) => {
+    const { droneName, targetId, onComplete } = payload;
+
+    // Fall back to data-drone-id query for Tech slots (not in droneRefs)
+    const droneEl = droneRefs.current[targetId]
+      || document.querySelector(`[data-drone-id="${targetId}"]`);
+    let position = null;
+    if (droneEl) {
+      const rect = droneEl.getBoundingClientRect();
+      position = {
+        left: rect.left + rect.width / 2,
+        top: rect.top
+      };
+    }
+
+    const notificationId = `moveblocked-${crypto.randomUUID()}`;
+
+    setMovementBlockedNotifications(prev => [...prev, {
+      id: notificationId,
+      droneName: droneName || 'Unknown',
+      message: 'Movement Blocked',
+      position,
+      onComplete: () => {
+        setMovementBlockedNotifications(prev => prev.filter(n => n.id !== notificationId));
         onComplete?.();
       }
     }]);
@@ -186,7 +218,9 @@ export function registerNotificationAnimations(animationManager, {
     // Use requestAnimationFrame to ensure React has finished rendering the drone element
     requestAnimationFrame(() => {
       // The drone should now exist as an invisible placeholder - get its exact position
-      const droneEl = droneRefs.current[targetId];
+      // Fall back to data-drone-id query for Tech slots (not in droneRefs)
+      const droneEl = droneRefs.current[targetId]
+        || document.querySelector(`[data-drone-id="${targetId}"]`);
 
       if (!droneEl) {
         debugLog('ANIMATIONS', '⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
