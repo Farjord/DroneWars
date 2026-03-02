@@ -210,6 +210,26 @@ vi.mock('../../../data/droneData.js', () => ({
         triggerFilter: { cardSubType: 'Mine' },
         effects: [{ type: 'DRAW', value: 1 }]
       }]
+    },
+    {
+      name: 'TestRoundStartDrone',
+      attack: 1, hull: 4, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Power Up',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_START',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 2, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestHealDrone',
+      attack: 1, hull: 4, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Repair Protocol',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_START',
+        effects: [{ type: 'HEAL_HULL', value: 3 }]
+      }]
     }
   ]
 }));
@@ -1823,6 +1843,275 @@ describe('TriggerProcessor', () => {
       expect(lastContext.pairSet).toBe(pairSet);
       expect(lastContext.chainDepth).toBe(6); // 5 + 1
       expect(lastContext.triggeringDrone.id).toBe('mine1'); // reactor becomes source for cascades
+    });
+  });
+
+  // ========================================
+  // TRIGGER LOGGING
+  // ========================================
+
+  describe('trigger logging', () => {
+    it('should log with actionType TRIGGER (not ABILITY)', () => {
+      const triggeringDrone = { id: 'drone1', name: 'TestSelfTriggerDrone', statMods: [] };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog).toBeDefined();
+      // Should NOT have any ABILITY entries
+      const abilityLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'ABILITY');
+      expect(abilityLog).toBeUndefined();
+    });
+
+    it('should include reactor drone name and lane in source', () => {
+      const triggeringDrone = { id: 'drone1', name: 'TestSelfTriggerDrone', statMods: [] };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].source).toBe('TestSelfTriggerDrone (Lane 2)');
+    });
+
+    it('should include triggering drone name as target', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 1 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].target).toBe('NormalDrone');
+    });
+
+    it('should describe MODIFY_STAT effects in outcome', () => {
+      const triggeringDrone = { id: 'drone1', name: 'TestSelfTriggerDrone', statMods: [] };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('Test Self Ability');
+      expect(triggerLog[0].outcome).toContain('+1 attack');
+    });
+
+    it('should describe DAMAGE effects with target drone name', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 5, currentShields: 1 };
+      const mine = { id: 'mine1', name: 'TestMineDamageDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('Damage Mine');
+      expect(triggerLog[0].outcome).toContain('3 damage');
+      expect(triggerLog[0].outcome).toContain('NormalDrone');
+    });
+
+    it('should describe GO_AGAIN effect in outcome', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
+      const beacon = { id: 'beacon1', name: 'TestRallyBeacon' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [beacon, triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('Go Again');
+    });
+
+    it('should not produce a separate GO_AGAIN log entry', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone' };
+      const beacon = { id: 'beacon1', name: 'TestRallyBeacon' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [beacon, triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      // Should have exactly one TRIGGER log entry for Rally Point, no separate GO_AGAIN log
+      const triggerLogs = logCallback.mock.calls.filter(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLogs).toHaveLength(1);
+    });
+
+    it('should include scaling repeat count in outcome', () => {
+      const controllerDrone = { id: 'odin1', name: 'TestControllerTriggerDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [controllerDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_DRAWN, {
+        lane: null,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback,
+        scalingAmount: 3
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('+1 attack');
+      expect(triggerLog[0].outcome).toContain('x3');
+    });
+
+    it('should describe DESTROY scope SELF in outcome', () => {
+      const triggeringDrone = { id: 'firefly1', name: 'TestFireflyDrone', owner: 'player1' };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('Self-Destruct');
+      expect(triggerLog[0].outcome).toContain('destroyed self');
+    });
+
+    it('should describe EXHAUST_DRONE effect in outcome', () => {
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', hull: 3, currentShields: 0 };
+      const mine = { id: 'mine1', name: 'TestMineExhaustDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [mine, triggeringDrone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane2',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('exhausted');
+    });
+
+    it('should describe DRAW effect in outcome', () => {
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        { id: 'anansi1', name: 'Anansi', attack: 1, hull: 2, shields: 2, isExhausted: false }
+      ];
+
+      const logCallback = vi.fn();
+      const mineCard = { name: 'Deploy Proximity Mine', type: 'Ordnance', subType: 'Mine' };
+      processor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
+        lane: 'lane1',
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        card: mineCard,
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('drew 1 card');
+    });
+
+    it('should describe HEAL_HULL effect in outcome', () => {
+      const drone = { id: 'healer1', name: 'TestHealDrone', statMods: [] };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [drone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+        lane: 'lane1',
+        triggeringDrone: drone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].outcome).toContain('healed 3 hull');
+    });
+
+    it('should use Self as target when no triggering drone', () => {
+      const drone = { id: 'rs1', name: 'TestRoundStartDrone', statMods: [] };
+      basePlayerStates.player1.dronesOnBoard.lane3 = [drone];
+
+      const logCallback = vi.fn();
+      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+        lane: 'lane3',
+        triggeringDrone: drone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback
+      });
+
+      const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
+      expect(triggerLog[0].source).toBe('TestRoundStartDrone (Lane 3)');
     });
   });
 });

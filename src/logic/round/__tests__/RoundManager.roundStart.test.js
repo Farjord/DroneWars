@@ -237,6 +237,36 @@ describe('RoundManager - processRoundStartTriggers', () => {
     });
   });
 
+  describe('logCallback passthrough', () => {
+    it('should pass logCallback to fireTrigger context', () => {
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      const drone = createDrone();
+      const player1State = createPlayerState({ lane1: [drone] });
+      const player2State = createPlayerState();
+      const logCallback = vi.fn();
+
+      RoundManager.processRoundStartTriggers(player1State, player2State, {}, logCallback);
+
+      expect(mockFireTrigger).toHaveBeenCalledWith(
+        'ON_ROUND_START',
+        expect.objectContaining({ logCallback })
+      );
+    });
+
+    it('should work without logCallback (backward compatible)', () => {
+      const drone = createDrone();
+      const player1State = createPlayerState({ lane1: [drone] });
+      const player2State = createPlayerState();
+
+      // No logCallback passed — should not throw
+      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      expect(result.player1).toBeDefined();
+    });
+  });
+
   describe('State propagation', () => {
     it('should pass updated states from one trigger call to the next', () => {
       let callCount = 0;

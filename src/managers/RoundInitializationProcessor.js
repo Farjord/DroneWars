@@ -148,10 +148,14 @@ class RoundInitializationProcessor {
 
     const preTriggersState = this.gameStateManager.getState();
 
+    const logCallback = (entry, debugSource) =>
+      this.gameStateManager.addLogEntry(entry, debugSource || 'roundStartTriggers');
+
     const roundStartResult = RoundManager.processRoundStartTriggers(
       preTriggersState.player1,
       preTriggersState.player2,
-      allPlacedSections
+      allPlacedSections,
+      logCallback
     );
 
     if (roundStartResult) {

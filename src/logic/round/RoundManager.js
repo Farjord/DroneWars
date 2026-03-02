@@ -167,7 +167,7 @@ class RoundManager {
    * @param {Object} placedSections - Ship section placements
    * @returns {Object} { player1: updatedState, player2: updatedState, animationEvents: [] }
    */
-  processRoundStartTriggers(player1State, player2State, placedSections) {
+  processRoundStartTriggers(player1State, player2State, placedSections, logCallback = null) {
     const triggerProcessor = new TriggerProcessor();
     let currentStates = {
       player1: JSON.parse(JSON.stringify(player1State)),
@@ -188,7 +188,8 @@ class RoundManager {
             triggeringPlayerId: playerId,
             actingPlayerId: playerId,
             playerStates: currentStates,
-            placedSections
+            placedSections,
+            logCallback
           });
 
           if (result.triggered) {

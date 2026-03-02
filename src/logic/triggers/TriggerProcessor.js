@@ -296,15 +296,12 @@ class TriggerProcessor {
 
     // Log the trigger firing
     if (logCallback) {
-      const outcomeDetail = repeatCount > 1
-        ? `Activated '${ability.name}' — x${repeatCount} from ${scalingAmount} ${ability.trigger === 'ON_CARD_DRAWN' ? 'card(s) drawn' : 'energy gained'}.`
-        : `Activated '${ability.name}'.`;
       logCallback({
         player: currentStates[reactorPlayerId]?.name || reactorPlayerId,
-        actionType: 'ABILITY',
-        source: reactorDrone.name,
+        actionType: 'TRIGGER',
+        source: `${reactorDrone.name} (${this._formatLane(reactorLane)})`,
         target: triggeringDrone?.name || 'Self',
-        outcome: outcomeDetail
+        outcome: this._describeEffects(ability, triggeringDrone, repeatCount, scalingAmount)
       }, 'triggerProcessor_fire');
     }
 
@@ -395,13 +392,6 @@ class TriggerProcessor {
         // GO_AGAIN is a control flow signal, not a state mutation — handle before EffectRouter
         if (effect.type === 'GO_AGAIN') {
           goAgain = true;
-          if (logCallback) {
-            logCallback({
-              actionType: 'TRIGGER',
-              source: reactorDrone.name,
-              outcome: `${reactorDrone.name} in ${reactorLane} grants go again!`
-            });
-          }
           continue;
         }
 
@@ -502,6 +492,69 @@ class TriggerProcessor {
   // ========================================
   // PRIVATE HELPERS
   // ========================================
+
+  /**
+   * Convert lane key to display string: 'lane2' → 'Lane 2'.
+   */
+  _formatLane(lane) {
+    if (!lane) return 'Unknown';
+    const num = lane.replace('lane', '');
+    return `Lane ${num}`;
+  }
+
+  /**
+   * Build a human-readable outcome string from an ability's effects.
+   *
+   * @param {Object} ability - The triggered ability
+   * @param {Object} triggeringDrone - The drone that caused the trigger
+   * @param {number} repeatCount - How many times effects repeat (scaling)
+   * @param {number} scalingAmount - Raw scaling input value
+   * @returns {string} e.g. "Phase Shift: +1 attack, +1 speed"
+   */
+  _describeEffects(ability, triggeringDrone, repeatCount = 1, scalingAmount = null) {
+    const effects = ability.effects || (ability.effect ? [ability.effect] : []);
+    const parts = [];
+
+    for (const effect of effects) {
+      switch (effect.type) {
+        case 'MODIFY_STAT': {
+          const sign = effect.mod.value >= 0 ? '+' : '';
+          parts.push(`${sign}${effect.mod.value} ${effect.mod.stat}`);
+          break;
+        }
+        case 'HEAL_HULL':
+          parts.push(`healed ${effect.value} hull`);
+          break;
+        case 'DAMAGE':
+          parts.push(`${effect.value} damage to ${triggeringDrone?.name || 'target'}`);
+          break;
+        case 'DESTROY':
+          parts.push(effect.scope === 'SELF' ? 'destroyed self' : 'destroyed target');
+          break;
+        case 'GO_AGAIN':
+          parts.push('Go Again');
+          break;
+        case 'EXHAUST_DRONE':
+          parts.push(`exhausted ${triggeringDrone?.name || 'target'}`);
+          break;
+        case 'DRAW':
+          parts.push(`drew ${effect.value} card${effect.value !== 1 ? 's' : ''}`);
+          break;
+        case 'MARK_RANDOM_ENEMY':
+          parts.push('marked an enemy drone');
+          break;
+        case 'INCREASE_THREAT':
+          parts.push(`increased threat by ${effect.value}`);
+          break;
+        default:
+          parts.push(effect.type);
+      }
+    }
+
+    const effectDesc = parts.join(', ');
+    const scalingSuffix = repeatCount > 1 ? ` (x${repeatCount})` : '';
+    return `${ability.name}: ${effectDesc}${scalingSuffix}`;
+  }
 
   /**
    * Check if a drone still exists on the board.
