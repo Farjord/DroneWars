@@ -353,7 +353,10 @@ const BattleColumn = ({
           player={opponentPlayerState}
           {...sharedLaneProps}
         />
-        <TechSlots faction="opponent" />
+        <TechSlots
+          faction="opponent"
+          techDrones={opponentPlayerState.techSlots?.[laneId] || []}
+        />
       </div>
 
       {/* Centre gap */}
@@ -369,7 +372,10 @@ const BattleColumn = ({
           handleCardDragEnd={handleCardDragEnd}
           {...sharedLaneProps}
         />
-        <TechSlots faction="player" />
+        <TechSlots
+          faction="player"
+          techDrones={localPlayerState.techSlots?.[laneId] || []}
+        />
       </div>
 
       {/* Player Ship Section — 27.5% height, overlaps lane by -10% margin, behind lanes */}

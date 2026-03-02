@@ -250,6 +250,14 @@ const currentLaneScores = {
             ...(threatDroneBonus > 0 ? [`ThreatDrone: +${threatDroneBonus}`] : [])
         ];
 
+        // Inhibitor Mine penalty — deploying here will exhaust the drone
+        let inhibitorMinePenalty = 0;
+        const techInLane = player2.techSlots?.[laneId] || [];
+        if (techInLane.some(d => d.name === 'Inhibitor Mine')) {
+          inhibitorMinePenalty = -40;
+          logicArray.push(`Inhibitor Mine: ${inhibitorMinePenalty}`);
+        }
+
         let overkillPenalty = 0;
         const laneIndex = parseInt(laneId.slice(-1)) - 1;
         const humanSectionName = placedSections[laneIndex];
@@ -261,7 +269,7 @@ const currentLaneScores = {
             }
         }
 
-        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + onDeployBonus + threatDroneBonus + overkillPenalty;
+        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + onDeployBonus + threatDroneBonus + inhibitorMinePenalty + overkillPenalty;
 
         possibleDeployments.push({
           drone,

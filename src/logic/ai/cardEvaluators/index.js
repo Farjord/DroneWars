@@ -41,6 +41,7 @@ export const cardEvaluatorRegistry = {
   SEARCH_AND_DRAW: evaluateSearchAndDrawCard,
   READY_DRONE: evaluateReadyDroneCard,
   CREATE_TOKENS: evaluateCreateTokensCard,
+  CREATE_TECH: evaluateCreateTokensCard,
   HEAL_SHIELDS: evaluateHealShieldsCard,
   HEAL_HULL: evaluateHealHullCard,
   RESTORE_SECTION_SHIELDS: evaluateRestoreSectionShieldsCard,

@@ -7,7 +7,7 @@ import fullDroneCollection from '../../../data/droneData.js';
 import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE, THRUSTER_INHIBITOR, PROXIMITY_MINE, INHIBITOR_MINE, JITTER_MINE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasJammerInLane } from '../helpers/jammerHelpers.js';
-import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
+import { countDroneTypeInLane, MAX_DRONES_PER_LANE, MAX_TECH_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 /**
  * Evaluate a READY_DRONE card
@@ -230,14 +230,14 @@ const evaluateRallyBeaconCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check lane capacity limit
-  if ((player2.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
-    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  // Check tech slot capacity (Rally Beacon deploys as Tech)
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
   // Check if lane already has a Rally Beacon (maxPerLane: 1)
-  const dronesInLane = player2.dronesOnBoard[targetLane] || [];
-  const hasBeacon = dronesInLane.some(d => d.isToken && d.name === 'Rally Beacon');
+  const techInLane = player2.techSlots?.[targetLane] || [];
+  const hasBeacon = techInLane.some(d => d.name === 'Rally Beacon');
   if (hasBeacon) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Rally Beacon'] };
   }
@@ -264,6 +264,7 @@ const evaluateRallyBeaconCard = (card, target, context) => {
   }
 
   // Friendly drones in same lane (can defend beacon)
+  const dronesInLane = player2.dronesOnBoard[targetLane] || [];
   const defendingDrones = dronesInLane.filter(d => !d.isToken).length;
   if (defendingDrones > 0) {
     const defBonus = defendingDrones * CARD_EVALUATION.RALLY_BEACON_DEFENDING_DRONE_VALUE;
@@ -370,14 +371,14 @@ const evaluateProximityMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check lane capacity limit
-  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
-    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  // Check tech slot capacity (Proximity Mine deploys as Tech)
+  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
   // Check if lane already has a Proximity Mine
-  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
-  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Proximity Mine');
+  const techInLane = player1.techSlots?.[targetLane] || [];
+  const hasMine = techInLane.some(d => d.name === 'Proximity Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Proximity Mine'] };
   }
@@ -430,14 +431,14 @@ const evaluateInhibitorMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check lane capacity limit
-  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
-    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  // Check tech slot capacity (Inhibitor Mine deploys as Tech)
+  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
   // Check if lane already has an Inhibitor Mine
-  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
-  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Inhibitor Mine');
+  const techInLane = player1.techSlots?.[targetLane] || [];
+  const hasMine = techInLane.some(d => d.name === 'Inhibitor Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has an Inhibitor Mine'] };
   }
@@ -447,6 +448,7 @@ const evaluateInhibitorMineCard = (card, target, context) => {
   logic.push(`✅ Base Value: +${INHIBITOR_MINE.BASE_VALUE}`);
 
   // Value based on how few drones opponent has in this lane (more room for deployment)
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
   const enemyDronesInLane = dronesInLane.filter(d => !d.isToken).length;
   const emptySlots = Math.max(0, 4 - enemyDronesInLane); // rough estimate of deployment room
   if (emptySlots > 0) {
@@ -481,14 +483,14 @@ const evaluateJitterMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check lane capacity limit
-  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
-    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  // Check tech slot capacity (Jitter Mine deploys as Tech)
+  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
   // Check if lane already has a Jitter Mine
-  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
-  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Jitter Mine');
+  const techInLane = player1.techSlots?.[targetLane] || [];
+  const hasMine = techInLane.some(d => d.name === 'Jitter Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Jitter Mine'] };
   }
@@ -498,6 +500,7 @@ const evaluateJitterMineCard = (card, target, context) => {
   logic.push(`✅ Base Value: +${JITTER_MINE.BASE_VALUE}`);
 
   // Value based on ready drones in the target lane (drones that could attack)
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
   const readyDrones = dronesInLane.filter(d => !d.isToken && !d.isExhausted);
   for (const drone of readyDrones) {
     const effectiveStats = gameDataService.getEffectiveStats(drone, targetLane);

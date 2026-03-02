@@ -91,6 +91,11 @@ export const SOUND_MANIFEST = {
     volume: 0.8
   },
 
+  // Tech slot sounds
+  tech_deploy:     { path: `${BASE_PATH}deploy-teleport.wav`,  channel: 'sfx', volume: 0.3 },
+  tech_destroy:    { path: `${BASE_PATH}explosion-small.wav`,  channel: 'sfx', volume: 0.4 },
+  tech_warning:    { path: `${BASE_PATH}card-hover-over.mp3`,  channel: 'sfx', volume: 0.15 },
+
   // Combat sounds
   laser_fire:      { path: `${BASE_PATH}laser-fire.mp3`,      channel: 'sfx', volume: 0.4 },
   shield_hit:      { path: `${BASE_PATH}shield-hit.wav`,      channel: 'sfx', volume: 0.4 },
@@ -140,6 +145,8 @@ export const SOUND_EVENT_MAP = {
   // AnimationManager animation-start events (keyed by animationType)
   animationStarted: {
     TELEPORT_IN: 'deploy_teleport',
+    TECH_DEPLOY: 'tech_deploy',
+    TECH_DESTROY: 'tech_destroy',
     DRONE_ATTACK_START: 'laser_fire',
     SHIELD_DAMAGE: 'shield_hit',
     HULL_DAMAGE: 'explosion_small',

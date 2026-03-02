@@ -26,34 +26,75 @@ const getContainerStyle = (faction) => ({
   pointerEvents: 'none',
 });
 
-const getSlotStyle = (techDrone, faction) => {
-  if (techDrone) {
-    const fc = FACTION_COLORS[faction];
-    return {
-      width: SLOT_SIZE,
-      height: SLOT_SIZE,
-      borderRadius: '50%',
-      background: fc.bg,
-      border: `0.08vw solid ${fc.primary}`,
-      boxShadow: `0 0 0.4vw ${fc.glow}40`,
-    };
-  }
-
-  return {
-    width: SLOT_SIZE,
-    height: SLOT_SIZE,
-    borderRadius: '50%',
-    background: 'rgba(200,200,210,0.08)',
-    border: '0.08vw solid rgba(200,200,210,0.7)',
-  };
+const emptySlotStyle = {
+  width: SLOT_SIZE,
+  height: SLOT_SIZE,
+  borderRadius: '50%',
+  background: 'rgba(200,200,210,0.08)',
+  border: '0.08vw solid rgba(200,200,210,0.7)',
 };
 
-export default function TechSlots({ faction, techDrones = [] }) {
+/**
+ * TechSlotItem — renders a single filled Tech Slot.
+ * Circular image + faction-colored border + optional glow.
+ */
+const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
+  // Determine visual faction based on who deployed the Tech
+  const fc = FACTION_COLORS[faction];
+
+  return (
+    <div
+      style={{
+        width: SLOT_SIZE,
+        height: SLOT_SIZE,
+        borderRadius: '50%',
+        background: fc.bg,
+        border: `0.15vw solid ${fc.primary}`,
+        boxShadow: highlighted
+          ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
+          : `0 0 0.4vw ${fc.glow}40`,
+        overflow: 'hidden',
+        pointerEvents: 'auto',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.2s ease',
+      }}
+      onClick={onClick ? () => onClick(techDrone) : undefined}
+      title={techDrone.name}
+    >
+      <img
+        src={techDrone.image}
+        alt={techDrone.name}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          borderRadius: '50%',
+          filter: faction === 'opponent' ? 'hue-rotate(0deg) saturate(1.2)' : 'none',
+        }}
+        draggable={false}
+      />
+    </div>
+  );
+};
+
+export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], onTechClick }) {
   return (
     <div style={getContainerStyle(faction)}>
-      {Array.from({ length: SLOT_COUNT }, (_, i) => (
-        <div key={i} style={getSlotStyle(techDrones[i], faction)} />
-      ))}
+      {Array.from({ length: SLOT_COUNT }, (_, i) => {
+        const tech = techDrones[i];
+        if (tech) {
+          return (
+            <TechSlotItem
+              key={tech.id}
+              techDrone={tech}
+              faction={faction}
+              highlighted={highlightedSlots.includes(tech.id)}
+              onClick={onTechClick}
+            />
+          );
+        }
+        return <div key={`empty-${i}`} style={emptySlotStyle} />;
+      })}
     </div>
   );
 }

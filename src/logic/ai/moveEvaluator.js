@@ -90,6 +90,13 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
     }
   }
 
+  // Proximity Mine penalty — moving into a mined lane will trigger damage
+  const techInDestLane = player2.techSlots?.[toLane] || [];
+  if (techInDestLane.some(d => d.name === 'Proximity Mine')) {
+    score -= 30;
+    logic.push(`Proximity Mine: -30`);
+  }
+
   // Check for ON_MOVE abilities
   const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
   const onMoveAbility = baseDrone?.abilities.find(a => a.type === 'TRIGGERED' && a.trigger === 'ON_MOVE');
