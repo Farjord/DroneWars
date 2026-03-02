@@ -63,6 +63,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 64 | SingleLaneView.jsx | Lane capacity badge: show `3/5` counter per lane, warning color at 5/5, full-lane styling (dimmed overlay or border) | Lane capacity limit | 2026-03-02 | Medium |
 | 65 | useDragMechanics.js | Suppress drop-zone highlighting for full lanes during card drags and drone drags | Lane capacity limit | 2026-03-02 | Low |
 | 66 | Card targeting UI | Full lanes should not highlight as valid targets for token deployment cards; show disabled/greyed state | Lane capacity limit | 2026-03-02 | Low |
+| 67 | App.jsx + ModalLayer.jsx | Move ModalLayer outside `gameAreaRef` div (from inside the gameArea to after its closing `</div>`). Modals use `position: fixed` and don't need to be DOM children of gameArea. Eliminates entire class of click-suppression bugs where drag-end handlers interfere with modal button clicks. | Modal double-click fix | 2026-03-02 | Medium |
 
 ## Audit Findings (2026-02-23)
 

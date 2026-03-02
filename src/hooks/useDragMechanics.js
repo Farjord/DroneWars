@@ -11,6 +11,11 @@ import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
 import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 
+/** Returns true if the click should be suppressed (i.e. target is NOT inside a modal). */
+export function shouldSuppressClick(target) {
+  return !target.closest('.dw-modal-overlay');
+}
+
 // Vertical pixel offset from card top to arrow start point
 const ARROW_START_Y_OFFSET = 20;
 
@@ -99,7 +104,9 @@ const useDragMechanics = ({
     const handleCaptureClick = (e) => {
       if (suppressNextClickRef.current) {
         suppressNextClickRef.current = false;
-        e.stopPropagation();
+        if (shouldSuppressClick(e.target)) {
+          e.stopPropagation();
+        }
       }
     };
 
