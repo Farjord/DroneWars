@@ -105,14 +105,13 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
         background: `linear-gradient(${isOpponent ? '180deg' : '0deg'}, ${pri}88, ${pri}44, ${pri}88)`,
       }} />
 
-      {/* Layer 3: Panel body — translucent with ship art */}
+      {/* Layer 3: Panel body with ship art (no faction colour fill) */}
       <div style={{
         position: 'relative', width: '100%', height: '100%',
         clipPath,
-        background: `linear-gradient(${isOpponent ? '170deg' : '190deg'}, ${bgA} 0%, ${bgB} 60%, rgba(0,0,0,0.3) 100%)`,
+        background: 'rgba(0,0,0,0.4)',
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
-        {/* Ship art background */}
         {shipImage && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -120,8 +119,7 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
             backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat',
             backgroundSize: 'cover',
-            opacity: 0.35,
-            mixBlendMode: 'luminosity',
+            opacity: 0.7,
           }} />
         )}
 

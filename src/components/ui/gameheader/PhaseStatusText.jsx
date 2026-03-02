@@ -30,7 +30,7 @@ function PhaseStatusText({
     <h2
       className="text-base font-bold uppercase tracking-widest text-white"
       style={{
-        WebkitTextStroke: '1px black'
+        fontFamily: "'Orbitron', sans-serif",
       }}
     >
       {getPhaseDisplayName(turnPhase)}

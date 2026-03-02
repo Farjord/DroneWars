@@ -8,6 +8,7 @@
 import React from 'react';
 import ShipSectionCompact from './ShipSectionCompact.jsx';
 import SingleLaneView from './SingleLaneView.jsx';
+import LaneEffects from './LaneEffects.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
@@ -326,7 +327,7 @@ const BattleColumn = ({
   return (
     <div className="flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
       {/* Opponent Ship Section — 30% height, behind lanes */}
-      <div style={{ height: '30%', width: '100%', position: 'relative', zIndex: 1 }}>
+      <div style={{ height: '27.5%', width: '100%', marginTop: '2.5%', position: 'relative', zIndex: 1 }}>
         <ShipSectionSlot
           player={opponentPlayerState}
           isPlayer={false}
@@ -352,6 +353,7 @@ const BattleColumn = ({
           player={opponentPlayerState}
           {...sharedLaneProps}
         />
+        <LaneEffects faction="opponent" />
       </div>
 
       {/* Centre gap */}
@@ -367,10 +369,11 @@ const BattleColumn = ({
           handleCardDragEnd={handleCardDragEnd}
           {...sharedLaneProps}
         />
+        <LaneEffects faction="player" />
       </div>
 
-      {/* Player Ship Section — 30% height, overlaps lane by -10% margin, behind lanes */}
-      <div style={{ height: '30%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: 1 }}>
+      {/* Player Ship Section — 27.5% height, overlaps lane by -10% margin, behind lanes */}
+      <div style={{ height: '27.5%', width: '100%', marginTop: '-10%', marginBottom: '2.5%', position: 'relative', zIndex: 1 }}>
         <ShipSectionSlot
           player={localPlayerState}
           isPlayer={true}

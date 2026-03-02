@@ -46,6 +46,7 @@ const ShipSectionCompact = ({
   }
 
   const fc = isOpponent ? FACTION_COLORS.opponent : FACTION_COLORS.player;
+  const pc = FACTION_COLORS.player; // Shields & hull always use player colours
   const clipPath = getShipClipPath(isOpponent, columnIndex);
 
   // Reallocation visual state
@@ -127,6 +128,7 @@ const ShipSectionCompact = ({
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <span style={{
             color: '#fff',
+            fontFamily: "'Orbitron', sans-serif",
             fontWeight: 800,
             fontSize: 'clamp(0.5rem, 1vw, 1rem)',
             textTransform: 'uppercase',
@@ -145,17 +147,17 @@ const ShipSectionCompact = ({
               <svg key={i} style={{
                 width: '1.2vw', height: '1.4vw',
                 minWidth: '10px', minHeight: '12px',
-                filter: i < stats.allocatedShields ? `drop-shadow(0 0 0.4vw ${fc.primary}88)` : 'none',
+                filter: i < stats.allocatedShields ? `drop-shadow(0 0 0.4vw ${pc.primary}88)` : 'none',
               }} viewBox="0 0 20 23">
                 <polygon
                   points="10,1 19,6 19,17 10,22 1,17 1,6"
-                  fill={i < stats.allocatedShields ? fc.primary : 'transparent'}
-                  stroke={fc.primary}
+                  fill={i < stats.allocatedShields ? pc.primary : 'transparent'}
+                  stroke={pc.primary}
                   strokeWidth="1.5"
                   opacity={i < stats.allocatedShields ? 0.95 : 0.15}
                 />
                 {i < stats.allocatedShields && (
-                  <polygon points="10,4 16,7.5 16,15 10,19 4,15 4,7.5" fill={fc.bright} opacity="0.25" />
+                  <polygon points="10,4 16,7.5 16,15 10,19 4,15 4,7.5" fill={pc.bright} opacity="0.25" />
                 )}
               </svg>
             ))}
@@ -188,15 +190,17 @@ const ShipSectionCompact = ({
         <div style={{ display: 'flex', gap: '0.12vw', justifyContent: 'center' }}>
           {Array.from({ length: stats.maxHull }).map((_, i) => {
             const hullPoint = i + 1;
-            const { critical } = stats.thresholds;
+            const { damaged, critical } = stats.thresholds;
             const isFilled = i < stats.hull;
             let bgColor;
             if (!isFilled) {
               bgColor = 'rgba(255,255,255,0.03)';
             } else if (hullPoint <= critical) {
-              bgColor = `linear-gradient(180deg, ${FACTION_COLORS.opponent.bright}, ${FACTION_COLORS.opponent.primary})`;
+              bgColor = 'linear-gradient(180deg, #FF6666, #FF2A2A)';
+            } else if (hullPoint <= damaged) {
+              bgColor = 'linear-gradient(180deg, #6688FF, #3355DD)';
             } else {
-              bgColor = `linear-gradient(180deg, ${fc.bright}, ${fc.primary})`;
+              bgColor = `linear-gradient(180deg, ${pc.bright}, ${pc.primary})`;
             }
             return (
               <div key={i} style={{
@@ -205,7 +209,7 @@ const ShipSectionCompact = ({
                 background: bgColor,
                 borderRadius: '1px',
                 boxShadow: isFilled
-                  ? `0 0 0.3vw ${fc.primary}88, 0 0 0.6vw ${fc.primary}33`
+                  ? `0 0 0.3vw ${pc.primary}88, 0 0 0.6vw ${pc.primary}33`
                   : `inset 0 0 0.1vw rgba(255,255,255,0.03)`,
                 border: isFilled ? 'none' : `0.03vw solid rgba(255,255,255,0.05)`,
               }} />
