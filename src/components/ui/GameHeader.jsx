@@ -18,6 +18,16 @@ import { FACTION_COLORS } from './ShipSectionLayers.jsx';
 
 const playerPri = FACTION_COLORS.player.primary;
 
+/** CSS color + glow mapping for Tier 2 contextual text */
+const CONTEXT_COLORS = {
+  cyan:    { color: playerPri, shadow: `0 0 0.7vw ${playerPri}77, 0 0 1.5vw ${playerPri}33` },
+  orange:  { color: '#f97316', shadow: '0 0 0.7vw rgba(249,115,22,0.47), 0 0 1.5vw rgba(249,115,22,0.2)' },
+  green:   { color: '#22c55e', shadow: '0 0 0.7vw rgba(34,197,94,0.47), 0 0 1.5vw rgba(34,197,94,0.2)' },
+  yellow:  { color: '#eab308', shadow: '0 0 0.7vw rgba(234,179,8,0.47), 0 0 1.5vw rgba(234,179,8,0.2)' },
+  red:     { color: '#ef4444', shadow: '0 0 0.7vw rgba(239,68,68,0.47), 0 0 1.5vw rgba(239,68,68,0.2)' },
+  'cyan-dimmed': { color: `${playerPri}99`, shadow: `0 0 0.5vw ${playerPri}33` },
+};
+
 /**
  * Hook to track the previous value of a state/prop
  * @param {any} value - The value to track
@@ -255,22 +265,75 @@ function GameHeader({
     };
   }, []);
 
-  // Determine turn context text for tier 2
-  const getTurnContextText = () => {
-    if (turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) {
-      return isMyTurn() ? 'Your Turn' : (isMultiplayer() ? "Opponent's Turn" : 'AI Thinking');
+  // Determine contextual text + color for Tier 2 (first match wins)
+  const getContextualText = () => {
+    // Priority 1-4: Effect chain states
+    if (effectChainState && !effectChainState.complete) {
+      if (effectChainState.prompt) {
+        return { text: effectChainState.prompt, color: 'cyan' };
+      }
+      if (effectChainState.subPhase === 'multi-target') {
+        const count = effectChainState.pendingMultiTargets?.length || 0;
+        return { text: `Select Targets (${count} selected)`, color: 'cyan' };
+      }
+      if (effectChainState.subPhase === 'destination') {
+        return { text: 'Select Destination Lane', color: 'cyan' };
+      }
+      return { text: `Resolve Effect ${effectChainState.currentIndex + 1} of ${effectChainState.effects.length}`, color: 'cyan' };
     }
-    return 'Initialising';
+    // Priority 5: Interception
+    if (interceptionModeActive) {
+      return { text: 'Select an Interceptor', color: 'cyan' };
+    }
+    // Priority 6: Shield allocation
+    if (turnPhase === 'allocateShields') {
+      const count = pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate;
+      return { text: `Assign ${count} Shields`, color: 'cyan' };
+    }
+    // Priority 7-8: Reallocation
+    if (reallocationPhase === 'removing') {
+      return { text: 'Remove Shields', color: 'orange' };
+    }
+    if (reallocationPhase === 'adding') {
+      return { text: 'Add Shields', color: 'green' };
+    }
+    // Priority 9: Mandatory discard
+    if ((turnPhase === 'mandatoryDiscard' || mandatoryAction?.type === 'discard') &&
+        (mandatoryAction?.type === 'discard' || excessCards > 0)) {
+      const count = mandatoryAction?.count || excessCards;
+      return { text: `Discard ${count} Cards`, color: 'orange' };
+    }
+    // Priority 10: Mandatory drone removal
+    if (turnPhase === 'mandatoryDroneRemoval' && (mandatoryAction?.type === 'destroy' || excessDrones > 0)) {
+      const count = mandatoryAction?.count || excessDrones;
+      return { text: `Remove ${count} Drones`, color: 'orange' };
+    }
+    // Priority 11: Optional discard
+    if (turnPhase === 'optionalDiscard') {
+      const remaining = localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount;
+      return { text: `Discard up to ${remaining} Cards`, color: 'yellow' };
+    }
+    // Priority 12-13: My turn during deployment/action
+    if (turnPhase === 'deployment' && isMyTurn()) {
+      return { text: 'Deploy a Drone', color: 'cyan' };
+    }
+    if (turnPhase === 'action' && isMyTurn()) {
+      return { text: 'Play an Action', color: 'cyan' };
+    }
+    // Priority 14: Not my turn
+    if ((turnPhase === 'deployment' || turnPhase === 'action') && !isMyTurn()) {
+      return { text: isMultiplayer() ? "Opponent's Turn" : 'AI Thinking', color: 'red' };
+    }
+    // Priority 15: Fallback
+    return { text: 'Initialising', color: 'cyan-dimmed' };
   };
 
-  const isPlayerTurn = (turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) && isMyTurn();
-  const turnContextText = getTurnContextText();
+  const contextual = getContextualText();
+  const contextStyle = CONTEXT_COLORS[contextual.color];
 
   return (
     <header style={{
       width: '100%', height: '100%',
-      background: 'rgba(2, 2, 6, 0.7)',
-      backdropFilter: 'blur(12px)',
       position: 'relative', zIndex: 20,
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr',
@@ -416,21 +479,7 @@ function GameHeader({
             pointerEvents: 'none',
           }} />
           {/* Phase status content */}
-          <PhaseStatusText
-            turnPhase={turnPhase}
-            shieldsToAllocate={shieldsToAllocate}
-            pendingShieldsRemaining={pendingShieldsRemaining}
-            reallocationPhase={reallocationPhase}
-            shieldsToRemove={shieldsToRemove}
-            shieldsToAdd={shieldsToAdd}
-            mandatoryAction={mandatoryAction}
-            excessCards={excessCards}
-            excessDrones={excessDrones}
-            optionalDiscardCount={optionalDiscardCount}
-            localPlayerEffectiveStats={localPlayerEffectiveStats}
-            interceptionModeActive={interceptionModeActive}
-            effectChainState={effectChainState}
-          />
+          <PhaseStatusText turnPhase={turnPhase} />
         </div>
 
         {/* ─── Tier 2: Turn context ─── */}
@@ -448,16 +497,14 @@ function GameHeader({
             pointerEvents: 'none',
           }} />
           <div style={{
-            color: isPlayerTurn ? playerPri : '#ef4444',
+            color: contextStyle.color,
             fontWeight: 700,
             fontSize: 'clamp(0.55rem, 0.95vw, 0.95rem)',
             textTransform: 'uppercase',
             letterSpacing: '0.1em',
-            textShadow: isPlayerTurn
-              ? `0 0 0.7vw ${playerPri}77, 0 0 1.5vw ${playerPri}33`
-              : '0 0 0.7vw rgba(239,68,68,0.47), 0 0 1.5vw rgba(239,68,68,0.2)',
+            textShadow: contextStyle.shadow,
           }}>
-            {turnContextText}
+            {contextual.text}
           </div>
         </div>
 
