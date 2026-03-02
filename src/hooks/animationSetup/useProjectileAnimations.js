@@ -1,4 +1,5 @@
 import { debugLog } from '../../utils/debugLogger.js';
+import { getViewportCenter } from '../../utils/gameUtils.js';
 
 // Animation durations (ms)
 const LASER_DURATION = 500;
@@ -76,8 +77,8 @@ export function registerProjectileAnimations(animationManager, {
 
     debugLog('ANIMATIONS', '✅ [LASER DEBUG] Creating laser effect with attack:', attackValue);
 
-    const startPos = getElementCenter(droneEl, gameAreaRef.current);
-    const endPos = getElementCenter(targetEl, gameAreaRef.current);
+    const startPos = getViewportCenter(droneEl);
+    const endPos = getViewportCenter(targetEl);
 
     const laserId = `laser-${droneId}-${crypto.randomUUID()}`;
 
@@ -131,7 +132,7 @@ export function registerProjectileAnimations(animationManager, {
       return;
     }
 
-    const dronePos = getElementCenter(droneEl, gameAreaRef.current);
+    const dronePos = getViewportCenter(droneEl);
 
     // Get ship section position (if overflow occurred)
     let shipPos = null;
@@ -151,7 +152,7 @@ export function registerProjectileAnimations(animationManager, {
       if (sectionKey) {
         const sectionEl = getElementFromLogicalPosition(targetPlayer, targetLane, sectionKey, 'section');
         if (sectionEl) {
-          shipPos = getElementCenter(sectionEl, gameAreaRef.current);
+          shipPos = getViewportCenter(sectionEl);
           debugLog('ANIMATIONS', '✅ [OVERFLOW] Got ship position for overflow:', { sectionKey, shipPos });
         }
       }
@@ -317,7 +318,7 @@ export function registerProjectileAnimations(animationManager, {
     // Get target drone position to calculate angle
     const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
     if (droneEl) {
-      const droneCenter = getElementCenter(droneEl, gameAreaRef.current);
+      const droneCenter = getViewportCenter(droneEl);
       const dx = droneCenter.x - turretPos.x;
       const dy = droneCenter.y - turretPos.y;
       // atan2 gives angle from east, subtract 90 to adjust for turret pointing up by default
@@ -369,7 +370,7 @@ export function registerProjectileAnimations(animationManager, {
     if (sourceSectionKey) {
       const sourceSectionEl = getElementFromLogicalPosition(sourcePlayer, sourceLane, sourceSectionKey, 'section');
       if (sourceSectionEl) {
-        turretPos = getElementCenter(sourceSectionEl, gameAreaRef.current);
+        turretPos = getViewportCenter(sourceSectionEl);
       }
     }
 
@@ -377,7 +378,7 @@ export function registerProjectileAnimations(animationManager, {
     const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
     let droneCenter = null;
     if (droneEl) {
-      droneCenter = getElementCenter(droneEl, gameAreaRef.current);
+      droneCenter = getViewportCenter(droneEl);
     }
 
     if (!turretPos || !droneCenter) {

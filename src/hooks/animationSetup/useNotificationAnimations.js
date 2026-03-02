@@ -1,4 +1,5 @@
 import { debugLog, timingLog } from '../../utils/debugLogger.js';
+import { getViewportCenter } from '../../utils/gameUtils.js';
 
 // Animation durations (ms)
 const TELEPORT_DURATION = 600;
@@ -12,8 +13,6 @@ const PHASE_BREATHING_ROOM_DELAY = 300;
 export function registerNotificationAnimations(animationManager, {
   gameStateManager,
   droneRefs,
-  getElementCenter,
-  gameAreaRef,
   setShipAbilityReveals,
   setPhaseAnnouncements,
   setTeleportEffects,
@@ -196,7 +195,7 @@ export function registerNotificationAnimations(animationManager, {
       }
 
       // Get the exact center position of the invisible placeholder drone
-      const referencePos = getElementCenter(droneEl, gameAreaRef.current);
+      const referencePos = getViewportCenter(droneEl);
       debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
 
       // Determine color based on local player perspective

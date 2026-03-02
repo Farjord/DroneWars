@@ -35,6 +35,15 @@ export const getElementCenter = (element, gameAreaElement) => {
   };
 };
 
+export const getViewportCenter = (element) => {
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+};
+
 /**
  * Clamp a number between min and max values
  * @param {number} value - Value to clamp

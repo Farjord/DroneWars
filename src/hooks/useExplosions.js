@@ -4,7 +4,7 @@
 // Custom hook for managing explosion visual effects
 
 import { useState, useCallback } from 'react';
-import { getElementCenter } from '../utils/gameUtils.js';
+import { getViewportCenter } from '../utils/gameUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -12,10 +12,9 @@ import { debugLog } from '../utils/debugLogger.js';
  * Manages explosion visual effects state and triggering logic.
  * Provides explosion state array and trigger function for visual feedback.
  * @param {Object} droneRefs - Ref object containing drone element references
- * @param {Object} gameAreaRef - Ref to the game area container element
  * @returns {Object} { explosions, triggerExplosion }
  */
-export const useExplosions = (droneRefs, gameAreaRef) => {
+export const useExplosions = (droneRefs) => {
   const [explosions, setExplosions] = useState([]);
 
   const triggerExplosion = useCallback((targetId, capturedPosition = null, size = 'large') => {
@@ -34,7 +33,7 @@ export const useExplosions = (droneRefs, gameAreaRef) => {
     if (!pos) {
       const droneElement = droneRefs.current[targetId];
       debugLog('ANIMATIONS', '🔥 [EXPLOSION] Looking for drone element:', { targetId, found: !!droneElement });
-      pos = getElementCenter(droneElement, gameAreaRef.current);
+      pos = getViewportCenter(droneElement);
     }
 
     debugLog('ANIMATIONS', '🔥 [EXPLOSION] Position calculated:', pos);
@@ -49,7 +48,7 @@ export const useExplosions = (droneRefs, gameAreaRef) => {
     } else {
       debugLog('ANIMATIONS', '⚠️ [EXPLOSION] No position found, explosion not triggered');
     }
-  }, [droneRefs, gameAreaRef]);
+  }, [droneRefs]);
 
   return {
     explosions,

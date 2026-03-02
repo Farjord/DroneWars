@@ -205,7 +205,7 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
   // This maintains proper dependency ordering while preserving the logical structure.
-  const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
+  const { explosions, triggerExplosion } = useExplosions(droneRefs);
   useAnimationSetup(
   gameStateManager,
   droneRefs,

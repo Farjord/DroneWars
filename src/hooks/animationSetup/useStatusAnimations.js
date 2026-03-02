@@ -1,4 +1,5 @@
 import { debugLog } from '../../utils/debugLogger.js';
+import { getViewportCenter } from '../../utils/gameUtils.js';
 
 // Animation durations (ms)
 const SHAKE_DURATION = 500;
@@ -11,8 +12,6 @@ export function registerStatusAnimations(animationManager, {
   droneRefs,
   sectionRefs,
   getElementFromLogicalPosition,
-  getElementCenter,
-  gameAreaRef,
   triggerExplosion,
   setFlashEffects,
   setHealEffects
@@ -24,7 +23,7 @@ export function registerStatusAnimations(animationManager, {
     const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
     if (targetEl) {
-      const pos = getElementCenter(targetEl, gameAreaRef.current);
+      const pos = getViewportCenter(targetEl);
       // Pass size from config
       triggerExplosion(targetId, pos, config?.size || 'large');
     } else {
