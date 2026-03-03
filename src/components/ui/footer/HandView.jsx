@@ -209,8 +209,8 @@ function HandView({
           onMouseEnter={() => setDiscardHovered(true)}
           onMouseLeave={() => setDiscardHovered(false)}
           style={{
-            width: 'clamp(110px, 12cqw, 170px)',
-            height: 'clamp(140px, 15cqw, 210px)',
+            width: '100%',
+            height: '85%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -458,7 +458,7 @@ function HandView({
 
       {/* Deck Pile */}
       <div className={styles.cardPile}>
-        <div ref={deckWrapperRef} style={{ width: 'clamp(110px, 12cqw, 170px)', height: 'clamp(140px, 15cqw, 210px)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+        <div ref={deckWrapperRef} style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <CardBackPlaceholder
             scale={0.667}
             variant="deck"
