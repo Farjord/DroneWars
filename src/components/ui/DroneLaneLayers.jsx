@@ -69,7 +69,7 @@ export const DroneLaneVisualLayers = ({ isOpponent, clipPath, laneControlState =
         overflow: 'hidden',
       }}>
         {/* Scan lines */}
-        <ScanLines opacity={0.005} />
+        <ScanLines opacity={0.01} />
 
         {/* Chevron arrows at centre-facing edge */}
         <ChevronArrows color={pri} direction={isOpponent ? 'down' : 'up'} />
