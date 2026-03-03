@@ -21,7 +21,6 @@ import { render, screen } from '@testing-library/react';
  */
 const FooterPhaseSyncComponent = ({ turnPhase }) => {
   const [footerView, setFooterView] = useState('hand');
-  const [isFooterOpen, setIsFooterOpen] = useState(false);
   const previousPhaseRef = useRef(turnPhase);
 
   useEffect(() => {
@@ -31,14 +30,12 @@ const FooterPhaseSyncComponent = ({ turnPhase }) => {
     const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
     if (enteredDeployment) {
       setFooterView('drones');
-      setIsFooterOpen(true);
     }
 
     // Action phase → Hand tab
     const enteredAction = turnPhase === 'action' && prevPhase !== 'action';
     if (enteredAction) {
       setFooterView('hand');
-      setIsFooterOpen(true);
     }
 
     // Discard phases → Hand tab
@@ -47,7 +44,6 @@ const FooterPhaseSyncComponent = ({ turnPhase }) => {
 
     if (enteredMandatoryDiscard || enteredOptionalDiscard) {
       setFooterView('hand');
-      setIsFooterOpen(true);
     }
 
     previousPhaseRef.current = turnPhase;
@@ -56,7 +52,6 @@ const FooterPhaseSyncComponent = ({ turnPhase }) => {
   return (
     <div>
       <span data-testid="footer-view">{footerView}</span>
-      <span data-testid="footer-open">{isFooterOpen ? 'open' : 'closed'}</span>
     </div>
   );
 };
@@ -68,14 +63,11 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
 
       // Initially should be 'hand' (default)
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('closed');
-
       // Transition to deployment phase
       rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
 
-      // Should switch to drones tab and open footer
+      // Should switch to drones tab
       expect(screen.getByTestId('footer-view')).toHaveTextContent('drones');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
     });
 
     it('switches to drones tab when transitioning from mandatoryDiscard to deployment', () => {
@@ -85,7 +77,6 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
 
       expect(screen.getByTestId('footer-view')).toHaveTextContent('drones');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
     });
   });
 
@@ -96,9 +87,8 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       // Transition to mandatoryDiscard phase
       rerender(<FooterPhaseSyncComponent turnPhase="mandatoryDiscard" />);
 
-      // Should switch to hand tab and open footer
+      // Should switch to hand tab
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
     });
 
     it('switches to hand tab when transitioning from deployment to mandatoryDiscard', () => {
@@ -124,9 +114,8 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       // Transition to action phase
       rerender(<FooterPhaseSyncComponent turnPhase="action" />);
 
-      // Should switch to hand tab and open footer
+      // Should switch to hand tab
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
     });
 
     it('switches to hand tab when transitioning from deployment to action', () => {
@@ -149,9 +138,8 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       // Transition to optionalDiscard phase
       rerender(<FooterPhaseSyncComponent turnPhase="optionalDiscard" />);
 
-      // Should switch to hand tab and open footer
+      // Should switch to hand tab
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
     });
 
     it('switches to hand tab when transitioning from deployment to optionalDiscard', () => {
@@ -169,17 +157,13 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
 
   describe('No-op transitions', () => {
     it('does not re-trigger when phase stays the same', () => {
-      // Start in deployment (footer closed by default)
+      // Start in deployment — no transition, so footerView stays at default 'hand'
       const { rerender } = render(<FooterPhaseSyncComponent turnPhase="deployment" />);
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
 
-      // Footer should still be closed because we started in deployment (no transition)
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('closed');
-
-      // Re-render with same phase
+      // Re-render with same phase — still no transition
       rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
-
-      // Should still be closed - no transition occurred
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('closed');
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
     });
 
     it('does not switch when transitioning between non-target phases', () => {
@@ -188,9 +172,8 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       // Transition to placement (not a target phase for auto-switch)
       rerender(<FooterPhaseSyncComponent turnPhase="placement" />);
 
-      // Should remain on hand (default), footer closed
+      // Should remain on hand (default)
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
-      expect(screen.getByTestId('footer-open')).toHaveTextContent('closed');
     });
   });
 

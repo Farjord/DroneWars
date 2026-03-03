@@ -61,9 +61,7 @@ export default function useGameLifecycle({
 
   // --- Footer state ---
   footerView,
-  isFooterOpen,
   setFooterView,
-  setIsFooterOpen,
 
   // --- UI modal state ---
   setSelectedBackground,
@@ -478,19 +476,6 @@ export default function useGameLifecycle({
     setFooterView(view);
   };
 
-  const handleFooterButtonClick = (view) => {
-    if (!isFooterOpen) {
-      setIsFooterOpen(true);
-      setFooterView(view);
-    } else {
-      if (footerView === view) {
-        setIsFooterOpen(false);
-      } else {
-        setFooterView(view);
-      }
-    }
-  };
-
   // --- Mandatory action initialization + footer state on phase transitions ---
   useEffect(() => {
     const prevPhase = footerPreviousPhaseRef.current;
@@ -502,27 +487,22 @@ export default function useGameLifecycle({
 
     if (enteredMandatoryDiscard) {
       setFooterView('hand');
-      setIsFooterOpen(true);
     }
 
     if (enteredOptionalDiscard) {
       setFooterView('hand');
-      setIsFooterOpen(true);
     }
 
     if (enteredMandatoryRemoval) {
       setFooterView('drones');
-      setIsFooterOpen(true);
     }
 
     if (enteredDeployment) {
       setFooterView('drones');
-      setIsFooterOpen(true);
     }
 
     if (enteredAction) {
       setFooterView('hand');
-      setIsFooterOpen(true);
     }
 
     // Clear ability-based mandatoryAction when transitioning FROM a mandatory phase TO a non-mandatory phase
@@ -575,7 +555,6 @@ export default function useGameLifecycle({
     downloadLogAsCSV,
     handleCardInfoClick,
     handleFooterViewToggle,
-    handleFooterButtonClick,
     handleBackgroundChange,
     handleViewShipSection,
     handleViewTechDetail,

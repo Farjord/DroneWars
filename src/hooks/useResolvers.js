@@ -36,7 +36,6 @@ const useResolvers = ({
   setValidAbilityTargets,
   setMandatoryAction,
   setFooterView,
-  setIsFooterOpen,
   setShipAbilityMode,
   setDraggedDrone,
   setCardSelectionModal,
@@ -150,7 +149,6 @@ const useResolvers = ({
       if (result.mandatoryAction) {
         setMandatoryAction(result.mandatoryAction);
         setFooterView('hand');
-        setIsFooterOpen(true);
         setShipAbilityMode(null);
         setShipAbilityConfirmation(null);
         return;
@@ -495,7 +493,6 @@ const useResolvers = ({
         if (result.mandatoryAction) {
           setMandatoryAction(result.mandatoryAction);
           setFooterView('hand');
-          setIsFooterOpen(true);
         }
         debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
       } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {

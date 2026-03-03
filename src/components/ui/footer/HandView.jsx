@@ -5,6 +5,7 @@
 // Simple responsive layout
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ActionCard from '../ActionCard.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
@@ -57,7 +58,9 @@ function HandView({
   actionsTakenThisTurn = 0,
   // Warning callback for unplayable card attempts
   onCardPlayWarning,
-  onCardPlayWarningClear
+  onCardPlayWarningClear,
+  // View toggle callback
+  onToggleView
 }) {
   // Debug logging for component props
   const localPlayerId = getLocalPlayerId();
@@ -197,7 +200,7 @@ function HandView({
   ]);
 
   return (
-    <div className={styles.handContainer} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+    <div className={styles.handContainer} style={{ padding: '0 1%' }}>
       {/* Discard Pile */}
       <div className={styles.cardPile}>
         <div
@@ -206,8 +209,8 @@ function HandView({
           onMouseEnter={() => setDiscardHovered(true)}
           onMouseLeave={() => setDiscardHovered(false)}
           style={{
-            width: '150px',
-            height: '183.5px',
+            width: 'clamp(110px, 12cqw, 170px)',
+            height: 'clamp(140px, 15cqw, 210px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -233,6 +236,11 @@ function HandView({
           Discard <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>({localPlayerState.discardPile.length})</span>
         </p>
       </div>
+
+      {/* Left Chevron Arrow */}
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+        <ChevronLeft size={20} />
+      </button>
 
       {/* Hand Section */}
       <div ref={handSectionRef} className={styles.handSection}>
@@ -441,9 +449,14 @@ function HandView({
         </div>
       </div>
 
+      {/* Right Chevron Arrow */}
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+        <ChevronRight size={20} />
+      </button>
+
       {/* Deck Pile */}
       <div className={styles.cardPile}>
-        <div ref={deckWrapperRef} style={{ width: '150px', height: '183.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+        <div ref={deckWrapperRef} style={{ width: 'clamp(110px, 12cqw, 170px)', height: 'clamp(140px, 15cqw, 210px)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <CardBackPlaceholder
             scale={0.667}
             variant="deck"

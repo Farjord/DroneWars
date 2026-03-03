@@ -5,7 +5,7 @@
 // Extracted from GameHeader.jsx
 
 import React, { useState } from 'react';
-import { Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, Zap, RotateCcw } from 'lucide-react';
+import { Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, Zap, RotateCcw, ScrollText } from 'lucide-react';
 import DEV_CONFIG from '../../../config/devConfig.js';
 import { BACKGROUNDS } from '../../../config/backgrounds.js';
 
@@ -24,6 +24,8 @@ function SettingsDropdown({
   onForceWin,
   onShowGlossary,
   onShowAIStrategy,
+  onOpenLog,
+  onOpenLogModal,
   handleExitGame
 }) {
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
@@ -141,6 +143,26 @@ function SettingsDropdown({
               Force Win (DEV)
             </button>
           )}
+          <button
+            onClick={() => {
+              onOpenLog && onOpenLog();
+              setShowSettingsDropdown(false);
+            }}
+            className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+          >
+            <ScrollText size={16} />
+            Game Log (Inline)
+          </button>
+          <button
+            onClick={() => {
+              onOpenLogModal && onOpenLogModal();
+              setShowSettingsDropdown(false);
+            }}
+            className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+          >
+            <ScrollText size={16} />
+            Game Log (Modal)
+          </button>
           <button
             onClick={() => {
               onShowGlossary && onShowGlossary();

@@ -163,7 +163,6 @@ const App = ({ phaseAnimationQueue }) => {
 
   // UI and visual effects state
   const [footerView, setFooterView] = useState('hand');
-  const [isFooterOpen, setIsFooterOpen] = useState(true); // For classic footer only
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
 
@@ -570,7 +569,7 @@ const App = ({ phaseAnimationQueue }) => {
     localPlayerState, opponentPlayerState, winner, turnPhase, currentPlayer,
     gameStateManager,
     setSelectedDrone, setAbilityMode, setValidAbilityTargets, setMandatoryAction,
-    setFooterView, setIsFooterOpen, setShipAbilityMode, setDraggedDrone,
+    setFooterView, setShipAbilityMode, setDraggedDrone,
     setCardSelectionModal, setShipAbilityConfirmation,
     cancelCardSelection, setSelectedCard, setValidCardTargets,
     setCostReminderArrowState, setCardConfirmation,
@@ -809,7 +808,7 @@ const App = ({ phaseAnimationQueue }) => {
     handleMandatoryDiscardContinue, handleMandatoryDroneRemovalContinue,
     checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy,
     downloadLogAsCSV, handleCardInfoClick,
-    handleFooterViewToggle, handleFooterButtonClick,
+    handleFooterViewToggle,
     handleBackgroundChange, handleViewShipSection, handleViewTechDetail, handleShowOpponentDrones,
   } = useGameLifecycle({
     // Game state
@@ -830,7 +829,7 @@ const App = ({ phaseAnimationQueue }) => {
     // Refs
     isResolvingAttackRef,
     // Footer state
-    footerView, isFooterOpen, setFooterView, setIsFooterOpen,
+    footerView, setFooterView,
     // UI modal state
     setSelectedBackground, setViewShipSectionModal, setViewTechDetailModal, setShowOpponentDronesModal,
     // External
@@ -1014,6 +1013,8 @@ const App = ({ phaseAnimationQueue }) => {
         testMode={testMode}
         selectedBackground={selectedBackground}
         onBackgroundChange={handleBackgroundChange}
+        onOpenLog={() => setFooterView('log')}
+        onOpenLogModal={() => setIsLogModalOpen(true)}
         interceptionModeActive={interceptionModeActive}
         selectedInterceptor={selectedInterceptor}
         handleShowInterceptionDialog={handleShowInterceptionDialog}
@@ -1086,7 +1087,7 @@ const App = ({ phaseAnimationQueue }) => {
         laneControl={laneControl}
       />
 
-      <div style={{ flex: '0 0 25%', maxHeight: '25%' }}>
+      <div style={{ flex: '0 0 23%', maxHeight: '23%' }}>
       <GameFooter
         gameMode={gameState.gameMode}
         localPlayerState={localPlayerState}
@@ -1094,7 +1095,7 @@ const App = ({ phaseAnimationQueue }) => {
         sortedLocalActivePool={sortedLocalActivePool}
         gameLog={gameLog}
         footerView={footerView}
-        isFooterOpen={isFooterOpen}
+        onToggleFooterView={() => setFooterView(footerView === 'hand' ? 'drones' : 'hand')}
         selectedCard={selectedCard}
         turnPhase={turnPhase}
         mandatoryAction={
@@ -1107,7 +1108,6 @@ const App = ({ phaseAnimationQueue }) => {
                 : null
         }
         excessCards={excessCards}
-        handleFooterButtonClick={handleFooterButtonClick}
 
         cancelCardSelection={cancelCardSelection}
         downloadLogAsCSV={downloadLogAsCSV}

@@ -4,6 +4,7 @@
 // Cards display at natural size - no scaling wrappers
 
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import DroneCard from '../DroneCard.jsx';
 import ActionCard from '../ActionCard.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
@@ -34,7 +35,8 @@ function DronesView({
   handleCardDragStart,
   draggedCard,
   onCardPlayWarning,
-  onCardPlayWarningClear
+  onCardPlayWarningClear,
+  onToggleView
 }) {
   const [hoveredDroneId, setHoveredDroneId] = useState(null);
   const [discardHovered, setDiscardHovered] = useState(false);
@@ -83,7 +85,7 @@ function DronesView({
   const isAtCPULimit = totalDronesOnBoard >= localPlayerEffectiveStats.totals.cpuLimit;
 
   return (
-    <div className={styles.handContainer} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+    <div className={styles.handContainer} style={{ padding: '0 1%' }}>
       {/* Discard Pile */}
       <div className={styles.cardPile}>
         <div
@@ -91,8 +93,8 @@ function DronesView({
           onMouseEnter={() => setDiscardHovered(true)}
           onMouseLeave={() => setDiscardHovered(false)}
           style={{
-            width: '150px',
-            height: '183.5px',
+            width: 'clamp(110px, 12cqw, 170px)',
+            height: 'clamp(140px, 15cqw, 210px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -118,6 +120,11 @@ function DronesView({
           Discard <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>({localPlayerState.discardPile.length})</span>
         </p>
       </div>
+
+      {/* Left Chevron Arrow */}
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+        <ChevronLeft size={20} />
+      </button>
 
       {/* Drone Grid - Center Section */}
       <div className={styles.handSection}>
@@ -243,9 +250,14 @@ function DronesView({
         </div>
       </div>
 
+      {/* Right Chevron Arrow */}
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+        <ChevronRight size={20} />
+      </button>
+
       {/* Deck Pile */}
       <div className={styles.cardPile}>
-        <div style={{ width: '150px', height: '183.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+        <div style={{ width: 'clamp(110px, 12cqw, 170px)', height: 'clamp(140px, 15cqw, 210px)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
           <CardBackPlaceholder
             scale={0.667}
             variant="deck"

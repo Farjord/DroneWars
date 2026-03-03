@@ -56,7 +56,7 @@ const ResourceBadge = React.forwardRef(({ icon: Icon, value, max, iconColor, isP
       ref={ref}
       className="relative"
       style={{
-        background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+        background: 'transparent',
         border: `1px solid ${borderColor}`,
         borderRadius: '2px',
         boxShadow: `0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 ${glowColor}`,
@@ -137,6 +137,8 @@ function GameHeader({
   testMode,
   selectedBackground,
   onBackgroundChange,
+  onOpenLog,
+  onOpenLogModal,
   // Interception mode props
   interceptionModeActive,
   selectedInterceptor,
@@ -660,6 +662,8 @@ function GameHeader({
               onForceWin={onForceWin}
               onShowGlossary={onShowGlossary}
               onShowAIStrategy={onShowAIStrategy}
+              onOpenLog={onOpenLog}
+              onOpenLogModal={onOpenLogModal}
               handleExitGame={handleExitGame}
             />
           </div>
