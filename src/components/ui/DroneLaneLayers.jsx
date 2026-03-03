@@ -65,7 +65,7 @@ export const DroneLaneVisualLayers = ({ isOpponent, clipPath, laneControlState =
       <div style={{
         position: 'absolute', inset: 0,
         clipPath,
-        background: 'transparent',
+        background: 'rgba(0, 3, 10, 0.55)',
         overflow: 'hidden',
       }}>
         {/* Scan lines */}
