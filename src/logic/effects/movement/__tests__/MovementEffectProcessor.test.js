@@ -453,4 +453,90 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       expect(result.postMovementState).toBeDefined();
     });
   });
+
+  describe('executeSingleMove - enemy drone ownership preservation', () => {
+    it('should keep enemy drone on opponent board when moved without owner property', () => {
+      // Enemy drone WITHOUT explicit owner property — simulates drag path bug
+      const enemyDrone = {
+        id: 'enemy_drone_no_owner',
+        name: 'OwnerlessDrone',
+        hull: 3,
+        isExhausted: false,
+        attack: 2,
+        cannotMove: false
+        // No owner property — this is the bug scenario
+      };
+
+      mockPlayerStates.player2.dronesOnBoard.lane1 = [enemyDrone];
+      mockPlayerStates.player2.dronesOnBoard.lane2 = [];
+
+      const tacticalRepoCard = {
+        id: 'CARD_TACTICAL_REPO',
+        name: 'Tactical Repositioning',
+        effects: [{ type: 'SINGLE_MOVE', properties: ['DO_NOT_EXHAUST'] }]
+      };
+
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeSingleMove(
+        tacticalRepoCard,
+        enemyDrone,
+        'lane1',
+        'lane2',
+        'player1',       // actingPlayerId — player1 played the card
+        newPlayerStates,
+        'player2',
+        mockContext
+      );
+
+      expect(result.error).toBeUndefined();
+      // Drone must remain on player2's board, NOT player1's
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane2).toHaveLength(1);
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane2[0].id).toBe('enemy_drone_no_owner');
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane1).toHaveLength(0);
+      // Must NOT appear on player1's board
+      expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(0);
+    });
+
+    it('should keep enemy drone on opponent board when owner property IS set', () => {
+      // Enemy drone WITH explicit owner — regression guard
+      const enemyDrone = {
+        id: 'enemy_drone_with_owner',
+        name: 'OwnedDrone',
+        hull: 3,
+        isExhausted: false,
+        attack: 2,
+        cannotMove: false,
+        owner: 'player2'
+      };
+
+      mockPlayerStates.player2.dronesOnBoard.lane1 = [enemyDrone];
+      mockPlayerStates.player2.dronesOnBoard.lane2 = [];
+
+      const tacticalRepoCard = {
+        id: 'CARD_TACTICAL_REPO',
+        name: 'Tactical Repositioning',
+        effects: [{ type: 'SINGLE_MOVE', properties: ['DO_NOT_EXHAUST'] }]
+      };
+
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeSingleMove(
+        tacticalRepoCard,
+        enemyDrone,
+        'lane1',
+        'lane2',
+        'player1',
+        newPlayerStates,
+        'player2',
+        mockContext
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane2).toHaveLength(1);
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane2[0].id).toBe('enemy_drone_with_owner');
+      expect(result.newPlayerStates.player2.dronesOnBoard.lane1).toHaveLength(0);
+      expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(0);
+    });
+  });
 });

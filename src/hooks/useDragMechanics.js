@@ -337,7 +337,7 @@ const useDragMechanics = ({
             return;
           }
           setSelectedCard(card);
-          startEffectChain(card, target, targetLane);
+          startEffectChain(card, { ...target, owner: targetOwner }, targetLane);
           return;
         }
 
@@ -420,7 +420,7 @@ const useDragMechanics = ({
 
           // Movement card dropped on valid drone target — start effect chain for lane selection
           setSelectedCard(card);
-          startEffectChain(card, target, targetLane);
+          startEffectChain(card, { ...target, owner: targetOwner }, targetLane);
           return;
         } else {
           debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid drone target for movement card', { target, validCardTargets });

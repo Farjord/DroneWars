@@ -284,7 +284,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     // Determine which player owns the drone being moved
     // For enemy-targeting cards like Tactical Repositioning, the drone belongs to opponent
-    const droneOwnerId = droneToMove.owner || actingPlayerId;
+    const droneOwnerId = droneToMove.owner || this._findDroneOwner(droneToMove.id, newPlayerStates) || actingPlayerId;
     const droneOwnerState = newPlayerStates[droneOwnerId];
     const isMovingEnemyDrone = droneOwnerId !== actingPlayerId;
 
@@ -326,9 +326,22 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     // Check lane capacity limit before moving
     if ((droneOwnerState.dronesOnBoard[toLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
+      logCallback({
+        player: actingPlayerState.name,
+        actionType: 'MOVE_BLOCKED',
+        source: card.name,
+        target: droneToMove.name,
+        outcome: `${droneToMove.name} could not move to ${toLane} — lane is full.`
+      });
       return {
         newPlayerStates: newPlayerStates,
         error: `Cannot move to ${toLane} — lane is full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones).`,
+        animationEvents: [{
+          type: 'MOVEMENT_BLOCKED',
+          droneName: droneToMove.name,
+          targetId: droneToMove.id,
+          timestamp: Date.now()
+        }],
         shouldCancelCardSelection: true,
         shouldClearMultiSelectState: true
       };
@@ -493,9 +506,22 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     // Check lane capacity limit for the entire batch
     const currentCount = actingPlayerState.dronesOnBoard[toLane]?.length || 0;
     if (currentCount + dronesToMove.length > MAX_DRONES_PER_LANE) {
+      logCallback({
+        player: actingPlayerState.name,
+        actionType: 'MOVE_BLOCKED',
+        source: card.name,
+        target: dronesToMove.map(d => d.name).join(', '),
+        outcome: `${dronesToMove.length} drone(s) could not move to ${toLane} — lane is full.`
+      });
       return {
         newPlayerStates: newPlayerStates,
         error: `Cannot move ${dronesToMove.length} drone(s) to ${toLane} — lane is full (${currentCount}/${MAX_DRONES_PER_LANE} drones).`,
+        animationEvents: dronesToMove.map(drone => ({
+          type: 'MOVEMENT_BLOCKED',
+          droneName: drone.name,
+          targetId: drone.id,
+          timestamp: Date.now()
+        })),
         shouldCancelCardSelection: true,
         shouldClearMultiSelectState: true
       };
@@ -755,6 +781,17 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     return { triggerAnimationEvents, mineAnimationEvents, goAgain, triggerSteps: allTriggerSteps };
+  }
+
+  _findDroneOwner(droneId, playerStates) {
+    for (const playerId of ['player1', 'player2']) {
+      for (const lane of ['lane1', 'lane2', 'lane3']) {
+        if (playerStates[playerId]?.dronesOnBoard?.[lane]?.some(d => d.id === droneId)) {
+          return playerId;
+        }
+      }
+    }
+    return null;
   }
 }
 

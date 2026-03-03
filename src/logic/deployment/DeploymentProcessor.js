@@ -299,6 +299,7 @@ class DeploymentProcessor {
     const newDrone = {
       ...drone,
       id: droneId,  // Deterministic ID
+      owner: playerId,
       statMods: [],
       currentShields: effectiveStats.maxShields,
       currentMaxShields: effectiveStats.maxShields,
