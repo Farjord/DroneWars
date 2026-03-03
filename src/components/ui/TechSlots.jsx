@@ -35,25 +35,29 @@ const emptySlotStyle = {
   border: '0.08vw solid rgba(200,200,210,0.7)',
 };
 
-// Inject shimmer keyframes once
+// Inject shimmer keyframes (updates on HMR reload)
 const SHIMMER_STYLE_ID = 'tech-slot-shimmer';
-if (typeof document !== 'undefined' && !document.getElementById(SHIMMER_STYLE_ID)) {
-  const style = document.createElement('style');
-  style.id = SHIMMER_STYLE_ID;
-  style.textContent = `
-    @keyframes techSlotShimmer {
-      0%, 100% { opacity: 0.85; }
-      50% { opacity: 1; }
-    }
-    @keyframes techSlotHighlight {
-      0%, 100% { box-shadow: 0 0 0.6vw var(--tech-glow), 0 0 1.2vw var(--tech-glow-dim); }
-      50% { box-shadow: 0 0 1vw var(--tech-glow), 0 0 2vw var(--tech-glow-dim); }
-    }
-    .tech-slot-filled:hover {
-      transform: scale(1.15);
-    }
-  `;
-  document.head.appendChild(style);
+const SHIMMER_CSS = `
+  @keyframes techSlotShimmer {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+  @keyframes techSlotHighlight {
+    0%, 100% { box-shadow: 0 0 0.6vw var(--tech-glow), 0 0 1.2vw var(--tech-glow-dim); }
+    50% { box-shadow: 0 0 1vw var(--tech-glow), 0 0 2vw var(--tech-glow-dim); }
+  }
+  .tech-slot-filled:hover {
+    transform: scale(1.15);
+  }
+`;
+if (typeof document !== 'undefined') {
+  let style = document.getElementById(SHIMMER_STYLE_ID);
+  if (!style) {
+    style = document.createElement('style');
+    style.id = SHIMMER_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  style.textContent = SHIMMER_CSS;
 }
 
 /**
