@@ -227,6 +227,10 @@ const SingleLaneView = ({
   const controlledOwner = (isPlayer && isPlayerControlled) || (!isPlayer && isOpponentControlled)
     ? laneControlState : null;
 
+  // Dissolve content stacking context when this lane is the drag source
+  const isDragSourceLane = draggedDrone?.sourceLane === laneId &&
+    player.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
+
   return (
     <div
       data-testid={`lane-drop-zone-${laneId === 'lane1' ? 'left' : laneId === 'lane2' ? 'middle' : 'right'}`}
@@ -311,7 +315,7 @@ const SingleLaneView = ({
       <div style={{
         position: 'absolute', left: '2%', right: '2%',
         top: 0, bottom: 0,
-        pointerEvents: 'auto', zIndex: 10,
+        pointerEvents: 'auto', zIndex: isDragSourceLane ? undefined : 10,
         display: 'flex', flexWrap: 'wrap', gap: '2rem',
         justifyContent: 'center',
         alignItems: isPlayer ? 'flex-start' : 'center',

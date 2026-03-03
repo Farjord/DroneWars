@@ -326,6 +326,13 @@ const BattleColumn = ({
     handleActionCardDragEnd,
   };
 
+  // Detect if the dragged drone originates from this column's lane
+  const dragSourceInColumn = draggedDrone?.sourceLane === laneId;
+  const isDragInOpponentLane = dragSourceInColumn &&
+    opponentPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
+  const isDragInPlayerLane = dragSourceInColumn &&
+    localPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
+
   return (
     <div className="flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
       {/* Opponent Ship Section — 30% height, behind lanes */}
@@ -348,7 +355,7 @@ const BattleColumn = ({
       </div>
 
       {/* Opponent Lane — 29% height, overlaps ship by -10% margin */}
-      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: 5 }}>
+      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: isDragInOpponentLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={false}
@@ -363,7 +370,7 @@ const BattleColumn = ({
       </div>
 
       {/* Centre gap — sized so tech-slot translateY(50%) from each lane doesn't overlap */}
-      <div style={{ height: '6%', width: '100%', position: 'relative' }}>
+      <div style={{ height: '6%', width: '100%', position: 'relative', zIndex: 0 }}>
         <LaneControlBar
           laneControlState={laneControl[laneId]}
           localPlayerId={getLocalPlayerId()}
@@ -371,7 +378,7 @@ const BattleColumn = ({
       </div>
 
       {/* Player Lane — 29% height */}
-      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: 5 }}>
+      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: isDragInPlayerLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={true}
