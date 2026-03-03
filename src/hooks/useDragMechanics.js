@@ -51,7 +51,7 @@ const useDragMechanics = ({
   cancelAllActions, opponentPlayerState, gameState, gameDataService,
   getPlacedSectionsForEngine,
   droneRefs, setMoveConfirmation, resolveAttack, getEffectiveStats, selectedDrone,
-  abilityMode,
+  abilityMode, addLogEntry,
 }) => {
   // --- Drag State ---
   // NOTE: draggedDrone is hoisted to App.jsx to break circular deps
@@ -511,6 +511,30 @@ const useDragMechanics = ({
       return;
     }
 
+    // Effect chain destination phase — allow dragging the pending target
+    // regardless of ownership. Normal guards (exhaustion, INERT) are irrelevant
+    // since the card already validated the target.
+    const isPendingTarget = effectChainState?.pendingTarget?.id === drone.id ||
+      (Array.isArray(effectChainState?.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id));
+    if (effectChainState?.subPhase === 'destination' && isPendingTarget) {
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Destination phase drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+      droneDragHandledRef.current = false;
+      setDraggedDrone({ drone, sourceLane });
+      if (gameAreaRef.current) {
+        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+        const tokenElement = event.currentTarget;
+        const tokenRect = tokenElement.getBoundingClientRect();
+        const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+        const startY = tokenRect.top - gameAreaRect.top + 15;
+        setDroneDragArrowState({
+          visible: true,
+          start: { x: startX, y: startY },
+          end: { x: startX, y: startY }
+        });
+      }
+      return;
+    }
+
     // Normal action phase drag - only allow during action phase, when it's our turn, and drone is not exhausted
     if (turnPhase !== 'action' || currentPlayer !== getLocalPlayerId() || drone.isExhausted) {
       debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked', { turnPhase, currentPlayer, localPlayerId: getLocalPlayerId(), isExhausted: drone.isExhausted });
@@ -681,6 +705,12 @@ const useDragMechanics = ({
         // Check lane capacity before allowing move
         if (isLaneFull(localPlayerState, targetLane)) {
           debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - destination lane full', { targetLane });
+          addLogEntry({
+            player: localPlayerState.name,
+            actionType: 'MOVE_BLOCKED',
+            source: attackerDrone.name,
+            outcome: `${attackerDrone.name} could not move to ${targetLane} — lane is full.`
+          });
           setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
           return;
         }

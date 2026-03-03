@@ -8,7 +8,7 @@
 import React from 'react';
 import DroneToken from './DroneToken.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
-import { LANE_COLORS, getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
+import { getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
@@ -109,7 +109,14 @@ const renderDronesOnBoard = ({
               interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
-              onDragStart={isPlayer ? handleDroneDragStart : undefined}
+              onDragStart={
+                (isPlayer || (effectChainState?.subPhase === 'destination' && (
+                  effectChainState.pendingTarget?.id === drone.id ||
+                  (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
+                )))
+                  ? handleDroneDragStart
+                  : undefined
+              }
               onDragDrop={!isPlayer && draggedDrone ?
                 (targetDrone) => {
                   debugLog('CHECKPOINT_FLOW', '🔌 CHECKPOINT 3-FIRE: onDragDrop callback executing', {
@@ -270,7 +277,7 @@ const SingleLaneView = ({
           return;
         }
 
-        if (draggedDrone && handleDroneDragEnd && isPlayer) {
+        if (draggedDrone && handleDroneDragEnd && (isPlayer || effectChainState?.subPhase === 'destination')) {
           debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C: Drone drop on lane', {
             lane: laneId,
             willCallWith: { target: null, targetLane: laneId, isOpponentTarget: false, targetType: 'lane' }
@@ -297,7 +304,7 @@ const SingleLaneView = ({
         className={`absolute inset-0 ${isTargetable ? 'lane-target-pulse' : ''}`}
         style={{ pointerEvents: 'none' }}
       >
-        <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} />
+        <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} laneId={laneId} />
       </div>
 
       {/* Content layer — unclipped, interactive */}
