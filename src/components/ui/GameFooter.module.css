@@ -40,14 +40,27 @@
 /* ===== VIEW CHEVRON STYLES ===== */
 
 .viewChevron {
-  @apply flex items-center justify-center text-cyan-400 transition-all duration-200;
+  @apply flex flex-col items-center justify-center text-cyan-400 transition-all duration-200;
   background: rgba(6, 182, 212, 0.08);
   border: 1px solid rgba(6, 182, 212, 0.2);
   border-radius: 4px;
-  width: 28px;
+  width: 32px;
+  height: 60%;
   align-self: center;
   cursor: pointer;
-  padding: 8px 0;
+  padding: 4px 0;
+  gap: 2px;
+}
+
+.viewChevronLabel {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(6, 182, 212, 0.8);
+  line-height: 1;
 }
 
 .viewChevron:hover {

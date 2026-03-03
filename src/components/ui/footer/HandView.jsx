@@ -238,8 +238,9 @@ function HandView({
       </div>
 
       {/* Left Chevron Arrow */}
-      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to drones view">
         <ChevronLeft size={20} />
+        <span className={styles.viewChevronLabel}>DRONES</span>
       </button>
 
       {/* Hand Section */}
@@ -450,7 +451,8 @@ function HandView({
       </div>
 
       {/* Right Chevron Arrow */}
-      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to drones view">
+        <span className={styles.viewChevronLabel}>DRONES</span>
         <ChevronRight size={20} />
       </button>
 

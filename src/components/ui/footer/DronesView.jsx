@@ -122,8 +122,9 @@ function DronesView({
       </div>
 
       {/* Left Chevron Arrow */}
-      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to cards view">
         <ChevronLeft size={20} />
+        <span className={styles.viewChevronLabel}>CARDS</span>
       </button>
 
       {/* Drone Grid - Center Section */}
@@ -251,7 +252,8 @@ function DronesView({
       </div>
 
       {/* Right Chevron Arrow */}
-      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch footer view">
+      <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to cards view">
+        <span className={styles.viewChevronLabel}>CARDS</span>
         <ChevronRight size={20} />
       </button>
 
