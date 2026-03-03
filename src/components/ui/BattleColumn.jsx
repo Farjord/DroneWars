@@ -9,6 +9,7 @@ import React from 'react';
 import ShipSectionCompact from './ShipSectionCompact.jsx';
 import SingleLaneView from './SingleLaneView.jsx';
 import TechSlots from './TechSlots.jsx';
+import LaneControlBar from './LaneControlBar.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
@@ -362,7 +363,12 @@ const BattleColumn = ({
       </div>
 
       {/* Centre gap — sized so tech-slot translateY(50%) from each lane doesn't overlap */}
-      <div style={{ height: '6%', width: '100%' }} />
+      <div style={{ height: '6%', width: '100%', position: 'relative' }}>
+        <LaneControlBar
+          laneControlState={laneControl[laneId]}
+          localPlayerId={getLocalPlayerId()}
+        />
+      </div>
 
       {/* Player Lane — 29% height */}
       <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: 5 }}>
