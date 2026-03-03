@@ -361,8 +361,8 @@ const BattleColumn = ({
         />
       </div>
 
-      {/* Centre gap */}
-      <div style={{ height: '5%', width: '100%' }} />
+      {/* Centre gap — sized so tech-slot translateY(50%) from each lane doesn't overlap */}
+      <div style={{ height: '6%', width: '100%' }} />
 
       {/* Player Lane — 29% height */}
       <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: 5 }}>

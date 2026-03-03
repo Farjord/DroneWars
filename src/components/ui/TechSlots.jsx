@@ -11,7 +11,7 @@ import { FACTION_COLORS } from './ShipSectionLayers.jsx';
 
 const SLOT_COUNT = 5;
 
-const SLOT_SIZE = 'clamp(14px, 1.4vw, 28px)';
+const SLOT_SIZE = 'clamp(18px, 1.8vw, 36px)';
 
 const getContainerStyle = (faction) => ({
   position: 'absolute',

@@ -962,7 +962,7 @@ const App = ({ phaseAnimationQueue }) => {
        setBarrageImpacts={setBarrageImpacts}
      />
 
-      <div style={{ flex: '0 0 15%' }}>
+      <div style={{ flex: '0 0 10%' }}>
       <GameHeader
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}
@@ -1087,7 +1087,7 @@ const App = ({ phaseAnimationQueue }) => {
         laneControl={laneControl}
       />
 
-      <div style={{ flex: '0 0 23%', maxHeight: '23%' }}>
+      <div style={{ flex: '0 0 20%', maxHeight: '20%' }}>
       <GameFooter
         gameMode={gameState.gameMode}
         localPlayerState={localPlayerState}
