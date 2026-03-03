@@ -49,6 +49,9 @@ if (typeof document !== 'undefined' && !document.getElementById(SHIMMER_STYLE_ID
       0%, 100% { box-shadow: 0 0 0.6vw var(--tech-glow), 0 0 1.2vw var(--tech-glow-dim); }
       50% { box-shadow: 0 0 1vw var(--tech-glow), 0 0 2vw var(--tech-glow-dim); }
     }
+    .tech-slot-filled:hover {
+      transform: scale(1.15);
+    }
   `;
   document.head.appendChild(style);
 }
@@ -63,6 +66,7 @@ const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
 
   return (
     <div
+      className="tech-slot-filled"
       data-drone-id={techDrone.id}
       style={{
         width: SLOT_SIZE,
@@ -78,7 +82,7 @@ const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
         overflow: 'hidden',
         pointerEvents: 'auto',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'box-shadow 0.2s ease',
+        transition: 'box-shadow 0.2s ease, transform 0.15s ease',
         animation: highlighted
           ? 'techSlotHighlight 0.8s ease-in-out infinite'
           : 'techSlotShimmer 3s ease-in-out infinite',
