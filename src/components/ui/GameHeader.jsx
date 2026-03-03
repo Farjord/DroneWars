@@ -459,6 +459,8 @@ function GameHeader({
           width: '100%',
           clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
           background: 'linear-gradient(180deg, rgba(12,30,48,0.9), rgba(8,20,32,0.95))',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           padding: '1.5% 2%', textAlign: 'center', position: 'relative',
           border: `0.06vw solid ${playerPri}22`,
         }}>
@@ -480,6 +482,12 @@ function GameHeader({
             background: 'linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%, rgba(255,255,255,0.01))',
             pointerEvents: 'none',
           }} />
+          {/* Glass specular highlight */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.04) 42%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 58%, transparent 65%)',
+            pointerEvents: 'none',
+          }} />
           {/* Phase status content */}
           <PhaseStatusText turnPhase={turnPhase} />
         </div>
@@ -489,6 +497,8 @@ function GameHeader({
           width: '75%',
           clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
           background: 'linear-gradient(180deg, rgba(8,20,32,0.9), rgba(12,30,48,0.85))',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           padding: '0.8% 2%', textAlign: 'center', marginTop: '-1px', position: 'relative',
           border: `0.05vw solid ${playerPri}15`,
         }}>
@@ -496,6 +506,12 @@ function GameHeader({
           <div style={{
             position: 'absolute', bottom: 0, left: '6%', right: '6%', height: '0.05vw',
             background: `linear-gradient(90deg, transparent, ${playerPri}20, transparent)`,
+            pointerEvents: 'none',
+          }} />
+          {/* Glass specular highlight */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.04) 42%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 58%, transparent 65%)',
             pointerEvents: 'none',
           }} />
           <div style={{
