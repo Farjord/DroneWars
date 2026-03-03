@@ -210,9 +210,9 @@ function HandView({
           onMouseLeave={() => setDiscardHovered(false)}
           style={{
             width: '100%',
-            height: '85%',
+            height: '85cqh',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             overflow: 'visible',
             cursor: 'pointer',
@@ -232,9 +232,6 @@ function HandView({
             <CardBackPlaceholder scale={0.667} variant="discard" isHovered={discardHovered} />
           )}
         </div>
-        <p className={styles.pileLabel}>
-          Discard <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>({localPlayerState.discardPile.length})</span>
-        </p>
       </div>
 
       {/* Left Chevron Arrow */}
@@ -458,16 +455,13 @@ function HandView({
 
       {/* Deck Pile */}
       <div className={styles.cardPile}>
-        <div ref={deckWrapperRef} style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+        <div ref={deckWrapperRef} style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'visible' }}>
           <CardBackPlaceholder
             scale={0.667}
             variant="deck"
             onClick={() => setIsViewDeckModalOpen(true)}
           />
         </div>
-        <p className={styles.pileLabel}>
-          Deck <span style={{ color: '#22d3ee', fontWeight: 'bold' }}>({localPlayerState.deck.length})</span>
-        </p>
       </div>
     </div>
   );

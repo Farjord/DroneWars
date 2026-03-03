@@ -124,6 +124,47 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
       expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(5);
     });
 
+    it('should call logCallback with MOVE_BLOCKED when single move blocked by capacity', () => {
+      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(5, 'existing');
+
+      const droneToMove = mockPlayerStates.player1.dronesOnBoard.lane1[0];
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      processor.executeSingleMove(
+        mockCard, droneToMove, 'lane1', 'lane2',
+        'player1', newPlayerStates, 'player2', mockContext
+      );
+
+      expect(mockContext.callbacks.logCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'MOVE_BLOCKED',
+          outcome: expect.stringContaining('lane is full')
+        })
+      );
+    });
+
+    it('should include MOVEMENT_BLOCKED animation event when single move blocked', () => {
+      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(5, 'existing');
+
+      const droneToMove = mockPlayerStates.player1.dronesOnBoard.lane1[0];
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeSingleMove(
+        mockCard, droneToMove, 'lane1', 'lane2',
+        'player1', newPlayerStates, 'player2', mockContext
+      );
+
+      expect(result.animationEvents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'MOVEMENT_BLOCKED',
+            droneName: droneToMove.name,
+            targetId: droneToMove.id
+          })
+        ])
+      );
+    });
+
     it('should always allow moving OUT of a full lane', () => {
       mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(5, 'full');
       const droneToMove = mockPlayerStates.player1.dronesOnBoard.lane1[0];
@@ -156,6 +197,49 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
 
       expect(result.error).toBeDefined();
       expect(result.error).toContain('full');
+    });
+
+    it('should call logCallback with MOVE_BLOCKED when multi-move blocked by capacity', () => {
+      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(3, 'source');
+      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
+
+      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
+      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      processor.executeMultiMove(
+        multiCard, dronesToMove, 'lane1', 'lane2',
+        'player1', newPlayerStates, 'player2', mockContext
+      );
+
+      expect(mockContext.callbacks.logCallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'MOVE_BLOCKED',
+          outcome: expect.stringContaining('lane is full')
+        })
+      );
+    });
+
+    it('should include MOVEMENT_BLOCKED animation events when multi-move blocked', () => {
+      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(3, 'source');
+      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
+
+      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
+      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
+      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
+
+      const result = processor.executeMultiMove(
+        multiCard, dronesToMove, 'lane1', 'lane2',
+        'player1', newPlayerStates, 'player2', mockContext
+      );
+
+      expect(result.animationEvents).toBeDefined();
+      expect(result.animationEvents.length).toBeGreaterThan(0);
+      result.animationEvents.forEach(event => {
+        expect(event.type).toBe('MOVEMENT_BLOCKED');
+        expect(event.droneName).toBeDefined();
+        expect(event.targetId).toBeDefined();
+      });
     });
 
     it('should allow batch when result is exactly at capacity (2 drones to lane with 3)', () => {

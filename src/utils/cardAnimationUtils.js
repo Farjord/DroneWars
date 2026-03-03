@@ -41,7 +41,7 @@ export const CARD_FAN_CONFIG = {
 
   // Arc effect for fan (inverted - center high, edges low)
   arcHeight: 5.0,  // Multiplier for vertical arc offset (pixels per degree of rotation)
-  baselineOffset: 30  // Base offset to move all cards down (px)
+  baselineOffset: 0  // Base offset to move all cards down (px)
 };
 
 /**

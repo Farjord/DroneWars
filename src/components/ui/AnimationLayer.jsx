@@ -12,6 +12,7 @@ import ShipAbilityRevealOverlay from '../animations/ShipAbilityRevealOverlay.jsx
 import PassNotificationOverlay from '../animations/PassNotificationOverlay.jsx';
 import GoAgainOverlay from '../animations/GoAgainOverlay.jsx';
 import TriggerFiredOverlay from '../animations/TriggerFiredOverlay.jsx';
+import MovementBlockedOverlay from '../animations/MovementBlockedOverlay.jsx';
 import StatusConsumptionOverlay from '../animations/StatusConsumptionOverlay.jsx';
 import CardWarningOverlay from '../animations/CardWarningOverlay.jsx';
 import PhaseAnnouncementOverlay from '../animations/PhaseAnnouncementOverlay.jsx';
@@ -37,6 +38,7 @@ const AnimationLayer = ({
   passNotifications,
   goAgainNotifications,
   triggerFiredNotifications,
+  movementBlockedNotifications,
   cardPlayWarning,
   laserEffects,
   teleportEffects,
@@ -140,6 +142,15 @@ const AnimationLayer = ({
         key={notification.id}
         droneName={notification.droneName}
         abilityName={notification.abilityName}
+        position={notification.position}
+        onComplete={notification.onComplete}
+      />
+    ))}
+    {movementBlockedNotifications.map(notification => (
+      <MovementBlockedOverlay
+        key={notification.id}
+        droneName={notification.droneName}
+        message={notification.message}
         position={notification.position}
         onComplete={notification.onComplete}
       />

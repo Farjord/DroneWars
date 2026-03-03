@@ -94,7 +94,7 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
       <div style={{
         position: 'absolute', inset: '-0.6%',
         clipPath,
-        background: `${glow}10`,
+        background: 'transparent',
         filter: `drop-shadow(0 0 1.2vw ${glow}30) drop-shadow(0 0 2.5vw ${glow}15)`,
       }} />
 
@@ -109,7 +109,7 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
       <div style={{
         position: 'relative', width: '100%', height: '100%',
         clipPath,
-        background: 'rgba(0,0,0,0.4)',
+        background: '#0a0a12',
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
         {shipImage && (
@@ -157,12 +157,6 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
         <div style={{ position: 'absolute', left: 0, top: '10%', bottom: '10%', width: '0.1vw', background: `linear-gradient(180deg, transparent, ${pri}40, ${pri}55, ${pri}40, transparent)`, zIndex: 4, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', right: 0, top: '10%', bottom: '10%', width: '0.1vw', background: `linear-gradient(180deg, transparent, ${pri}40, ${pri}55, ${pri}40, transparent)`, zIndex: 4, pointerEvents: 'none' }} />
 
-        {/* Layer 7: Inner glow */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          boxShadow: `inset 0 0 2vw ${pri}15, inset 0 ${isOpponent ? '0.4vw' : '-0.4vw'} 1.2vw ${pri}10`,
-          pointerEvents: 'none', zIndex: 2,
-        }} />
 
         {/* Layer 8: Diagonal hatch */}
         <div style={{
@@ -170,9 +164,6 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
           backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, ${pri}02 10px, ${pri}02 11px)`,
           pointerEvents: 'none', zIndex: 1, opacity: 0.4,
         }} />
-
-        {/* Layer 9: Scan lines */}
-        <ScanLines opacity={0.018} />
 
         {/* Layer 10: Corner brackets */}
         {isOpponent ? (

@@ -637,7 +637,7 @@ class EffectChainProcessor {
       );
       if (result.error) {
         debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
-        return { newPlayerStates: playerStates, animationEvents: [], effectResult: null };
+        return { newPlayerStates: playerStates, animationEvents: result.animationEvents || [], effectResult: null };
       }
       return {
         newPlayerStates: result.newPlayerStates,
@@ -658,7 +658,7 @@ class EffectChainProcessor {
     );
     if (result.error) {
       debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
-      return { newPlayerStates: playerStates, animationEvents: [], effectResult: null };
+      return { newPlayerStates: playerStates, animationEvents: result.animationEvents || [], effectResult: null };
     }
     return {
       newPlayerStates: result.newPlayerStates,

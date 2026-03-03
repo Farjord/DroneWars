@@ -962,7 +962,7 @@ const App = ({ phaseAnimationQueue }) => {
        setBarrageImpacts={setBarrageImpacts}
      />
 
-      <div style={{ flex: '0 0 10%' }}>
+      <div style={{ flex: '0 0 15%' }}>
       <GameHeader
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}

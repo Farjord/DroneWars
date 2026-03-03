@@ -458,9 +458,9 @@ function GameHeader({
         <div style={{
           width: '100%',
           clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
-          background: 'linear-gradient(180deg, rgba(12,30,48,0.9), rgba(8,20,32,0.95))',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          background: 'linear-gradient(180deg, rgba(12,30,48,0.6), rgba(0, 0, 0, 0.6))',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
           padding: '1.5% 2%', textAlign: 'center', position: 'relative',
           border: `0.06vw solid ${playerPri}22`,
         }}>
@@ -496,9 +496,9 @@ function GameHeader({
         <div style={{
           width: '75%',
           clipPath: 'polygon(0% 0%, 100% 0%, 93% 100%, 7% 100%)',
-          background: 'linear-gradient(180deg, rgba(8,20,32,0.9), rgba(12,30,48,0.85))',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          background: 'linear-gradient(180deg, rgba(8,20,32,0.4), rgba(0, 0, 0, 0.4))',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
           padding: '0.8% 2%', textAlign: 'center', marginTop: '-1px', position: 'relative',
           border: `0.05vw solid ${playerPri}15`,
         }}>
