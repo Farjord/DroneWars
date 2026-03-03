@@ -1013,7 +1013,7 @@ const App = ({ phaseAnimationQueue }) => {
         testMode={testMode}
         selectedBackground={selectedBackground}
         onBackgroundChange={handleBackgroundChange}
-        onOpenLog={() => setFooterView('log')}
+        onOpenLog={() => setFooterView(footerView === 'log' ? 'hand' : 'log')}
         onOpenLogModal={() => setIsLogModalOpen(true)}
         interceptionModeActive={interceptionModeActive}
         selectedInterceptor={selectedInterceptor}

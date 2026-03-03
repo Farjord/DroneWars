@@ -38,7 +38,7 @@ function LogModal({
 
         {/* Body - Log Table */}
         <div className="dw-modal-body" style={{ flex: 1, overflow: 'hidden', padding: '16px' }}>
-          <div style={{ height: '100%', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--modal-border)' }}>
+          <div className="dw-modal-scroll" style={{ height: '100%', borderRadius: '8px', border: '1px solid var(--modal-border)' }}>
             <table style={{ width: '100%', textAlign: 'left', fontSize: '12px', borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--modal-surface)' }}>
                 <tr>
