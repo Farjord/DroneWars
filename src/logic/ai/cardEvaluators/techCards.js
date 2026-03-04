@@ -6,6 +6,7 @@
 import { SCORING_WEIGHTS } from '../aiConstants.js';
 
 // Tech impact values — higher = more valuable to destroy
+const DEFAULT_TECH_IMPACT = 15;
 const TECH_IMPACT = {
   'Jammer': 50,        // Blocks all card targeting in lane — highest priority
   'Proximity Mine': 30, // Deals 4 damage on lane entry
@@ -34,7 +35,7 @@ export const evaluateDestroyTechCard = (card, target, context) => {
   score += BASE_TECH_REMOVAL_SCORE;
   logic.push(`Base tech removal: +${BASE_TECH_REMOVAL_SCORE}`);
 
-  const impactScore = TECH_IMPACT[target.name] || 15;
+  const impactScore = TECH_IMPACT[target.name] || DEFAULT_TECH_IMPACT;
   score += impactScore;
   logic.push(`${target.name} impact: +${impactScore}`);
 

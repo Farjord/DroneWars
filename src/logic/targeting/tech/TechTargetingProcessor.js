@@ -33,20 +33,33 @@ class TechTargetingProcessor extends BaseTargetingProcessor {
   process(context) {
     this.logProcessStart(context);
 
-    const { actingPlayerId, definition } = context;
-    const { affinity } = definition.targeting;
+    const { actingPlayerId, source, definition } = context;
+    const { affinity, location } = definition.targeting;
     const targets = [];
+
+    // Determine source lane for SAME_LANE filtering (ability-based targeting)
+    let sourceLane = null;
+    if (location === 'SAME_LANE' && source) {
+      const actingPlayerState = this.getActingPlayerState(context);
+      const laneEntries = Object.entries(actingPlayerState.dronesOnBoard || {});
+      for (const [lane, drones] of laneEntries) {
+        if (drones.some(d => d.id === source.id)) {
+          sourceLane = lane;
+          break;
+        }
+      }
+    }
 
     const actingPlayerState = this.getActingPlayerState(context);
     const opponentPlayerState = this.getOpponentPlayerState(context);
     const opponentId = this.getOpponentPlayerId(actingPlayerId);
 
     if (affinity === 'FRIENDLY' || affinity === 'ANY') {
-      this.collectTechTargets(actingPlayerState, actingPlayerId, targets);
+      this.collectTechTargets(actingPlayerState, actingPlayerId, location, sourceLane, targets);
     }
 
     if (affinity === 'ENEMY' || affinity === 'ANY') {
-      this.collectTechTargets(opponentPlayerState, opponentId, targets);
+      this.collectTechTargets(opponentPlayerState, opponentId, location, sourceLane, targets);
     }
 
     this.logProcessComplete(context, targets);
@@ -60,10 +73,13 @@ class TechTargetingProcessor extends BaseTargetingProcessor {
    * @param {string} playerId - Owner of these tech
    * @param {Array} targets - Array to add valid targets to
    */
-  collectTechTargets(playerState, playerId, targets) {
+  collectTechTargets(playerState, playerId, location, sourceLane, targets) {
     if (!playerState.techSlots) return;
 
     Object.entries(playerState.techSlots).forEach(([lane, techs]) => {
+      if (location === 'SAME_LANE' && lane !== sourceLane) return;
+      if (location === 'OTHER_LANES' && lane === sourceLane) return;
+
       techs.forEach(tech => {
         targets.push({ ...tech, lane, owner: playerId });
       });
