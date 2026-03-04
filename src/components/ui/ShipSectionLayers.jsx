@@ -118,7 +118,7 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
             backgroundImage: `url(${shipImage})`,
             backgroundPosition: 'center center',
             backgroundRepeat: 'no-repeat',
-            backgroundSize: 'cover',
+            backgroundSize: '100% auto',
             opacity: 0.7,
           }} />
         )}
