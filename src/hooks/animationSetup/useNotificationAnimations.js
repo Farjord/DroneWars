@@ -121,9 +121,9 @@ export function registerNotificationAnimations(animationManager, {
   });
 
   animationManager.registerVisualHandler('TRIGGER_FIRED_EFFECT', (payload) => {
-    const { droneName, abilityName, targetId, onComplete } = payload;
+    const { abilityName, targetId, onComplete } = payload;
 
-    // Find drone element for positioning above the triggering drone
+    // Find drone element for positioning centered on the triggering drone
     // Fall back to data-drone-id query for Tech slots (not in droneRefs)
     const droneEl = droneRefs.current[targetId]
       || document.querySelector(`[data-drone-id="${targetId}"]`);
@@ -132,7 +132,7 @@ export function registerNotificationAnimations(animationManager, {
       const rect = droneEl.getBoundingClientRect();
       position = {
         left: rect.left + rect.width / 2,
-        top: rect.top
+        top: rect.top + rect.height / 2
       };
     }
 
@@ -140,7 +140,6 @@ export function registerNotificationAnimations(animationManager, {
 
     setTriggerFiredNotifications(prev => [...prev, {
       id: notificationId,
-      droneName: droneName || 'Unknown',
       abilityName: abilityName || 'Triggered',
       position,
       onComplete: () => {

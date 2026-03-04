@@ -150,7 +150,6 @@ const AnimationLayer = ({
     {triggerFiredNotifications.map(notification => (
       <TriggerFiredOverlay
         key={notification.id}
-        droneName={notification.droneName}
         abilityName={notification.abilityName}
         position={notification.position}
         onComplete={notification.onComplete}

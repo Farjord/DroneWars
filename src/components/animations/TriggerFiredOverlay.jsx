@@ -9,12 +9,11 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * TriggerFiredOverlay - Compact trigger announcement banner
- * @param {string} droneName - Name of the drone whose trigger activated
  * @param {string} abilityName - Name of the triggered ability
  * @param {{ left: number, top: number }|null} position - Drone screen position, or null for center fallback
  * @param {Function} onComplete - Callback when animation completes
  */
-const TriggerFiredOverlay = ({ droneName, abilityName, position, onComplete }) => {
+const TriggerFiredOverlay = ({ abilityName, position, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -44,7 +43,7 @@ const TriggerFiredOverlay = ({ droneName, abilityName, position, onComplete }) =
         position: 'fixed',
         left: `${position.left}px`,
         top: `${position.top}px`,
-        transform: 'translate(-50%, -110%)',
+        transform: 'translate(-50%, -50%)',
       }
     : {
         position: 'fixed',
@@ -78,17 +77,6 @@ const TriggerFiredOverlay = ({ droneName, abilityName, position, onComplete }) =
         >
           &#9889;
         </span>
-
-        {/* Drone name */}
-        <span
-          className="font-orbitron font-bold text-sm uppercase tracking-wider text-amber-300"
-          style={{ textShadow: '0 0 8px rgba(245,158,11,0.4)' }}
-        >
-          {droneName}
-        </span>
-
-        {/* Separator */}
-        <span className="text-amber-600/60 text-xs">&mdash;</span>
 
         {/* Ability name */}
         <span
