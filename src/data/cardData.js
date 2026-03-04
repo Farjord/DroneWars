@@ -1909,6 +1909,23 @@ const fullCardCollection = [
     slots: 1,
     maxApplications: 2,
   },
+
+  // --- Tech Removal Cards ---
+
+  {
+    id: 'CARD_SYSTEM_PURGE',
+    baseCardId: 'CARD_SYSTEM_PURGE',
+    name: 'System Purge',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/SystemPurge.png',
+    description: 'Destroy target tech.',
+    effects: [
+      { type: 'DESTROY_TECH', targeting: { type: 'TECH', affinity: 'ANY', location: 'ANY_LANE' } },
+    ],
+  },
 ];
 
 export default enrichCardsWithEffects(fullCardCollection);

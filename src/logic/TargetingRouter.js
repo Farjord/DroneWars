@@ -8,6 +8,7 @@ import LaneTargetingProcessor from './targeting/lane/LaneTargetingProcessor.js';
 import ShipSectionTargetingProcessor from './targeting/ship/ShipSectionTargetingProcessor.js';
 import DroneTargetingProcessor from './targeting/drone/DroneTargetingProcessor.js';
 import CardInHandTargetingProcessor from './targeting/cards/CardInHandTargetingProcessor.js';
+import TechTargetingProcessor from './targeting/tech/TechTargetingProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -30,7 +31,8 @@ class TargetingRouter {
       LANE: new LaneTargetingProcessor(),
       SHIP_SECTION: new ShipSectionTargetingProcessor(),
       DRONE: new DroneTargetingProcessor(),
-      CARD_IN_HAND: new CardInHandTargetingProcessor()
+      CARD_IN_HAND: new CardInHandTargetingProcessor(),
+      TECH: new TechTargetingProcessor()
     };
   }
 

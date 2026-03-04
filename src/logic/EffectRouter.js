@@ -15,6 +15,7 @@ import ShieldHealProcessor from './effects/healing/ShieldHealProcessor.js';
 import ShipShieldRestoreProcessor from './effects/healing/ShipShieldRestoreProcessor.js';
 import DamageEffectProcessor from './effects/damage/DamageEffectProcessor.js';
 import DestroyEffectProcessor from './effects/DestroyEffectProcessor.js';
+import DestroyTechEffectProcessor from './effects/DestroyTechEffectProcessor.js';
 import ModifyStatEffectProcessor from './effects/ModifyStatEffectProcessor.js';
 import ModifyDroneBaseEffectProcessor from './effects/upgrades/ModifyDroneBaseEffectProcessor.js';
 import DestroyUpgradeEffectProcessor from './effects/upgrades/DestroyUpgradeEffectProcessor.js';
@@ -70,6 +71,7 @@ class EffectRouter {
       CONDITIONAL_SECTION_DAMAGE: new ConditionalSectionDamageProcessor(),
       // Phase 6: Stat modification effects (destroy, modify, upgrades)
       DESTROY: new DestroyEffectProcessor(),
+      DESTROY_TECH: new DestroyTechEffectProcessor(),
       MODIFY_STAT: new ModifyStatEffectProcessor(),
       MODIFY_DRONE_BASE: new ModifyDroneBaseEffectProcessor(),
       DESTROY_UPGRADE: new DestroyUpgradeEffectProcessor(),

@@ -365,7 +365,10 @@ const BattleColumn = ({
         <TechSlots
           faction="opponent"
           techDrones={opponentPlayerState.techSlots?.[laneId] || []}
-          onTechClick={onViewTechDetail}
+          highlightedSlots={validCardTargets.filter(t => t.isTech && t.owner === getOpponentPlayerId()).map(t => t.id)}
+          onTechClick={validCardTargets.some(t => t.isTech)
+            ? (tech) => handleTargetClick({ ...tech, owner: getOpponentPlayerId() })
+            : onViewTechDetail}
         />
       </div>
 
@@ -390,7 +393,10 @@ const BattleColumn = ({
         <TechSlots
           faction="player"
           techDrones={localPlayerState.techSlots?.[laneId] || []}
-          onTechClick={onViewTechDetail}
+          highlightedSlots={validCardTargets.filter(t => t.isTech && t.owner === getLocalPlayerId()).map(t => t.id)}
+          onTechClick={validCardTargets.some(t => t.isTech)
+            ? (tech) => handleTargetClick({ ...tech, owner: getLocalPlayerId() })
+            : onViewTechDetail}
         />
       </div>
 

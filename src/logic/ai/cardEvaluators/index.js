@@ -13,6 +13,7 @@ import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
 import { evaluateConditionalEffects } from './conditionalEvaluator.js';
 import { evaluateApplyCannotMoveCard, evaluateApplyCannotAttackCard, evaluateApplyCannotInterceptCard, evaluateApplyDoesNotReadyCard, evaluateClearAllStatusCard } from './statusEffectCards.js';
 import { evaluateIncreaseThreatCard } from './threatCards.js';
+import { evaluateDestroyTechCard } from './techCards.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 
 // Re-export all evaluators
@@ -25,6 +26,7 @@ export * from './movementCards.js';
 export * from './upgradeCards.js';
 export * from './statusEffectCards.js';
 export * from './threatCards.js';
+export * from './techCards.js';
 
 /**
  * Card evaluator registry - maps effect types to evaluation functions
@@ -64,6 +66,8 @@ export const cardEvaluatorRegistry = {
   CONDITIONAL_SECTION_DAMAGE: evaluateConditionalSectionDamageCard,
   // Threat effect evaluators
   INCREASE_THREAT: evaluateIncreaseThreatCard,
+  // Tech removal evaluators
+  DESTROY_TECH: evaluateDestroyTechCard,
 };
 
 /**
