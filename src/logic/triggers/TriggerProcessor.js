@@ -176,6 +176,11 @@ class TriggerProcessor {
         if (result.goAgain) {
           goAgain = true;
         }
+
+        // Increment per-round usage counter
+        if (ability.usesPerRound != null) {
+          currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates);
+        }
       }
     }
 
@@ -585,6 +590,48 @@ class TriggerProcessor {
   }
 
   /**
+   * Increment triggerUsesThisRound on a drone entity (in dronesOnBoard or techSlots).
+   * Returns a new playerStates with the updated counter (immutable).
+   */
+  _incrementTriggerUses(droneId, playerId, lane, playerStates) {
+    const playerState = playerStates[playerId];
+    const incrementOn = (entity) =>
+      entity.id === droneId
+        ? { ...entity, triggerUsesThisRound: (entity.triggerUsesThisRound || 0) + 1 }
+        : entity;
+
+    const drones = playerState.dronesOnBoard?.[lane] || [];
+    if (drones.some(d => d.id === droneId)) {
+      return {
+        ...playerStates,
+        [playerId]: {
+          ...playerState,
+          dronesOnBoard: {
+            ...playerState.dronesOnBoard,
+            [lane]: drones.map(incrementOn),
+          },
+        },
+      };
+    }
+
+    const techs = playerState.techSlots?.[lane] || [];
+    if (techs.some(d => d.id === droneId)) {
+      return {
+        ...playerStates,
+        [playerId]: {
+          ...playerState,
+          techSlots: {
+            ...playerState.techSlots,
+            [lane]: techs.map(incrementOn),
+          },
+        },
+      };
+    }
+
+    return playerStates;
+  }
+
+  /**
    * Collect lane triggers from a player's board for a specific lane.
    * Drones are iterated in array order (left-to-right = deployment order).
    */
@@ -609,6 +656,12 @@ class TriggerProcessor {
         // Validate triggerFilter (card filters, drone stat filters)
         if (!this._validateTriggerFilter(ability.triggerFilter, card, triggeringDrone)) {
           continue;
+        }
+
+        // Per-round usage limit guard
+        if (ability.usesPerRound != null) {
+          const uses = drone.triggerUsesThisRound || 0;
+          if (uses >= ability.usesPerRound) continue;
         }
 
         matches.push({ drone, ability, playerId: scanPlayerId, lane: eventLane, tier });
@@ -636,6 +689,12 @@ class TriggerProcessor {
 
         if (!this._validateTriggerFilter(ability.triggerFilter, card, triggeringDrone)) {
           continue;
+        }
+
+        // Per-round usage limit guard
+        if (ability.usesPerRound != null) {
+          const uses = drone.triggerUsesThisRound || 0;
+          if (uses >= ability.usesPerRound) continue;
         }
 
         matches.push({ drone, ability, playerId: scanPlayerId, lane: eventLane, tier });
@@ -671,6 +730,12 @@ class TriggerProcessor {
           // Validate triggerFilter
           if (!this._validateTriggerFilter(ability.triggerFilter, card, null)) {
             continue;
+          }
+
+          // Per-round usage limit guard
+          if (ability.usesPerRound != null) {
+            const uses = drone.triggerUsesThisRound || 0;
+            if (uses >= ability.usesPerRound) continue;
           }
 
           matches.push({ drone, ability, playerId: scanPlayerId, lane, tier });

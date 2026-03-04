@@ -292,4 +292,38 @@ describe('RoundManager - processRoundStartTriggers', () => {
       expect(secondCallStates.player2._firstTriggerFired).toBe(true);
     });
   });
+
+  describe('readyDronesAndRestoreShields - triggerUsesThisRound reset', () => {
+    it('should reset triggerUsesThisRound to 0 on tech entities', () => {
+      const playerState = {
+        ...createPlayerState({ lane1: [createDrone()] }),
+        techSlots: {
+          lane1: [{ id: 'tech1', name: 'RallyBeacon', triggerUsesThisRound: 1 }],
+          lane2: [],
+          lane3: []
+        }
+      };
+      const opponentState = createPlayerState();
+
+      const result = RoundManager.readyDronesAndRestoreShields(playerState, opponentState, {});
+
+      expect(result.techSlots.lane1[0].triggerUsesThisRound).toBe(0);
+    });
+
+    it('should not crash on tech without triggerUsesThisRound', () => {
+      const playerState = {
+        ...createPlayerState({ lane1: [createDrone()] }),
+        techSlots: {
+          lane1: [{ id: 'tech1', name: 'SomeTech' }],
+          lane2: [],
+          lane3: []
+        }
+      };
+      const opponentState = createPlayerState();
+
+      const result = RoundManager.readyDronesAndRestoreShields(playerState, opponentState, {});
+
+      expect(result.techSlots.lane1[0].triggerUsesThisRound).toBe(0);
+    });
+  });
 });

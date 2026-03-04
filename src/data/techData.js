@@ -78,10 +78,11 @@ const fullTechCollection = [
     abilities: [
       {
         name: 'Rally Point',
-        description: 'When a friendly drone moves into this lane, go again.',
+        description: 'When a friendly drone moves into this lane, go again. (Once per round)',
         type: 'TRIGGERED',
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_OWNER',
+        usesPerRound: 1,
         effects: [{ type: 'GO_AGAIN' }]
       }
     ]

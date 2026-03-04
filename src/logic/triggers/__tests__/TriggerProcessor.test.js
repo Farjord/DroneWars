@@ -230,6 +230,19 @@ vi.mock('../../../data/droneData.js', () => ({
         trigger: 'ON_ROUND_START',
         effects: [{ type: 'HEAL_HULL', value: 3 }]
       }]
+    },
+    {
+      name: 'TestUsageLimitTech',
+      attack: 0, hull: 1, shields: 0, speed: 0,
+      isTech: true,
+      abilities: [{
+        name: 'Limited Rally',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        usesPerRound: 1,
+        effects: [{ type: 'GO_AGAIN' }]
+      }]
     }
   ]
 }));
@@ -2112,6 +2125,124 @@ describe('TriggerProcessor', () => {
 
       const triggerLog = logCallback.mock.calls.find(c => c[0]?.actionType === 'TRIGGER');
       expect(triggerLog[0].source).toBe('TestRoundStartDrone (Lane 3)');
+    });
+  });
+
+  // ========================================
+  // PER-ROUND TRIGGER USAGE LIMITS
+  // ========================================
+
+  describe('Per-round trigger usage limits', () => {
+    it('should fire tech with usesPerRound on first trigger', () => {
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+
+      basePlayerStates.player1.techSlots = { lane1: [techDrone], lane2: [], lane3: [] };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.goAgain).toBe(true);
+    });
+
+    it('should block tech with usesPerRound on second same-round trigger', () => {
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+      const triggeringDrone1 = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      const triggeringDrone2 = { id: 'drone2', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+
+      basePlayerStates.player1.techSlots = { lane1: [techDrone], lane2: [], lane3: [] };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone1, triggeringDrone2];
+
+      // First trigger — should fire
+      const result1 = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone: triggeringDrone1,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result1.triggered).toBe(true);
+
+      // Second trigger — should be blocked by usage limit
+      const result2 = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone: triggeringDrone2,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: result1.newPlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result2.triggered).toBe(false);
+      expect(result2.goAgain).toBe(false);
+    });
+
+    it('should not limit tech without usesPerRound', () => {
+      // TestGoAgainDrone has no usesPerRound — should fire unlimited
+      const rallyDrone = { id: 'rally1', name: 'TestGoAgainDrone' };
+      const triggeringDrone1 = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+      const triggeringDrone2 = { id: 'drone2', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [rallyDrone, triggeringDrone1, triggeringDrone2];
+
+      const result1 = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone: triggeringDrone1,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result1.triggered).toBe(true);
+
+      const result2 = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone: triggeringDrone2,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: result1.newPlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result2.triggered).toBe(true);
+      expect(result2.goAgain).toBe(true);
+    });
+
+    it('should increment triggerUsesThisRound on the live entity after firing', () => {
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+
+      basePlayerStates.player1.techSlots = { lane1: [techDrone], lane2: [], lane3: [] };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      const updatedTech = result.newPlayerStates.player1.techSlots.lane1.find(t => t.id === 'tech1');
+      expect(updatedTech.triggerUsesThisRound).toBe(1);
     });
   });
 });

@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
+import fullTechCollection from '../../data/techData.js';
 
 const SLOT_COUNT = 5;
 
@@ -65,7 +66,7 @@ if (typeof document !== 'undefined') {
  * Circular image + faction-colored border + optional glow.
  * Exposes data-drone-id for animation system targeting.
  */
-const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
+const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick }) => {
   const fc = FACTION_COLORS[faction];
 
   return (
@@ -76,20 +77,24 @@ const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
         width: SLOT_SIZE,
         height: SLOT_SIZE,
         borderRadius: '50%',
-        background: fc.bg,
-        border: `0.15vw solid ${fc.primary}`,
+        background: exhausted ? 'rgba(40,40,50,0.7)' : fc.bg,
+        border: `0.15vw solid ${exhausted ? 'rgba(100,100,120,0.4)' : fc.primary}`,
         '--tech-glow': fc.glow,
         '--tech-glow-dim': `${fc.glow}60`,
-        boxShadow: highlighted
-          ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
-          : `0 0 0.4vw ${fc.glow}40`,
+        boxShadow: exhausted
+          ? 'none'
+          : highlighted
+            ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
+            : `0 0 0.4vw ${fc.glow}40`,
         overflow: 'hidden',
         pointerEvents: 'auto',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'box-shadow 0.2s ease, transform 0.15s ease',
-        animation: highlighted
-          ? 'techSlotHighlight 0.8s ease-in-out infinite'
-          : 'techSlotShimmer 3s ease-in-out infinite',
+        transition: 'box-shadow 0.2s ease, transform 0.15s ease, filter 0.3s ease',
+        animation: exhausted
+          ? 'none'
+          : highlighted
+            ? 'techSlotHighlight 0.8s ease-in-out infinite'
+            : 'techSlotShimmer 3s ease-in-out infinite',
       }}
       onClick={onClick ? () => onClick(techDrone) : undefined}
       title={techDrone.name}
@@ -102,7 +107,9 @@ const TechSlotItem = ({ techDrone, faction, highlighted, onClick }) => {
           height: '100%',
           objectFit: 'cover',
           borderRadius: '50%',
-          filter: faction === 'opponent' ? 'hue-rotate(0deg) saturate(1.2)' : 'none',
+          filter: exhausted
+            ? 'grayscale(1) opacity(0.5)'
+            : faction === 'opponent' ? 'hue-rotate(0deg) saturate(1.2)' : 'none',
         }}
         draggable={false}
       />
@@ -116,12 +123,18 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
       {Array.from({ length: SLOT_COUNT }, (_, i) => {
         const tech = techDrones[i];
         if (tech) {
+          const techDef = fullTechCollection.find(t => t.name === tech.name);
+          const ability = techDef?.abilities?.[0];
+          const isExhausted = ability?.usesPerRound != null &&
+            (tech.triggerUsesThisRound || 0) >= ability.usesPerRound;
+
           return (
             <TechSlotItem
               key={tech.id}
               techDrone={tech}
               faction={faction}
               highlighted={highlightedSlots.includes(tech.id)}
+              exhausted={isExhausted}
               onClick={onTechClick}
             />
           );

@@ -82,7 +82,19 @@ class RoundManager {
       }
     }
 
-    return { ...playerState, dronesOnBoard: newDronesOnBoard, shipSections: newShipSections };
+    // Reset per-round trigger usage counters on tech entities
+    let newTechSlots = playerState.techSlots;
+    if (playerState.techSlots) {
+      newTechSlots = {};
+      for (const lane in playerState.techSlots) {
+        newTechSlots[lane] = playerState.techSlots[lane].map(tech => ({
+          ...tech,
+          triggerUsesThisRound: 0,
+        }));
+      }
+    }
+
+    return { ...playerState, dronesOnBoard: newDronesOnBoard, shipSections: newShipSections, techSlots: newTechSlots };
   }
 
   /**
