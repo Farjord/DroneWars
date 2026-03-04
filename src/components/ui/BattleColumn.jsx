@@ -75,7 +75,7 @@ const ShipSectionSlot = ({
   }
 
   const sectionStats = player.shipSections[sectionName];
-  const resolvedSectionStats = resolveShipSectionStats(sectionStats, player.shipId);
+  const resolvedSectionStats = resolveShipSectionStats(sectionStats, player.shipId, isPlayer);
 
   // Calculate display stats based on phase
   let displayStats;

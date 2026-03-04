@@ -267,7 +267,7 @@ const ViewDeckModal = ({
                           <div className="h-[200px]">
                             <ShipSection
                               section={component.key}
-                              stats={resolveShipSectionStats(component, ship)}
+                              stats={resolveShipSectionStats(component, ship, true)}
                               effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, index === 1)}
                               isPlayer={true}
                               isInMiddleLane={index === 1}

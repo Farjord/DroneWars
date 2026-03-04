@@ -62,6 +62,9 @@ export const SHIP_FOLDER_NAMES = ['Corvette', 'Carrier', 'Scout'];
 /** All section file names (normalized format used in image paths) */
 export const SECTION_FILE_NAMES = ['Bridge', 'Power_Cell', 'Drone_Control_Hub'];
 
+/** Perspective subfolders for player vs opponent artwork */
+export const PERSPECTIVE_FOLDERS = ['Player', 'Opponent'];
+
 /** Fallback paths for each section type */
 export { FALLBACK_PATHS };
 
@@ -151,13 +154,15 @@ export const getFallbackImagePath = (normalizedSection) => {
  * Constructs ship-specific image path
  * @param {string} shipName - Normalized ship folder name (e.g., "Corvette")
  * @param {string} normalizedSection - Normalized section type (e.g., "Bridge")
+ * @param {boolean} [isPlayer=true] - Whether to use Player or Opponent artwork
  * @returns {string|null} Ship-specific image path or null if inputs invalid
  */
-export const getShipSpecificImagePath = (shipName, normalizedSection) => {
+export const getShipSpecificImagePath = (shipName, normalizedSection, isPlayer = true) => {
   if (!shipName || !normalizedSection) {
     return null;
   }
-  return `/DroneWars/Ships/${shipName}/${normalizedSection}.png`;
+  const perspective = isPlayer ? 'Player' : 'Opponent';
+  return `/DroneWars/Ships/${shipName}/${perspective}/${normalizedSection}.png`;
 };
 
 // ========================================
@@ -168,9 +173,10 @@ export const getShipSpecificImagePath = (shipName, normalizedSection) => {
  * Returns ship-specific path if ship is known, otherwise returns fallback.
  * @param {string|Object} ship - Ship ID, name, or ship object
  * @param {string} sectionType - Section type or legacy key
+ * @param {boolean} [isPlayer=true] - Whether to use Player or Opponent artwork
  * @returns {string|null} Image path (ship-specific or fallback) or null if section unknown
  */
-export const resolveShipSectionImage = (ship, sectionType) => {
+export const resolveShipSectionImage = (ship, sectionType, isPlayer = true) => {
   const normalizedSection = normalizeSectionType(sectionType);
 
   // If section type is unknown, return null
@@ -190,7 +196,7 @@ export const resolveShipSectionImage = (ship, sectionType) => {
     return getFallbackImagePath(normalizedSection);
   }
 
-  return getShipSpecificImagePath(shipName, normalizedSection);
+  return getShipSpecificImagePath(shipName, normalizedSection, isPlayer);
 };
 
 // ========================================
@@ -201,9 +207,10 @@ export const resolveShipSectionImage = (ship, sectionType) => {
  * Does not mutate the original stats object.
  * @param {Object} sectionStats - Original section stats from shipSectionData
  * @param {string|Object} ship - Ship ID, name, or ship object
+ * @param {boolean} [isPlayer=true] - Whether to use Player or Opponent artwork
  * @returns {Object} New stats object with resolved image property
  */
-export const resolveShipSectionStats = (sectionStats, ship) => {
+export const resolveShipSectionStats = (sectionStats, ship, isPlayer = true) => {
   // Return null/undefined as-is
   if (sectionStats == null) {
     return sectionStats;
@@ -213,7 +220,7 @@ export const resolveShipSectionStats = (sectionStats, ship) => {
   const sectionType = sectionStats.type || sectionStats.key;
 
   // Resolve the image path
-  const resolvedImage = resolveShipSectionImage(ship, sectionType);
+  const resolvedImage = resolveShipSectionImage(ship, sectionType, isPlayer);
 
   // If resolution failed, keep original image
   if (resolvedImage == null) {

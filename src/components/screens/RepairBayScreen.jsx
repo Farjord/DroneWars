@@ -385,7 +385,7 @@ const RepairBayScreen = () => {
 
                     // Resolve ship-specific image based on ship type and section type
                     const sectionImage = component
-                      ? resolveShipSectionImage(selectedSlot.shipId, component.type)
+                      ? resolveShipSectionImage(selectedSlot.shipId, component.type, true)
                       : null;
 
                     const repairOneCost = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200;

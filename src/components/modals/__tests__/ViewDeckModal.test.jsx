@@ -83,15 +83,16 @@ vi.mock('../../../logic/gameLogic.js', () => ({
 
 // Mock resolveShipSectionStats to return stats with resolved image
 vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
-  resolveShipSectionStats: vi.fn((stats, ship) => {
+  resolveShipSectionStats: vi.fn((stats, ship, isPlayer = true) => {
     if (!stats || !ship) return stats;
     // Simulate resolved image path
     const shipName = ship.name?.includes('Corvette') ? 'Corvette' :
                      ship.name?.includes('Carrier') ? 'Carrier' : 'Scout';
     const sectionType = stats.type?.replace(/ /g, '_') || 'Bridge';
+    const perspective = isPlayer ? 'Player' : 'Opponent';
     return {
       ...stats,
-      image: `/DroneWars/Ships/${shipName}/${sectionType}.png`
+      image: `/DroneWars/Ships/${shipName}/${perspective}/${sectionType}.png`
     };
   })
 }));
@@ -335,7 +336,8 @@ describe('ViewDeckModal', () => {
       // Verify the mock was called with component and ship
       expect(resolveShipSectionStats).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'BRIDGE_001' }),
-        mockShip
+        mockShip,
+        true
       );
     });
   });

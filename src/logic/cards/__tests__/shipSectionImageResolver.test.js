@@ -143,16 +143,24 @@ describe('getFallbackImagePath', () => {
 // GET SHIP SPECIFIC IMAGE PATH TESTS
 // ========================================
 describe('getShipSpecificImagePath', () => {
-  it('should return /DroneWars/Ships/Corvette/Bridge.png for Corvette + Bridge', () => {
-    expect(getShipSpecificImagePath('Corvette', 'Bridge')).toBe('/DroneWars/Ships/Corvette/Bridge.png');
+  it('should return Player path by default for Corvette + Bridge', () => {
+    expect(getShipSpecificImagePath('Corvette', 'Bridge'))
+      .toBe('/DroneWars/Ships/Corvette/Player/Bridge.png');
   });
 
-  it('should return /DroneWars/Ships/Carrier/Power_Cell.png for Carrier + Power_Cell', () => {
-    expect(getShipSpecificImagePath('Carrier', 'Power_Cell')).toBe('/DroneWars/Ships/Carrier/Power_Cell.png');
+  it('should return Player path when isPlayer=true', () => {
+    expect(getShipSpecificImagePath('Carrier', 'Power_Cell', true))
+      .toBe('/DroneWars/Ships/Carrier/Player/Power_Cell.png');
   });
 
-  it('should return /DroneWars/Ships/Scout/Drone_Control_Hub.png for Scout + Drone_Control_Hub', () => {
-    expect(getShipSpecificImagePath('Scout', 'Drone_Control_Hub')).toBe('/DroneWars/Ships/Scout/Drone_Control_Hub.png');
+  it('should return Opponent path when isPlayer=false', () => {
+    expect(getShipSpecificImagePath('Scout', 'Drone_Control_Hub', false))
+      .toBe('/DroneWars/Ships/Scout/Opponent/Drone_Control_Hub.png');
+  });
+
+  it('should return Opponent path for Corvette + Bridge when isPlayer=false', () => {
+    expect(getShipSpecificImagePath('Corvette', 'Bridge', false))
+      .toBe('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
   });
 
   it('should return null if shipName is null', () => {
@@ -168,36 +176,58 @@ describe('getShipSpecificImagePath', () => {
 // RESOLVE SHIP SECTION IMAGE TESTS
 // ========================================
 describe('resolveShipSectionImage', () => {
-  describe('with valid ship and section', () => {
-    it('should return ship-specific path for Corvette + Bridge', () => {
+  describe('with valid ship and section (Player — default)', () => {
+    it('should return Player path for Corvette + Bridge', () => {
       expect(resolveShipSectionImage('Reconnaissance Corvette', 'Bridge'))
-        .toBe('/DroneWars/Ships/Corvette/Bridge.png');
+        .toBe('/DroneWars/Ships/Corvette/Player/Bridge.png');
     });
 
-    it('should return ship-specific path for Carrier + Power Cell', () => {
+    it('should return Player path for Carrier + Power Cell', () => {
       expect(resolveShipSectionImage('Heavy Assault Carrier', 'Power Cell'))
-        .toBe('/DroneWars/Ships/Carrier/Power_Cell.png');
+        .toBe('/DroneWars/Ships/Carrier/Player/Power_Cell.png');
     });
 
-    it('should return ship-specific path for Scout + Drone Control Hub', () => {
+    it('should return Player path for Scout + Drone Control Hub', () => {
       expect(resolveShipSectionImage('Scout', 'Drone Control Hub'))
-        .toBe('/DroneWars/Ships/Scout/Drone_Control_Hub.png');
+        .toBe('/DroneWars/Ships/Scout/Player/Drone_Control_Hub.png');
     });
 
     it('should handle ship ID with section type', () => {
       expect(resolveShipSectionImage('SHIP_001', 'Bridge'))
-        .toBe('/DroneWars/Ships/Corvette/Bridge.png');
+        .toBe('/DroneWars/Ships/Corvette/Player/Bridge.png');
     });
 
     it('should handle ship ID with legacy section key', () => {
       expect(resolveShipSectionImage('SHIP_002', 'powerCell'))
-        .toBe('/DroneWars/Ships/Carrier/Power_Cell.png');
+        .toBe('/DroneWars/Ships/Carrier/Player/Power_Cell.png');
     });
 
     it('should handle ship object with section type', () => {
       const ship = { id: 'SHIP_003', name: 'Scout' };
       expect(resolveShipSectionImage(ship, 'droneControlHub'))
-        .toBe('/DroneWars/Ships/Scout/Drone_Control_Hub.png');
+        .toBe('/DroneWars/Ships/Scout/Player/Drone_Control_Hub.png');
+    });
+  });
+
+  describe('with valid ship and section (Opponent)', () => {
+    it('should return Opponent path for Corvette + Bridge', () => {
+      expect(resolveShipSectionImage('Reconnaissance Corvette', 'Bridge', false))
+        .toBe('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
+    });
+
+    it('should return Opponent path for Carrier + Power Cell', () => {
+      expect(resolveShipSectionImage('Heavy Assault Carrier', 'Power Cell', false))
+        .toBe('/DroneWars/Ships/Carrier/Opponent/Power_Cell.png');
+    });
+
+    it('should return Opponent path for Scout + Drone Control Hub', () => {
+      expect(resolveShipSectionImage('Scout', 'Drone Control Hub', false))
+        .toBe('/DroneWars/Ships/Scout/Opponent/Drone_Control_Hub.png');
+    });
+
+    it('should handle ship ID with isPlayer=false', () => {
+      expect(resolveShipSectionImage('SHIP_001', 'Bridge', false))
+        .toBe('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
     });
   });
 
@@ -243,9 +273,19 @@ describe('resolveShipSectionStats', () => {
     shields: 3
   };
 
-  it('should return new object with resolved image path', () => {
+  it('should return Player path by default', () => {
     const result = resolveShipSectionStats(mockSectionStats, 'SHIP_001');
-    expect(result.image).toBe('/DroneWars/Ships/Corvette/Bridge.png');
+    expect(result.image).toBe('/DroneWars/Ships/Corvette/Player/Bridge.png');
+  });
+
+  it('should return Player path when isPlayer=true', () => {
+    const result = resolveShipSectionStats(mockSectionStats, 'SHIP_001', true);
+    expect(result.image).toBe('/DroneWars/Ships/Corvette/Player/Bridge.png');
+  });
+
+  it('should return Opponent path when isPlayer=false', () => {
+    const result = resolveShipSectionStats(mockSectionStats, 'SHIP_001', false);
+    expect(result.image).toBe('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
   });
 
   it('should not mutate original stats object', () => {
@@ -265,13 +305,13 @@ describe('resolveShipSectionStats', () => {
   it('should use section type property for resolution', () => {
     const stats = { type: 'Power Cell', image: '/DroneWars/img/Power_Cell.png' };
     const result = resolveShipSectionStats(stats, 'SHIP_003');
-    expect(result.image).toBe('/DroneWars/Ships/Scout/Power_Cell.png');
+    expect(result.image).toBe('/DroneWars/Ships/Scout/Player/Power_Cell.png');
   });
 
   it('should fallback to key property if type is missing', () => {
     const stats = { key: 'droneControlHub', image: '/DroneWars/img/Drone_Control_Hub.png' };
     const result = resolveShipSectionStats(stats, 'Corvette');
-    expect(result.image).toBe('/DroneWars/Ships/Corvette/Drone_Control_Hub.png');
+    expect(result.image).toBe('/DroneWars/Ships/Corvette/Player/Drone_Control_Hub.png');
   });
 
   it('should return original stats if null', () => {
@@ -290,6 +330,12 @@ describe('resolveShipSectionStats', () => {
   it('should handle ship object input', () => {
     const ship = { id: 'SHIP_002', name: 'Heavy Assault Carrier' };
     const result = resolveShipSectionStats(mockSectionStats, ship);
-    expect(result.image).toBe('/DroneWars/Ships/Carrier/Bridge.png');
+    expect(result.image).toBe('/DroneWars/Ships/Carrier/Player/Bridge.png');
+  });
+
+  it('should pass isPlayer=false with ship object', () => {
+    const ship = { id: 'SHIP_002', name: 'Heavy Assault Carrier' };
+    const result = resolveShipSectionStats(mockSectionStats, ship, false);
+    expect(result.image).toBe('/DroneWars/Ships/Carrier/Opponent/Bridge.png');
   });
 });

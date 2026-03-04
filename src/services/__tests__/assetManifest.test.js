@@ -13,31 +13,40 @@ describe('assetManifest - Ship Section Images', () => {
       expect(Array.isArray(assetManifest.shipSectionImages)).toBe(true);
     });
 
-    it('should include ship-specific images for Corvette', () => {
+    it('should include Player and Opponent images for Corvette', () => {
       const corvettePaths = assetManifest.shipSectionImages.filter(p =>
         p.includes('/Ships/Corvette/')
       );
-      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Bridge.png');
-      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Power_Cell.png');
-      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Drone_Control_Hub.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Player/Bridge.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Player/Power_Cell.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Player/Drone_Control_Hub.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Opponent/Power_Cell.png');
+      expect(corvettePaths).toContain('/DroneWars/Ships/Corvette/Opponent/Drone_Control_Hub.png');
     });
 
-    it('should include ship-specific images for Carrier', () => {
+    it('should include Player and Opponent images for Carrier', () => {
       const carrierPaths = assetManifest.shipSectionImages.filter(p =>
         p.includes('/Ships/Carrier/')
       );
-      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Bridge.png');
-      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Power_Cell.png');
-      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Drone_Control_Hub.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Player/Bridge.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Player/Power_Cell.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Player/Drone_Control_Hub.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Opponent/Bridge.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Opponent/Power_Cell.png');
+      expect(carrierPaths).toContain('/DroneWars/Ships/Carrier/Opponent/Drone_Control_Hub.png');
     });
 
-    it('should include ship-specific images for Scout', () => {
+    it('should include Player and Opponent images for Scout', () => {
       const scoutPaths = assetManifest.shipSectionImages.filter(p =>
         p.includes('/Ships/Scout/')
       );
-      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Bridge.png');
-      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Power_Cell.png');
-      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Drone_Control_Hub.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Player/Bridge.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Player/Power_Cell.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Player/Drone_Control_Hub.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Opponent/Bridge.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Opponent/Power_Cell.png');
+      expect(scoutPaths).toContain('/DroneWars/Ships/Scout/Opponent/Drone_Control_Hub.png');
     });
 
     it('should include fallback images', () => {
@@ -46,15 +55,16 @@ describe('assetManifest - Ship Section Images', () => {
       expect(assetManifest.shipSectionImages).toContain('/DroneWars/img/Drone_Control_Hub.png');
     });
 
-    it('should have correct total count (3 ships × 3 sections + 3 fallbacks = 12)', () => {
-      expect(assetManifest.shipSectionImages.length).toBe(12);
+    it('should have correct total count (3 ships × 2 perspectives × 3 sections + 3 fallbacks = 21)', () => {
+      expect(assetManifest.shipSectionImages.length).toBe(21);
     });
   });
 
   describe('getAllAssetPaths', () => {
     it('should include ship section images in full asset list', () => {
       const allPaths = getAllAssetPaths();
-      expect(allPaths).toContain('/DroneWars/Ships/Corvette/Bridge.png');
+      expect(allPaths).toContain('/DroneWars/Ships/Corvette/Player/Bridge.png');
+      expect(allPaths).toContain('/DroneWars/Ships/Corvette/Opponent/Bridge.png');
       expect(allPaths).toContain('/DroneWars/img/Bridge.png');
     });
   });

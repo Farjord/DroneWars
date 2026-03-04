@@ -7,7 +7,7 @@ import { gameEngine } from '../../logic/gameLogic.js';
 const ShipComponentDetailPopup = ({ component, onClose, ship }) => {
   if (!component) return null;
 
-  const resolvedComponent = resolveShipSectionStats(component, ship);
+  const resolvedComponent = resolveShipSectionStats(component, ship, true);
 
   // Calculate effective stats with or without middle lane bonus
   const calculateMiddleLaneBonusStats = (comp, applyBonus) => {

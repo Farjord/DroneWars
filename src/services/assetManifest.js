@@ -16,6 +16,7 @@ import { SALVAGE_ITEMS } from '../data/salvageItemData.js';
 import {
   SHIP_FOLDER_NAMES,
   SECTION_FILE_NAMES,
+  PERSPECTIVE_FOLDERS,
   FALLBACK_PATHS
 } from '../logic/cards/shipSectionImageResolver.js';
 
@@ -52,7 +53,9 @@ const backgroundImages = BACKGROUNDS
 // Generate ship-specific section images dynamically from resolver mappings
 // This ensures new ships added to SHIP_FOLDER_NAMES are automatically preloaded
 const dynamicShipSectionImages = SHIP_FOLDER_NAMES.flatMap(ship =>
-  SECTION_FILE_NAMES.map(section => `/DroneWars/Ships/${ship}/${section}.png`)
+  PERSPECTIVE_FOLDERS.flatMap(perspective =>
+    SECTION_FILE_NAMES.map(section => `/DroneWars/Ships/${ship}/${perspective}/${section}.png`)
+  )
 );
 
 // Add fallback images for sections
