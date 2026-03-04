@@ -21,6 +21,10 @@ vi.mock('../animations/NukeAnimation.js', () => ({
   buildNukeAnimation: vi.fn().mockReturnValue([])
 }));
 
+vi.mock('../../../../logic/statsCalculator.js', () => ({
+  calculateEffectiveStats: vi.fn((drone) => ({ ...drone }))
+}));
+
 // Now import the processor
 import DestroyEffectProcessor from '../../DestroyEffectProcessor.js';
 import { gameEngine } from '../../../gameLogic.js';
@@ -258,6 +262,95 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
       processor.process(effect, context);
 
       expect(gameEngine.onDroneDestroyed).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('FILTERED destroy with targeting on effect (Shrieker Missiles)', () => {
+    let filteredContext;
+
+    beforeEach(() => {
+      // Shrieker Missiles: targeting is on the EFFECT, not the card
+      mockPlayerStates.player2.dronesOnBoard = {
+        lane1: [
+          { id: 'fast_1', name: 'FastDrone', hull: 2, attack: 1, speed: 6 },
+          { id: 'slow_1', name: 'SlowDrone', hull: 2, attack: 1, speed: 3 },
+          { id: 'fast_2', name: 'FastDrone2', hull: 2, attack: 1, speed: 5 }
+        ],
+        lane2: [],
+        lane3: []
+      };
+
+      filteredContext = {
+        target: { id: 'lane1' },
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        placedSections: {
+          player1: ['bridge'],
+          player2: ['bridge']
+        },
+        callbacks: { logCallback: vi.fn() },
+        card: {
+          id: 'CARD_SHRIEKER',
+          name: 'Shrieker Missiles',
+          instanceId: 'inst_shrieker'
+          // NOTE: No top-level targeting — mirrors real cardData.js structure
+        }
+      };
+    });
+
+    it('should destroy drones with speed >= 5 when targeting is on the effect', () => {
+      const effect = {
+        type: 'DESTROY',
+        targeting: {
+          type: 'LANE',
+          affinity: 'ENEMY',
+          affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+        }
+      };
+
+      const result = processor.process(effect, filteredContext);
+
+      const lane1Drones = result.newPlayerStates.player2.dronesOnBoard.lane1;
+      // Only slow drone (speed 3) should survive
+      expect(lane1Drones).toHaveLength(1);
+      expect(lane1Drones[0].id).toBe('slow_1');
+    });
+
+    it('should generate DRONE_DESTROYED animations for each filtered drone', () => {
+      const effect = {
+        type: 'DESTROY',
+        targeting: {
+          type: 'LANE',
+          affinity: 'ENEMY',
+          affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+        }
+      };
+
+      const result = processor.process(effect, filteredContext);
+
+      const destroyedEvents = result.animationEvents.filter(e => e.type === 'DRONE_DESTROYED');
+      expect(destroyedEvents).toHaveLength(2);
+      const ids = destroyedEvents.map(e => e.targetId);
+      expect(ids).toContain('fast_1');
+      expect(ids).toContain('fast_2');
+    });
+
+    it('should not destroy drones below the speed threshold', () => {
+      const effect = {
+        type: 'DESTROY',
+        targeting: {
+          type: 'LANE',
+          affinity: 'ENEMY',
+          affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+        }
+      };
+
+      const result = processor.process(effect, filteredContext);
+
+      expect(gameEngine.onDroneDestroyed).toHaveBeenCalledTimes(2);
+      // SlowDrone (speed 3) should still be on the board
+      const lane1Drones = result.newPlayerStates.player2.dronesOnBoard.lane1;
+      expect(lane1Drones.find(d => d.id === 'slow_1')).toBeDefined();
     });
   });
 

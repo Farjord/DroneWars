@@ -68,7 +68,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const destroyedDrones = [];
 
     // Route based on effect scope and targeting configuration
-    const affectedFilter = card?.targeting?.affectedFilter;
+    const affectedFilter = effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter;
     if (affectedFilter && target?.id?.startsWith('lane')) {
       // Filtered lane destroy: Destroy drones in a lane matching targeting.affectedFilter
       const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections);
@@ -146,7 +146,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    */
   processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections) {
     const laneId = target.id;
-    const affinity = card?.targeting?.affinity || effect.affinity;
+    const affinity = effect?.targeting?.affinity || card?.targeting?.affinity || effect.affinity;
     const targetPlayer = affinity === 'ENEMY'
       ? (actingPlayerId === 'player1' ? 'player2' : 'player1')
       : actingPlayerId;
@@ -155,7 +155,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
     // Read filter from targeting.affectedFilter
-    const filterSource = card?.targeting?.affectedFilter?.[0];
+    const filterSource = (effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter)?.[0];
     const { stat, comparison, value } = filterSource;
 
     debugLog('EFFECT_PROCESSING', `[DESTROY] Filtered destroy - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`, {
