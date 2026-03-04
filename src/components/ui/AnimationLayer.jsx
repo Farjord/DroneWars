@@ -24,6 +24,7 @@ import BarrageImpact from '../animations/BarrageImpact.jsx';
 import RailgunTurret from '../animations/RailgunTurret.jsx';
 import RailgunBeam from '../animations/RailgunBeam.jsx';
 import ExplosionEffect from '../animations/ExplosionEffect.jsx';
+import StatBuffEffect from '../animations/StatBuffEffect.jsx';
 
 const AnimationLayer = ({
   explosions,
@@ -47,6 +48,7 @@ const AnimationLayer = ({
   barrageImpacts,
   railgunTurrets,
   railgunBeams,
+  statChangeEffects,
   animationBlocking,
   setBarrageImpacts,
 }) => (
@@ -77,6 +79,14 @@ const AnimationLayer = ({
         position={heal.position}
         healAmount={heal.healAmount}
         onComplete={heal.onComplete}
+      />
+    ))}
+    {statChangeEffects.map(effect => (
+      <StatBuffEffect
+        key={effect.id}
+        position={effect.position}
+        isBuff={effect.isBuff}
+        onComplete={effect.onComplete}
       />
     ))}
     {cardVisuals.map(visual => (

@@ -127,6 +127,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
+  const [statChangeEffects, setStatChangeEffects] = useState([]);
   const [cardVisuals, setCardVisuals] = useState([]);
   const [cardReveals, setCardReveals] = useState([]);
   const [shipAbilityReveals, setShipAbilityReveals] = useState([]);
@@ -235,7 +236,8 @@ const App = ({ phaseAnimationQueue }) => {
   setBarrageImpacts,
   setRailgunTurrets,
   setRailgunBeams,
-  setStatusConsumptions
+  setStatusConsumptions,
+  setStatChangeEffects
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -958,6 +960,7 @@ const App = ({ phaseAnimationQueue }) => {
        barrageImpacts={barrageImpacts}
        railgunTurrets={railgunTurrets}
        railgunBeams={railgunBeams}
+       statChangeEffects={statChangeEffects}
        animationBlocking={animationBlocking}
        setBarrageImpacts={setBarrageImpacts}
      />

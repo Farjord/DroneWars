@@ -193,6 +193,131 @@ describe('ModifyDroneBaseEffectProcessor', () => {
   });
 
   // ========================================
+  // ANIMATION EVENTS
+  // ========================================
+  describe('animation events for stat upgrades', () => {
+    it('should emit STAT_BUFF events for attack upgrades on deployed drones', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'CARD027', name: 'Weapons Upgrade', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'attack', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+
+      // Should emit one STAT_BUFF per deployed Talon (2 total: lane1 + lane2)
+      expect(result.animationEvents).toHaveLength(2);
+      expect(result.animationEvents[0]).toMatchObject({
+        type: 'STAT_BUFF', targetId: 'drone1', targetType: 'drone', stat: 'attack'
+      });
+      expect(result.animationEvents[1]).toMatchObject({
+        type: 'STAT_BUFF', targetId: 'drone2', targetType: 'drone', stat: 'attack'
+      });
+    });
+
+    it('should emit STAT_BUFF events for speed upgrades on deployed drones', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'SPEED_UP', name: 'Thruster Upgrade', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'speed', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+
+      expect(result.animationEvents).toHaveLength(2);
+      expect(result.animationEvents[0]).toMatchObject({ type: 'STAT_BUFF', stat: 'speed' });
+    });
+
+    it('should NOT emit animation events for shield upgrades', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'shields', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+      expect(result.animationEvents).toEqual([]);
+    });
+
+    it('should NOT emit animation events for hull upgrades', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'HULL_UP', name: 'Hull Plating', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'hull', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+      expect(result.animationEvents).toEqual([]);
+    });
+
+    it('should NOT emit animation events for ability upgrades', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'ABILITY_CARD', name: 'Overload Module', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'ability', abilityToAdd: { name: 'Overload', type: 'active' } }
+      };
+
+      const result = processor.process(effect, mockContext);
+      expect(result.animationEvents).toEqual([]);
+    });
+
+    it('should emit no events when no matching drones are deployed', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      mockPlayerStates.player1.dronesOnBoard = { lane1: [], lane2: [], lane3: [] };
+
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'CARD027', name: 'Weapons Upgrade', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'attack', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+      expect(result.animationEvents).toEqual([]);
+    });
+  });
+
+  // ========================================
   // EDGE CASES
   // ========================================
   describe('edge cases', () => {

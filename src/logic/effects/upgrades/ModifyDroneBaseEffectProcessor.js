@@ -6,7 +6,7 @@
 // Manages appliedUpgrades system for permanent drone enhancements
 // Supports ability-granting upgrades
 //
-// NO ANIMATIONS: Upgrades are silent mechanical effects
+// ANIMATIONS: Emits STAT_BUFF for attack/speed upgrades on deployed drones
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -102,10 +102,29 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
       }
     }
 
+    // Build animation events for attack/speed upgrades on deployed drones
+    const animationEvents = [];
+    if (stat && value && (stat === 'attack' || stat === 'speed')) {
+      for (const lane in actingPlayerState.dronesOnBoard) {
+        actingPlayerState.dronesOnBoard[lane].forEach(drone => {
+          if (drone.name === droneName) {
+            animationEvents.push({
+              type: 'STAT_BUFF',
+              targetId: drone.id,
+              targetPlayer: actingPlayerId,
+              targetLane: lane,
+              targetType: 'drone',
+              stat
+            });
+          }
+        });
+      }
+    }
+
     const result = {
       newPlayerStates,
       additionalEffects: [],
-      animationEvents: [] // No animations for upgrades
+      animationEvents
     };
 
     this.logProcessComplete(effect, result, context);

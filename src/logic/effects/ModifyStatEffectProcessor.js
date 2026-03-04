@@ -6,7 +6,7 @@
 // Supports SINGLE drone and LANE targeting
 // Manages statMods array for temporary/permanent buffs
 //
-// NO ANIMATIONS: Stat modifications are silent mechanical effects
+// ANIMATIONS: Emits STAT_BUFF/STAT_DEBUFF for attack/speed mods
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -54,19 +54,40 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
       type: mod.type || 'temporary'
     });
 
+    // Collect affected drones for animation events
+    let affectedDrones = [];
+    const targetOwner = target.owner || actingPlayerId;
+
     // Check if target is a lane (e.g., 'lane1', 'lane2', 'lane3')
     if (target.id && typeof target.id === 'string' && target.id.startsWith('lane')) {
       // LANE scope: Apply stat modification to all drones in the target lane
-      this.processLaneModification(target.id, targetPlayerState, mod);
+      affectedDrones = this.processLaneModification(target.id, targetPlayerState, mod);
     } else {
       // SINGLE scope: Apply to one specific drone
-      this.processSingleModification(target.id, targetPlayerState, mod);
+      affectedDrones = this.processSingleModification(target.id, targetPlayerState, mod);
+    }
+
+    // Build animation events for attack/speed mods only (health/shield have HEAL_EFFECT)
+    const animationEvents = [];
+    const isAnimatable = (mod.stat === 'attack' || mod.stat === 'speed') && mod.value !== 0;
+    if (isAnimatable) {
+      const animType = mod.value > 0 ? 'STAT_BUFF' : 'STAT_DEBUFF';
+      for (const { droneId, lane } of affectedDrones) {
+        animationEvents.push({
+          type: animType,
+          targetId: droneId,
+          targetPlayer: targetOwner,
+          targetLane: lane,
+          targetType: 'drone',
+          stat: mod.stat
+        });
+      }
     }
 
     const result = {
       newPlayerStates,
       additionalEffects: [],
-      animationEvents: [] // No animations for stat modifications
+      animationEvents
     };
 
     this.logProcessComplete(effect, result, context);
@@ -82,6 +103,7 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
    * @param {Object} mod - Stat modification { stat, value, type }
    */
   processLaneModification(laneId, targetPlayerState, mod) {
+    const affected = [];
     if (targetPlayerState.dronesOnBoard[laneId]) {
       const dronesInLane = targetPlayerState.dronesOnBoard[laneId];
 
@@ -97,9 +119,11 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
           source: 'card'
         });
 
+        affected.push({ droneId: drone.id, lane: laneId });
         debugLog('EFFECT_PROCESSING', `[MODIFY_STAT] ${drone.name} received ${mod.value > 0 ? '+' : ''}${mod.value} ${mod.stat}`);
       });
     }
+    return affected;
   }
 
   /**
@@ -111,6 +135,7 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
    * @param {Object} mod - Stat modification { stat, value, type }
    */
   processSingleModification(droneId, targetPlayerState, mod) {
+    const affected = [];
     // Find the drone in the player's lanes
     for (const lane in targetPlayerState.dronesOnBoard) {
       const droneIndex = targetPlayerState.dronesOnBoard[lane].findIndex(d => d.id === droneId);
@@ -127,10 +152,12 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
           source: 'card'
         });
 
+        affected.push({ droneId: drone.id, lane });
         debugLog('EFFECT_PROCESSING', `[MODIFY_STAT] ${drone.name} in ${lane} received ${mod.value > 0 ? '+' : ''}${mod.value} ${mod.stat}`);
         break;
       }
     }
+    return affected;
   }
 }
 

@@ -217,6 +217,20 @@ class AnimationManager {
         type: 'FLASH_EFFECT',  // Brief bright flash when trigger activates
         timing: 'pre-state',  // Needs existing Tech to flash
         config: { color: '#ff6600', intensity: 0.8 }
+      },
+
+      // Stat buff/debuff animations
+      STAT_BUFF: {
+        duration: 1200,
+        type: 'STAT_CHANGE_EFFECT',
+        timing: 'pre-state',
+        config: { isBuff: true }
+      },
+      STAT_DEBUFF: {
+        duration: 1200,
+        type: 'STAT_CHANGE_EFFECT',
+        timing: 'pre-state',
+        config: { isBuff: false }
       }
     };
   }
