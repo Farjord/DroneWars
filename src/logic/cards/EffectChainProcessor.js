@@ -338,13 +338,17 @@ class EffectChainProcessor {
       if (effectData.type === 'SINGLE_MOVE' || effectData.type === 'MULTI_MOVE') {
         result = this.executeChainMovement(effectData, selection, playerId, currentStates, ctx);
         // Record card movements for forward-propagation into earlier snapshots
-        if (effectData.type === 'SINGLE_MOVE') {
-          cardMovements.push({ droneId: selection.target.id, toLane: selection.destination, effectIndex: i });
-        } else {
-          // MULTI_MOVE: all drones share the same destination lane
-          const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
-          for (const d of drones) {
-            cardMovements.push({ droneId: d.id, toLane: selection.destination, effectIndex: i });
+        // Only record movements that actually succeeded — failed moves (effectResult: null)
+        // must not corrupt intermediate visual state snapshots
+        if (result.effectResult) {
+          if (effectData.type === 'SINGLE_MOVE') {
+            cardMovements.push({ droneId: selection.target.id, toLane: selection.destination, effectIndex: i });
+          } else {
+            // MULTI_MOVE: all drones share the same destination lane
+            const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
+            for (const d of drones) {
+              cardMovements.push({ droneId: d.id, toLane: selection.destination, effectIndex: i });
+            }
           }
         }
       } else if (effectData.type === 'DISCARD_CARD') {
