@@ -298,40 +298,24 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     let droneDestroyed = null;
 
     if (laneId) {
-      // Search dronesOnBoard first, then techSlots
-      let droneToDestroy = targetPlayerState.dronesOnBoard[laneId]?.find(d => d.id === target.id);
-      let inTechSlots = false;
-
-      if (!droneToDestroy && targetPlayerState.techSlots?.[laneId]) {
-        droneToDestroy = targetPlayerState.techSlots[laneId].find(d => d.id === target.id);
-        inTechSlots = true;
-      }
+      const droneToDestroy = targetPlayerState.dronesOnBoard[laneId]?.find(d => d.id === target.id);
 
       if (droneToDestroy) {
         droneDestroyed = droneToDestroy;
 
-        debugLog('EFFECT_PROCESSING', `[DESTROY] Single ${inTechSlots ? 'Tech' : 'drone'} destroy: ${droneToDestroy.name} in ${laneId}`);
+        debugLog('EFFECT_PROCESSING', `[DESTROY] Single drone destroy: ${droneToDestroy.name} in ${laneId}`);
 
         animationEvents.push({
-          type: inTechSlots ? 'TECH_DESTROY' : 'DRONE_DESTROYED',
+          type: 'DRONE_DESTROYED',
           targetId: droneToDestroy.id,
           targetPlayer: opponentId,
           targetLane: laneId,
-          targetType: inTechSlots ? 'tech' : 'drone',
+          targetType: 'drone',
           timestamp: Date.now()
         });
 
-        // Tech drones skip availability/rebuild tracking
-        if (!droneToDestroy.isTech) {
-          this.applyDestroyCleanup(targetPlayerState, droneToDestroy);
-        }
-
-        // Remove from appropriate structure
-        if (inTechSlots) {
-          targetPlayerState.techSlots[laneId] = targetPlayerState.techSlots[laneId].filter(d => d.id !== target.id);
-        } else {
-          targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
-        }
+        this.applyDestroyCleanup(targetPlayerState, droneToDestroy);
+        targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
       }
     }
 

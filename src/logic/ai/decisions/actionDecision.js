@@ -270,11 +270,6 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       for (const target of playerDronesInLane) {
         possibleActions.push({ type: 'attack', attacker, target: { ...target, owner: 'player1' }, targetType: 'drone', score: 0 });
       }
-      // Also include Tech drones in techSlots as attack targets
-      const playerTechInLane = player1.techSlots?.[attacker.lane] || [];
-      for (const target of playerTechInLane) {
-        possibleActions.push({ type: 'attack', attacker, target: { ...target, owner: 'player1' }, targetType: 'drone', score: 0 });
-      }
       const sectionIndex = parseInt(attacker.lane.slice(-1)) - 1;
       const sectionName = placedSections[sectionIndex];
       if (sectionName && player1.shipSections[sectionName].hull > 0) {

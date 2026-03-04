@@ -1,8 +1,8 @@
 // ========================================
 // VIEW TECH DETAIL MODAL
 // ========================================
-// Modal to display full Tech drone details when clicking a Tech Slot.
-// Shows image, fixed stats, ability description, and keywords.
+// Modal to display Tech details when clicking a Tech Slot.
+// Shows image and ability description.
 
 import React from 'react';
 import { Cpu, X } from 'lucide-react';
@@ -23,15 +23,10 @@ const ViewTechDetailModal = ({ isOpen, onClose, techDrone }) => {
   // Look up full definition from techData for canonical ability descriptions
   const baseDef = fullTechCollection.find(t => t.name === techDrone.name) || techDrone;
 
-  // Find the primary triggered ability (not INERT/PASSIVE keyword grants)
+  // Find the primary ability (triggered or passive with a functional effect)
   const primaryAbility = (baseDef.abilities || []).find(
     a => a.type === 'TRIGGERED' || (a.type === 'PASSIVE' && a.effect?.type !== 'GRANT_KEYWORD')
-  );
-
-  // Collect keywords from GRANT_KEYWORD abilities
-  const keywords = (baseDef.abilities || [])
-    .filter(a => a.effect?.type === 'GRANT_KEYWORD')
-    .map(a => a.effect.keyword);
+  ) || (baseDef.abilities || []).find(a => a.description);
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
@@ -70,44 +65,11 @@ const ViewTechDetailModal = ({ isOpen, onClose, techDrone }) => {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="dw-modal-info-box">
-            <h3 className="dw-modal-info-title">Stats</h3>
-            <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
-              <span className="dw-modal-text">ATK: 0</span>
-              <span className="dw-modal-text">Hull: 1</span>
-              <span className="dw-modal-text">Shields: 0</span>
-              <span className="dw-modal-text">Speed: 0</span>
-            </div>
-          </div>
-
           {/* Ability */}
           {primaryAbility && (
             <div className="dw-modal-info-box">
               <h3 className="dw-modal-info-title">Ability: {primaryAbility.name}</h3>
               <p className="dw-modal-text dw-modal-text--left">{primaryAbility.description}</p>
-            </div>
-          )}
-
-          {/* Keywords */}
-          {keywords.length > 0 && (
-            <div className="dw-modal-info-box">
-              <h3 className="dw-modal-info-title">Keywords</h3>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {keywords.map(kw => (
-                  <span key={kw} style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '9999px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    background: 'rgba(96, 165, 250, 0.15)',
-                    color: 'var(--modal-action, #60a5fa)',
-                    border: '1px solid rgba(96, 165, 250, 0.3)',
-                  }}>
-                    {kw}
-                  </span>
-                ))}
-              </div>
             </div>
           )}
         </div>

@@ -1,22 +1,15 @@
 // ========================================
 // TECH DATA
 // ========================================
-// Definitions for Tech drones — non-combat deployables that live in techSlots.
+// Definitions for Tech — non-combat enchantment-like entities that live in techSlots.
 // Moved from droneData.js to separate data concerns.
-// Tech drones are inert (cannot move, attack, be healed) with fixed 0/1/0/0 stats.
-// They are deployed via CREATE_TECH card effects, never during deployment phase.
+// Tech is deployed via CREATE_TECH card effects, never during deployment phase.
+// Removable only by dedicated DESTROY_TECH effects (e.g., "System Purge" card).
 
 const fullTechCollection = [
   {
     name: 'Proximity Mine',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
     hull: 1,
-    shields: 0,
-    speed: 0,
     image: '/DroneWars/img/ProximityMine.png',
     selectable: false,
     maxPerLane: 1,
@@ -31,32 +24,12 @@ const fullTechCollection = [
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
         effects: [{ type: 'DAMAGE', value: 4, scope: 'TRIGGERING_DRONE' }]
-      },
-      {
-        name: 'Inert',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
       }
-    ],
-    upgradeSlots: 0
+    ]
   },
   {
     name: 'Inhibitor Mine',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
     hull: 1,
-    shields: 0,
-    speed: 0,
     image: '/DroneWars/img/ThrusterInhibitor.png',
     selectable: false,
     maxPerLane: 1,
@@ -71,32 +44,12 @@ const fullTechCollection = [
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
         effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }]
-      },
-      {
-        name: 'Inert',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
       }
-    ],
-    upgradeSlots: 0
+    ]
   },
   {
     name: 'Jitter Mine',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
     hull: 1,
-    shields: 0,
-    speed: 0,
     image: '/DroneWars/img/ThrusterInhibitor.png',
     selectable: false,
     maxPerLane: 1,
@@ -111,32 +64,12 @@ const fullTechCollection = [
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'permanent' }, scope: 'TRIGGERING_DRONE' }]
-      },
-      {
-        name: 'Inert',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
       }
-    ],
-    upgradeSlots: 0
+    ]
   },
   {
     name: 'Rally Beacon',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
     hull: 1,
-    shields: 0,
-    speed: 0,
     image: '/DroneWars/img/RallyBeacon.png',
     selectable: false,
     maxPerLane: 1,
@@ -150,32 +83,12 @@ const fullTechCollection = [
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_OWNER',
         effects: [{ type: 'GO_AGAIN' }]
-      },
-      {
-        name: 'Inert',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
       }
-    ],
-    upgradeSlots: 0
+    ]
   },
   {
     name: 'Jammer',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
     hull: 1,
-    shields: 0,
-    speed: 0,
     image: '/DroneWars/img/Jammer.png',
     selectable: false,
     maxPerLane: 1,
@@ -184,24 +97,11 @@ const fullTechCollection = [
     abilities: [
       {
         name: 'Jammer',
-        description: 'While this drone is ready in a lane, opponent card effects can only target this drone.',
+        description: 'While this Jammer is active, opponent card effects targeting drones in this lane can only target this Jammer.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
-      },
-      {
-        name: 'Inert',
-        description: 'Inert.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: 'Passive.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
       }
-    ],
-    upgradeSlots: 0
+    ]
   },
 ];
 

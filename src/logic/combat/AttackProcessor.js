@@ -333,13 +333,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             targetInState = defenderPlayerState.dronesOnBoard[laneKey].find(d => d.id === finalTarget.id);
             if (targetInState) break;
         }
-        // Also search techSlots for Tech attack targets
-        if (!targetInState && defenderPlayerState.techSlots) {
-            for (const laneKey in defenderPlayerState.techSlots) {
-                targetInState = defenderPlayerState.techSlots[laneKey].find(d => d.id === finalTarget.id);
-                if (targetInState) break;
-            }
-        }
         if (targetInState) {
             // Use damage type helper for all damage calculations
             const damageResult = calculateDamageByType(
@@ -501,26 +494,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].currentShields -= shieldDamage;
                 }
                 break;
-            }
-        }
-
-        // Search techSlots if not found in dronesOnBoard
-        if (!foundTarget && newPlayerStates[defendingPlayerId].techSlots) {
-            for (const laneKey in newPlayerStates[defendingPlayerId].techSlots) {
-                const targetIndex = newPlayerStates[defendingPlayerId].techSlots[laneKey].findIndex(d => d.id === finalTarget.id);
-                if (targetIndex !== -1) {
-                    foundTarget = true;
-                    if ((newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].hull - hullDamage) <= 0) {
-                        droneDestroyed = true;
-                        newPlayerStates[defendingPlayerId].techSlots[laneKey] =
-                            newPlayerStates[defendingPlayerId].techSlots[laneKey].filter(d => d.id !== finalTarget.id);
-                        // Tech drones do NOT participate in availability/rebuild tracking
-                    } else {
-                        newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].hull -= hullDamage;
-                        newPlayerStates[defendingPlayerId].techSlots[laneKey][targetIndex].currentShields -= shieldDamage;
-                    }
-                    break;
-                }
             }
         }
 
