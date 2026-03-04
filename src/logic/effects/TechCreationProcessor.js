@@ -2,8 +2,8 @@
 // TECH CREATION EFFECT PROCESSOR
 // ========================================
 // Handles CREATE_TECH effect type
-// Creates Tech drones (mines, beacons, jammers) in player.techSlots
-// Tech drones are inert non-combat deployables with their own lane sublayer.
+// Creates tech (mines, beacons, jammers) in player.techSlots
+// Tech are non-combat enchantment-like entities with their own lane sublayer.
 //
 // ANIMATION: TECH_DEPLOY for tech spawning
 
@@ -15,7 +15,7 @@ import { countDroneTypeInLane, MAX_TECH_PER_LANE } from '../utils/gameEngineUtil
 /**
  * Processor for CREATE_TECH effect type
  *
- * Creates Tech drones in player.techSlots (not dronesOnBoard).
+ * Creates Techs in player.techSlots (not dronesOnBoard).
  * Modeled after TokenCreationProcessor but routes to techSlots.
  *
  * @extends BaseEffectProcessor
@@ -25,7 +25,7 @@ class TechCreationProcessor extends BaseEffectProcessor {
    * Process CREATE_TECH effect
    *
    * @param {Object} effect - Effect definition
-   * @param {string} effect.tokenName - Name of Tech drone to create
+   * @param {string} effect.tokenName - Name of Tech to create
    * @param {string} [effect.targetOwner] - 'OPPONENT' or undefined (self)
    * @param {Array<string>} [effect.locations] - Lane IDs where Tech should spawn
    * @param {Object} context - Effect context
@@ -53,7 +53,7 @@ class TechCreationProcessor extends BaseEffectProcessor {
     const baseTech = fullTechCollection.find(d => d.name === effect.tokenName);
 
     if (!baseTech) {
-      debugLog('EFFECT_PROCESSING', `[CREATE_TECH] Tech drone ${effect.tokenName} not found in tech collection`);
+      debugLog('EFFECT_PROCESSING', `[CREATE_TECH] Tech ${effect.tokenName} not found in tech collection`);
       return { newPlayerStates, additionalEffects: [], animationEvents: [] };
     }
 

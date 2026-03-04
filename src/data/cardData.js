@@ -642,7 +642,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/InhibitorMine.png',
-    description: 'Create an Inhibitor Mine in an enemy lane. (Inhibitor Mine: 0/1. When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
+    description: 'Create an Inhibitor Mine in an enemy lane. (Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -664,7 +664,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/JitterMine.png',
-    description: 'Create a Jitter Mine in an enemy lane. (Jitter Mine: 0/1. When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
+    description: 'Create a Jitter Mine in an enemy lane. (Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -686,7 +686,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/ProximityMine.png',
-    description: 'Create a Proximity Mine in an enemy lane. (Proximity Mine: 0/1. When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
+    description: 'Create a Proximity Mine in an enemy lane. (Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1297,7 +1297,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RallyBeacon.png',
-    description: 'Create a Rally Beacon token in a friendly lane. (Rally Beacon: 0/1, Speed 1. When a friendly drone moves into this lane, go again.)',
+    description: 'Create a Rally Beacon in a friendly lane. (Rally Beacon: When a friendly drone moves into this lane, go again.)',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -1624,7 +1624,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 5,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer drone token in each of your lanes. (Jammer: 0/1, Speed 1. Opponent card effects can only target Jammer drones.)',
+    description: 'Create a Jammer in each of your lanes. (Jammer: Opponent card effects targeting drones in this lane can only target this Jammer.)',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', locations: ['lane1', 'lane2', 'lane3'], targeting: { type: 'NONE' } },
     ],

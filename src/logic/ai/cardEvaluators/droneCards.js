@@ -145,10 +145,10 @@ export const evaluateReadyDroneCard = (card, target, context) => {
 };
 
 /**
- * Evaluate a CREATE_TOKENS card
- * Dispatches to Jammer or Rally Beacon evaluator based on token type
+ * Evaluate a CREATE_TOKENS or CREATE_TECH card
+ * Dispatches to specific evaluator based on token/tech name
  * @param {Object} card - The card being played
- * @param {Object} target - The target (null for Jammers, lane object for Rally Beacon)
+ * @param {Object} target - The target (null for Jammers, lane object for others)
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */

@@ -14,7 +14,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import fullTechCollection from '../../data/techData.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
 
-// Combined collection for ability lookups — Tech drones live in techData.js
+// Combined collection for ability lookups — Tech definitions live in techData.js
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
 import { updateAuras } from '../utils/auraManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -229,7 +229,7 @@ class TriggerProcessor {
       }
     }
 
-    // Tier 0.5: Tech triggers — Tech drones in techSlots fire before other lane drones
+    // Tier 0.5: Tech triggers — tech in techSlots fires before other lane drones
     if (LANE_TRIGGER_TYPES.has(triggerType)) {
       const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
 
@@ -618,7 +618,7 @@ class TriggerProcessor {
 
   /**
    * Collect Tech triggers from a player's techSlots for a specific lane.
-   * Tech drones fire at a priority tier between Self and Other Drones.
+   * Tech fires at a priority tier between Self and Other Drones.
    */
   _collectTechTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier) {
     const techs = playerState?.techSlots?.[eventLane] || [];
@@ -922,7 +922,7 @@ class TriggerProcessor {
         debugLog('TRIGGERS', `Destroying Tech after trigger: ${drone.name} (${droneId})`);
         techs.splice(index, 1);
 
-        // Tech drones do NOT participate in availability/rebuild tracking
+        // Tech does NOT participate in availability/rebuild tracking
 
         animationEvents.push({
           type: 'TECH_DESTROY',
