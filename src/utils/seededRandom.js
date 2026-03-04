@@ -131,13 +131,13 @@ export class SeededRandom {
    * @returns {SeededRandom} New seeded RNG instance
    */
   static forDroneSelection(gameState, playerId) {
-    const gameSeed = gameState.gameSeed || 12345;
+    const gameSeed = gameState.gameSeed ?? 12345;
     const playerOffset = playerId === 'player1' ? 3000 : 4000;
     return new SeededRandom(gameSeed + playerOffset);
   }
 
   static forCardShuffle(gameState, playerId) {
-    const gameSeed = gameState.gameSeed || 12345; // Fallback for tests
+    const gameSeed = gameState.gameSeed ?? 12345; // Fallback for tests
     const playerState = gameState[playerId];
 
     // Use game seed + unique offset based on game progress for determinism

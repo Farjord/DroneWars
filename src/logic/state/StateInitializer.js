@@ -88,7 +88,7 @@ class StateInitializer {
 
     // Shuffle the final deck using game seed for deterministic multiplayer synchronization
     // Same game seed always produces same deck order
-    const seed = gameSeed || 12345; // Fallback for tests
+    const seed = gameSeed ?? 12345; // Fallback for tests
     const playerOffset = playerId === 'player1' ? 1 : 2;  // Unique offset per player
     const rng = new SeededRandom(seed + playerOffset);
     return rng.shuffle(deck);

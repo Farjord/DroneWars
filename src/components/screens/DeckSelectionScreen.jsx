@@ -228,7 +228,9 @@ function DeckSelectionScreen() {
     // Shuffle the deck for random card draw order using seeded RNG for multiplayer synchronization
     // Use simple seed based on local player ID and timestamp
     const localPlayerId = getLocalPlayerId();
-    const seed = localPlayerId === 'player1' ? 12345 : 67890;
+    const gameSeed = gameState.gameSeed ?? Math.floor(Math.random() * 2147483647);
+    const playerOffset = localPlayerId === 'player1' ? 1 : 2;
+    const seed = gameSeed + playerOffset;
     const rng = new SeededRandom(seed);
     const shuffledDeck = rng.shuffle(deckArray);
     debugLog('DECK_SELECTION', `🔀 Custom deck shuffled: ${shuffledDeck.length} cards (deterministic)`, {
