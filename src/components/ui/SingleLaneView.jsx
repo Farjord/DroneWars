@@ -213,6 +213,11 @@ const SingleLaneView = ({
 
   const isHoveredTarget = isTargetable && hoveredLane?.id === laneId && hoveredLane?.owner === owner;
 
+  // When the parent lane wrapper's stacking context is dissolved during drag,
+  // inner layers need explicit z-indices to maintain correct ordering at root level.
+  const isDragSourceLane = draggedDrone?.sourceLane === laneId &&
+    player.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone.drone?.id);
+
   const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
 
   // Clip-path: isPlayer in SingleLaneView means local player's lane.
@@ -227,9 +232,6 @@ const SingleLaneView = ({
   const controlledOwner = (isPlayer && isPlayerControlled) || (!isPlayer && isOpponentControlled)
     ? laneControlState : null;
 
-  // Dissolve content stacking context when this lane is the drag source
-  const isDragSourceLane = draggedDrone?.sourceLane === laneId &&
-    player.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
 
   return (
     <div
@@ -306,7 +308,7 @@ const SingleLaneView = ({
       {/* Clipped visual layer — decorative, no interaction */}
       <div
         className={`absolute inset-0 ${isTargetable ? 'lane-target-pulse' : ''}`}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: 'none', ...(isDragSourceLane ? { zIndex: 2 } : {}) }}
       >
         <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} laneId={laneId} />
       </div>

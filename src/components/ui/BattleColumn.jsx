@@ -267,6 +267,16 @@ const BattleColumn = ({
 }) => {
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
+  // During drone drag, dissolve the source lane's stacking context so the
+  // dragged drone (z-50) escapes to root level and paints above the
+  // TargetingArrow SVGs (z-15). Only dissolve the lane that actually
+  // contains the dragged drone.
+  const draggedId = draggedDrone?.drone?.id;
+  const dragInPlayerLane = draggedId && draggedDrone.sourceLane === laneId &&
+    localPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedId);
+  const dragInOpponentLane = draggedId && draggedDrone.sourceLane === laneId &&
+    opponentPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedId);
+
   // Shared props for SingleLaneView (both opponent and player lanes)
   const sharedLaneProps = {
     onLaneClick: handleLaneClick,
@@ -326,12 +336,6 @@ const BattleColumn = ({
     handleActionCardDragEnd,
   };
 
-  // Detect if the dragged drone originates from this column's lane
-  const dragSourceInColumn = draggedDrone?.sourceLane === laneId;
-  const isDragInOpponentLane = dragSourceInColumn &&
-    opponentPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
-  const isDragInPlayerLane = dragSourceInColumn &&
-    localPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone?.drone?.id);
 
   return (
     <div className="flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
@@ -355,7 +359,7 @@ const BattleColumn = ({
       </div>
 
       {/* Opponent Lane — 29% height, overlaps ship by -10% margin */}
-      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: isDragInOpponentLane ? undefined : 5 }}>
+      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: dragInOpponentLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={false}
@@ -381,7 +385,7 @@ const BattleColumn = ({
       </div>
 
       {/* Player Lane — 29% height */}
-      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: isDragInPlayerLane ? undefined : 5 }}>
+      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: dragInPlayerLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={true}
