@@ -848,6 +848,10 @@ const useDragMechanics = ({
   useEffect(() => {
     const handleMouseUp = () => {
       if (draggedCard) {
+        // Set suppress flag synchronously so the browser's synthesized click
+        // (which fires before the deferred setTimeout) gets absorbed immediately
+        suppressNextClickRef.current = true;
+        setTimeout(() => { suppressNextClickRef.current = false; }, 300);
         // Defer cancel to allow React's onMouseUp handlers to fire first
         // Native DOM listeners fire before React synthetic events
         setTimeout(() => handleCardDragEnd(null), 0);
@@ -869,6 +873,10 @@ const useDragMechanics = ({
   useEffect(() => {
     const handleMouseUp = () => {
       if (draggedDrone) {
+        // Set suppress flag synchronously so the browser's synthesized click
+        // (which fires before the deferred setTimeout) gets absorbed immediately
+        suppressNextClickRef.current = true;
+        setTimeout(() => { suppressNextClickRef.current = false; }, 300);
         setTimeout(() => {
           if (!droneDragHandledRef.current) {
             handleDroneDragEnd(null, null, false);
@@ -891,6 +899,10 @@ const useDragMechanics = ({
     if (!draggedActionCard) return;
 
     const handleGlobalMouseUp = () => {
+      // Set suppress flag synchronously so the browser's synthesized click
+      // (which fires before the deferred setTimeout) gets absorbed immediately
+      suppressNextClickRef.current = true;
+      setTimeout(() => { suppressNextClickRef.current = false; }, 300);
       // setTimeout ensures drop zone handlers fire first.
       // The ref guard prevents this fallback from cancelling a drag that was
       // already handled by a drop zone — the closure-captured draggedActionCard
