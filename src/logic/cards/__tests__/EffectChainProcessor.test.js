@@ -575,6 +575,22 @@ describe('EffectChainProcessor', () => {
       expect(result.newPlayerStates).toBeDefined();
       expect(result.shouldEndTurn).toBe(true);
     });
+
+    it('does not skip effects targeting a ship section (alive in shipSections)', () => {
+      const sectionTarget = { id: 'bridge', hull: 10, owner: 'player1' };
+      const card = {
+        id: 'test_heal', instanceId: 'inst_heal', name: 'Emergency Patch', cost: 0,
+        effects: [{ type: 'GAIN_ENERGY', value: 1, targeting: { type: 'SHIP_SECTION' } }],
+      };
+      const states = createGameState({
+        hand: [card],
+        shipSections: { bridge: { hull: 10, allocatedShields: 5, maxShields: 5 } },
+      });
+      const result = processor.processEffectChain(card, [{ target: sectionTarget }], 'player1', createCtx(states));
+
+      // Effect should execute (not be skipped) — energy increases by 1
+      expect(result.newPlayerStates.player1.energy).toBe(11);
+    });
   });
 
   describe('processEffectChain — conditionals', () => {

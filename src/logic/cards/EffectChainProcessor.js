@@ -102,16 +102,19 @@ function resolveEffectValues(effectData, effectResults) {
   return resolved;
 }
 
-// Only checks board entities (drones). Non-board targets (cards in hand, lanes) always pass.
+// Checks board entities (drones) and ship sections. Non-board targets (cards in hand, lanes) always pass.
 function isTargetAlive(target, playerStates) {
   if (!target || !target.id) return true;
-  // Only drones have hull — skip alive check for non-drone targets (cards, lanes)
+  // Only drones/ship sections have hull — skip alive check for non-hull targets (cards, lanes)
   if (!('hull' in target)) return true;
   for (const playerId of ['player1', 'player2']) {
+    // Check drones on board
     const board = playerStates[playerId]?.dronesOnBoard || {};
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       if ((board[lane] || []).some(d => d.id === target.id)) return true;
     }
+    // Check ship sections
+    if (playerStates[playerId]?.shipSections?.[target.id]) return true;
   }
   return false;
 }
