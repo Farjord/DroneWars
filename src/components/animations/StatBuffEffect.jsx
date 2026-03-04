@@ -146,6 +146,7 @@ const StatBuffEffect = ({ position, isBuff, onComplete }) => {
         return (
           <svg
             key={p.id}
+            viewBox="-20 -20 40 40"
             style={{
               position: 'absolute',
               left: '50%',
