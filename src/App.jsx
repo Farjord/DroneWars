@@ -38,6 +38,7 @@ import useClickHandlers from './hooks/useClickHandlers.js';
 import useGameLifecycle from './hooks/useGameLifecycle.js';
 import useResolvers from './hooks/useResolvers.js';
 import useActionRouting from './hooks/useActionRouting.js';
+import GameServerFactory from './server/GameServerFactory.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import { gameEngine } from './logic/gameLogic.js';
@@ -449,11 +450,15 @@ const App = ({ phaseAnimationQueue }) => {
   // Event handlers coordinate between UI actions and manager layer.
 
   // --- 6.0 ACTION ROUTING HOOK ---
+  const gameServer = useMemo(() => {
+    return GameServerFactory.create(gameState.gameMode, { gameStateManager });
+  }, [gameState.gameMode, gameStateManager]);
+
   const {
     processActionWithGuestRouting,
     executeDeployment,
   } = useActionRouting({
-    gameState, processAction, p2pManager, gameStateManager,
+    gameState, processAction, p2pManager, gameStateManager, gameServer,
     getLocalPlayerId, selectedDrone, roundNumber, turn,
     setSelectedDrone, setModalContent,
   });

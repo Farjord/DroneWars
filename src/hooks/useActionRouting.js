@@ -12,6 +12,7 @@ import { debugLog } from '../utils/debugLogger.js';
  * @param {Object} deps.p2pManager - P2P manager for guest→host routing
  * @param {Object} deps.gameStateManager - Game state manager for optimistic tracking
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
+ * @param {Object|null} deps.gameServer - Optional GameServer instance (local mode routes through this)
  * @param {Object|null} deps.selectedDrone - Currently selected drone (default for deployment)
  * @param {number} deps.roundNumber - Current round number
  * @param {number} deps.turn - Current turn number (for debug logging)
@@ -23,6 +24,7 @@ const useActionRouting = ({
   processAction,
   p2pManager,
   gameStateManager,
+  gameServer,
   getLocalPlayerId,
   selectedDrone,
   roundNumber,
@@ -64,8 +66,11 @@ const useActionRouting = ({
     }
 
     // Host/Local mode: Process action normally
+    if (gameServer) {
+      return await gameServer.submitAction(type, payload);
+    }
     return await processAction(type, payload);
-  }, [gameState.gameMode, processAction, p2pManager, gameStateManager]);
+  }, [gameState.gameMode, processAction, p2pManager, gameStateManager, gameServer]);
 
   // --- Deployment Execution ---
   const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
