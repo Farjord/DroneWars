@@ -46,7 +46,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 47 | GameDataService.js:285 | `hasGuardianInLane` fragile indirect recursion — works but risky when refactoring | Audit closure (Phase M) | 2026-02-24 | Low |
 | 48 | Hook files (useResolvers, useGameLifecycle) | `Date.now()` / `Date.now()+Math.random()` for animation/instance IDs — collision risk, desync risk | Audit closure (Phase M) | 2026-02-24 | Low |
 | 49 | useResolvers.js:148 | `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting` | Audit closure (Phase M) | 2026-02-24 | Low |
-| 50 | useMultiplayerSync.js:249 | `render_complete` event fires on every `gameState` change — excessive fire rate | Audit closure (Phase M) | 2026-02-24 | Low |
+| ~~50~~ | ~~useMultiplayerSync.js:249~~ | ~~`render_complete` event fires on every `gameState` change~~ — moved to Resolved | | |
 | 51 | useDeckBuilderData.js:292 | `typeLimits` computed outside `useMemo` but used in memoized `isDeckValid` — could be stale | Audit closure (Phase M) | 2026-02-24 | Low |
 | 52 | CardActionStrategy.js | `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x | Audit closure (Phase M) | 2026-02-24 | Low |
 | 53 | App.jsx:601 | `cancelAllActions` is a plain function (not `useCallback`) — defeats memoization in useDragMechanics | Audit closure (Phase M) | 2026-02-24 | Low |
@@ -120,5 +120,6 @@ Files over 800 lines — decomposition candidates. Items already tracked above a
 | 8 | ShipSlotManager.js | Inconsistent repair cost fallbacks (10 vs 200) | 2026-02-24 | Both methods now use `|| 200` |
 | 62 | DrawEffectProcessor, GainEnergyEffectProcessor, MovementEffectProcessor | `pairSet` not propagated across cascade boundaries | 2026-03-01 | Pass pairSet/chainDepth through TriggerProcessor → EffectRouter → effect processors → nested fireTrigger |
 | 63 | TriggerProcessor.js | `chainDepth` tracked but never enforced | 2026-03-01 | Added MAX_CHAIN_DEPTH=20 constant and depth guard in fireTrigger() |
+| 50 | useMultiplayerSync.js:249 | `render_complete` event fires on every `gameState` change — excessive fire rate | 2026-03-05 | Event deleted entirely in Multiplayer Refactor Phase 9 |
 | 64 | DrawEffectProcessor, GainEnergyEffectProcessor, MovementEffectProcessor | `sourceId` always 'system' — no triggeringDrone in cascades | 2026-03-01 | Pass triggeringDrone=reactorDrone through EffectRouter context into nested fireTrigger calls |
 | 65 | Trigger system (7 files) | 7 timing workarounds for compute-all-then-animate architecture | 2026-03-01 | Added structured triggerSteps alongside animationEvents; new executeActionSteps path in CardActionStrategy. Old workarounds kept for non-card-play consumers |

@@ -277,11 +277,6 @@ class PhaseManager {
 
       debugLog('PHASE_MANAGER', `✅ Phase transition complete: ${newPhase}`);
 
-      // Broadcast update to Guest (if authority in multiplayer)
-      if (this.isAuthority && this.isMultiplayer) {
-        this.broadcastPhaseUpdate();
-      }
-
       return true;
     } catch (error) {
       debugLog('PHASE_MANAGER', `❌ Error during transition: ${error.message}`);
@@ -320,19 +315,6 @@ class PhaseManager {
     }
 
     debugLog('PHASE_MANAGER', `🧹 Phase state reset (passInfo and commitments cleared for ${phaseToReset || 'no phase'})`);
-  }
-
-  /**
-   * Broadcast phase update to Guest
-   */
-  broadcastPhaseUpdate() {
-    if (!this.isAuthority || !this.isMultiplayer) {
-      debugLog('PHASE_MANAGER', `⚠️ Cannot broadcast - not authority or not multiplayer`);
-      return;
-    }
-
-    // Guest broadcast handled by GameFlowManager.broadcastStateToGuest() at phase transitions
-    debugLog('PHASE_MANAGER', `📡 Broadcasting phase update: ${this.phaseState.turnPhase}`);
   }
 
   /**

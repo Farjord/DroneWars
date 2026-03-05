@@ -30,11 +30,7 @@ export const useGameState = () => {
         });
       }
 
-      // Don't trigger re-renders for render_complete events
-      // render_complete is just a notification for GuestMessageQueueService, not a state change
-      if (event.type !== 'render_complete') {
-        setGameState(gameStateManager.getState());
-      }
+      setGameState(gameStateManager.getState());
     });
 
     return unsubscribe;

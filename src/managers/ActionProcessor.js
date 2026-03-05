@@ -639,24 +639,6 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Process action received from network peer
-   * @param {Object} actionData - Action data from peer
-   */
-  async processNetworkAction(actionData) {
-    const { action } = actionData;
-    debugLog('STATE_SYNC', `[P2P ACTION] Processing network action:`, action);
-
-    // Mark as network action to prevent re-sending
-    const networkAction = {
-      ...action,
-      isNetworkAction: true
-    };
-
-    // Queue the network action for processing
-    return await this.queueAction(networkAction);
-  }
-
-  /**
    * Process action from guest client (host only)
    * Host receives guest actions and processes them authoritatively
    * @param {Object} action - Action from guest {type, payload}

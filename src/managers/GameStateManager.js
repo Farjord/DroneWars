@@ -135,7 +135,7 @@ class GameStateManager {
   // --- P2P WIRING ---
 
   /**
-   * Set up ActionProcessor ↔ P2PManager bidirectional wiring + host-side state_sync_requested handler.
+   * Set up ActionProcessor ↔ P2PManager bidirectional wiring.
    * Called by useGameState.js and LobbyScreen.jsx.
    * Guest-side P2P subscriptions (state_update_received) are handled by RemoteGameServer.initialize().
    */
@@ -150,16 +150,6 @@ class GameStateManager {
         case 'multiplayer_mode_change':
           this.setMultiplayerMode(event.data.mode, event.data.isHost);
           break;
-        case 'state_sync_requested': {
-          // Host-side: respond to guest state sync requests
-          const currentState = this.getState();
-          p2pManager.sendData({
-            type: 'GAME_STATE_SYNC',
-            state: currentState,
-            timestamp: Date.now(),
-          });
-          break;
-        }
       }
     });
 

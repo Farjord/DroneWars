@@ -236,13 +236,6 @@ function DroneSelectionScreen() {
     }
   }, [gameState.commitments, localPlayerId, isSubmitting, getOpponentPlayerId]);
 
-  // Notify GuestMessageQueueService when React has finished rendering (remote player only)
-  useEffect(() => {
-    if (getLocalPlayerId() === 'player2') {
-      gameStateManager.emit('render_complete');
-    }
-  }, [gameState, gameStateManager, getLocalPlayerId]);
-
   // Check completion status directly from gameState.commitments
   const opponentPlayerId = getOpponentPlayerId();
   const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;

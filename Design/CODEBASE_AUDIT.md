@@ -699,7 +699,7 @@
 - **[FIXED] [LOG] :233,240,286** — 3 `console.error` calls alongside `debugLog`.
 - **[FIXED] [DUP] :392-410** — `SEQUENTIAL_PHASES` unified: PhaseManager + GameFlowManager now import from `gameUtils.js`.
 - **[CLOSED: SIZE-TRACKED] [SIZE]** — 485 lines (400+ threshold). Borderline; cohesive class.
-- **[CLOSED: TODO-FEATURE] [TODO] :336** — `broadcastPhaseUpdate` is a no-op stub. Not tracked in FUTURE_IMPROVEMENTS.md.
+- **[FIXED] [TODO] :336** — `broadcastPhaseUpdate` no-op stub removed (Phase 9).
 
 **AIPhaseProcessor.js (406 lines, 2 issues):**
 - **[FIXED] [DUP] :209,259** — `const sequentialPhases = ['deployment', 'action']` duplicated twice, plus 3 more times in other files.
@@ -909,7 +909,7 @@
 
 **useMultiplayerSync.js (261 lines, 3 issues):**
 - **[FIXED] [DUP] :142-243** — Simultaneous-phase commitment check collapsed from 4 copy-pasted blocks to a loop.
-- **[DEFERRED] [EDGE] :249-253** — `gameStateManager.emit('render_complete')` fires on every `gameState` change (entire object dependency). Excessive fire rate.
+- **[FIXED] [EDGE] :249-253** — `render_complete` event removed entirely (Phase 9).
 - **[FIXED] [SMELL] :29-53** — Destructured `data` and `playerId` from event but neither used.
 
 **useInterception.js (247 lines, 2 issues):**
@@ -1316,7 +1316,7 @@
   - ShipPlacementScreen.jsx — error UI handling
   - useClickHandlers.js — targeting logic
   - MovementController.js — encounter/extraction triggers
-  - PhaseManager.js:336 — broadcastPhaseUpdate no-op
+  - PhaseManager.js:336 — broadcastPhaseUpdate no-op [FIXED Phase 9]
   - RewardManager.js:468 — reputation calculation
   - GameStateManager.js:136 — facade removal
 
