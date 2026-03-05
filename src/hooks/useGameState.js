@@ -52,19 +52,19 @@ export const useGameState = () => {
   // Convenience methods
   const isMyTurn = useCallback(() => {
     return gameStateManager.isMyTurn();
-  }, [gameState.currentPlayer, gameState.gameMode]);
+  }, [gameState.currentPlayer, gameState.localPlayerId]);
 
   const getLocalPlayerId = useCallback(() => {
     return gameStateManager.getLocalPlayerId();
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const getOpponentPlayerId = useCallback(() => {
     return gameStateManager.getOpponentPlayerId();
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const isMultiplayer = useCallback(() => {
     return gameStateManager.isMultiplayer();
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const isWaitingForOpponent = useCallback(() => {
     return isMultiplayer() && !isMyTurn();
@@ -73,19 +73,19 @@ export const useGameState = () => {
   // Perspective methods
   const getLocalPlayerState = useCallback(() => {
     return gameStateManager.getLocalPlayerState();
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const getOpponentPlayerState = useCallback(() => {
     return gameStateManager.getOpponentPlayerState();
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const isLocalPlayer = useCallback((playerId) => {
     return gameStateManager.isLocalPlayer(playerId);
-  }, [gameState.gameMode]);
+  }, [gameState.localPlayerId]);
 
   const getLocalPlacedSections = useCallback(() => {
     return gameStateManager.getLocalPlacedSections();
-  }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections]);
+  }, [gameState.localPlayerId, gameState.placedSections, gameState.opponentPlacedSections]);
 
   const getOpponentPlacedSections = useCallback(() => {
     const sections = gameStateManager.getOpponentPlacedSections();
@@ -94,7 +94,7 @@ export const useGameState = () => {
       debugLog('STATE_SYNC', '⚠️ CRITICAL - getOpponentPlacedSections returning:', { sections, opponentPlacedSections: gameState.opponentPlacedSections });
     }
     return sections;
-  }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections, gameState.turnPhase]);
+  }, [gameState.localPlayerId, gameState.placedSections, gameState.opponentPlacedSections, gameState.turnPhase]);
 
   // State update methods
   // updateGameState removed - use managers for state transitions

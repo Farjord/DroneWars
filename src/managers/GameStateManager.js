@@ -36,6 +36,7 @@ class GameStateManager {
       isConnected: false,
       opponentId: null,
       gameMode: 'local', // 'local', 'host', 'guest'
+      localPlayerId: 'player1', // Identity of the local player (derived from gameServer)
 
       // --- TESTING MODE ---
       testMode: false, // Indicates if this is a test game (bypasses normal flow)
@@ -182,10 +183,12 @@ class GameStateManager {
 
     debugLog('BROADCAST_TIMING', `[GUEST APPLY] Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase}`);
 
-    // Preserve guest's local gameMode (still needed by GameServerFactory and BroadcastService)
+    // Preserve guest's local gameMode and localPlayerId (don't let host broadcast overwrite them)
     const localGameMode = this.state.gameMode;
+    const localPlayerId = this.state.localPlayerId;
     this.state = { ...hostState };
     this.state.gameMode = localGameMode;
+    this.state.localPlayerId = localPlayerId;
 
     this.emit('HOST_STATE_UPDATE', { hostState });
   }
@@ -753,6 +756,10 @@ class GameStateManager {
    */
   setGameServer(server) {
     this.gameServer = server;
+    const localPlayerId = server?.getLocalPlayerId?.() ?? 'player1';
+    if (this.state.localPlayerId !== localPlayerId) {
+      this.setState({ localPlayerId });
+    }
   }
 
   /**
