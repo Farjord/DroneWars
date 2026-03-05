@@ -7,7 +7,7 @@ class LocalGameServer extends GameServer {
   constructor(gameStateManager, { isMultiplayer = false } = {}) {
     super();
     this.gameStateManager = gameStateManager;
-    this.isMultiplayer = isMultiplayer;
+    this._isMultiplayer = isMultiplayer;
   }
 
   async submitAction(type, payload) {
@@ -23,11 +23,15 @@ class LocalGameServer extends GameServer {
   }
 
   getLocalPlayerId() {
-    return this.gameStateManager.getLocalPlayerId();
+    return 'player1';
+  }
+
+  isMultiplayer() {
+    return this._isMultiplayer;
   }
 
   isPlayerAI(playerId) {
-    return !this.isMultiplayer && playerId === 'player2';
+    return !this._isMultiplayer && playerId === 'player2';
   }
 
   onStateUpdate(callback) {

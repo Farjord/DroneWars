@@ -113,7 +113,7 @@ export default function useGameLifecycle({
     }
 
     // Not in Extract mode - exit normally
-    if (gameState.gameMode === 'local') {
+    if (!gameStateManager.isMultiplayer()) {
       aiPhaseProcessor.cleanup();
     }
 
@@ -386,7 +386,7 @@ export default function useGameLifecycle({
 
     if (newCount <= 0) {
       const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
-      if (p2IsOver && gameState.gameMode === 'local') {
+      if (p2IsOver && !gameStateManager.isMultiplayer()) {
         const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().filter(d => !d.isToken).length -
                                      getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
 

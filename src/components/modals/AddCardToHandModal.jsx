@@ -17,9 +17,10 @@ const EMPTY_SELECTION = {};
  * @param {boolean} isOpen - Whether modal is visible
  * @param {function} onClose - Close handler
  * @param {function} onConfirm - Confirm handler receiving {playerId, selectedCards}
- * @param {string} gameMode - Game mode ('local', 'host', 'guest')
+ * @param {string} localPlayerId - Local player ID ('player1' or 'player2')
+ * @param {boolean} isMultiplayer - Whether this is a multiplayer game
  */
-function AddCardToHandModal({ isOpen, onClose, onConfirm, gameMode }) {
+function AddCardToHandModal({ isOpen, onClose, onConfirm, localPlayerId, isMultiplayer }) {
   // Tab state: 'local' or 'opponent'
   const [selectedTab, setSelectedTab] = useState('local');
 
@@ -28,29 +29,25 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, gameMode }) {
 
   if (!isOpen) return null;
 
-  // Determine player labels based on game mode
+  const isGuest = localPlayerId === 'player2';
+
+  // Determine player labels
   const getLocalPlayerLabel = () => {
-    if (gameMode === 'local') return 'Player 1 (You)';
-    if (gameMode === 'host') return 'Player 1 (You)';
-    if (gameMode === 'guest') return 'Player 2 (You)';
-    return 'Your Hand';
+    if (isGuest) return 'Player 2 (You)';
+    return 'Player 1 (You)';
   };
 
   const getOpponentPlayerLabel = () => {
-    if (gameMode === 'local') return 'Player 2 (AI)';
+    if (!isMultiplayer) return 'Player 2 (AI)';
     return 'Opponent';
   };
 
-  // Determine actual player ID based on tab and game mode
+  // Determine actual player ID based on tab
   const getTargetPlayerId = (tab) => {
     if (tab === 'local') {
-      // Local player
-      if (gameMode === 'guest') return 'player2';
-      return 'player1';
+      return isGuest ? 'player2' : 'player1';
     } else {
-      // Opponent
-      if (gameMode === 'guest') return 'player1';
-      return 'player2';
+      return isGuest ? 'player1' : 'player2';
     }
   };
 

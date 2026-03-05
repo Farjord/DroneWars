@@ -63,7 +63,7 @@ export const useGameState = () => {
   }, [gameState.gameMode]);
 
   const isMultiplayer = useCallback(() => {
-    return gameState.gameMode !== 'local';
+    return gameStateManager.isMultiplayer();
   }, [gameState.gameMode]);
 
   const isWaitingForOpponent = useCallback(() => {

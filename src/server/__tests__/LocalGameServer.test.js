@@ -44,9 +44,19 @@ describe('LocalGameServer', () => {
   });
 
   describe('getLocalPlayerId', () => {
-    it('delegates to gameStateManager.getLocalPlayerId', () => {
+    it('returns player1 directly (host/local is always player1)', () => {
       expect(server.getLocalPlayerId()).toBe('player1');
-      expect(mockGSM.getLocalPlayerId).toHaveBeenCalled();
+    });
+  });
+
+  describe('isMultiplayer', () => {
+    it('returns false by default (single-player)', () => {
+      expect(server.isMultiplayer()).toBe(false);
+    });
+
+    it('returns true when constructed with isMultiplayer flag', () => {
+      const mpServer = new LocalGameServer(mockGSM, { isMultiplayer: true });
+      expect(mpServer.isMultiplayer()).toBe(true);
     });
   });
 

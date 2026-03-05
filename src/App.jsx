@@ -23,6 +23,7 @@ import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import ModalLayer from './components/ui/ModalLayer.jsx';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
+import FloatingDragCard from './components/ui/FloatingDragCard.jsx';
 
 // --- 1.3 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -456,6 +457,7 @@ const App = ({ phaseAnimationQueue }) => {
       server.initialize();
     }
     if (server) {
+      gameStateManager.setGameServer(server);
       gameStateManager.actionProcessor.setGameServer(server);
     }
     return server;
@@ -654,7 +656,7 @@ const App = ({ phaseAnimationQueue }) => {
     setDroneDragArrowState, setDraggedActionCard, setActionCardDragArrowState,
     setDeploymentConfirmation,
     arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef,
-    costReminderArrowRef,
+    floatingCardRef, costReminderArrowRef,
     handleSetHoveredTarget, handleCardDragStart, handleCardDragEnd,
     handleActionCardDragStart, handleActionCardDragEnd,
     handleDroneDragStart, handleDroneDragEnd,
@@ -948,6 +950,10 @@ const App = ({ phaseAnimationQueue }) => {
        droneRefs={droneRefs}
        sectionRefs={sectionRefs}
        gameAreaRef={gameAreaRef}
+     />
+     <FloatingDragCard
+       card={draggedActionCard?.mode === 'card-drag' ? draggedActionCard.card : null}
+       floatingCardRef={floatingCardRef}
      />
      <AnimationLayer
        explosions={explosions}
@@ -1269,7 +1275,8 @@ const App = ({ phaseAnimationQueue }) => {
         creditsEarned={0}
         gameStateManager={gameStateManager}
         gameDataService={gameDataService}
-        gameMode={gameState.gameMode}
+        localPlayerId={getLocalPlayerId()}
+        isMultiplayer={isMultiplayer()}
         deckCards={localPlayerState.deck}
         allDeckCards={[...localPlayerState.deck, ...localPlayerState.hand, ...localPlayerState.discardPile]}
         discardPileCards={localPlayerState.discardPile}

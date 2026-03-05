@@ -749,24 +749,32 @@ class GameStateManager {
   }
 
   /**
+   * Set game server reference for identity delegation
+   */
+  setGameServer(server) {
+    this.gameServer = server;
+  }
+
+  /**
+   * Check if the game is multiplayer
+   */
+  isMultiplayer() {
+    return this.gameServer?.isMultiplayer?.() ?? (this.state.gameMode !== 'local');
+  }
+
+  /**
    * Check if it's the local player's turn (for multiplayer)
    */
   isMyTurn() {
-    // In local mode, player1 is the human player
-    if (this.state.gameMode === 'local') return this.state.currentPlayer === 'player1';
-    if (this.state.gameMode === 'host') return this.state.currentPlayer === 'player1';
-    if (this.state.gameMode === 'guest') return this.state.currentPlayer === 'player2';
-    return false;
+    const localId = this.getLocalPlayerId();
+    return this.state.currentPlayer === localId;
   }
 
   /**
    * Get local player ID based on role
    */
   getLocalPlayerId() {
-    if (this.state.gameMode === 'local') return 'player1'; // For local AI games
-    if (this.state.gameMode === 'host') return 'player1';
-    if (this.state.gameMode === 'guest') return 'player2';
-    return 'player1';
+    return this.gameServer?.getLocalPlayerId?.() ?? 'player1';
   }
 
   /**
@@ -804,26 +812,21 @@ class GameStateManager {
    * Get placed sections for local player (UI perspective)
    */
   getLocalPlacedSections() {
-    if (this.state.gameMode === 'local') return this.state.placedSections;
-    if (this.state.gameMode === 'host') return this.state.placedSections;
-    if (this.state.gameMode === 'guest') return this.state.opponentPlacedSections;
-    return this.state.placedSections;
+    const isGuest = this.getLocalPlayerId() === 'player2';
+    return isGuest ? this.state.opponentPlacedSections : this.state.placedSections;
   }
 
   /**
    * Get placed sections for opponent (UI perspective)
    */
   getOpponentPlacedSections() {
-    let result;
-    if (this.state.gameMode === 'local') result = this.state.opponentPlacedSections;
-    else if (this.state.gameMode === 'host') result = this.state.opponentPlacedSections;
-    else if (this.state.gameMode === 'guest') result = this.state.placedSections;
-    else result = this.state.opponentPlacedSections;
+    const isGuest = this.getLocalPlayerId() === 'player2';
+    const result = isGuest ? this.state.placedSections : this.state.opponentPlacedSections;
 
     // Only debug during placement phase when there's actual data
     if (this.state.turnPhase === 'placement' && result.some(s => s !== null)) {
       debugLog('STATE_SYNC', '🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
-        gameMode: this.state.gameMode,
+        localPlayerId: this.getLocalPlayerId(),
         result,
         rawOpponentPlacedSections: this.state.opponentPlacedSections,
         rawPlacedSections: this.state.placedSections

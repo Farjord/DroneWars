@@ -200,7 +200,7 @@ function AppRouter() {
       gameFlowManagerRef.current.initialize(
         gameStateManager,
         gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-        () => gameState.gameMode !== 'local',
+        () => gameStateManager.isMultiplayer(),
         aiPhaseProcessor // Add AIPhaseProcessor
       );
 

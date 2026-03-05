@@ -82,7 +82,11 @@ class RemoteGameServer extends GameServer {
   }
 
   getLocalPlayerId() {
-    return this.gameStateManager.getLocalPlayerId();
+    return 'player2';
+  }
+
+  isMultiplayer() {
+    return true;
   }
 
   isPlayerAI() {

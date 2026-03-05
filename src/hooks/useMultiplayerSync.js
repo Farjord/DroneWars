@@ -23,7 +23,7 @@ const useMultiplayerSync = ({
   // --- GameFlowManager subscription (host/local only) ---
   // Clears waiting overlay when both players complete or when phase transitions
   useEffect(() => {
-    if (gameState.gameMode === 'guest') return;
+    if (gameStateManager.getLocalPlayerId() === 'player2') return;
 
     const handlePhaseEvent = (event) => {
       const { type, phase, playerId } = event;
@@ -61,7 +61,7 @@ const useMultiplayerSync = ({
         unsubscribeGameFlow();
       }
     };
-  }, [isMultiplayer, getLocalPlayerId, waitingForPlayerPhase, gameState.gameMode, gameStateManager]);
+  }, [isMultiplayer, getLocalPlayerId, waitingForPlayerPhase, gameStateManager]);
 
   // --- P2P data subscription ---
   // Handles incoming P2P messages: PHASE_COMPLETED logging and sync_requested responses
@@ -89,7 +89,7 @@ const useMultiplayerSync = ({
   // Guest watches turnPhase changes and synthesizes phaseTransition events locally
   // to clear waiting modals and show deployment complete modal
   useEffect(() => {
-    if (gameState.gameMode !== 'guest') return;
+    if (gameStateManager.getLocalPlayerId() !== 'player2') return;
 
     const previousPhase = previousPhaseRef.current;
 
@@ -127,7 +127,7 @@ const useMultiplayerSync = ({
 
       previousPhaseRef.current = turnPhase;
     }
-  }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase, passInfo]);
+  }, [turnPhase, gameState.gameStage, gameState.roundNumber, waitingForPlayerPhase, passInfo, gameStateManager]);
 
   // --- Simultaneous phase waiting modal monitoring ---
   // Monitors commitment status for simultaneous phases and shows waiting modal
@@ -173,7 +173,7 @@ const useMultiplayerSync = ({
   // Throttled to avoid excessive emit calls on rapid state changes
   const lastRenderCompleteRef = useRef(0);
   useEffect(() => {
-    if (gameState.gameMode === 'guest') {
+    if (gameStateManager.getLocalPlayerId() === 'player2') {
       const now = Date.now();
       if (now - lastRenderCompleteRef.current >= 100) {
         lastRenderCompleteRef.current = now;

@@ -49,6 +49,14 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Check if AI is enabled (player2 is AI-controlled)
+   */
+  _isAIEnabled() {
+    const gameServer = this.gameStateManager?.gameServer;
+    return gameServer?.isPlayerAI('player2') ?? true;
+  }
+
+  /**
    * Initialize with game data and AI personality
    * @param {Object} aiPersonalities - Available AI personalities
    * @param {Array} dronePool - Available drones for selection
@@ -183,8 +191,8 @@ class AIPhaseProcessor {
    * @param {Object} state - Current game state
    */
   checkForAITurn(state) {
-    // Don't process if AI is already taking a turn or in wrong mode
-    if (this.isProcessing || state.gameMode !== 'local') {
+    // Don't process if AI is already taking a turn or player2 is not AI
+    if (this.isProcessing || !this._isAIEnabled()) {
       return;
     }
 

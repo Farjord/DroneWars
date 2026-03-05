@@ -145,7 +145,8 @@ function ModalLayer({
   creditsEarned,
   gameStateManager,
   gameDataService,
-  gameMode,
+  localPlayerId,
+  isMultiplayer,
   deckCards,
   allDeckCards,
   discardPileCards,
@@ -388,7 +389,8 @@ function ModalLayer({
         isOpen={showAddCardModal}
         onClose={onCloseAddCardModal}
         onConfirm={onConfirmAddCards}
-        gameMode={gameMode}
+        localPlayerId={localPlayerId}
+        isMultiplayer={isMultiplayer}
       />
 
       <CardViewerModal
