@@ -5,6 +5,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
+import StateRedactor from '../server/StateRedactor.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import {
   processAttack as _processAttack,
@@ -678,7 +679,7 @@ setAnimationManager(animationManager) {
           actionType: action.type,
           success: false,
           error: error.message,
-          authoritativeState: this.gameStateManager.getState()
+          authoritativeState: StateRedactor.redactForPlayer(this.gameStateManager.getState(), 'player2')
         });
       }
     });

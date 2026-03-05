@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
+import StateRedactor from '../server/StateRedactor.js';
 
 const useMultiplayerSync = ({
   gameState,
@@ -76,8 +77,8 @@ const useMultiplayerSync = ({
       }
       if (event.type === 'sync_requested' && gameStateManager.isHost()) {
         debugLog('MULTIPLAYER', '🔄 Guest requested full state sync - sending response');
-        const currentState = gameStateManager.getState();
-        p2pManager.sendFullSyncResponse(currentState);
+        const redactedState = StateRedactor.redactForPlayer(gameStateManager.getState(), 'player2');
+        p2pManager.sendFullSyncResponse(redactedState);
       }
     };
 

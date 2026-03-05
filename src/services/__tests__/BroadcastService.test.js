@@ -221,29 +221,6 @@ describe('BroadcastService', () => {
     });
   });
 
-  describe('broadcast sequence tracking', () => {
-    it('increments sequence number on each successful broadcast', () => {
-      expect(broadcastService.broadcastSequence).toBe(0);
-      broadcastService.broadcastIfNeeded('test1');
-      expect(broadcastService.broadcastSequence).toBe(1);
-      broadcastService.broadcastIfNeeded('test2');
-      expect(broadcastService.broadcastSequence).toBe(2);
-    });
-
-    it('does not increment sequence when broadcast fails', () => {
-      mockP2pManager.isConnected = false;
-      broadcastService.broadcastIfNeeded('fail');
-      expect(broadcastService.broadcastSequence).toBe(0);
-    });
-
-    it('resets sequence on reset()', () => {
-      broadcastService.broadcastIfNeeded('test');
-      expect(broadcastService.broadcastSequence).toBe(1);
-      broadcastService.reset();
-      expect(broadcastService.broadcastSequence).toBe(0);
-    });
-  });
-
   describe('setPendingStates / clearPendingStates', () => {
     it('clearPendingStates removes pending state', () => {
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });

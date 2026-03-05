@@ -18,7 +18,6 @@ class BroadcastService {
     this.pendingSystemAnimations = [];
     this.pendingStateUpdate = null;
     this.pendingFinalState = null;
-    this.broadcastSequence = 0;
   }
 
   setGameServer(server) {
@@ -48,9 +47,8 @@ class BroadcastService {
     const actionAnimations = this.getAndClearPendingActionAnimations();
     const systemAnimations = this.getAndClearPendingSystemAnimations();
 
-    this.broadcastSequence++;
     const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
-    debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Seq: ${this.broadcastSequence} | Anims: ${actionAnimations.length + systemAnimations.length}`);
+    debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Anims: ${actionAnimations.length + systemAnimations.length}`);
 
     const redactedState = StateRedactor.redactForPlayer(stateToBroadcast, 'player2');
     this.p2pManager.broadcastState(redactedState, actionAnimations, systemAnimations);
@@ -105,7 +103,6 @@ class BroadcastService {
     this.pendingSystemAnimations = [];
     this.pendingStateUpdate = null;
     this.pendingFinalState = null;
-    this.broadcastSequence = 0;
   }
 }
 
