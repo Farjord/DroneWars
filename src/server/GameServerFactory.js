@@ -4,10 +4,10 @@ import LocalGameServer from './LocalGameServer.js';
 
 const GameServerFactory = {
   create(gameMode, { gameStateManager }) {
-    if (gameMode === 'local') {
+    if (gameMode === 'local' || gameMode === 'host') {
       return new LocalGameServer(gameStateManager);
     }
-    return null; // host (Phase 2), guest (Phase 3)
+    return null; // guest (Phase 3)
   },
 };
 

@@ -10,8 +10,9 @@ describe('GameServerFactory', () => {
     expect(server).toBeInstanceOf(LocalGameServer);
   });
 
-  it('returns null for host mode (Phase 2)', () => {
-    expect(GameServerFactory.create('host', { gameStateManager: mockGSM })).toBeNull();
+  it('creates LocalGameServer for host mode', () => {
+    const server = GameServerFactory.create('host', { gameStateManager: mockGSM });
+    expect(server).toBeInstanceOf(LocalGameServer);
   });
 
   it('returns null for guest mode (Phase 3)', () => {
