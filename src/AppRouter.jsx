@@ -208,7 +208,9 @@ function AppRouter() {
       gameStateManager.setGameFlowManager(gameFlowManagerRef.current);
 
       gameFlowInitialized.current = true;
-      const modeLabel = gameState.gameMode === 'guest' ? 'guest mode (optimistic)' : 'host/local mode';
+      const modeLabel = gameStateManager.gameServer?.isMultiplayer?.()
+        ? (gameStateManager.getLocalPlayerId() === 'player2' ? 'guest mode (optimistic)' : 'host mode')
+        : 'local mode';
       debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager initialized in AppRouter (${modeLabel})`);
     } else {
       debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager already initialized, skipping...');

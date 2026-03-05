@@ -766,7 +766,7 @@ class GameStateManager {
    * Check if the game is multiplayer
    */
   isMultiplayer() {
-    return this.gameServer?.isMultiplayer?.() ?? (this.state.gameMode !== 'local');
+    return this.gameServer?.isMultiplayer?.() ?? false;
   }
 
   /**
@@ -913,8 +913,7 @@ class GameStateManager {
    */
   setWinner(winnerId) {
     // Check if this is single-player extraction mode combat
-    const currentState = this.getState();
-    if (currentState.gameMode === 'singlePlayer' && tacticalMapStateManager.isRunActive()) {
+    if (tacticalMapStateManager.isRunActive()) {
       debugLog('SP_COMBAT', `Single-player combat ended. Winner: ${winnerId}`);
 
       // Just set winner - WinnerModal will handle transition via button click
