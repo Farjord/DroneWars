@@ -148,7 +148,7 @@ class GameStateManager {
     p2pManager.subscribe((event) => {
       switch (event.type) {
         case 'multiplayer_mode_change':
-          this.setMultiplayerMode(event.data.mode, event.data.isHost);
+          this.setMultiplayerMode(event.data.mode);
           break;
       }
     });
@@ -173,7 +173,9 @@ class GameStateManager {
 
     debugLog('BROADCAST_TIMING', `[GUEST APPLY] Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase}`);
 
-    // Preserve guest's local gameMode and localPlayerId (don't let host broadcast overwrite them)
+    // IMPORTANT: Host broadcasts include gameMode:'host' which would overwrite guest's 'guest' value.
+    // This breaks App.jsx's useMemo that recreates GameServer based on gameState.gameMode.
+    // Same for localPlayerId — host sends 'player1' which would break guest routing.
     const localGameMode = this.state.gameMode;
     const localPlayerId = this.state.localPlayerId;
     this.state = { ...hostState };
@@ -636,7 +638,7 @@ class GameStateManager {
   /**
    * Set multiplayer mode and role
    */
-  setMultiplayerMode(mode, isHost = false) {
+  setMultiplayerMode(mode) {
     this.setState({
       gameMode: mode,
     }, 'MULTIPLAYER_MODE_SET');
