@@ -451,16 +451,15 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- 6.0 ACTION ROUTING HOOK ---
   const gameServer = useMemo(() => {
-    return GameServerFactory.create(gameState.gameMode, { gameStateManager });
+    return GameServerFactory.create(gameState.gameMode, { gameStateManager, p2pManager });
   }, [gameState.gameMode, gameStateManager]);
 
   const {
     processActionWithGuestRouting,
     executeDeployment,
   } = useActionRouting({
-    gameState, processAction, p2pManager, gameStateManager, gameServer,
-    getLocalPlayerId, selectedDrone, roundNumber, turn,
-    setSelectedDrone, setModalContent,
+    processAction, gameServer, getLocalPlayerId,
+    selectedDrone, roundNumber, turn, setSelectedDrone, setModalContent,
   });
 
   // --- Hoisted drag state (shared between useDragMechanics, useCardSelection, useInterception) ---
