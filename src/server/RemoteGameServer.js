@@ -58,6 +58,8 @@ class RemoteGameServer extends GameServer {
     this.p2pManager.subscribe((event) => {
       if (event.type === 'state_update_received') {
         this.messageQueue.enqueue(event);
+      } else if (event.type === 'action_ack_received') {
+        this._handleActionAck(event.data);
       }
     });
   }
@@ -133,6 +135,19 @@ class RemoteGameServer extends GameServer {
   }
 
   // --- MessageQueue callbacks ---
+
+  _handleActionAck({ actionType, success, error, authoritativeState }) {
+    if (success) {
+      debugLog('TIMING', `[GUEST] Action acknowledged by host: ${actionType}`);
+      return;
+    }
+
+    // Host rejected the action — revert optimistic state
+    debugLog('TIMING', `⚠️ [GUEST] Action rejected by host: ${actionType} — ${error}`);
+    if (authoritativeState) {
+      this.gameStateManager.applyHostState(authoritativeState);
+    }
+  }
 
   _onResyncNeeded() {
     if (this.p2pManager) {

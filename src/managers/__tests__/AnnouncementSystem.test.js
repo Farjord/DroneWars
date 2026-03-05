@@ -59,10 +59,10 @@ describe('Category 1: Deduplication Edge Cases', () => {
     vi.useRealTimers();
   });
 
-  it('ANN-D1: Same phaseName queued from ActionProcessor + GuestMessageQueueService should dedup', () => {
+  it('ANN-D1: Same phaseName queued from ActionProcessor + RemoteGameServer should dedup', () => {
     // Simulates both sources queueing the same phase
     queue.queueAnimation('roundAnnouncement', 'ROUND 1', null); // From ActionProcessor
-    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null); // From GuestMessageQueueService
+    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null); // From RemoteGameServer
 
     expect(queue.getQueueLength()).toBe(1);
   });
@@ -221,7 +221,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
     await vi.advanceTimersByTimeAsync(25);
     queue.startPlayback(); // Another source at 25ms
     await vi.advanceTimersByTimeAsync(25);
-    queue.startPlayback(); // GuestMessageQueueService at 50ms
+    queue.startPlayback(); // RemoteGameServer at 50ms
 
     expect(playbackStartCount).toBe(1);
   });
@@ -235,7 +235,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
     // Immediate call
     queue.startPlayback();
 
-    // Delayed call (like GuestMessageQueueService does)
+    // Delayed call (like RemoteGameServer does)
     setTimeout(() => queue.startPlayback(), 50);
     await vi.advanceTimersByTimeAsync(50);
 
@@ -321,7 +321,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
     expect(playbackEvents).toBe(1);
   });
 
-  it('ANN-S9: startPlayback() from GameFlowManager vs GuestMessageQueueService timing', async () => {
+  it('ANN-S9: startPlayback() from GameFlowManager vs RemoteGameServer timing', async () => {
     const playedAnimations = [];
     queue.on('animationStarted', (anim) => playedAnimations.push(anim.phaseName));
 
@@ -330,7 +330,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
     // GameFlowManager calls immediately (line 599)
     queue.startPlayback();
 
-    // GuestMessageQueueService calls after 50ms delay (line 603-605)
+    // RemoteGameServer calls after 50ms delay (line 603-605)
     setTimeout(() => {
       queue.queueAnimation('action', 'ACTION PHASE', null);
       queue.startPlayback();
@@ -349,7 +349,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
 
     queue.queueAnimation('roundAnnouncement', 'ROUND 1', null);
 
-    // Simulate delayed startPlayback (as in GuestMessageQueueService)
+    // Simulate delayed startPlayback (as in RemoteGameServer)
     setTimeout(() => {
       queue.startPlayback();
     }, 50);

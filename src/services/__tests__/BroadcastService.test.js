@@ -196,6 +196,54 @@ describe('BroadcastService', () => {
     });
   });
 
+  describe('broadcast failure: preserves animations when not connected', () => {
+    it('preserves pending animations when broadcast fails due to disconnect', () => {
+      // Capture some animations
+      broadcastService.captureAnimations([{ animationName: 'ATTACK', payload: {} }], false);
+      broadcastService.captureAnimations([{ animationName: 'PHASE_CHANGE', payload: {} }], true);
+
+      // Disconnect
+      mockP2pManager.isConnected = false;
+      broadcastService.broadcastIfNeeded('test');
+
+      // Animations NOT cleared — still pending
+      expect(mockP2pManager.broadcastState).not.toHaveBeenCalled();
+
+      // Reconnect and broadcast — should include the preserved animations
+      mockP2pManager.isConnected = true;
+      broadcastService.broadcastIfNeeded('reconnect');
+
+      expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
+        expect.anything(),
+        [{ animationName: 'ATTACK', payload: {} }],
+        [{ animationName: 'PHASE_CHANGE', payload: {} }]
+      );
+    });
+  });
+
+  describe('broadcast sequence tracking', () => {
+    it('increments sequence number on each successful broadcast', () => {
+      expect(broadcastService.broadcastSequence).toBe(0);
+      broadcastService.broadcastIfNeeded('test1');
+      expect(broadcastService.broadcastSequence).toBe(1);
+      broadcastService.broadcastIfNeeded('test2');
+      expect(broadcastService.broadcastSequence).toBe(2);
+    });
+
+    it('does not increment sequence when broadcast fails', () => {
+      mockP2pManager.isConnected = false;
+      broadcastService.broadcastIfNeeded('fail');
+      expect(broadcastService.broadcastSequence).toBe(0);
+    });
+
+    it('resets sequence on reset()', () => {
+      broadcastService.broadcastIfNeeded('test');
+      expect(broadcastService.broadcastSequence).toBe(1);
+      broadcastService.reset();
+      expect(broadcastService.broadcastSequence).toBe(0);
+    });
+  });
+
   describe('setPendingStates / clearPendingStates', () => {
     it('clearPendingStates removes pending state', () => {
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });

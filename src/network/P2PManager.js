@@ -22,7 +22,8 @@ class P2PManager {
       guestAction: null,
       ping: null,
       phaseCompleted: null,
-      syncRequest: null  // For resync requests (guest → host)
+      syncRequest: null,  // For resync requests (guest → host)
+      actionAck: null     // For action acknowledgements (host → guest)
     };
 
     // Track connected peers
@@ -160,6 +161,18 @@ class P2PManager {
       if (this.isHost) {
         this.emit('sync_requested', { peerId, requestId: data.requestId });
       }
+    });
+
+    // ACTION_ACK action (host → guest) for acknowledging guest action results
+    const [sendActionAck, receiveActionAck] = this.room.makeAction('ACT_ACK');
+    this.actions.actionAck = { send: sendActionAck, receive: receiveActionAck };
+
+    receiveActionAck((data, peerId) => {
+      debugLog('MULTIPLAYER', '[P2P GUEST] Received action acknowledgement:', {
+        actionType: data.actionType,
+        success: data.success
+      });
+      this.emit('action_ack_received', data);
     });
   }
 
@@ -472,6 +485,29 @@ class P2PManager {
   }
 
   /**
+   * Send action acknowledgement to guest (host → guest)
+   * @param {Object} ackData - { actionType, success, error?, authoritativeState? }
+   */
+  sendActionAck(ackData) {
+    if (!this.isHost) {
+      debugLog('MULTIPLAYER', '⚠️ Only host can send action acks');
+      return;
+    }
+
+    if (!this._requireConnection('Cannot send action ack')) return;
+
+    try {
+      this.actions.actionAck.send(ackData, this.currentPeerId);
+      debugLog('MULTIPLAYER', '[P2P HOST] Sent action ack:', {
+        actionType: ackData.actionType,
+        success: ackData.success
+      });
+    } catch (error) {
+      debugLog('MULTIPLAYER', '❌ Failed to send action ack:', error);
+    }
+  }
+
+  /**
    * Send full sync response to guest (host only)
    * @param {Object} state - Complete game state
    * @param {number} sequenceId - Current sequence number
@@ -534,7 +570,8 @@ class P2PManager {
       guestAction: null,
       ping: null,
       phaseCompleted: null,
-      syncRequest: null
+      syncRequest: null,
+      actionAck: null
     };
 
     this.peers.clear();

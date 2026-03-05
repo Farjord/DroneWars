@@ -172,6 +172,68 @@ describe('MessageQueue', () => {
     });
   });
 
+  describe('resync timeout', () => {
+    it('clears resync flag after timeout if no response received', () => {
+      vi.useFakeTimers();
+
+      // Trigger resync by sending enough OOO messages
+      for (let i = 2; i <= 5; i++) {
+        queue.enqueue({ type: 'state_update_received', data: { sequenceId: i } });
+      }
+      expect(queue.isResyncing).toBe(true);
+      expect(onResyncNeeded).toHaveBeenCalledTimes(1);
+
+      // Advance past the 10s timeout
+      vi.advanceTimersByTime(10000);
+
+      expect(queue.isResyncing).toBe(false);
+      vi.useRealTimers();
+    });
+
+    it('does not clear resync flag if resync response arrives before timeout', () => {
+      vi.useFakeTimers();
+
+      // Trigger resync
+      for (let i = 2; i <= 5; i++) {
+        queue.enqueue({ type: 'state_update_received', data: { sequenceId: i } });
+      }
+      expect(queue.isResyncing).toBe(true);
+
+      // Resync response arrives at 5s (before 10s timeout)
+      vi.advanceTimersByTime(5000);
+      queue.enqueue({
+        type: 'state_update_received',
+        data: { isFullSync: true, state: { phase: 'battle' }, sequenceId: 10 },
+      });
+      expect(queue.isResyncing).toBe(false);
+
+      // Advance past original timeout — should not cause issues
+      vi.advanceTimersByTime(5000);
+      expect(queue.isResyncing).toBe(false);
+
+      vi.useRealTimers();
+    });
+
+    it('processes queued messages after resync timeout', () => {
+      vi.useFakeTimers();
+
+      // Trigger resync
+      for (let i = 2; i <= 5; i++) {
+        queue.enqueue({ type: 'state_update_received', data: { sequenceId: i } });
+      }
+
+      // Enqueue a new message while resyncing (with expected next seq)
+      const newMsg = { type: 'state_update_received', data: { sequenceId: 1 } };
+      queue.enqueue(newMsg);
+
+      // Timeout fires, should process the queued message
+      vi.advanceTimersByTime(10000);
+
+      expect(queue.isResyncing).toBe(false);
+      vi.useRealTimers();
+    });
+  });
+
   describe('enqueue non-sequenced messages', () => {
     it('processes messages without sequenceId directly', async () => {
       const message = { type: 'some_other_type', data: {} };

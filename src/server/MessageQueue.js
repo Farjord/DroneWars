@@ -24,6 +24,8 @@ export default class MessageQueue {
     this.pendingOutOfOrderMessages = new Map();
     this.PENDING_THRESHOLD = 3;
     this.isResyncing = false;
+    this.resyncTimeoutId = null;
+    this.RESYNC_TIMEOUT_MS = 10000;
   }
 
   /**
@@ -105,6 +107,15 @@ export default class MessageQueue {
     this.pendingOutOfOrderMessages.clear();
     this.messageQueue = [];
     this.onResyncNeeded?.();
+
+    // Safety net: clear resync flag after timeout if host never responds
+    this.resyncTimeoutId = setTimeout(() => {
+      if (this.isResyncing) {
+        debugLog('MESSAGE_QUEUE', `⚠️ Resync timeout (${this.RESYNC_TIMEOUT_MS}ms) — clearing resync flag`);
+        this.isResyncing = false;
+        this.processQueue();
+      }
+    }, this.RESYNC_TIMEOUT_MS);
   }
 
   /**
@@ -113,6 +124,13 @@ export default class MessageQueue {
    */
   handleResyncResponse(fullState) {
     debugLog('MESSAGE_QUEUE', `Resync response received: seq=${fullState.sequenceId}`);
+
+    // Clear the resync timeout since we got a response
+    if (this.resyncTimeoutId) {
+      clearTimeout(this.resyncTimeoutId);
+      this.resyncTimeoutId = null;
+    }
+
     this.onResyncResponse?.(fullState);
 
     if (fullState.sequenceId !== undefined) {

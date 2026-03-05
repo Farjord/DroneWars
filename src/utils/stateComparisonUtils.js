@@ -1,7 +1,7 @@
 /**
  * State Comparison Utilities
  * Shared functions for comparing game state arrays and drone collections
- * Used by GuestMessageQueueService for optimistic state validation
+ * Used by RemoteGameServer for optimistic state validation
  */
 
 import { debugLog } from './debugLogger.js';

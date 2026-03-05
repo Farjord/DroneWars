@@ -654,8 +654,8 @@ describe('PhaseManager', () => {
       expect(guestPhaseManager.phaseState.turnPhase).toBe('deployment');
     });
 
-    // NOTE: "queues messages when sequence number is missing" is tested in GuestMessageQueueService
-    // PhaseManager handles phase state; GuestMessageQueueService handles message ordering
+    // NOTE: "queues messages when sequence number is missing" is tested in MessageQueue
+    // PhaseManager handles phase state; MessageQueue handles message ordering
   });
 
   // ========================================
@@ -671,8 +671,8 @@ describe('PhaseManager', () => {
       guestPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: false });
     });
 
-    // NOTE: "triggers resync when too many pending messages" is tested in GuestMessageQueueService
-    // PhaseManager handles phase state; GuestMessageQueueService handles resync triggering
+    // NOTE: "triggers resync when too many pending messages" is tested in MessageQueue
+    // PhaseManager handles phase state; MessageQueue handles resync triggering
 
     it('guest state matches host after full sync response', () => {
       // DESIGN: "Verify state matches after resync"

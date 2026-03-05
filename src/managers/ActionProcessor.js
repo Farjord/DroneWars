@@ -660,10 +660,27 @@ setAnimationManager(animationManager) {
       isNetworkAction: true // Prevent re-broadcasting to guest
     }).then((result) => {
       debugLog('STATE_SYNC', '[HOST] Guest action processing complete:', action.type);
-      // Note: Broadcasting already happened inside action method via broadcastStateToGuest()
+
+      // Send success acknowledgement to guest
+      if (this.p2pManager) {
+        this.p2pManager.sendActionAck({
+          actionType: action.type,
+          success: true
+        });
+      }
       return result;
     }).catch((error) => {
       debugLog('STATE_SYNC', '[HOST] Error processing guest action:', error);
+
+      // Send failure acknowledgement with authoritative state so guest can reconcile
+      if (this.p2pManager) {
+        this.p2pManager.sendActionAck({
+          actionType: action.type,
+          success: false,
+          error: error.message,
+          authoritativeState: this.gameStateManager.getState()
+        });
+      }
     });
 
     // Return immediately - host UI remains responsive

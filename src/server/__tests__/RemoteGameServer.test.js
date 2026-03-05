@@ -472,6 +472,60 @@ describe('RemoteGameServer', () => {
     });
   });
 
+  // --- Action acknowledgement handling ---
+
+  describe('action acknowledgements', () => {
+    it('applies authoritative state on action rejection', () => {
+      server.initialize();
+      const p2pHandler = mockP2P.subscribe.mock.calls[0][0];
+
+      const authState = makeState({ turnPhase: 'deployment', roundNumber: 2 });
+      p2pHandler({
+        type: 'action_ack_received',
+        data: {
+          actionType: 'attack',
+          success: false,
+          error: 'Invalid target',
+          authoritativeState: authState,
+        },
+      });
+
+      expect(mockGSM.applyHostState).toHaveBeenCalledWith(authState);
+    });
+
+    it('does not apply state on successful acknowledgement', () => {
+      server.initialize();
+      const p2pHandler = mockP2P.subscribe.mock.calls[0][0];
+
+      p2pHandler({
+        type: 'action_ack_received',
+        data: {
+          actionType: 'attack',
+          success: true,
+        },
+      });
+
+      expect(mockGSM.applyHostState).not.toHaveBeenCalled();
+    });
+
+    it('handles rejection without authoritative state gracefully', () => {
+      server.initialize();
+      const p2pHandler = mockP2P.subscribe.mock.calls[0][0];
+
+      // Should not throw
+      p2pHandler({
+        type: 'action_ack_received',
+        data: {
+          actionType: 'deployment',
+          success: false,
+          error: 'Validation failed',
+        },
+      });
+
+      expect(mockGSM.applyHostState).not.toHaveBeenCalled();
+    });
+  });
+
   // --- Resync ---
 
   describe('resync', () => {
