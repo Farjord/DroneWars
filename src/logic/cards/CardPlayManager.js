@@ -86,10 +86,10 @@ class CardPlayManager {
    * @param {Object} placedSections - Placed ship sections
    * @param {Object} callbacks - { logCallback, resolveAttackCallback }
    * @param {string} localPlayerId - Local player ID for UI checks (default 'player1')
-   * @param {string} gameMode - 'local' or 'multiplayer' (default 'local')
+   * @param {Function|null} isPlayerAI - Function(playerId) → boolean. Default: player2 is AI.
    * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents, needsCardSelection }
    */
-  resolveCardPlay(card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1', gameMode = 'local') {
+  resolveCardPlay(card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1', isPlayerAI = null) {
     const { logCallback, resolveAttackCallback } = callbacks;
 
     // Generate outcome message for logging
@@ -172,7 +172,7 @@ class CardPlayManager {
     }
 
     // Resolve the primary effect (with PRE modifications applied)
-    const result = this.resolveCardEffect(effectToResolve, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
+    const result = this.resolveCardEffect(effectToResolve, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, isPlayerAI);
 
     // Process POST conditionals (after primary effect)
     // Skip for movement cards - POST conditionals are processed after movement selection
@@ -387,8 +387,8 @@ class CardPlayManager {
    *
    * Simple router that delegates to resolveSingleEffect.
    */
-  resolveCardEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') {
-    return this.resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
+  resolveCardEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', isPlayerAI = null) {
+    return this.resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, isPlayerAI);
   }
 
   /**
@@ -396,8 +396,8 @@ class CardPlayManager {
    *
    * Routes effect through EffectRouter with fallback for non-extracted effects.
    */
-  resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') {
-    const context = { actingPlayerId, playerStates, placedSections, target, callbacks, card, localPlayerId, isPlayerAI: (pid) => gameMode === 'local' && pid === 'player2' };
+  resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', isPlayerAI = null) {
+    const context = { actingPlayerId, playerStates, placedSections, target, callbacks, card, localPlayerId, isPlayerAI: isPlayerAI || ((pid) => pid === 'player2') };
     const modularResult = this.effectRouter.routeEffect(effect, context);
     if (modularResult !== null) {
       return modularResult;

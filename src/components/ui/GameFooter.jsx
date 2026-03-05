@@ -16,7 +16,6 @@ import styles from './GameFooter.module.css';
  * Scales up on larger screens via media queries
  */
 function GameFooter({
-  gameMode,
   localPlayerState,
   localPlayerEffectiveStats,
   sortedLocalActivePool,
@@ -61,13 +60,12 @@ function GameFooter({
   onCardPlayWarningClear
 }) {
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} data-footer>
       <div className={`${styles.contentContainer} ${footerView === 'log' ? styles.contentContainerWithBg : ''}`}>
         <div className={styles.contentWrapper}>
           {footerView === 'hand' && (
             <div className={styles.viewContent}>
               <HandView
-                gameMode={gameMode}
                 localPlayerState={localPlayerState}
                 localPlayerEffectiveStats={localPlayerEffectiveStats}
                 selectedCard={selectedCard}

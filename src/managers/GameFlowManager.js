@@ -81,7 +81,7 @@ class GameFlowManager {
     this.isMultiplayer = isMultiplayerFn;
 
     // Phase authority: local/host drive transitions; guest only processes optimistically
-    this.isPhaseAuthority = gameStateManager.get('gameMode') !== 'guest';
+    this.isPhaseAuthority = gameStateManager.getLocalPlayerId() !== 'player2';
 
     // Initialize PhaseManager for authoritative phase transitions
     this.phaseManager = new PhaseManager(gameStateManager, {

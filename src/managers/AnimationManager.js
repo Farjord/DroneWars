@@ -442,11 +442,11 @@ class AnimationManager {
   }
 
   async executeAnimations(effects, source = 'unknown', executor = null) {
-    const gameMode = this.gameStateManager?.getState()?.gameMode;
+    const localPlayerId = this.gameStateManager?.getLocalPlayerId() ?? 'player1';
 
     timingLog('[ANIM MGR] executeAnimations called', {
       source,
-      gameMode,
+      localPlayerId,
       effectCount: effects?.length || 0,
       effects: effects?.map(e => e.animationName).join(', '),
       blockingReason: 'preparing_to_execute'
@@ -454,7 +454,7 @@ class AnimationManager {
 
     debugLog('ANIMATIONS', '🎬 [EXECUTE] AnimationManager.executeAnimations() START:', {
       source,
-      gameMode,
+      localPlayerId,
       effectCount: effects?.length || 0,
       effects: effects?.map(e => e.animationName)
     });
@@ -471,7 +471,7 @@ class AnimationManager {
       return;
     }
 
-    debugLog('ANIMATIONS', `🚨 [EXECUTE] PLAYING ${effects.length} ANIMATION(S) - Source: ${source} - Mode: ${gameMode}`);
+    debugLog('ANIMATIONS', `🚨 [EXECUTE] PLAYING ${effects.length} ANIMATION(S) - Source: ${source} - Player: ${localPlayerId}`);
 
     timingLog('[ANIM MGR] Setting blocking mode', {
       blockingReason: 'preventing_other_animations'

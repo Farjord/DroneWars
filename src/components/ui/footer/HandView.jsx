@@ -28,7 +28,6 @@ const hasMomentumBonus = (card) => {
 };
 
 function HandView({
-  gameMode,
   localPlayerState,
   localPlayerEffectiveStats,
   selectedCard,
@@ -236,8 +235,9 @@ function HandView({
 
       {/* Left Chevron Arrow */}
       <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to drones view">
-        <ChevronLeft size={20} />
+        <ChevronLeft size={14} />
         <span className={styles.viewChevronLabel}>DRONES</span>
+        <ChevronLeft size={14} />
       </button>
 
       {/* Hand Section */}
@@ -317,12 +317,18 @@ function HandView({
               const showMomentumGlow = hasMomentumBonus(card) && isMomentumActive;
 
               // Build style object
+              // Dim card when it's being card-dragged (floating copy follows cursor)
+              const isCardDragging = draggedActionCard?.mode === 'card-drag' &&
+                draggedActionCard?.card?.instanceId === card.instanceId;
+
               const style = {
                 zIndex: isElevated ? CARD_FAN_CONFIG.zIndex.hovered : CARD_FAN_CONFIG.zIndex.normal(index),
                 transform: isElevated ? getHoverTransform() : `translateY(${arcOffset}px) rotate(${rotationDeg}deg)`,
                 marginLeft: `${marginLeft}px`,
                 transformOrigin: CARD_FAN_CONFIG.transformOrigin,
-                transition: getCardTransition()
+                transition: getCardTransition(),
+                ...(isDragging && { perspective: '600px', transformStyle: 'preserve-3d' }),
+                ...(isCardDragging && { opacity: 0.3 })
               };
 
               // Apply pulse effect during mandatory discard (all cards), optional discard (only selectable cards),
@@ -449,8 +455,9 @@ function HandView({
 
       {/* Right Chevron Arrow */}
       <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to drones view">
+        <ChevronRight size={14} />
         <span className={styles.viewChevronLabel}>DRONES</span>
-        <ChevronRight size={20} />
+        <ChevronRight size={14} />
       </button>
 
       {/* Deck Pile */}

@@ -27,6 +27,7 @@ describe('GameFlowManager.resubscribe', () => {
         currentPlayer: 'player1',
         passInfo: {}
       }),
+      getLocalPlayerId: vi.fn().mockReturnValue('player1'),
       subscribe: vi.fn().mockReturnValue(() => {}),
       setState: vi.fn(),
       addLogEntry: vi.fn()

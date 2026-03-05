@@ -42,8 +42,7 @@ export const determineFirstPlayer = (gameState) => {
       gameSeed,
       randomValue,
       calculation: `${randomValue} < 0.5 ? 'player1' : 'player2'`,
-      result: randomFirstPlayer,
-      gameMode: gameState.gameMode
+      result: randomFirstPlayer
     });
     return randomFirstPlayer;
   }

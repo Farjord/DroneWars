@@ -175,14 +175,14 @@ class GameStateManager {
   }
 
   applyHostState(hostState) {
-    if (this.state.gameMode !== 'guest') {
+    if (this.getLocalPlayerId() !== 'player2') {
       debugLog('STATE_SYNC', 'applyHostState should only be called in guest mode');
       return;
     }
 
     debugLog('BROADCAST_TIMING', `[GUEST APPLY] Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase}`);
 
-    // Preserve guest's local gameMode
+    // Preserve guest's local gameMode (still needed by GameServerFactory and BroadcastService)
     const localGameMode = this.state.gameMode;
     this.state = { ...hostState };
     this.state.gameMode = localGameMode;

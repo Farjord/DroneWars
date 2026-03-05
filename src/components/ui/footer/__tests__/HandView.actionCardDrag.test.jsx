@@ -67,7 +67,6 @@ describe('HandView action card drag-and-drop', () => {
   };
 
   const defaultProps = {
-    gameMode: 'pvp',
     localPlayerState: {
       energy: 5,
       hand: [mockActionCard1, mockActionCard2],

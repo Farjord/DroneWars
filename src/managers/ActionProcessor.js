@@ -662,9 +662,7 @@ setAnimationManager(animationManager) {
    * @param {Object} action - Action from guest {type, payload}
    */
   async processGuestAction(action) {
-    const gameMode = this.gameStateManager.get('gameMode');
-
-    if (gameMode !== 'host') {
+    if (this.gameServer?.getLocalPlayerId() !== 'player1') {
       debugLog('STATE_SYNC', 'processGuestAction called on non-host');
       return;
     }
@@ -861,9 +859,10 @@ setAnimationManager(animationManager) {
    * @returns {string} Animation source identifier
    */
   getAnimationSource() {
-    const gameMode = this.gameStateManager.get('gameMode');
-    return gameMode === 'guest' ? 'GUEST_OPTIMISTIC' :
-           gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
+    const localId = this.gameServer?.getLocalPlayerId() ?? 'player1';
+    const isMultiplayer = this.gameServer?.isMultiplayer() ?? false;
+    if (!isMultiplayer) return 'LOCAL';
+    return localId === 'player2' ? 'GUEST_OPTIMISTIC' : 'HOST_LOCAL';
   }
 
   /**

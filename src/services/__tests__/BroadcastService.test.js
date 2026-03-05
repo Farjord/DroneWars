@@ -5,6 +5,7 @@ describe('BroadcastService', () => {
   let broadcastService;
   let mockGameStateManager;
   let mockP2pManager;
+  let mockGameServer;
 
   beforeEach(() => {
     mockGameStateManager = {
@@ -15,15 +16,19 @@ describe('BroadcastService', () => {
       isConnected: true,
       broadcastState: vi.fn(),
     };
+    mockGameServer = {
+      getLocalPlayerId: vi.fn(() => 'player1'),
+    };
     broadcastService = new BroadcastService({
       gameStateManager: mockGameStateManager,
       p2pManager: mockP2pManager,
     });
+    broadcastService.setGameServer(mockGameServer);
   });
 
   describe('guard: no-op when not host or no p2pManager', () => {
-    it('does nothing when gameMode is not host', () => {
-      mockGameStateManager.get.mockReturnValue('single');
+    it('does nothing when not host (localPlayerId !== player1)', () => {
+      mockGameServer.getLocalPlayerId.mockReturnValue('player2');
       broadcastService.broadcastIfNeeded('test_trigger');
       expect(mockP2pManager.broadcastState).not.toHaveBeenCalled();
     });
@@ -33,24 +38,25 @@ describe('BroadcastService', () => {
         gameStateManager: mockGameStateManager,
         p2pManager: null,
       });
-      mockGameStateManager.get.mockReturnValue('host');
+      service.setGameServer(mockGameServer);
       service.broadcastIfNeeded('test_trigger');
       // No error thrown, no broadcast
     });
 
     it('does nothing when p2pManager is not connected', () => {
       mockP2pManager.isConnected = false;
-      mockGameStateManager.get.mockReturnValue('host');
+      broadcastService.broadcastIfNeeded('test_trigger');
+      expect(mockP2pManager.broadcastState).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no gameServer is set', () => {
+      broadcastService.gameServer = null;
       broadcastService.broadcastIfNeeded('test_trigger');
       expect(mockP2pManager.broadcastState).not.toHaveBeenCalled();
     });
   });
 
   describe('state priority', () => {
-    beforeEach(() => {
-      mockGameStateManager.get.mockReturnValue('host');
-    });
-
     it('broadcasts currentState when no pending states', () => {
       const currentState = { player1: { hp: 5 }, player2: { hp: 8 } };
       mockGameStateManager.getState.mockReturnValue(currentState);
@@ -87,10 +93,6 @@ describe('BroadcastService', () => {
   });
 
   describe('animation capture and clear-on-broadcast', () => {
-    beforeEach(() => {
-      mockGameStateManager.get.mockReturnValue('host');
-    });
-
     it('captures action animations', () => {
       const anims = [{ animationName: 'MOVE', payload: {} }];
       broadcastService.captureAnimations(anims, false);
@@ -143,16 +145,16 @@ describe('BroadcastService', () => {
     });
 
     it('captureAnimations is no-op when not host', () => {
-      mockGameStateManager.get.mockReturnValue('local');
+      mockGameServer.getLocalPlayerId.mockReturnValue('player2');
       broadcastService.captureAnimations([{ animationName: 'A' }], false);
       expect(broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
     });
 
     it('captureAnimationsForBroadcast is no-op when not host', () => {
-      mockGameStateManager.get.mockReturnValue('single');
+      mockGameServer.getLocalPlayerId.mockReturnValue('player2');
       broadcastService.captureAnimationsForBroadcast([{ animationName: 'MOVE' }]);
 
-      mockGameStateManager.get.mockReturnValue('host');
+      mockGameServer.getLocalPlayerId.mockReturnValue('player1');
       broadcastService.broadcastIfNeeded('test');
 
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
@@ -163,7 +165,6 @@ describe('BroadcastService', () => {
 
   describe('getAndClear methods', () => {
     it('getAndClearPendingActionAnimations returns and clears', () => {
-      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.captureAnimations([{ animationName: 'A' }], false);
       const result = broadcastService.getAndClearPendingActionAnimations();
       expect(result).toEqual([{ animationName: 'A' }]);
@@ -171,7 +172,6 @@ describe('BroadcastService', () => {
     });
 
     it('getAndClearPendingSystemAnimations returns and clears', () => {
-      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.captureAnimations([{ animationName: 'S' }], true);
       const result = broadcastService.getAndClearPendingSystemAnimations();
       expect(result).toEqual([{ animationName: 'S' }]);
@@ -181,14 +181,12 @@ describe('BroadcastService', () => {
 
   describe('reset', () => {
     it('clears all pending state', () => {
-      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });
       broadcastService.captureAnimations([{ animationName: 'X' }], false);
       broadcastService.captureAnimations([{ animationName: 'Y' }], true);
 
       broadcastService.reset();
 
-      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.broadcastIfNeeded('test');
 
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
@@ -199,7 +197,6 @@ describe('BroadcastService', () => {
 
   describe('setPendingStates / clearPendingStates', () => {
     it('clearPendingStates removes pending state', () => {
-      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });
       broadcastService.clearPendingStates();
 

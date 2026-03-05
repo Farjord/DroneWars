@@ -24,6 +24,7 @@ import ModalLayer from './components/ui/ModalLayer.jsx';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
 import FloatingDragCard from './components/ui/FloatingDragCard.jsx';
+import DroneCard from './components/ui/DroneCard.jsx';
 
 // --- 1.3 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -459,6 +460,7 @@ const App = ({ phaseAnimationQueue }) => {
     if (server) {
       gameStateManager.setGameServer(server);
       gameStateManager.actionProcessor.setGameServer(server);
+      gameStateManager.actionProcessor.broadcastService.setGameServer(server);
     }
     return server;
   }, [gameState.gameMode, gameStateManager]);
@@ -656,7 +658,7 @@ const App = ({ phaseAnimationQueue }) => {
     setDroneDragArrowState, setDraggedActionCard, setActionCardDragArrowState,
     setDeploymentConfirmation,
     arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef,
-    floatingCardRef, costReminderArrowRef,
+    floatingCardRef, floatingDroneRef, costReminderArrowRef,
     handleSetHoveredTarget, handleCardDragStart, handleCardDragEnd,
     handleActionCardDragStart, handleActionCardDragEnd,
     handleDroneDragStart, handleDroneDragEnd,
@@ -955,6 +957,11 @@ const App = ({ phaseAnimationQueue }) => {
        card={draggedActionCard?.mode === 'card-drag' ? draggedActionCard.card : null}
        floatingCardRef={floatingCardRef}
      />
+     <FloatingDragCard
+       card={draggedCard}
+       floatingCardRef={floatingDroneRef}
+       renderCard={(drone) => <DroneCard drone={drone} isSelected={true} isSelectable={true} />}
+     />
      <AnimationLayer
        explosions={explosions}
        flyingDrones={flyingDrones}
@@ -1109,7 +1116,6 @@ const App = ({ phaseAnimationQueue }) => {
 
       <div style={{ flex: '0 0 20%', maxHeight: '20%' }}>
       <GameFooter
-        gameMode={gameState.gameMode}
         localPlayerState={localPlayerState}
         localPlayerEffectiveStats={localPlayerEffectiveStats}
         sortedLocalActivePool={sortedLocalActivePool}

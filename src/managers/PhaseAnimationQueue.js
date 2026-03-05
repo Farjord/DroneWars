@@ -144,7 +144,7 @@ class PhaseAnimationQueue {
       debugLog('SUBTITLE_CALC', `🎯 Calculating subtitle for ${this.currentAnimation.phaseName}`, {
         localPlayerId,
         firstPlayerId,
-        gameMode: currentState.gameMode,
+        localPlayerId,
         currentPlayer: currentState.currentPlayer,
         match: firstPlayerId === localPlayerId,
         types: `firstPlayerId(${typeof firstPlayerId}) === localPlayerId(${typeof localPlayerId})`

@@ -7,10 +7,8 @@
 import React from 'react';
 import MorphingBackground from './MorphingBackground.jsx';
 
-const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastAction, localPlayerState, opponentPlayerState, getLocalPlayerId }) => {
+const WaitingOverlay = ({ isVisible, currentPlayer, isMultiplayer, roomCode, lastAction, localPlayerState, opponentPlayerState, getLocalPlayerId }) => {
   if (!isVisible) return null;
-
-  const isMultiplayer = gameMode !== 'local';
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">

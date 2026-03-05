@@ -11,11 +11,20 @@ class BroadcastService {
   constructor({ gameStateManager, p2pManager }) {
     this.gameStateManager = gameStateManager;
     this.p2pManager = p2pManager;
+    this.gameServer = null;
 
     this.pendingActionAnimations = [];
     this.pendingSystemAnimations = [];
     this.pendingStateUpdate = null;
     this.pendingFinalState = null;
+  }
+
+  setGameServer(server) {
+    this.gameServer = server;
+  }
+
+  _isHost() {
+    return this.gameServer?.getLocalPlayerId() === 'player1';
   }
 
   /**
@@ -24,8 +33,7 @@ class BroadcastService {
    * @param {string} trigger - Reason for broadcast (for debug logging)
    */
   broadcastIfNeeded(trigger = 'unknown') {
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode !== 'host') return;
+    if (!this._isHost()) return;
     if (!this.p2pManager?.isConnected) return;
 
     // Priority: finalState (post-teleport) > pendingState (pre-teleport/normal) > currentState
@@ -46,7 +54,7 @@ class BroadcastService {
    */
   captureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) return;
-    if (this.gameStateManager.get('gameMode') !== 'host') return;
+    if (!this._isHost()) return;
     (isSystemAnimation ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...animations);
   }
 
@@ -56,8 +64,7 @@ class BroadcastService {
    * @param {Array} animations - Animation events to capture
    */
   captureAnimationsForBroadcast(animations) {
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode !== 'host' || !animations || animations.length === 0) return;
+    if (!this._isHost() || !animations || animations.length === 0) return;
     const broadcastAnimations = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
     this.pendingActionAnimations.push(...broadcastAnimations);
   }
