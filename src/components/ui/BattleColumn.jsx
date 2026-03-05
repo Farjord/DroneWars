@@ -377,7 +377,7 @@ const BattleColumn = ({
       </div>
 
       {/* Centre gap — sized so tech-slot translateY(50%) from each lane doesn't overlap */}
-      <div style={{ height: '6%', width: '100%', position: 'relative', zIndex: 0 }}>
+      <div style={{ height: '6%', width: '100%', position: 'relative', zIndex: 2 }}>
         <LaneControlBar
           laneControlState={laneControl[laneId]}
           localPlayerId={getLocalPlayerId()}
