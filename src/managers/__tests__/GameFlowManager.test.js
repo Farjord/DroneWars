@@ -34,6 +34,7 @@ describe('GameFlowManager - Sequential Phases', () => {
     const actionProcessorSubscribers = [];
     mockActionProcessor = {
       broadcastStateToGuest: vi.fn(),
+      broadcastService: { broadcastIfNeeded: vi.fn() },
       processPhaseTransition: vi.fn(),
       processTurnTransition: vi.fn(),
       processPlayerPass: vi.fn(),
@@ -379,6 +380,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       const actionProcessorSubscribers = [];
       mockActionProcessor = {
         broadcastStateToGuest: vi.fn(),
+        broadcastService: { broadcastIfNeeded: vi.fn() },
         processPhaseTransition: vi.fn(),
         processTurnTransition: vi.fn(),
         processPlayerPass: vi.fn(),
@@ -541,6 +543,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       const actionProcessorSubscribers = [];
       mockActionProcessor = {
         broadcastStateToGuest: vi.fn(),
+        broadcastService: { broadcastIfNeeded: vi.fn() },
         processPhaseTransition: vi.fn(),
         processTurnTransition: vi.fn(),
         processPlayerPass: vi.fn(),

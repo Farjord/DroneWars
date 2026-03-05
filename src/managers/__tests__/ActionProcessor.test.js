@@ -423,20 +423,20 @@ describe('ActionProcessor — clearQueue Full Cleanup', () => {
     expect(ap.listeners).toEqual([]);
   });
 
-  it('clears pending animation arrays', () => {
-    ap.pendingActionAnimations = [{ type: 'move' }, { type: 'attack' }];
-    ap.pendingSystemAnimations = [{ type: 'system1' }];
+  it('clears pending animation arrays via broadcastService', () => {
+    ap.broadcastService.captureAnimations([{ type: 'move' }, { type: 'attack' }], false);
+    ap.broadcastService.captureAnimations([{ type: 'system1' }], true);
     ap.clearQueue();
-    expect(ap.pendingActionAnimations).toEqual([]);
-    expect(ap.pendingSystemAnimations).toEqual([]);
+    expect(ap.broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
+    expect(ap.broadcastService.getAndClearPendingSystemAnimations()).toEqual([]);
   });
 
-  it('clears pending state fields', () => {
-    ap.pendingStateUpdate = { player1: {}, player2: {} };
-    ap.pendingFinalState = { player1: {}, player2: {} };
+  it('clears pending state fields via broadcastService', () => {
+    ap.broadcastService.setPendingStates({ player1: {}, player2: {} }, { player1: {}, player2: {} });
     ap.clearQueue();
-    expect(ap.pendingStateUpdate).toBeNull();
-    expect(ap.pendingFinalState).toBeNull();
+    // After reset, broadcastIfNeeded should use currentState (no pending states)
+    expect(ap.broadcastService.pendingStateUpdate).toBeNull();
+    expect(ap.broadcastService.pendingFinalState).toBeNull();
   });
 
   it('clears action queue and locks', () => {

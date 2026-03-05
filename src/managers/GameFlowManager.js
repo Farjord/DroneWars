@@ -313,12 +313,7 @@ class GameFlowManager {
         debugLog('PHASE_TRANSITIONS', `✅ Phase transition completed, broadcasting updated state`);
 
         // Broadcast state AFTER phase transition completes
-        // This ensures guest receives correct phase and all associated state updates
-        if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
-          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase transition after both-passed`);
-          this.actionProcessor.broadcastStateToGuest('phase_transition_both_passed');
-          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after phase transition`);
-        }
+        this.actionProcessor.broadcastService.broadcastIfNeeded('phase_transition_both_passed');
         return;
       } else {
         // Single player passed - start PhaseAnimationQueue playback for pass notification
@@ -379,22 +374,13 @@ class GameFlowManager {
 
       debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Turn transition completed`);
 
-      // Broadcast state to guest AFTER turn transition completes (host only)
-      // This ensures guest receives complete state including new currentPlayer
-      if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
-        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Turn transition → ${nextPlayer}`);
-        this.actionProcessor.broadcastStateToGuest('turn_transition');
-        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after turn transition`);
-      }
+      // Broadcast state to guest AFTER turn transition completes
+      this.actionProcessor.broadcastService.broadcastIfNeeded('turn_transition');
     } else {
       debugLog('PHASE_TRANSITIONS', `⏭️ GameFlowManager: Action has goAgain, keeping same player`);
 
       // Broadcast even for goAgain actions (action completed, just same player's turn)
-      if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
-        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] GoAgain action → same player`);
-        this.actionProcessor.broadcastStateToGuest('go_again_action');
-        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after goAgain action`);
-      }
+      this.actionProcessor.broadcastService.broadcastIfNeeded('go_again_action');
     }
   }
 
@@ -588,10 +574,8 @@ class GameFlowManager {
     // CRITICAL BROADCAST: For placement phase, broadcast immediately after commitment application
     // This allows guest to receive "both complete" signal and start optimistic cascade
     // BEFORE host enters blocking automatic phase processing
-    if (phase === 'placement' && gameMode === 'host' && this.actionProcessor.p2pManager) {
-      debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Placement commitments applied - immediate broadcast to guest`);
-      this.actionProcessor.broadcastStateToGuest();
-      debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted placement completion state before automatic cascade`);
+    if (phase === 'placement') {
+      this.actionProcessor.broadcastService.broadcastIfNeeded('placement_commitments_applied');
     }
 
     // Queue ROUND announcement if transitioning from placement to first round phase (Round 1)
@@ -621,13 +605,8 @@ class GameFlowManager {
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Handover to sequential phase '${nextPhase}'`);
         this.initiateSequentialPhase(nextPhase);
 
-        // Broadcast state to guest AFTER phase transition completes (host only)
-        // This ensures guest receives the updated turnPhase immediately
-        if (gameMode === 'host' && this.actionProcessor.p2pManager) {
-          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase: simultaneous→sequential → ${nextPhase}`);
-          this.actionProcessor.broadcastStateToGuest();
-          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after simultaneous→sequential transition to ${nextPhase}`);
-        }
+        // Broadcast state to guest AFTER phase transition completes
+        this.actionProcessor.broadcastService.broadcastIfNeeded('simultaneous_to_sequential');
 
         // Start animation playback for host after transitioning to sequential phase
         // This ensures queued phase announcements (like DEPLOYMENT) play for the host
@@ -640,13 +619,8 @@ class GameFlowManager {
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Continuing with simultaneous phase '${nextPhase}'`);
         await this.transitionToPhase(nextPhase);
 
-        // Broadcast state to guest AFTER phase transition completes (host only)
-        // This ensures guest receives the updated turnPhase immediately
-        if (gameMode === 'host' && this.actionProcessor.p2pManager) {
-          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase: simultaneous→simultaneous → ${nextPhase}`);
-          this.actionProcessor.broadcastStateToGuest();
-          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after phase transition to ${nextPhase}`);
-        }
+        // Broadcast state to guest AFTER phase transition completes
+        this.actionProcessor.broadcastService.broadcastIfNeeded('simultaneous_to_simultaneous');
 
         // Start animation playback after transitioning to another simultaneous phase
         // This ensures queued phase announcements play before players can interact
@@ -1010,11 +984,8 @@ class GameFlowManager {
         automaticProcessed: true
       });
 
-      // Broadcast state to guest ONCE after all updates complete (host only)
-      if (gameMode === 'host' && this.actionProcessor.p2pManager) {
-        debugLog('PHASE_TRANSITIONS', `📡 Broadcasting state after roundInitialization`);
-        this.actionProcessor.broadcastStateToGuest();
-      }
+      // Broadcast state to guest ONCE after all updates complete
+      this.actionProcessor.broadcastService.broadcastIfNeeded('round_initialization');
 
       // Return next phase
       const nextPhase = this.getNextPhase('roundInitialization');

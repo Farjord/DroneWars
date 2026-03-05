@@ -64,6 +64,7 @@ import {
   processDebugAddCardsToHand as _processDebugAddCardsToHand,
   processForceWin as _processForceWin
 } from '../logic/actions/MiscActionStrategy.js';
+import BroadcastService from '../services/BroadcastService.js';
 
 // --- Strategy Registry ---
 // Maps action type strings to instance method names.
@@ -147,10 +148,10 @@ class ActionProcessor {
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
     this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
-    this.pendingActionAnimations = []; // Track action animations for guest broadcasting
-    this.pendingSystemAnimations = []; // Track system animations for guest broadcasting
-    this.pendingStateUpdate = null; // Track state update for AnimationManager callback
-    this.pendingFinalState = null; // Track final state for TELEPORT_IN reveal
+
+    // BroadcastService owns all broadcast state (animations, pending states, host guard)
+    // p2pManager is set later via setP2PManager(), so broadcastService starts with null
+    this.broadcastService = new BroadcastService({ gameStateManager, p2pManager: null });
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -254,11 +255,7 @@ class ActionProcessor {
           };
         }),
       captureAnimationsForBroadcast: (animations) => {
-        const gameMode = ap.gameStateManager.get('gameMode');
-        if (gameMode === 'host' && animations.length > 0) {
-          const broadcastAnimations = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
-          ap.pendingActionAnimations.push(...broadcastAnimations);
-        }
+        ap.broadcastService.captureAnimationsForBroadcast(animations);
       },
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
@@ -323,6 +320,7 @@ class ActionProcessor {
    */
   setP2PManager(p2pManager) {
     this.p2pManager = p2pManager;
+    this.broadcastService.p2pManager = p2pManager;
   }
 
   /**
@@ -705,7 +703,7 @@ setAnimationManager(animationManager) {
 
     // Capture for guest broadcasting (host only)
     if (gameMode === 'host') {
-      (isSystemAnimation ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...animations);
+      this.broadcastService.captureAnimations(animations, isSystemAnimation);
     }
 
     if (this.animationManager) {
@@ -719,15 +717,11 @@ setAnimationManager(animationManager) {
   }
 
   getAndClearPendingActionAnimations() {
-    const animations = [...this.pendingActionAnimations];
-    this.pendingActionAnimations = [];
-    return animations;
+    return this.broadcastService.getAndClearPendingActionAnimations();
   }
 
   getAndClearPendingSystemAnimations() {
-    const animations = [...this.pendingSystemAnimations];
-    this.pendingSystemAnimations = [];
-    return animations;
+    return this.broadcastService.getAndClearPendingSystemAnimations();
   }
 
   /**
@@ -789,17 +783,18 @@ setAnimationManager(animationManager) {
       newPlayerStates
     );
 
+    this.broadcastService.setPendingStates(pendingStateUpdate, pendingFinalState);
+
+    // Also keep local references for AnimationManager's applyPendingState callback
     this.pendingStateUpdate = pendingStateUpdate;
     this.pendingFinalState = pendingFinalState;
 
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'host') {
-      this.broadcastStateToGuest();
-    }
+    this.broadcastService.broadcastIfNeeded('animation_phase');
 
     try {
       await this.animationManager.executeWithStateUpdate(animations, this);
     } finally {
+      this.broadcastService.clearPendingStates();
       this.pendingStateUpdate = null;
       this.pendingFinalState = null;
     }
@@ -892,24 +887,13 @@ setAnimationManager(animationManager) {
    * Called after every action that changes game state
    * @param {string} trigger - Reason for broadcast (e.g., 'after_action', 'phase_transition')
    */
+  /**
+   * Broadcast current game state to guest (host only).
+   * Thin delegation to BroadcastService — kept for backward compat during migration.
+   * @param {string} trigger - Reason for broadcast
+   */
   broadcastStateToGuest(trigger = 'unknown') {
-    const gameMode = this.gameStateManager.get('gameMode');
-
-    if (gameMode !== 'host') {
-      return; // Only host broadcasts state
-    }
-
-    if (this.p2pManager && this.p2pManager.isConnected) {
-      // Priority: finalState (post-teleport) > pendingState (pre-teleport/normal) > currentState
-      const stateToBroadcast = this.pendingFinalState || this.pendingStateUpdate || this.gameStateManager.getState();
-      const actionAnimations = this.getAndClearPendingActionAnimations();
-      const systemAnimations = this.getAndClearPendingSystemAnimations();
-
-      const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
-      debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Anims: ${actionAnimations.length + systemAnimations.length}`);
-
-      this.p2pManager.broadcastState(stateToBroadcast, actionAnimations, systemAnimations);
-    }
+    this.broadcastService.broadcastIfNeeded(trigger);
   }
 
   // --- Delegation methods (public API for external callers and ActionContext) ---
@@ -951,13 +935,8 @@ setAnimationManager(animationManager) {
     // Clear event listeners to prevent stale subscriptions
     this.listeners = [];
 
-    // Clear pending animation queues
-    this.pendingActionAnimations = [];
-    this.pendingSystemAnimations = [];
-
-    // Clear pending state updates
-    this.pendingStateUpdate = null;
-    this.pendingFinalState = null;
+    // Clear broadcast state (animations and pending states)
+    this.broadcastService.reset();
   }
 
   /**
