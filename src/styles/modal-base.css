@@ -401,6 +401,76 @@
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
+/* HUD Button - Angled sci-fi style with skewed shape */
+.dw-btn-hud {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: #fff;
+  z-index: 1;
+  padding: 10px 32px;
+}
+
+.dw-btn-hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255, 80, 80, 0.85);
+  background: linear-gradient(90deg, #d32f2f 0%, #3a0a0a 50%, #d32f2f 100%);
+  background-size: 200% 100%;
+  background-position: 0% 0%;
+  box-shadow: 0 0 10px 1px rgba(255, 42, 42, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: skewX(-16deg);
+  z-index: -1;
+  transition: all 0.35s ease;
+}
+
+.dw-btn-hud:hover:not(:disabled)::before {
+  background-position: 100% 0%;
+  border-color: rgba(255, 80, 80, 0.9);
+  box-shadow: 0 0 14px 2px rgba(255, 42, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dw-btn-hud.dw-btn--sm {
+  padding: 6px 20px;
+}
+
+/* HUD Button - Cyan variant (confirm actions) */
+.dw-btn-hud-cyan::before {
+  border-color: rgba(6, 182, 212, 0.85);
+  background: linear-gradient(90deg, #0891b2 0%, #064e5a 50%, #0891b2 100%);
+  background-size: 200% 100%;
+  background-position: 0% 0%;
+  box-shadow: 0 0 10px 1px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dw-btn-hud-cyan:hover:not(:disabled)::before {
+  background-position: 100% 0%;
+  border-color: rgba(6, 212, 240, 0.9);
+  box-shadow: 0 0 14px 2px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* HUD Button - Yellow variant (warning actions) */
+.dw-btn-hud-yellow::before {
+  border-color: rgba(234, 179, 8, 0.85);
+  background: linear-gradient(90deg, #ca8a04 0%, #3d2a01 50%, #ca8a04 100%);
+  background-size: 200% 100%;
+  background-position: 0% 0%;
+  box-shadow: 0 0 10px 1px rgba(234, 179, 8, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dw-btn-hud-yellow:hover:not(:disabled)::before {
+  background-position: 100% 0%;
+  border-color: rgba(250, 204, 21, 0.9);
+  box-shadow: 0 0 14px 2px rgba(234, 179, 8, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Spacing between adjacent HUD buttons */
+.dw-btn-hud + .dw-btn-hud {
+  margin-left: 10px;
+}
+
 /* Success Button - Green gradient */
 .dw-btn-success {
   background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);

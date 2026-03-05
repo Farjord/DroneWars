@@ -42,16 +42,40 @@
 /* ===== VIEW CHEVRON STYLES ===== */
 
 .viewChevron {
-  @apply flex flex-col items-center justify-center text-cyan-400 transition-all duration-200;
-  background: rgba(6, 182, 212, 0.08);
-  border: 1px solid rgba(6, 182, 212, 0.2);
-  border-radius: 4px;
-  width: 32px;
-  height: 60%;
-  align-self: start;
+  @apply flex flex-col items-center justify-center;
+  position: relative;
+  background: transparent;
+  border: none;
+  color: #fff;
+  z-index: 1;
+  width: 28px;
+  height: 75cqh;
+  align-self: center;
+  transform: translateY(-27%);
   cursor: pointer;
   padding: 4px 0;
   gap: 2px;
+}
+
+.viewChevron::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  border: 1.5px solid rgba(6, 182, 212, 0.85);
+  background: linear-gradient(180deg, #0891b2 0%, #064e5a 50%, #0891b2 100%);
+  background-size: 100% 200%;
+  background-position: 0% 100%;
+  box-shadow: 0 0 10px 1px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform: skewY(8deg);
+  z-index: -1;
+  transition: all 0.35s ease;
+}
+
+.viewChevron:hover::before {
+  background-position: 0% 0%;
+  border-color: rgba(6, 212, 240, 0.9);
+  box-shadow: 0 0 14px 2px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .viewChevronLabel {
@@ -61,14 +85,8 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(6, 182, 212, 0.8);
+  color: #fff;
   line-height: 1;
-}
-
-.viewChevron:hover {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: rgba(6, 182, 212, 0.5);
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
 }
 
 /* ===== MULTI-SELECT UI ===== */

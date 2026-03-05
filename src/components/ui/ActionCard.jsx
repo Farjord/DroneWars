@@ -10,6 +10,7 @@ import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { getCardBorderClasses, getTypeInnerColors } from '../../logic/cards/cardBorderUtils.js';
+import useCardTilt from '../../hooks/useCardTilt.js';
 
 // Helper function to get type-based colors with rarity-based border
 const getTypeColors = (type, rarity, isDisabled) => {
@@ -73,6 +74,9 @@ const ActionCard = ({
     WebkitFontSmoothing: 'antialiased'
   } : {};
 
+  // 3D tilt parallax during drag + hover
+  const tiltRef = useCardTilt(isDragging);
+
   // Debug logging for ALL renders to diagnose re-rendering issue
   debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
     cardName: card.name,
@@ -82,8 +86,12 @@ const ActionCard = ({
     timestamp: Date.now()
   });
 
+  const glowClass = isDisabled ? '' : `card-glow-${type?.toLowerCase() || 'upgrade'}`;
+
   return (
+    <div className={glowClass}>
     <div
+      ref={tiltRef}
       onClick={(e) => {
         e.stopPropagation();
 
@@ -112,7 +120,7 @@ const ActionCard = ({
         }
       }}
       className={`
-        rounded-lg p-[4px] relative group
+        rounded-lg p-[2px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${colors.border}
@@ -217,6 +225,19 @@ const ActionCard = ({
           </div>
         </div>
       </div>
+      {/* Tilt sheen highlight */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-50%',
+          background: 'linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+          transform: 'translateX(var(--sheen, -100%))',
+          transition: 'transform 0.3s ease',
+          pointerEvents: 'none',
+          zIndex: 20,
+        }}
+      />
+    </div>
     </div>
   );
 };

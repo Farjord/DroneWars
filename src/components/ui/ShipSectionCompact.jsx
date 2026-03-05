@@ -134,6 +134,10 @@ const ShipSectionCompact = ({
             letterSpacing: '0.14em',
             textShadow: `0 0 0.8vw ${fc.primary}aa, 0 0 1.5vw ${fc.primary}44, 0 1px 3px rgba(0,0,0,0.9)`,
             textAlign: 'center',
+            background: 'rgba(0,0,0,0.65)',
+            borderRadius: '4px',
+            padding: '2px 8px',
+            border: '1px solid rgba(255,255,255,0.15)',
           }}>
             {stats.type}
           </span>
@@ -178,7 +182,7 @@ const ShipSectionCompact = ({
                 }}
               />
               <span className="text-purple-400 font-bold tracking-wider font-exo uppercase"
-                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap' }}
+                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap', background: 'rgba(0,0,0,0.65)', borderRadius: '4px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)' }}
               >
                 {stats.ability.name}
               </span>
@@ -191,18 +195,24 @@ const ShipSectionCompact = ({
               <div className={`w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-2 flex-shrink-0 ${
                 stats.ability.activationLimit != null && (stats.abilityActivationCount || 0) >= stats.ability.activationLimit
                   ? 'border-gray-600 opacity-60'
-                  : 'border-red-500'
-              }`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={
+                  : ''
+              }`}
+                style={stats.ability.activationLimit == null || (stats.abilityActivationCount || 0) < stats.ability.activationLimit
+                  ? { borderColor: '#FF2A2A' } : undefined}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={stats.ability.activationLimit == null || (stats.abilityActivationCount || 0) < stats.ability.activationLimit
+                    ? { color: '#FF2A2A' } : undefined}
+                  className={
                   stats.ability.activationLimit != null && (stats.abilityActivationCount || 0) >= stats.ability.activationLimit
                     ? 'text-gray-500'
-                    : 'text-red-500'
+                    : ''
                 }>
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                 </svg>
               </div>
               <span className="text-purple-400 font-bold tracking-wider font-exo uppercase"
-                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap' }}
+                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap', background: 'rgba(0,0,0,0.65)', borderRadius: '4px', padding: '1px 4px', border: '1px solid rgba(255,255,255,0.15)' }}
               >
                 {stats.ability.name}
               </span>

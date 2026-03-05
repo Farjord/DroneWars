@@ -214,14 +214,14 @@ describe('GameHeader - Interception Mode', () => {
 
       const showDialogButton = screen.getByText('Show Dialog').closest('button')
       // Check for confirm button class (styled via CSS)
-      expect(showDialogButton.className).toContain('dw-btn-confirm')
+      expect(showDialogButton.className).toContain('dw-btn-hud-cyan')
     })
 
     it('Reset button should have warning styling', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
       const resetButton = screen.getByText('Reset').closest('button')
-      expect(resetButton.className).toContain('dw-btn-warning')
+      expect(resetButton.className).toContain('dw-btn-hud-yellow')
     })
   })
 })

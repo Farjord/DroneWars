@@ -391,9 +391,9 @@
    TYPE determines COLOR, RARITY determines EFFECTS
 
    How it works:
-   - Outer div has 4px padding and animated background
+   - Outer div has 2px padding and animated background
    - Inner content div covers the background
-   - Only the 4px border zone shows the animated background
+   - Only the 2px border zone shows the animated background
    - NO pseudo-elements needed!
    ======================================== */
 
@@ -409,11 +409,9 @@
 @keyframes cardBorderGlowPulse {
   0%, 100% {
     filter: brightness(1);
-    box-shadow: 0 0 8px currentColor;
   }
   50% {
     filter: brightness(1.15);
-    box-shadow: 0 0 16px currentColor;
   }
 }
 
@@ -481,7 +479,6 @@
     var(--card-ordnance-primary) 100%
   );
   background-size: 400% 100%;
-  box-shadow: 0 0 10px var(--card-ordnance-glow-dim);
   animation: cardBorderRotate 15s linear infinite;
 }
 
@@ -497,7 +494,6 @@
     var(--card-tactic-primary) 100%
   );
   background-size: 400% 100%;
-  box-shadow: 0 0 10px var(--card-tactic-glow-dim);
   animation: cardBorderRotate 15s linear infinite;
 }
 
@@ -513,7 +509,6 @@
     var(--card-support-primary) 100%
   );
   background-size: 400% 100%;
-  box-shadow: 0 0 10px var(--card-support-glow-dim);
   animation: cardBorderRotate 15s linear infinite;
 }
 
@@ -529,7 +524,6 @@
     var(--card-upgrade-primary) 100%
   );
   background-size: 400% 100%;
-  box-shadow: 0 0 10px var(--card-upgrade-glow-dim);
   animation: cardBorderRotate 15s linear infinite;
 }
 
@@ -545,7 +539,6 @@
     var(--card-ordnance-primary) 100%
   );
   color: var(--card-ordnance-glow);
-  box-shadow: 0 0 10px var(--card-ordnance-glow);
   animation: cardBorderGlowPulse 4s ease-in-out infinite;
 }
 
@@ -559,7 +552,6 @@
     var(--card-tactic-primary) 100%
   );
   color: var(--card-tactic-glow);
-  box-shadow: 0 0 10px var(--card-tactic-glow);
   animation: cardBorderGlowPulse 4s ease-in-out infinite;
 }
 
@@ -573,7 +565,6 @@
     var(--card-support-primary) 100%
   );
   color: var(--card-support-glow);
-  box-shadow: 0 0 10px var(--card-support-glow);
   animation: cardBorderGlowPulse 4s ease-in-out infinite;
 }
 
@@ -587,7 +578,6 @@
     var(--card-upgrade-primary) 100%
   );
   color: var(--card-upgrade-glow);
-  box-shadow: 0 0 10px var(--card-upgrade-glow);
   animation: cardBorderGlowPulse 4s ease-in-out infinite;
 }
 
@@ -603,10 +593,6 @@
     var(--card-ordnance-primary) 100%
   );
   background-size: 300% 100%;
-  box-shadow:
-    0 0 16px var(--card-ordnance-glow),
-    0 0 32px var(--card-ordnance-glow),
-    0 0 48px var(--card-ordnance-glow-dim);
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
@@ -620,10 +606,6 @@
     var(--card-tactic-primary) 100%
   );
   background-size: 300% 100%;
-  box-shadow:
-    0 0 16px var(--card-tactic-glow),
-    0 0 32px var(--card-tactic-glow),
-    0 0 48px var(--card-tactic-glow-dim);
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
@@ -637,10 +619,6 @@
     var(--card-support-primary) 100%
   );
   background-size: 300% 100%;
-  box-shadow:
-    0 0 16px var(--card-support-glow),
-    0 0 32px var(--card-support-glow),
-    0 0 48px var(--card-support-glow-dim);
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
@@ -654,14 +632,38 @@
     var(--card-upgrade-primary) 100%
   );
   background-size: 300% 100%;
-  box-shadow:
-    0 0 16px var(--card-upgrade-glow),
-    0 0 32px var(--card-upgrade-glow),
-    0 0 48px var(--card-upgrade-glow-dim);
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
+/* === HOVER GLOW (uses filter: drop-shadow to work with clipPath) === */
 
+.card-border-ordnance-common:hover,
+.card-border-ordnance-uncommon:hover,
+.card-border-ordnance-rare:hover,
+.card-border-ordnance-mythic:hover {
+  filter: drop-shadow(0 0 6px var(--card-ordnance-glow-dim));
+}
+
+.card-border-tactic-common:hover,
+.card-border-tactic-uncommon:hover,
+.card-border-tactic-rare:hover,
+.card-border-tactic-mythic:hover {
+  filter: drop-shadow(0 0 6px var(--card-tactic-glow-dim));
+}
+
+.card-border-support-common:hover,
+.card-border-support-uncommon:hover,
+.card-border-support-rare:hover,
+.card-border-support-mythic:hover {
+  filter: drop-shadow(0 0 6px var(--card-support-glow-dim));
+}
+
+.card-border-upgrade-common:hover,
+.card-border-upgrade-uncommon:hover,
+.card-border-upgrade-rare:hover,
+.card-border-upgrade-mythic:hover {
+  filter: drop-shadow(0 0 6px var(--card-upgrade-glow-dim));
+}
 
 /* === DISABLED STATE === */
 .card-border-disabled {
@@ -673,6 +675,7 @@
   );
   box-shadow: none;
   animation: none;
+  filter: none !important;
 }
 
 /* ========================================

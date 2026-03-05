@@ -37,7 +37,7 @@ function ActionPhaseButtons({
         <button
           onClick={handlePlayerPass}
           disabled={!isMyTurn() || passInfo[`${getLocalPlayerId()}Passed`]}
-          className="dw-btn dw-btn-danger dw-btn--sm"
+          className="dw-btn dw-btn-hud dw-btn--sm"
         >
           Pass
         </button>
@@ -48,21 +48,21 @@ function ActionPhaseButtons({
         <>
           <button
             onClick={handleCancelReallocation}
-            className="dw-btn dw-btn-danger dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn--sm"
           >
             Cancel
           </button>
 
           <button
             onClick={handleResetReallocation}
-            className="dw-btn dw-btn-warning dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-yellow dw-btn--sm"
           >
             Reset
           </button>
 
           <button
             onClick={handleContinueToAddPhase}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
           >
             Continue
           </button>
@@ -74,21 +74,21 @@ function ActionPhaseButtons({
         <>
           <button
             onClick={handleCancelReallocation}
-            className="dw-btn dw-btn-danger dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn--sm"
           >
             Cancel
           </button>
 
           <button
             onClick={handleResetReallocation}
-            className="dw-btn dw-btn-warning dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-yellow dw-btn--sm"
           >
             Reset
           </button>
 
           <button
             onClick={handleConfirmReallocation}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
           >
             Confirm
           </button>
@@ -100,7 +100,7 @@ function ActionPhaseButtons({
         <>
           <button
             onClick={handleCancelEffectChain}
-            className="dw-btn dw-btn-danger dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn--sm"
           >
             Cancel
           </button>
@@ -112,7 +112,7 @@ function ActionPhaseButtons({
                 handleConfirmChainMultiSelect();
               }}
               disabled={!effectChainState.pendingMultiTargets?.length}
-              className="dw-btn dw-btn-confirm dw-btn--sm"
+              className="dw-btn dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
             >
               Confirm Drones
             </button>
@@ -125,21 +125,21 @@ function ActionPhaseButtons({
         <>
           <button
             onClick={handleShowInterceptionDialog}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
           >
             Show Dialog
           </button>
 
           <button
             onClick={handleResetInterception}
-            className="dw-btn dw-btn-warning dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-yellow dw-btn--sm"
           >
             Reset
           </button>
 
           <button
             onClick={handleConfirmInterception}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
+            className="dw-btn dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
           >
             Confirm
           </button>
