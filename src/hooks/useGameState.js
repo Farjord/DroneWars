@@ -6,12 +6,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import gameStateManager from '../managers/GameStateManager.js';
+import clientStateStore from '../client/clientStateStore.singleton.js';
 import p2pManager from '../network/P2PManager.js';
 import { isSimultaneousPhase, isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 export const useGameState = () => {
-  const [gameState, setGameState] = useState(gameStateManager.getState());
+  const [gameState, setGameState] = useState(clientStateStore.getState());
   const [p2pStatus, setP2pStatus] = useState(p2pManager.getStatus());
 
   // Set up P2P integration on first render
@@ -19,9 +20,9 @@ export const useGameState = () => {
     gameStateManager.setupP2PIntegration(p2pManager);
   }, []);
 
-  // Subscribe to game state changes
+  // Subscribe to game state changes via ClientStateStore
   useEffect(() => {
-    const unsubscribe = gameStateManager.subscribe((event) => {
+    const unsubscribe = clientStateStore.subscribe((event) => {
       // DEBUG: Log when hook receives events
       if (event.type === 'PLAYER_STATES_SET') {
         debugLog('RESOURCE_RESET', `👂 [USEGAMESTATE] Received PLAYER_STATES_SET event, calling setGameState`, {
@@ -30,7 +31,7 @@ export const useGameState = () => {
         });
       }
 
-      setGameState(gameStateManager.getState());
+      setGameState(clientStateStore.getState());
     });
 
     return unsubscribe;

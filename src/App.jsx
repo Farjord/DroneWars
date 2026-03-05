@@ -41,6 +41,7 @@ import useGameLifecycle from './hooks/useGameLifecycle.js';
 import useResolvers from './hooks/useResolvers.js';
 import useActionRouting from './hooks/useActionRouting.js';
 import GameServerFactory from './server/GameServerFactory.js';
+import clientStateStore from './client/clientStateStore.singleton.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import { gameEngine } from './logic/gameLogic.js';
@@ -457,6 +458,7 @@ const App = ({ phaseAnimationQueue }) => {
       gameStateManager,
       actionProcessor: gameStateManager.actionProcessor,
       gameFlowManager: gameStateManager.gameFlowManager,
+      clientStateStore,
       p2pManager,
       phaseAnimationQueue,
     });

@@ -50,6 +50,22 @@ describe('LocalGameServer', () => {
       expect(mockGSM.processAction).not.toHaveBeenCalled();
       expect(result).toEqual({ success: true, shouldEndTurn: false });
     });
+
+    it('pushes engine state to clientStateStore when available', async () => {
+      const newState = { ...mockState, turnPhase: 'deployment' };
+      const mockEngine = {
+        processAction: vi.fn().mockResolvedValue({
+          state: newState,
+          result: { success: true },
+        }),
+      };
+      const mockStore = { applyUpdate: vi.fn() };
+      const engineServer = new LocalGameServer(mockGSM, { gameEngine: mockEngine, clientStateStore: mockStore });
+
+      await engineServer.submitAction('deployment', { lane: 'mid' });
+
+      expect(mockStore.applyUpdate).toHaveBeenCalledWith(newState);
+    });
   });
 
   describe('getState', () => {

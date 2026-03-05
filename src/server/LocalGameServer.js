@@ -5,16 +5,21 @@ import GameServer from './GameServer.js';
 import StateRedactor from './StateRedactor.js';
 
 class LocalGameServer extends GameServer {
-  constructor(gameStateManager, { isMultiplayer = false, gameEngine = null } = {}) {
+  constructor(gameStateManager, { isMultiplayer = false, gameEngine = null, clientStateStore = null } = {}) {
     super();
     this.gameStateManager = gameStateManager;
     this.gameEngine = gameEngine;
+    this.clientStateStore = clientStateStore;
     this._isMultiplayer = isMultiplayer;
   }
 
   async submitAction(type, payload) {
     if (this.gameEngine) {
       const response = await this.gameEngine.processAction(type, payload);
+      // Push authoritative state to client store if available
+      if (this.clientStateStore) {
+        this.clientStateStore.applyUpdate(response.state);
+      }
       return response.result;
     }
     return this.gameStateManager.processAction(type, payload);

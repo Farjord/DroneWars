@@ -5,10 +5,10 @@ import RemoteGameServer from './RemoteGameServer.js';
 import GameEngine from './GameEngine.js';
 
 const GameServerFactory = {
-  create(gameMode, { gameStateManager, actionProcessor, gameFlowManager, p2pManager, phaseAnimationQueue }) {
+  create(gameMode, { gameStateManager, actionProcessor, gameFlowManager, clientStateStore, p2pManager, phaseAnimationQueue }) {
     if (gameMode === 'local' || gameMode === 'host') {
       const gameEngine = new GameEngine(gameStateManager, actionProcessor, gameFlowManager);
-      return new LocalGameServer(gameStateManager, { isMultiplayer: gameMode === 'host', gameEngine });
+      return new LocalGameServer(gameStateManager, { isMultiplayer: gameMode === 'host', gameEngine, clientStateStore });
     }
     if (gameMode === 'guest') {
       return new RemoteGameServer(gameStateManager, p2pManager, { phaseAnimationQueue });
