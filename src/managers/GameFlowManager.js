@@ -80,13 +80,15 @@ class GameFlowManager {
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
 
-    // Store Guest mode flag for optimistic execution logic
-    this.isGuestMode = () => gameStateManager.get('gameMode') === 'guest';
+    // Phase authority: local/host drive transitions; guest only processes optimistically
+    this.isPhaseAuthority = gameStateManager.get('gameMode') !== 'guest';
 
     // Initialize PhaseManager for authoritative phase transitions
-    const gameMode = gameStateManager.get('gameMode') || 'local';
-    this.phaseManager = new PhaseManager(gameStateManager, gameMode);
-    debugLog('PHASE_TRANSITIONS', `✅ PhaseManager initialized in GameFlowManager (mode: ${gameMode})`);
+    this.phaseManager = new PhaseManager(gameStateManager, {
+      isAuthority: this.isPhaseAuthority,
+      isMultiplayer: this.isMultiplayer ? this.isMultiplayer() : false
+    });
+    debugLog('PHASE_TRANSITIONS', `✅ PhaseManager initialized in GameFlowManager (authority: ${this.isPhaseAuthority})`);
 
     // Inject PhaseManager into ActionProcessor
     if (actionProcessor && this.phaseManager) {
@@ -145,17 +147,16 @@ class GameFlowManager {
       this.gameStateManager.subscribe((event) => {
         const { state, type: eventType } = event;
 
-        // Guest mode: Only trigger checkpoint detection when receiving Host broadcast
-        // Guest waits for Host's authoritative state (including roundNumber) before starting cascade
+        // Non-authority (guest) waits for Host's authoritative state before starting cascade
         // GuestMessageQueueService explicitly calls checkSimultaneousPhaseCompletion after applying Host state
-        if (state.gameMode !== 'guest') {
+        if (this.isPhaseAuthority) {
           this.checkSimultaneousPhaseCompletion(state, eventType);
         }
 
-        // Guest-specific: Monitor state changes for opponent pass detection
+        // Non-authority: Monitor state changes for opponent pass detection
         // When host passes, guest receives state update (not action execution)
         // so we need to detect pass from passInfo changes
-        if (state.gameMode === 'guest' && state.passInfo) {
+        if (!this.isPhaseAuthority && state.passInfo) {
           const localPlayerId = this.gameStateManager.getLocalPlayerId();
           const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
           const opponentPassKey = `${opponentId}Passed`;
@@ -216,7 +217,7 @@ class GameFlowManager {
         if (event.type === 'action_completed') {
           debugLog('PASS_LOGIC', `📥 [GAME FLOW] Received action_completed event (resubscribed)`, {
             actionType: event.actionType,
-            gameMode: this.gameStateManager?.getState()?.gameMode
+            mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'
           });
           if (event.actionType === 'snaredConsumption' || event.actionType === 'suppressedConsumption') {
             debugLog('CONSUMPTION_DEBUG', '🟢 [4] GameFlowManager: Received action_completed', { actionType: event.actionType, shouldEndTurn: event.result?.shouldEndTurn });
@@ -240,26 +241,27 @@ class GameFlowManager {
 
     // Log entry for debugging
     const currentState = this.gameStateManager.getState();
-    debugLog('PASS_LOGIC', `🎯 [${currentState.gameMode.toUpperCase()}] handleActionCompletion called`, {
+    const modeLabel = this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC';
+    debugLog('PASS_LOGIC', `🎯 [${modeLabel}] handleActionCompletion called`, {
       actionType,
-      gameMode: currentState.gameMode,
+      mode: modeLabel,
       turnPhase: currentState.turnPhase
     });
 
     debugLog('TURN_TRANSITION_DEBUG', 'handleActionCompletion entry', {
       actionType,
       shouldEndTurn: result?.shouldEndTurn,
-      gameMode: currentState.gameMode,
+      mode: modeLabel,
       turnPhase: currentState.turnPhase,
       currentPlayer: currentState.currentPlayer
     });
 
-    // CRITICAL: Handle pass playback BEFORE guest guard
-    // Guest needs to trigger "YOU PASSED" animation when they pass locally
+    // CRITICAL: Handle pass playback BEFORE non-authority guard
+    // Non-authority needs to trigger "YOU PASSED" animation when they pass locally
     if (actionType === 'playerPass') {
-      debugLog('PASS_LOGIC', `✅ [${currentState.gameMode.toUpperCase()}] Reached pass handling logic`, {
+      debugLog('PASS_LOGIC', `✅ [${modeLabel}] Reached pass handling logic`, {
         actionType,
-        gameMode: currentState.gameMode
+        mode: modeLabel
       });
 
       const updatedState = this.gameStateManager.getState();
@@ -272,12 +274,12 @@ class GameFlowManager {
         currentPhase: updatedState.turnPhase
       });
 
-      // For guest mode: Only handle pass animation playback, not phase transitions
-      if (currentState.gameMode === 'guest') {
+      // Non-authority: Only handle pass animation playback, not phase transitions
+      if (!this.isPhaseAuthority) {
         // ALWAYS trigger playback if animation is queued, regardless of bothPassed
-        // This fixes race condition where guest's optimistic pass processing sets bothPassed=true
+        // This fixes race condition where optimistic pass processing sets bothPassed=true
         // before handleActionCompletion executes, causing animation to be skipped
-        debugLog('PASS_LOGIC', `⏰ [GUEST] Checking for queued pass animations`, {
+        debugLog('PASS_LOGIC', `⏰ [OPTIMISTIC] Checking for queued pass animations`, {
           currentPhase: updatedState.turnPhase,
           bothPassed,
           queueLength: this.phaseAnimationQueue?.getQueueLength() || 0,
@@ -285,7 +287,7 @@ class GameFlowManager {
         });
 
         if (this._tryStartPlayback('GFM:guest_pass:256')) {
-          debugLog('PASS_LOGIC', `🎬 [GUEST] Starting pass notification playback`, {
+          debugLog('PASS_LOGIC', `🎬 [OPTIMISTIC] Starting pass notification playback`, {
             bothPassed,
             explanation: bothPassed
               ? 'Starting playback despite bothPassed=true (optimistic processing race condition fixed)'
@@ -293,16 +295,16 @@ class GameFlowManager {
           });
         }
 
-        // PHASE MANAGER INTEGRATION: Guest now waits for Host's PhaseManager broadcast
-        // Guest shows immediate UI feedback (animations) but doesn't transition phases
-        debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Pass processed, waiting for Host's PhaseManager broadcast`);
+        // PHASE MANAGER INTEGRATION: Non-authority waits for Host's PhaseManager broadcast
+        // Shows immediate UI feedback (animations) but doesn't transition phases
+        debugLog('PHASE_TRANSITIONS', `✅ [OPTIMISTIC] Pass processed, waiting for Host's PhaseManager broadcast`);
         return;
       }
 
       // Host and Local modes: Handle both phase transitions and playback
       // Guest mode was already filtered out above (line 235)
       if (bothPassed) {
-        debugLog('PHASE_TRANSITIONS', `✅ [${currentState.gameMode.toUpperCase()}] Both players passed, triggering phase transition synchronously`);
+        debugLog('PHASE_TRANSITIONS', `✅ [${modeLabel}] Both players passed, triggering phase transition synchronously`);
 
         // Trigger phase transition synchronously BEFORE broadcasting
         await this.onSequentialPhaseComplete(updatedState.turnPhase, {
@@ -320,16 +322,16 @@ class GameFlowManager {
         // (Pass notification was queued by ActionProcessor.processPlayerPass)
         // This handles both Host and Local modes
         if (this._tryStartPlayback('GFM:host_pass:302')) {
-          debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting pass notification playback`);
+          debugLog('TIMING', `🎬 [${modeLabel}] Starting pass notification playback`);
         }
       }
     }
 
-    // Guard: Guest mode doesn't handle turn transitions (host sends them)
-    // This guard is AFTER pass playback handling so guests can trigger their own animations
+    // Guard: Non-authority doesn't handle turn transitions (host sends them)
+    // This guard is AFTER pass playback handling so non-authority can trigger their own animations
     // Only apply in actual P2P networked mode (when p2pManager exists)
-    if (currentState.gameMode === 'guest' && this.actionProcessor?.p2pManager) {
-      debugLog('PASS_LOGIC', `🚫 [GUEST] Early return - guest mode blocks turn transitions (P2P)`, {
+    if (!this.isPhaseAuthority && this.actionProcessor?.p2pManager) {
+      debugLog('PASS_LOGIC', `🚫 [OPTIMISTIC] Early return - non-authority blocks turn transitions (P2P)`, {
         actionType
       });
       return;
@@ -435,10 +437,9 @@ class GameFlowManager {
    * @param {string} startingPhase - Initial phase to start with
    */
   async startGameFlow(startingPhase = 'deckSelection') {
-    // Guard: Guest mode does not run game flow logic
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      debugLog('PHASE_TRANSITIONS', '🔒 Guest mode: Skipping game flow logic (waiting for host state)');
+    // Guard: Non-authority does not run game flow logic
+    if (!this.isPhaseAuthority) {
+      debugLog('PHASE_TRANSITIONS', '🔒 Non-authority: Skipping game flow logic (waiting for host state)');
       return;
     }
 
@@ -490,13 +491,11 @@ class GameFlowManager {
    * @param {Object} data - Phase completion data
    */
   async onSimultaneousPhaseComplete(phase, data) {
-    const gameMode = this.gameStateManager.get('gameMode');
-
-    // PHASE MANAGER INTEGRATION: Guest guard - Guest cannot trigger phase completion
-    // Guest waits for PhaseManager broadcasts from Host
-    if (gameMode === 'guest') {
-      debugLog('PHASE_TRANSITIONS', `🚫 Guest attempted to complete simultaneous phase ${phase} - BLOCKED`);
-      debugLog('PHASE_TRANSITIONS', `✅ Guest will wait for Host's PhaseManager broadcast instead`);
+    // PHASE MANAGER INTEGRATION: Non-authority cannot trigger phase completion
+    // Non-authority waits for PhaseManager broadcasts from Host
+    if (!this.isPhaseAuthority) {
+      debugLog('PHASE_TRANSITIONS', `🚫 Non-authority attempted to complete simultaneous phase ${phase} - BLOCKED`);
+      debugLog('PHASE_TRANSITIONS', `✅ Non-authority will wait for Host's PhaseManager broadcast instead`);
       return;
     }
 
@@ -589,7 +588,7 @@ class GameFlowManager {
         await this.actionProcessor.processPhaseTransition({
           newPhase: 'roundAnnouncement',
           resetPassInfo: false,
-          guestAnnouncementOnly: gameMode === 'guest'
+          guestAnnouncementOnly: !this.isPhaseAuthority
         });
 
         debugLog('PHASE_TRANSITIONS', `✅ ROUND announcement queued before first round phase: ${nextPhase}`);
@@ -610,9 +609,9 @@ class GameFlowManager {
 
         // Start animation playback for host after transitioning to sequential phase
         // This ensures queued phase announcements (like DEPLOYMENT) play for the host
-        // (Guest gets playback via cascade finally block, but host needs it here)
+        // (Non-authority gets playback via cascade finally block, but authority needs it here)
         if (this._tryStartPlayback('GFM:sim_to_seq:599')) {
-          debugLog('TIMING', `🎬 [HOST] Starting animation playback after simultaneous→sequential transition`, { phase: nextPhase, gameMode });
+          debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after simultaneous→sequential transition`, { phase: nextPhase });
         }
       } else {
         // Continue with normal simultaneous phase transition
@@ -625,7 +624,7 @@ class GameFlowManager {
         // Start animation playback after transitioning to another simultaneous phase
         // This ensures queued phase announcements play before players can interact
         if (this._tryStartPlayback('GFM:sim_to_sim:625')) {
-          debugLog('TIMING', `🎬 [${gameMode.toUpperCase()}] Starting animation playback after simultaneous→simultaneous transition`, { phase: nextPhase, gameMode });
+          debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after simultaneous→simultaneous transition`, { phase: nextPhase });
         }
       }
       // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
@@ -691,11 +690,10 @@ class GameFlowManager {
   async onSequentialPhaseComplete(phase, data) {
     debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
 
-    // PHASE MANAGER INTEGRATION: Guest guard - Guest cannot trigger phase completion
-    // Guest waits for PhaseManager broadcasts from Host
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      debugLog('PHASE_TRANSITIONS', `🚫 Guest attempted to complete sequential phase ${phase} - BLOCKED`);
+    // PHASE MANAGER INTEGRATION: Non-authority cannot trigger phase completion
+    // Non-authority waits for PhaseManager broadcasts from Host
+    if (!this.isPhaseAuthority) {
+      debugLog('PHASE_TRANSITIONS', `🚫 Non-authority attempted to complete sequential phase ${phase} - BLOCKED`);
       return;
     }
 
@@ -776,14 +774,14 @@ class GameFlowManager {
   async processAutomaticPhase(phase, previousPhase) {
     debugLog('PHASE_TRANSITIONS', `🤖 GameFlowManager: Processing automatic phase '${phase}' from '${previousPhase}'`);
 
-    // GUEST MODE: Sync internal state from GameStateManager before processing
-    // Guest's GameFlowManager initializes with defaults but needs to match Host's gameStage/roundNumber
-    if (this.isGuestMode && this.isGuestMode()) {
+    // NON-AUTHORITY: Sync internal state from GameStateManager before processing
+    // Non-authority's GameFlowManager initializes with defaults but needs to match Host's gameStage/roundNumber
+    if (!this.isPhaseAuthority) {
       const currentGameState = this.gameStateManager.getState();
       this.gameStage = currentGameState.gameStage || 'preGame';
       this.roundNumber = currentGameState.roundNumber || 0;
 
-      debugLog('OPTIMISTIC_EXECUTION', `🔄 [GUEST] Synced GameFlowManager state from GameStateManager: {gameStage: '${this.gameStage}', roundNumber: ${this.roundNumber}}`);
+      debugLog('OPTIMISTIC_EXECUTION', `🔄 [OPTIMISTIC] Synced GameFlowManager state from GameStateManager: {gameStage: '${this.gameStage}', roundNumber: ${this.roundNumber}}`);
     }
 
     // Set flag to indicate we're processing an automatic phase
@@ -806,10 +804,10 @@ class GameFlowManager {
       // Always clear the flag when automatic phase processing is complete
       this.isProcessingAutomaticPhase = false;
 
-      // GUEST OPTIMISTIC EXECUTION: Track animations for deduplication
-      // When Guest processes automatic phases locally, track animations so they're
+      // NON-AUTHORITY OPTIMISTIC EXECUTION: Track animations for deduplication
+      // When non-authority processes automatic phases locally, track animations so they're
       // filtered out when Host broadcast arrives (same pattern as drone deployment)
-      if (this.isGuestMode && this.isGuestMode()) {
+      if (!this.isPhaseAuthority) {
         const actionAnims = this.actionProcessor.getAndClearPendingActionAnimations();
         const systemAnims = this.actionProcessor.getAndClearPendingSystemAnimations();
 
@@ -829,16 +827,15 @@ class GameFlowManager {
         }
       }
 
-      // HOST/LOCAL: Start animation playback after automatic cascade completes
-      // Only start if we're NOT in guest mode, NOT in cascade mode, and landed on non-automatic phase
+      // AUTHORITY: Start animation playback after automatic cascade completes
+      // Only start if we're authority, NOT in cascade mode, and landed on non-automatic phase
       const currentState = this.gameStateManager.getState();
-      const isGuest = currentState.gameMode === 'guest';
       const inCascade = this.isInCheckpointCascade;
       const currentPhase = currentState.turnPhase;
 
-      if (!isGuest && !inCascade && !this.isAutomaticPhase(currentPhase)) {
+      if (this.isPhaseAuthority && !inCascade && !this.isAutomaticPhase(currentPhase)) {
         if (this._tryStartPlayback('GFM:auto_cascade:880')) {
-          debugLog('TIMING', `🎬 [HOST/LOCAL] Starting animation playback after automatic cascade`, { finalPhase: currentPhase, gameMode: currentState.gameMode });
+          debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after automatic cascade`, { finalPhase: currentPhase });
         }
       }
     }
@@ -853,11 +850,10 @@ class GameFlowManager {
    * @returns {Promise<string|null>} Next phase name (without transitioning to it)
    */
   async processPhaseLogicOnly(phase, previousPhase) {
-    const gameMode = this.gameStateManager.get('gameMode');
     const phaseStartTime = timingLog('[AUTO PHASE] Processing started', {
       phase,
       previousPhase,
-      gameMode
+      mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'
     });
 
     debugLog('PHASE_TRANSITIONS', `🔧 [PHASE LOGIC START] ${phase}`);
@@ -954,8 +950,6 @@ class GameFlowManager {
     debugLog('PHASE_TRANSITIONS', '🎯 GameFlowManager: Processing roundInitialization phase (atomic round setup)');
 
     try {
-      const gameMode = this.gameStateManager.get('gameMode');
-
       // Delegate Steps 1-5 to RoundInitializationProcessor
       if (!this._roundInitProcessor) {
         this._roundInitProcessor = new RoundInitializationProcessor(this.gameStateManager, this.actionProcessor);
@@ -1240,12 +1234,11 @@ class GameFlowManager {
    */
   async transitionToPhase(newPhase, trigger = 'unknown') {
     const previousPhase = this.currentPhase;
-    const gameMode = this.gameStateManager.get('gameMode');
 
-    // PHASE MANAGER INTEGRATION: Guest cannot call transitionToPhase directly
-    // Guest waits for PhaseManager broadcasts from Host
-    if (gameMode === 'guest') {
-      debugLog('PHASE_TRANSITIONS', `🎬 [GUEST] Queueing announcement for ${newPhase} (state transition blocked)`);
+    // PHASE MANAGER INTEGRATION: Non-authority cannot call transitionToPhase directly
+    // Non-authority waits for PhaseManager broadcasts from Host
+    if (!this.isPhaseAuthority) {
+      debugLog('PHASE_TRANSITIONS', `🎬 [OPTIMISTIC] Queueing announcement for ${newPhase} (state transition blocked)`);
 
       // Guest cannot transition state, but CAN queue announcements for UI feedback
       // Call ActionProcessor to queue announcement, then return before state transition
@@ -1288,7 +1281,7 @@ class GameFlowManager {
     const transitionStartTime = timingLog('[PHASE] Transition started', {
       from: previousPhase,
       to: newPhase,
-      gameMode,
+      mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
       trigger: trigger
     });
 
@@ -1380,13 +1373,13 @@ class GameFlowManager {
 
     if (!inCascade && this.isSequentialPhase(newPhase)) {
       if (this._tryStartPlayback('GFM:seq_transition:2060')) {
-        debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting animation playback after sequential transition`, { phase: newPhase, gameMode: currentState.gameMode });
+        debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
       }
     }
 
     timingLog('[PHASE] Transition complete', {
       phase: newPhase,
-      gameMode,
+      mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
       trigger: trigger
     }, transitionStartTime);
   }
@@ -1404,7 +1397,7 @@ class GameFlowManager {
     }
 
     const gameState = this.gameStateManager.getState();
-    const isSinglePlayer = gameState.gameMode === 'local';
+    const isSinglePlayer = !this.isMultiplayer || !this.isMultiplayer();
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
 
     // Check which players need to act based on the phase
@@ -1502,13 +1495,12 @@ class GameFlowManager {
 
     // Queue ROUND announcement before transitioning to first phase of new round
     // This ensures ROUND shows immediately, not after other announcements
-    const gameMode = this.gameStateManager.get('gameMode');
     debugLog('PHASE_TRANSITIONS', `🎯 Queueing ROUND ${nextRound} announcement before starting round phases`);
 
     await this.actionProcessor.processPhaseTransition({
       newPhase: 'roundAnnouncement',
       resetPassInfo: false,
-      guestAnnouncementOnly: gameMode === 'guest'
+      guestAnnouncementOnly: !this.isPhaseAuthority
     });
 
     debugLog('PHASE_TRANSITIONS', `✅ ROUND ${nextRound} announcement queued`);

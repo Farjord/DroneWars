@@ -33,9 +33,10 @@ class PhaseManager {
     'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
     'mandatoryDroneRemoval', 'droneSelection', 'deckSelection', 'determineFirstPlayer'
   ];
-  constructor(gameStateManager, gameMode = 'local') {
+  constructor(gameStateManager, { isAuthority = true, isMultiplayer = false } = {}) {
     this.gameStateManager = gameStateManager;
-    this.gameMode = gameMode;
+    this.isAuthority = isAuthority;
+    this.isMultiplayer = isMultiplayer;
 
     // Host's local state (what Host has done)
     this.hostLocalState = {
@@ -72,7 +73,7 @@ class PhaseManager {
     // Lock to prevent concurrent transitions
     this.isTransitioning = false;
 
-    debugLog('PHASE_MANAGER', `✅ PhaseManager initialized in ${gameMode} mode`);
+    debugLog('PHASE_MANAGER', `✅ PhaseManager initialized (authority: ${isAuthority}, multiplayer: ${isMultiplayer})`);
   }
 
   /**
@@ -235,10 +236,10 @@ class PhaseManager {
       return false;
     }
 
-    // Guard: Guest cannot transition
-    if (this.gameMode === 'guest') {
-      debugLog('PHASE_MANAGER', `🚫 Guest attempted to transition to ${newPhase} - BLOCKED`);
-      debugLog('PHASE_MANAGER', '❌ PhaseManager: Guest cannot transition phases!');
+    // Guard: Non-authority cannot transition
+    if (!this.isAuthority) {
+      debugLog('PHASE_MANAGER', `🚫 Non-authority attempted to transition to ${newPhase} - BLOCKED`);
+      debugLog('PHASE_MANAGER', '❌ PhaseManager: Non-authority cannot transition phases!');
       return false;
     }
 
@@ -276,8 +277,8 @@ class PhaseManager {
 
       debugLog('PHASE_MANAGER', `✅ Phase transition complete: ${newPhase}`);
 
-      // Broadcast update to Guest (if Host mode)
-      if (this.gameMode === 'host') {
+      // Broadcast update to Guest (if authority in multiplayer)
+      if (this.isAuthority && this.isMultiplayer) {
         this.broadcastPhaseUpdate();
       }
 
@@ -325,8 +326,8 @@ class PhaseManager {
    * Broadcast phase update to Guest
    */
   broadcastPhaseUpdate() {
-    if (this.gameMode !== 'host') {
-      debugLog('PHASE_MANAGER', `⚠️ Cannot broadcast - not in host mode`);
+    if (!this.isAuthority || !this.isMultiplayer) {
+      debugLog('PHASE_MANAGER', `⚠️ Cannot broadcast - not authority or not multiplayer`);
       return;
     }
 
@@ -373,8 +374,8 @@ class PhaseManager {
    * @param {object} updates - State updates
    */
   updatePhaseState(updates) {
-    if (this.gameMode === 'guest') {
-      debugLog('PHASE_MANAGER', `🚫 Guest attempted to update phase state - BLOCKED`);
+    if (!this.isAuthority) {
+      debugLog('PHASE_MANAGER', `🚫 Non-authority attempted to update phase state - BLOCKED`);
       return;
     }
 
@@ -446,8 +447,8 @@ class PhaseManager {
    * @returns {boolean} True if applied, false if blocked
    */
   applyMasterState(masterPhaseState) {
-    if (this.gameMode !== 'guest') {
-      debugLog('PHASE_MANAGER', `⚠️ Only guest should apply master state`);
+    if (this.isAuthority) {
+      debugLog('PHASE_MANAGER', `⚠️ Only non-authority should apply master state`);
       return false;
     }
 

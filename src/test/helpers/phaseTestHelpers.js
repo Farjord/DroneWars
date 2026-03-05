@@ -75,13 +75,12 @@ export const createMockGameStateManager = () => {
 
 /**
  * Creates a PhaseManager instance for testing
- * @param {string} gameMode - 'host', 'guest', or 'local'
+ * @param {object} options - { isAuthority, isMultiplayer }
  * @returns {PhaseManager}
  */
-export const createMockPhaseManager = (gameMode = 'host') => {
+export const createMockPhaseManager = ({ isAuthority = true, isMultiplayer = false } = {}) => {
   const mockGameStateManager = createMockGameStateManager();
-  // IMPORTANT: Constructor signature is (gameStateManager, gameMode)
-  return new PhaseManager(mockGameStateManager, gameMode);
+  return new PhaseManager(mockGameStateManager, { isAuthority, isMultiplayer });
 };
 
 /**

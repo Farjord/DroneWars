@@ -93,8 +93,8 @@ function createMockGameStateManager(initialState = {}) {
 /**
  * Create mock PhaseManager
  */
-function createMockPhaseManager(gameStateManager, gameMode = 'local') {
-  const pm = new PhaseManager(gameStateManager, gameMode);
+function createMockPhaseManager(gameStateManager, { isAuthority = true, isMultiplayer = false } = {}) {
+  const pm = new PhaseManager(gameStateManager, { isAuthority, isMultiplayer });
   return pm;
 }
 
@@ -142,7 +142,7 @@ describe('Phase Flow Coverage - Round Boundary Tests', () => {
 
   beforeEach(() => {
     mockGameStateManager = createMockGameStateManager();
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
   });
 
   afterEach(() => {
@@ -654,7 +654,7 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
 
   beforeEach(() => {
     mockGameStateManager = createMockGameStateManager();
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
   });
 
   afterEach(() => {
@@ -740,7 +740,7 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
   describe('Host Mode (Guest as P2)', () => {
     beforeEach(() => {
       mockGameStateManager._setState({ gameMode: 'host' });
-      phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+      phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
     });
 
     it('OD-H1: Round 1 → phase skipped, broadcast sent', () => {
@@ -828,7 +828,7 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
   describe('Guest Mode', () => {
     beforeEach(() => {
       mockGameStateManager._setState({ gameMode: 'guest' });
-      phaseManager = createMockPhaseManager(mockGameStateManager, 'guest');
+      phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
     });
 
     it('OD-G1: Round 1 skip broadcast received', () => {
@@ -898,7 +898,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
 
   beforeEach(() => {
     mockGameStateManager = createMockGameStateManager();
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
   });
 
   afterEach(() => {
@@ -945,7 +945,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       passInfo: { player1Passed: false, player2Passed: false, firstPasser: null }
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
     // Set PhaseManager's internal phase to deployment (sequential phase where pass is valid)
     phaseManager.transitionToPhase('deployment');
 
@@ -964,7 +964,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       passInfo: { player1Passed: true, player2Passed: true, firstPasser: 'player2' }
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
     // Verify state before transition
     expect(mockGameStateManager.getState().passInfo.firstPasser).toBe('player2');
@@ -984,7 +984,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       currentPlayer: 'player1' // player1 was second passer, goes first
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
     const state = mockGameStateManager.getState();
     expect(state.currentPlayer).toBe('player1');
@@ -1015,7 +1015,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Local Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'deckSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
       });
 
       it('DS-1-L: Both commit simultaneously', () => {
@@ -1057,7 +1057,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'deckSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       });
 
       it('DS-1-H: Both commit simultaneously', () => {
@@ -1089,7 +1089,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Guest Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'deckSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'guest');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
       });
 
       it('DS-1-G: Guest receives host broadcast', () => {
@@ -1120,7 +1120,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Local Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
         // Transition PhaseManager to droneSelection phase
         phaseManager.transitionToPhase('droneSelection');
       });
@@ -1160,7 +1160,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
         // Transition PhaseManager to droneSelection phase
         phaseManager.transitionToPhase('droneSelection');
       });
@@ -1191,7 +1191,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Guest Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'guest');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
         // Guest uses applyMasterState to sync phase
         phaseManager.applyMasterState({ turnPhase: 'droneSelection' });
       });
@@ -1220,7 +1220,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Local Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'local');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
         // Transition PhaseManager to placement phase
         phaseManager.transitionToPhase('placement');
       });
@@ -1261,7 +1261,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'host');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
         // Transition PhaseManager to placement phase
         phaseManager.transitionToPhase('placement');
       });
@@ -1296,7 +1296,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Guest Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, 'guest');
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
         // Guest uses applyMasterState to sync phase (can't call transitionToPhase)
         phaseManager.applyMasterState({ turnPhase: 'placement' });
       });

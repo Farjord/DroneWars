@@ -26,7 +26,7 @@ describe('PhaseManager', () => {
       // This is the core of the single authority pattern - host controls phase flow.
       // Expected: transitionToPhase() succeeds in host mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
       const result = phaseManager.transitionToPhase('action');
 
@@ -39,7 +39,7 @@ describe('PhaseManager', () => {
       // PhaseManager must prevent guests from changing phases independently.
       // Expected: transitionToPhase() throws error or returns false in guest mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       const result = phaseManager.transitionToPhase('action');
 
@@ -51,7 +51,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: In single-player mode, the local instance acts as host.
       // Expected: transitionToPhase() succeeds in local mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
       const result = phaseManager.transitionToPhase('action');
 
@@ -66,7 +66,7 @@ describe('PhaseManager', () => {
 
   describe('State Tracking - Sequential Phases', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('deployment');
     });
 
@@ -153,7 +153,7 @@ describe('PhaseManager', () => {
 
   describe('State Tracking - Simultaneous Phases', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('placement');
     });
 
@@ -205,7 +205,7 @@ describe('PhaseManager', () => {
 
   describe('Phase Transition Logic', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
     });
 
     it('resets passInfo after transitioning from sequential phase', () => {
@@ -316,7 +316,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: When host broadcasts, guest must accept and apply the phase state.
       // Expected: applyMasterState() updates phaseState to match host
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       const masterState = {
         turnPhase: 'action',
@@ -336,7 +336,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: Host should never apply guest state - host is authoritative.
       // Expected: applyMasterState() throws error or returns false in host mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
       const masterState = {
         turnPhase: 'action',
@@ -356,7 +356,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: After broadcast, both must be synchronized.
       // Expected: phaseState, passInfo, commitments all match between host and guest
 
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       const masterState = {
         turnPhase: 'deployment',
@@ -387,7 +387,7 @@ describe('PhaseManager', () => {
 
   describe('First-Passer Race Condition Prevention', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('action');
     });
 
@@ -440,7 +440,7 @@ describe('PhaseManager', () => {
       // to multiplayer. The first pass sets firstPasser regardless of player.
       // Expected: Local mode correctly tracks who passed first
 
-      const localPhaseManager = new PhaseManager(mockGameStateManager, 'local');
+      const localPhaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       localPhaseManager.transitionToPhase('action');
 
       // Player 1 (human) passes first
@@ -468,8 +468,8 @@ describe('PhaseManager', () => {
 
     beforeEach(() => {
       // Create separate PhaseManagers to simulate host and guest states
-      hostPhaseManager = new PhaseManager(createMockGameStateManager(), 'host');
-      guestPhaseManager = new PhaseManager(createMockGameStateManager(), 'guest');
+      hostPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      guestPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: false });
     });
 
     it('detects passInfo.firstPasser mismatch between host and guest', () => {
@@ -580,7 +580,7 @@ describe('PhaseManager', () => {
     let guestPhaseManager;
 
     beforeEach(() => {
-      guestPhaseManager = new PhaseManager(createMockGameStateManager(), 'guest');
+      guestPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: false });
     });
 
     it('processes broadcasts in sequence order even if arriving out of order', () => {
@@ -668,7 +668,7 @@ describe('PhaseManager', () => {
     let guestPhaseManager;
 
     beforeEach(() => {
-      guestPhaseManager = new PhaseManager(createMockGameStateManager(), 'guest');
+      guestPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: false });
     });
 
     // NOTE: "triggers resync when too many pending messages" is tested in GuestMessageQueueService
@@ -744,7 +744,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
     });
 
     it('complex phase transition results in single coherent state', () => {
@@ -819,7 +819,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
     });
 
     it('pass action in simultaneous phase is rejected by validation', () => {
@@ -909,7 +909,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
     });
 
     it('should clear transitionHistory', () => {
@@ -1008,7 +1008,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: Defensive test - reset() should not error on fresh state.
       // Expected: reset() should safely run without throwing
 
-      const freshPhaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      const freshPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
 
       // Should not throw
       expect(() => freshPhaseManager.reset()).not.toThrow();

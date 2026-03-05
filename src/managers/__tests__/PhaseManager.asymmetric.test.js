@@ -43,7 +43,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Verify initial state
@@ -77,7 +77,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P1,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Verify state setup - P1 has cards over limit, P2 doesn't
@@ -115,7 +115,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P2,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Verify state setup - P1 under limit, P2 over limit
@@ -152,7 +152,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.NEITHER,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
       // Verify state setup - both under limit
       const state = mockGameStateManager.getState();
@@ -192,7 +192,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDroneRemoval'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Verify drone counts exceed limit (limit = 4)
@@ -219,7 +219,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P1,
         phase: 'mandatoryDroneRemoval'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Verify state
@@ -247,7 +247,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P2,
         phase: 'mandatoryDroneRemoval'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Verify state
@@ -274,7 +274,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.NEITHER,
         phase: 'mandatoryDroneRemoval'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
       // Verify both under limit
       const state = mockGameStateManager.getState();
@@ -307,7 +307,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Host commits first
@@ -329,7 +329,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Guest action arrives via network first
@@ -351,7 +351,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P1,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Guest auto-approves (via network message)
@@ -372,7 +372,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.ONLY_P2,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Host auto-approves immediately
@@ -393,7 +393,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.NEITHER,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Both auto-approve
@@ -423,7 +423,7 @@ describe('Asymmetric Phase Tests', () => {
         phase: 'mandatoryDiscard',
         guestNeedsAction: true
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       // Guest receives master state from host
       const masterState = {
@@ -446,7 +446,7 @@ describe('Asymmetric Phase Tests', () => {
         phase: 'mandatoryDiscard',
         guestNeedsAction: true
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       // Apply initial state
       phaseManager.applyMasterState({ turnPhase: 'mandatoryDiscard' });
@@ -468,7 +468,7 @@ describe('Asymmetric Phase Tests', () => {
         phase: 'mandatoryDiscard',
         guestNeedsAction: false // Guest has no cards to discard
       });
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       // Apply initial state
       phaseManager.applyMasterState({ turnPhase: 'mandatoryDiscard' });
@@ -497,7 +497,7 @@ describe('Asymmetric Phase Tests', () => {
       const mockGameStateManager = createGuestModeGameStateManager({
         phase: 'deployment'
       });
-      const phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      const phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       // Apply master state with firstPasser info
       const masterState = {
@@ -519,7 +519,7 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'deployment'
       });
-      const phaseManager = new PhaseManager(mockGameStateManager, 'local');
+      const phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('deployment');
 
       // Host passes first in deployment

@@ -38,7 +38,7 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
 
     // Initialize GameFlowManager (fresh instance due to singleton reset)
     gameFlowManager = new GameFlowManager();
-    phaseManager = new PhaseManager(mockGameStateManager, 'host');
+    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
     // Reset isInitialized to allow re-initialization with our mocks
     gameFlowManager.isInitialized = false;

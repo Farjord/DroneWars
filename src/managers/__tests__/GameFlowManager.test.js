@@ -57,7 +57,7 @@ describe('GameFlowManager - Sequential Phases', () => {
     };
 
     gameFlowManager = new GameFlowManager();
-    phaseManager = new PhaseManager(mockGameStateManager, 'host');
+    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
     // Initialize GameFlowManager (matches constructor signature)
     gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
@@ -399,7 +399,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       };
 
       gameFlowManager = new GameFlowManager();
-      phaseManager = new PhaseManager(mockGameStateManager, 'guest');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
       gameFlowManager.phaseManager = phaseManager;
@@ -560,7 +560,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       };
 
       gameFlowManager = new GameFlowManager();
-      phaseManager = new PhaseManager(mockGameStateManager, 'host');
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
 
       gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
       gameFlowManager.phaseManager = phaseManager;
@@ -604,7 +604,7 @@ describe('GameFlowManager - Sequential Phases', () => {
   describe('reset() - Full Cleanup', () => {
     beforeEach(() => {
       gameFlowManager = new GameFlowManager();
-      gameFlowManager.phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      gameFlowManager.phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
       gameFlowManager.listeners = [];
     });
 

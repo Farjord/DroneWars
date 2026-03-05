@@ -76,6 +76,8 @@ describe('GameFlowManager - Asymmetric Phase Auto-Completion', () => {
     gameFlowManager.actionProcessor = mockActionProcessor;
     gameFlowManager.gameDataService = mockGameDataService;
     gameFlowManager.isInitialized = true;
+    gameFlowManager.isPhaseAuthority = true;
+    gameFlowManager.isMultiplayer = () => false; // Default to single-player; override in multiplayer tests
   });
 
   afterEach(() => {
@@ -258,6 +260,7 @@ describe('GameFlowManager - Asymmetric Phase Auto-Completion', () => {
      * MD-H4: Multiplayer Host - Only Guest (P2) exceeds → Host auto-commits
      */
     it('MD-H4: Multiplayer - Only Guest exceeds → Host auto-commits', async () => {
+      gameFlowManager.isMultiplayer = () => true;
       mockGameStateManager.getState.mockReturnValue({
         gameMode: 'host',
         player1: { hand: createCards(5) },  // Host under limit
