@@ -296,9 +296,14 @@ class RemoteGameServer extends GameServer {
       if (p1.shields !== p2.shields) return false;
       if (p1.health !== p2.health) return false;
 
-      const hand1Ids = p1.hand?.map(c => c.instanceId) || [];
-      const hand2Ids = p2.hand?.map(c => c.instanceId) || [];
-      if (!arraysMatch(hand1Ids, hand2Ids, `${player}.hand`)) return false;
+      // Redacted state: opponent hand is [] with handCount — compare counts only
+      if (p2.handCount !== undefined) {
+        if ((p1.hand?.length ?? p1.handCount ?? 0) !== p2.handCount) return false;
+      } else {
+        const hand1Ids = p1.hand?.map(c => c.instanceId) || [];
+        const hand2Ids = p2.hand?.map(c => c.instanceId) || [];
+        if (!arraysMatch(hand1Ids, hand2Ids, `${player}.hand`)) return false;
+      }
 
       for (const lane of ['lane1', 'lane2', 'lane3']) {
         if (!dronesMatch(p1.dronesOnBoard?.[lane] || [], p2.dronesOnBoard?.[lane] || [], `${player}.${lane}`)) return false;
@@ -332,6 +337,11 @@ class RemoteGameServer extends GameServer {
 
   _deepCompareStates(guestState, hostState, path = '') {
     const mismatches = [];
+
+    // Skip redacted private fields — host state has handCount when redacted
+    const REDACTED_FIELDS = ['hand', 'deck', 'discardPile'];
+    const isRedactedPlayer = hostState?.handCount !== undefined;
+
     const allKeys = new Set([
       ...Object.keys(guestState || {}),
       ...Object.keys(hostState || {}),
@@ -339,6 +349,10 @@ class RemoteGameServer extends GameServer {
 
     for (const key of allKeys) {
       const fullPath = path ? `${path}.${key}` : key;
+
+      // Skip private fields on redacted player objects
+      if (isRedactedPlayer && REDACTED_FIELDS.includes(key)) continue;
+
       const guestVal = guestState?.[key];
       const hostVal = hostState?.[key];
 

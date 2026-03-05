@@ -6,6 +6,7 @@
 // Replaces scattered broadcastStateToGuest() calls across the codebase.
 
 import { debugLog } from '../utils/debugLogger.js';
+import StateRedactor from '../server/StateRedactor.js';
 
 class BroadcastService {
   constructor({ gameStateManager, p2pManager }) {
@@ -44,7 +45,8 @@ class BroadcastService {
     const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
     debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Anims: ${actionAnimations.length + systemAnimations.length}`);
 
-    this.p2pManager.broadcastState(stateToBroadcast, actionAnimations, systemAnimations);
+    const redactedState = StateRedactor.redactForPlayer(stateToBroadcast, 'player2');
+    this.p2pManager.broadcastState(redactedState, actionAnimations, systemAnimations);
   }
 
   /**

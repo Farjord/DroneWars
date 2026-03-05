@@ -18,6 +18,9 @@ import ActionCard from '../ui/ActionCard.jsx';
 const AIHandDebugModal = ({ opponentPlayerState, show, debugMode, onClose }) => {
   if (!show || !debugMode || !opponentPlayerState) return null;
 
+  // In multiplayer, opponent hand is redacted — modal has no data to show
+  const isRedacted = opponentPlayerState.handCount !== undefined;
+
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
       <div
@@ -32,7 +35,7 @@ const AIHandDebugModal = ({ opponentPlayerState, show, debugMode, onClose }) => 
           </div>
           <div className="dw-modal-header-info">
             <h2 className="dw-modal-header-title">Opponent's Hand (Debug)</h2>
-            <p className="dw-modal-header-subtitle">{opponentPlayerState.hand.length} card{opponentPlayerState.hand.length !== 1 ? 's' : ''} in hand</p>
+            <p className="dw-modal-header-subtitle">{isRedacted ? `${opponentPlayerState.handCount} cards (redacted)` : `${opponentPlayerState.hand.length} card${opponentPlayerState.hand.length !== 1 ? 's' : ''} in hand`}</p>
           </div>
         </div>
 
@@ -44,7 +47,11 @@ const AIHandDebugModal = ({ opponentPlayerState, show, debugMode, onClose }) => 
             </p>
           </div>
 
-          {opponentPlayerState.hand.length > 0 ? (
+          {isRedacted ? (
+            <div className="dw-modal-info-box" style={{ textAlign: 'center', padding: '40px' }}>
+              <p style={{ color: 'var(--modal-text-secondary)', fontStyle: 'italic', margin: 0 }}>Opponent hand is hidden in multiplayer mode.</p>
+            </div>
+          ) : opponentPlayerState.hand.length > 0 ? (
             <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '16px', justifyContent: 'center', overflowX: 'auto', padding: '8px' }}>
               {opponentPlayerState.hand.map(card => (
                 <ActionCard

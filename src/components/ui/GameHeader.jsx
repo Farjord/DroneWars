@@ -181,7 +181,9 @@ function GameHeader({
   const prevOpponentMomentum = usePrevious(opponentPlayerState?.momentum);
   const opponentDeploymentValue = roundNumber === 1 ? opponentPlayerState?.initialDeploymentBudget : opponentPlayerState?.deploymentBudget;
   const prevOpponentDeployment = usePrevious(opponentDeploymentValue);
-  const prevOpponentHand = usePrevious(opponentPlayerState?.hand?.length);
+  // Redacted state sends handCount instead of full hand array
+  const opponentHandCount = opponentPlayerState?.handCount ?? opponentPlayerState?.hand?.length ?? 0;
+  const prevOpponentHand = usePrevious(opponentHandCount);
 
   // Helper to trigger a KPI change popup
   const triggerPopup = useCallback((type, delta, ref) => {
@@ -227,10 +229,10 @@ function GameHeader({
 
   // Detect opponent hand count changes
   useEffect(() => {
-    if (prevOpponentHand !== undefined && opponentPlayerState?.hand?.length !== prevOpponentHand) {
-      triggerPopup('hand', opponentPlayerState.hand.length - prevOpponentHand, opponentHandRef);
+    if (prevOpponentHand !== undefined && opponentHandCount !== prevOpponentHand) {
+      triggerPopup('hand', opponentHandCount - prevOpponentHand, opponentHandRef);
     }
-  }, [opponentPlayerState?.hand?.length, prevOpponentHand, triggerPopup]);
+  }, [opponentHandCount, prevOpponentHand, triggerPopup]);
 
   // Detect player deployment budget changes
   useEffect(() => {
@@ -419,7 +421,7 @@ function GameHeader({
               <ResourceBadge
                 ref={opponentHandRef}
                 icon={Files}
-                value={opponentPlayerState.hand.length}
+                value={opponentHandCount}
                 max={opponentPlayerEffectiveStats.totals.handLimit}
                 iconColor="text-cyan-300"
                 isPlayer={false}

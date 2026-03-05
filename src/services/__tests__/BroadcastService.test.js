@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BroadcastService from '../BroadcastService.js';
+import StateRedactor from '../../server/StateRedactor.js';
 
 describe('BroadcastService', () => {
   let broadcastService;
@@ -57,37 +58,37 @@ describe('BroadcastService', () => {
   });
 
   describe('state priority', () => {
-    it('broadcasts currentState when no pending states', () => {
-      const currentState = { player1: { hp: 5 }, player2: { hp: 8 } };
+    it('broadcasts currentState (redacted) when no pending states', () => {
+      const currentState = { player1: { hp: 5, hand: [], deck: [], discardPile: [] }, player2: { hp: 8, hand: [], deck: [], discardPile: [] } };
       mockGameStateManager.getState.mockReturnValue(currentState);
 
       broadcastService.broadcastIfNeeded('test');
 
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
-        currentState, [], []
+        StateRedactor.redactForPlayer(currentState, 'player2'), [], []
       );
     });
 
     it('uses pendingStateUpdate over currentState', () => {
-      const pendingState = { player1: { hp: 3 }, player2: { hp: 7 } };
+      const pendingState = { player1: { hp: 3, hand: [], deck: [], discardPile: [] }, player2: { hp: 7, hand: [], deck: [], discardPile: [] } };
       broadcastService.setPendingStates(pendingState, null);
 
       broadcastService.broadcastIfNeeded('test');
 
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
-        pendingState, [], []
+        StateRedactor.redactForPlayer(pendingState, 'player2'), [], []
       );
     });
 
     it('uses pendingFinalState over pendingStateUpdate', () => {
-      const pendingState = { player1: { hp: 3 }, player2: { hp: 7 } };
-      const finalState = { player1: { hp: 1 }, player2: { hp: 9 } };
+      const pendingState = { player1: { hp: 3, hand: [], deck: [], discardPile: [] }, player2: { hp: 7, hand: [], deck: [], discardPile: [] } };
+      const finalState = { player1: { hp: 1, hand: [], deck: [], discardPile: [] }, player2: { hp: 9, hand: [], deck: [], discardPile: [] } };
       broadcastService.setPendingStates(pendingState, finalState);
 
       broadcastService.broadcastIfNeeded('test');
 
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
-        finalState, [], []
+        StateRedactor.redactForPlayer(finalState, 'player2'), [], []
       );
     });
   });
@@ -202,9 +203,10 @@ describe('BroadcastService', () => {
 
       broadcastService.broadcastIfNeeded('test');
 
-      // Should use currentState since pending states were cleared
+      // Should use currentState (redacted) since pending states were cleared
+      const currentState = mockGameStateManager.getState();
       expect(mockP2pManager.broadcastState).toHaveBeenCalledWith(
-        mockGameStateManager.getState(), [], []
+        StateRedactor.redactForPlayer(currentState, 'player2'), [], []
       );
     });
   });
