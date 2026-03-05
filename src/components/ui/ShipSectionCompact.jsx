@@ -177,6 +177,35 @@ const ShipSectionCompact = ({
                   onAbilityClick(e, {...stats, name: section}, stats.ability);
                 }}
               />
+              <span className="text-purple-400 font-bold tracking-wider font-exo uppercase"
+                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap' }}
+              >
+                {stats.ability.name}
+              </span>
+            </div>
+          )}
+
+          {/* Opponent ability label — display only */}
+          {!isPlayer && stats.ability && (
+            <div style={{ position: 'absolute', right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2vh' }}>
+              <div className={`w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-2 flex-shrink-0 ${
+                stats.ability.activationLimit != null && (stats.abilityActivationCount || 0) >= stats.ability.activationLimit
+                  ? 'border-gray-600 opacity-60'
+                  : 'border-red-500'
+              }`}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={
+                  stats.ability.activationLimit != null && (stats.abilityActivationCount || 0) >= stats.ability.activationLimit
+                    ? 'text-gray-500'
+                    : 'text-red-500'
+                }>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+              </div>
+              <span className="text-purple-400 font-bold tracking-wider font-exo uppercase"
+                style={{ fontSize: 'clamp(0.35rem, 0.6vw, 0.6rem)', lineHeight: 1, whiteSpace: 'nowrap' }}
+              >
+                {stats.ability.name}
+              </span>
             </div>
           )}
         </div>
