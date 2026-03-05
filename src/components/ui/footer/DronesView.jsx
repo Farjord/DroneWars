@@ -120,8 +120,9 @@ function DronesView({
 
       {/* Left Chevron Arrow */}
       <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to cards view">
-        <ChevronLeft size={20} />
+        <ChevronLeft size={14} />
         <span className={styles.viewChevronLabel}>CARDS</span>
+        <ChevronLeft size={14} />
       </button>
 
       {/* Drone Grid - Center Section */}
@@ -191,12 +192,14 @@ function DronesView({
               const marginLeft = index === 0 ? 0 : dynamicOverlap; // Use dynamic overlap
               const arcOffset = calculateCardArcOffset(rotationDeg, sortedLocalActivePool.length);
 
+              const isDragging = draggedCard?.name === drone.name;
               const wrapperStyle = {
                 zIndex: (isHovered || isSelected) ? CARD_FAN_CONFIG.zIndex.hovered : CARD_FAN_CONFIG.zIndex.normal(index),
                 transform: (isHovered || isSelected) ? getHoverTransform() : `translateY(${arcOffset}px) rotate(${rotationDeg}deg)`,
                 marginLeft: `${marginLeft}px`,
                 transformOrigin: CARD_FAN_CONFIG.transformOrigin,
-                transition: getCardTransition()
+                transition: getCardTransition(),
+                ...(isDragging && { perspective: '600px', transformStyle: 'preserve-3d' })
               };
 
               return (
@@ -240,6 +243,7 @@ function DronesView({
                     isUpgradeTarget={isUpgradeTarget}
                     onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
                     hasDeploymentBudget={hasDeploymentBudget}
+                    isDragging={isDragging}
                   />
                 </div>
               );
@@ -250,8 +254,9 @@ function DronesView({
 
       {/* Right Chevron Arrow */}
       <button className={styles.viewChevron} onClick={onToggleView} aria-label="Switch to cards view">
+        <ChevronRight size={14} />
         <span className={styles.viewChevronLabel}>CARDS</span>
-        <ChevronRight size={20} />
+        <ChevronRight size={14} />
       </button>
 
       {/* Deck Pile */}

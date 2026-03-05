@@ -24,7 +24,7 @@ import ModalLayer from './components/ui/ModalLayer.jsx';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
 import FloatingDragCard from './components/ui/FloatingDragCard.jsx';
-import DroneCard from './components/ui/DroneCard.jsx';
+
 
 // --- 1.3 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -658,7 +658,7 @@ const App = ({ phaseAnimationQueue }) => {
     setDroneDragArrowState, setDraggedActionCard, setActionCardDragArrowState,
     setDeploymentConfirmation,
     arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef,
-    floatingCardRef, floatingDroneRef, costReminderArrowRef,
+    floatingCardRef, costReminderArrowRef,
     handleSetHoveredTarget, handleCardDragStart, handleCardDragEnd,
     handleActionCardDragStart, handleActionCardDragEnd,
     handleDroneDragStart, handleDroneDragEnd,
@@ -957,12 +957,7 @@ const App = ({ phaseAnimationQueue }) => {
        card={draggedActionCard?.mode === 'card-drag' ? draggedActionCard.card : null}
        floatingCardRef={floatingCardRef}
      />
-     <FloatingDragCard
-       card={draggedCard}
-       floatingCardRef={floatingDroneRef}
-       renderCard={(drone) => <DroneCard drone={drone} isSelected={true} isSelectable={true} />}
-     />
-     <AnimationLayer
+      <AnimationLayer
        explosions={explosions}
        flyingDrones={flyingDrones}
        flashEffects={flashEffects}

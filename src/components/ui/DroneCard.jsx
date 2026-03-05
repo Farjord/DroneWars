@@ -11,6 +11,7 @@ import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import AvailabilityDots from './AvailabilityDots.jsx';
 import { getCardBorderClasses } from '../../logic/cards/cardBorderUtils.js';
+import useCardTilt from '../../hooks/useCardTilt.js';
 
 /**
  * DRONE CARD COMPONENT
@@ -47,7 +48,8 @@ const DroneCard = ({
   hasDeploymentBudget = false,
   availability,
   rebuildRate,
-  enableDebug = false
+  enableDebug = false,
+  isDragging = false
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -118,12 +120,16 @@ const DroneCard = ({
     transformOrigin: 'center center'
   } : {};
 
+  // 3D tilt parallax during drag + hover
+  const tiltRef = useCardTilt(isDragging);
+
   // Get rarity-based border classes (Drones use Tactic/cyan color)
   const isDisabled = !isInteractive && !isViewOnly;
   const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
 
   return (
     <div
+      ref={tiltRef}
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
         rounded-lg p-[4px] relative group
@@ -132,6 +138,7 @@ const DroneCard = ({
         ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
         ${isDisabled ? 'saturate-50' : ''}
+        ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
       `}
       style={{
         width: '225px',
@@ -309,6 +316,18 @@ const DroneCard = ({
           </div>
         </div>
       </div>
+      {/* Tilt sheen highlight */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: '-50%',
+          background: 'linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+          transform: 'translateX(var(--sheen, -100%))',
+          transition: 'transform 0.3s ease',
+          pointerEvents: 'none',
+          zIndex: 20,
+        }}
+      />
     </div>
   );
 };

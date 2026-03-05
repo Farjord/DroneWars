@@ -11,6 +11,16 @@ import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
 import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 
+/** Returns true when a card would flow to setCardConfirmation({ card, target: null }) — no arrow needed. */
+function isNoTargetCard(card) {
+  const effect0 = card.effects?.[0];
+  if (effect0?.type === 'SINGLE_MOVE' || effect0?.type === 'MULTI_MOVE') return false;
+  if (card.effects?.length > 1 || (effect0 && isCompoundEffect(effect0))) return false;
+  if (!effect0?.targeting) return true;
+  if (effect0.targeting.type === 'NONE') return true;
+  return false;
+}
+
 /** Returns true if the click should be suppressed (i.e. target is NOT inside a modal). */
 export function shouldSuppressClick(target) {
   return !target.closest('.dw-modal-overlay');
@@ -73,6 +83,8 @@ const useDragMechanics = ({
   const actionCardDragHandledRef = useRef(false);
   const droneDragHandledRef = useRef(false);
   const suppressNextClickRef = useRef(false);
+  const floatingCardRef = useRef(null);
+
 
   // --- Selection-driven effects ---
 
@@ -218,7 +230,8 @@ const useDragMechanics = ({
     cancelAllActions();
     // Normalize: promote effects[0].targeting to top-level for UI consumption
     const normalizedCard = card.targeting ? card : { ...card, targeting: card.effects?.[0]?.targeting };
-    setDraggedActionCard({ card: normalizedCard });
+    const mode = isNoTargetCard(normalizedCard) ? 'card-drag' : 'arrow';
+    setDraggedActionCard({ card: normalizedCard, mode });
     actionCardDragHandledRef.current = false;
 
     // Calculate effect targets for the dragged card
@@ -257,8 +270,8 @@ const useDragMechanics = ({
       setAffectedDroneIds([]);
     }
 
-    // Setup arrow from card position
-    if (gameAreaRef.current) {
+    // Setup arrow from card position (only for arrow mode)
+    if (mode === 'arrow' && gameAreaRef.current) {
       const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
       // Use pre-calculated cardRect if provided (for deferred drag start), otherwise get from event
       const rect = cardRect || event.currentTarget?.getBoundingClientRect();
@@ -841,6 +854,20 @@ const useDragMechanics = ({
     return () => gameArea?.removeEventListener('mousemove', handleMouseMove);
   }, [actionCardDragArrowState.visible, actionCardDragArrowState.start, gameAreaRef]);
 
+  // Floating card mouse tracking (card-drag mode)
+  useEffect(() => {
+    if (!draggedActionCard || draggedActionCard.mode !== 'card-drag') return;
+    const handleMouseMove = (e) => {
+      if (floatingCardRef.current) {
+        floatingCardRef.current.style.left = `${e.clientX}px`;
+        floatingCardRef.current.style.top = `${e.clientY}px`;
+      }
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, [draggedActionCard]);
+
+
   // --- Mouseup Cleanup Effects ---
 
   // 8.4c CARD DRAG CANCEL ON MOUSE UP OUTSIDE LANES
@@ -898,17 +925,25 @@ const useDragMechanics = ({
   useEffect(() => {
     if (!draggedActionCard) return;
 
-    const handleGlobalMouseUp = () => {
+    const handleGlobalMouseUp = (e) => {
       // Set suppress flag synchronously so the browser's synthesized click
       // (which fires before the deferred setTimeout) gets absorbed immediately
       suppressNextClickRef.current = true;
       setTimeout(() => { suppressNextClickRef.current = false; }, 300);
+      // Capture footer check before setTimeout (event target may be gone)
+      const releasedInFooter = e.target.closest('[data-footer]');
       // setTimeout ensures drop zone handlers fire first.
       // The ref guard prevents this fallback from cancelling a drag that was
       // already handled by a drop zone — the closure-captured draggedActionCard
       // is stale (React hasn't re-rendered yet), but the ref is always current.
       setTimeout(() => {
         if (!actionCardDragHandledRef.current) {
+          // For card-drag mode, cancel if released back in footer
+          if (draggedActionCard?.mode === 'card-drag' && releasedInFooter) {
+            setDraggedActionCard(null);
+            setAffectedDroneIds([]);
+            return;
+          }
           handleActionCardDragEnd(null, null, null);
         }
       }, 0);
@@ -947,6 +982,7 @@ const useDragMechanics = ({
     cardDragArrowRef,
     droneDragArrowRef,
     actionCardDragArrowRef,
+    floatingCardRef,
 
     // Handlers
     handleSetHoveredTarget,
