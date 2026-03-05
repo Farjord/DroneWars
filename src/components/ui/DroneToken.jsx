@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
+import useCardTilt from '../../hooks/useCardTilt.js';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import StatusEffectIcons from './StatusEffectIcons.jsx';
 import TraitIndicators from './TraitIndicators.jsx';
@@ -199,6 +200,12 @@ const DroneToken = ({
   // Invalid target indicator prop
   isInvalidTarget = false
 }) => {
+  // 3D tilt parallax during drag + hover (subtler than ActionCard)
+  const tiltRef = useCardTilt(isDragging, {
+    maxTiltDrag: 10,
+    maxTiltHover: 5
+  });
+
   // Performance logging for drag investigation - only log when dragging is active
   if (isDragging) {
     debugLog('DRAG_PERF', '🔄 DroneToken RENDER (dragging)', {
@@ -350,13 +357,14 @@ const DroneToken = ({
       className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
-        height: 'clamp(115px, 5.99vw, 156px)'
+        height: 'clamp(115px, 5.99vw, 156px)',
+        perspective: '400px'
       }}
     >
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
       <div className={`w-full h-full ${hoverEffect} ${selectedEffect} transition-transform duration-200`}>
-        {/* Visual Effects Wrapper */}
-        <div className="w-full h-full">
+        {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
+        <div ref={tiltRef} className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
         <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
@@ -389,6 +397,18 @@ const DroneToken = ({
                   <span className={`font-orbitron text-[8px] uppercase ${nameTextColor} tracking-wider w-full text-center`}>{drone.name}</span>
                 </div>
               </div>
+              {/* Sheen overlay — slides via --sheen CSS variable set by useCardTilt */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '-50%',
+                  background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)',
+                  transform: 'translateX(var(--sheen, -100%))',
+                  transition: 'transform 0.3s ease',
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                }}
+              />
             </div>
           </div>
           {/* End Grayscale Container */}
@@ -398,8 +418,6 @@ const DroneToken = ({
 
           {/* Invalid Target Indicator - shown when drone is in scope but not valid target */}
           <InvalidTargetIndicator show={isInvalidTarget} />
-      </div>
-      {/* End Visual Effects Wrapper */}
 
         {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
         <div className={`stat-hex-attack absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect} ${exhaustEffect}`}>
@@ -457,6 +475,8 @@ const DroneToken = ({
             </span>
           </div>
         )}
+      </div>
+      {/* End Tilt Wrapper */}
       </div>
       {/* End Scale Wrapper */}
     </div>
