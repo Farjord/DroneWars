@@ -321,7 +321,7 @@ const DroneCard = ({
         style={{
           position: 'absolute',
           inset: '-50%',
-          background: 'linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+          background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)',
           transform: 'translateX(var(--sheen, -100%))',
           transition: 'transform 0.3s ease',
           pointerEvents: 'none',

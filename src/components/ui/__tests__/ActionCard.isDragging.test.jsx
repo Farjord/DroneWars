@@ -36,7 +36,7 @@ describe('ActionCard isDragging visual feedback', () => {
     );
 
     // The outer card element should have positive feedback classes (cyan glow)
-    const cardElement = container.firstChild;
+    const cardElement = container.firstChild.firstChild;
     expect(cardElement.className).toContain('ring-2');
     expect(cardElement.className).toContain('ring-cyan-400');
     expect(cardElement.className).toContain('shadow-lg');
@@ -52,7 +52,7 @@ describe('ActionCard isDragging visual feedback', () => {
       />
     );
 
-    const cardElement = container.firstChild;
+    const cardElement = container.firstChild.firstChild;
     // Should NOT have the old negative styling
     expect(cardElement.className).not.toContain('opacity-50');
     expect(cardElement.className).not.toContain('scale-95');
@@ -67,7 +67,7 @@ describe('ActionCard isDragging visual feedback', () => {
       />
     );
 
-    const cardElement = container.firstChild;
+    const cardElement = container.firstChild.firstChild;
     expect(cardElement.className).not.toContain('ring-cyan-400');
     expect(cardElement.className).not.toContain('shadow-cyan-500/50');
   });
@@ -80,7 +80,7 @@ describe('ActionCard isDragging visual feedback', () => {
       />
     );
 
-    const cardElement = container.firstChild;
+    const cardElement = container.firstChild.firstChild;
     expect(cardElement.className).not.toContain('ring-cyan-400');
     expect(cardElement.className).not.toContain('shadow-cyan-500/50');
   });
@@ -110,7 +110,7 @@ describe('ActionCard onClick guards', () => {
       />
     );
 
-    fireEvent.click(container.firstChild);
+    fireEvent.click(container.firstChild.firstChild);
 
     // onClick should NOT be called when isDragging is true (drag in progress)
     expect(mockOnClick).not.toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe('ActionCard onClick guards', () => {
 
     // Should not throw when onClick is null
     expect(() => {
-      fireEvent.click(container.firstChild);
+      fireEvent.click(container.firstChild.firstChild);
     }).not.toThrow();
   });
 
@@ -143,7 +143,7 @@ describe('ActionCard onClick guards', () => {
       />
     );
 
-    fireEvent.click(container.firstChild);
+    fireEvent.click(container.firstChild.firstChild);
 
     // onClick should be called when not dragging and playable
     expect(mockOnClick).toHaveBeenCalledWith(mockCard);

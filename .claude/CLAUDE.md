@@ -1,12 +1,11 @@
 ## Master Plan
 
-- **Start of session**: Read `Design/Technical Debt Refactor/MASTER_PLAN.md` to know current phase and progress.
-- **End of session**: Update MASTER_PLAN.md with what was completed (check boxes, update phase status).
 - Supporting documentation ecosystem:
-  - `Design/Technical Debt Refactor/CODE_STANDARDS.md` — refer and update as standards evolve
+  - `Design/Technical Debt Refactor/CODE_STANDARDS.md` — Gold standard for code. Any violation of these standard must raise a question to the user. 
   - `Design/Technical Debt Refactor/FUTURE_IMPROVEMENTS.md` — resolve items when fixed, add when deferred
   - `Design/CODEBASE_AUDIT.md` — mark findings `[FIXED]` as they're addressed
   - `Design/Technical Debt Refactor/CURRENT_STATE_AUDIT.md` — update metrics after each phase
+  - `Design/Technical Debt Refactor/REFACTORING_WORKFLOW.md` - process to follow
 
 ## Context Efficiency
 
@@ -40,6 +39,12 @@ Keep explanations proportional to complexity. Simple changes need one sentence, 
 Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project standards.
 
 ### Zero Test Failures
+- **TDD Where possible.**
+- Whenever suitable implement via a TDD approach. 
+- Make sure we are testing the intent as well as the code. 
+- Don't make tests for tests sake. Don't proliforate. Make sure the tests are targeted and worthwhile. Don't bloat. 
+
+### Zero Test Failures
 
 - **All tests must pass before committing.** No exceptions.
 - If a test fails, stop and fix it before proceeding with any other work.
@@ -53,9 +58,9 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 
 ## Code Review
 
-- Changes to core files should pass review by a strict principal architect agent.
+- All changes should pass review by a strict principal architect agent.
 - Checks: best practices, clean architecture, no code smell, correct logging, no dead code.
-- Use `superpowers:code-reviewer` agent after completing significant work.
+- Use `superpowers:code-reviewer`
 
 ## Deferred Improvements
 
@@ -76,6 +81,10 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 - If instructed to implement while in plan mode, call `ExitPlanMode` first, get approval, then execute.
 - "It's just one line" is never a valid reason to skip the workflow.
 
-## Refactoring
+## Debug Logging
+- All logging must be routed via debugLogger.js.
+- When adding logging, please vet any existing logging to see if there is anything suitable already.
+- Be careful not to add logging that creates unnecessary noise - epsecailly exsessive propergation of the same information due to react re-renders. Try to get logging to appear once, and when required only. 
+- When planning debugging tasks, confirm that debugLogger.js only has relevant categories enabled. Disable any that are not of current use. 
 
-- For large-scale refactoring projects, activate the workflow in `Design/Technical Debt Refactor/REFACTORING_WORKFLOW.md`.
+

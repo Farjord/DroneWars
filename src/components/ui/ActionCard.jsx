@@ -74,8 +74,11 @@ const ActionCard = ({
     WebkitFontSmoothing: 'antialiased'
   } : {};
 
-  // 3D tilt parallax during drag + hover
-  const tiltRef = useCardTilt(isDragging);
+  // 3D tilt parallax during drag + hover, with type-colored glow
+  const typeKey = type?.toLowerCase() || 'upgrade';
+  const glowFilter = isDisabled ? null
+    : `drop-shadow(0 0 6px var(--card-${typeKey}-glow-dim)) drop-shadow(0 0 12px var(--card-${typeKey}-glow-dim))`;
+  const tiltRef = useCardTilt(isDragging, { glowFilter });
 
   // Debug logging for ALL renders to diagnose re-rendering issue
   debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
@@ -86,12 +89,9 @@ const ActionCard = ({
     timestamp: Date.now()
   });
 
-  const glowClass = isDisabled ? '' : `card-glow-${type?.toLowerCase() || 'upgrade'}`;
-
   return (
-    <div className={glowClass}>
+    <div ref={tiltRef} style={{ width: '225px', height: '275px', flexShrink: 0, ...scaleStyle }}>
     <div
-      ref={tiltRef}
       onClick={(e) => {
         e.stopPropagation();
 
@@ -130,11 +130,9 @@ const ActionCard = ({
         ${isCostSelectionTarget ? 'ring-2 ring-cyan-400' : ''}
       `}
       style={{
-        width: '225px',
-        height: '275px',
-        flexShrink: 0,
+        width: '100%',
+        height: '100%',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
-        ...scaleStyle
       }}
     >
       <div
@@ -230,7 +228,7 @@ const ActionCard = ({
         style={{
           position: 'absolute',
           inset: '-50%',
-          background: 'linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+          background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)',
           transform: 'translateX(var(--sheen, -100%))',
           transition: 'transform 0.3s ease',
           pointerEvents: 'none',

@@ -327,6 +327,7 @@ function HandView({
                 marginLeft: `${marginLeft}px`,
                 transformOrigin: CARD_FAN_CONFIG.transformOrigin,
                 transition: getCardTransition(),
+                zoom: isElevated ? CARD_FAN_CONFIG.hoverEffect.scale : 1,
                 ...(isDragging && { perspective: '600px', transformStyle: 'preserve-3d' }),
                 ...(isCardDragging && { opacity: 0.3 })
               };

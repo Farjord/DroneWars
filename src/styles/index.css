@@ -635,36 +635,6 @@
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
-/* === HOVER GLOW (uses filter: drop-shadow to work with clipPath) === */
-
-.card-border-ordnance-common:hover,
-.card-border-ordnance-uncommon:hover,
-.card-border-ordnance-rare:hover,
-.card-border-ordnance-mythic:hover {
-  filter: drop-shadow(0 0 6px var(--card-ordnance-glow-dim));
-}
-
-.card-border-tactic-common:hover,
-.card-border-tactic-uncommon:hover,
-.card-border-tactic-rare:hover,
-.card-border-tactic-mythic:hover {
-  filter: drop-shadow(0 0 6px var(--card-tactic-glow-dim));
-}
-
-.card-border-support-common:hover,
-.card-border-support-uncommon:hover,
-.card-border-support-rare:hover,
-.card-border-support-mythic:hover {
-  filter: drop-shadow(0 0 6px var(--card-support-glow-dim));
-}
-
-.card-border-upgrade-common:hover,
-.card-border-upgrade-uncommon:hover,
-.card-border-upgrade-rare:hover,
-.card-border-upgrade-mythic:hover {
-  filter: drop-shadow(0 0 6px var(--card-upgrade-glow-dim));
-}
-
 /* === DISABLED STATE === */
 .card-border-disabled {
   background: linear-gradient(
@@ -675,7 +645,6 @@
   );
   box-shadow: none;
   animation: none;
-  filter: none !important;
 }
 
 /* ========================================

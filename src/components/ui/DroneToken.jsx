@@ -200,10 +200,19 @@ const DroneToken = ({
   // Invalid target indicator prop
   isInvalidTarget = false
 }) => {
+  // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
+  const isVisuallyOwned = drone.deployedBy
+    ? drone.deployedBy === getLocalPlayerId()
+    : isPlayer;
+
   // 3D tilt parallax during drag + hover (subtler than ActionCard)
+  const glowColor = isVisuallyOwned ? 'rgba(34, 211, 238, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+  const glowFilter = drone.isExhausted ? null
+    : `drop-shadow(0 0 6px ${glowColor}) drop-shadow(0 0 12px ${glowColor})`;
   const tiltRef = useCardTilt(isDragging, {
     maxTiltDrag: 10,
-    maxTiltHover: 5
+    maxTiltHover: 5,
+    glowFilter
   });
 
   // Performance logging for drag investigation - only log when dragging is active
@@ -242,11 +251,6 @@ const DroneToken = ({
   }
 
   // --- Dynamic Class Calculation ---
-  // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
-  const isVisuallyOwned = drone.deployedBy
-    ? drone.deployedBy === getLocalPlayerId()
-    : isPlayer;
-
   const borderColor = isVisuallyOwned ? 'border-cyan-400' : 'border-red-500';
   const isToken = baseDrone?.isToken;
   const nameBgColor = isToken
@@ -402,7 +406,7 @@ const DroneToken = ({
                 style={{
                   position: 'absolute',
                   inset: '-50%',
-                  background: 'linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)',
+                  background: 'linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.10) 50%, transparent 60%)',
                   transform: 'translateX(var(--sheen, -100%))',
                   transition: 'transform 0.3s ease',
                   pointerEvents: 'none',
