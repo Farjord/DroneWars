@@ -4,12 +4,12 @@ import LocalGameServer from './LocalGameServer.js';
 import RemoteGameServer from './RemoteGameServer.js';
 
 const GameServerFactory = {
-  create(gameMode, { gameStateManager, p2pManager }) {
+  create(gameMode, { gameStateManager, p2pManager, phaseAnimationQueue }) {
     if (gameMode === 'local' || gameMode === 'host') {
       return new LocalGameServer(gameStateManager);
     }
     if (gameMode === 'guest') {
-      return new RemoteGameServer(gameStateManager, p2pManager);
+      return new RemoteGameServer(gameStateManager, p2pManager, { phaseAnimationQueue });
     }
     return null;
   },

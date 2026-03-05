@@ -11,7 +11,7 @@ import { debugLog } from '../utils/debugLogger.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import StateValidationService from '../logic/state/StateValidationService.js';
-import GuestSyncManager from './GuestSyncManager.js';
+import OptimisticAnimationTracker from '../server/OptimisticAnimationTracker.js';
 import SinglePlayerInventoryManager from './SinglePlayerInventoryManager.js';
 import TacticalItemManager from './TacticalItemManager.js';
 import ShipSlotManager from './ShipSlotManager.js';
@@ -96,8 +96,8 @@ class GameStateManager {
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
 
-    // Guest sync manager (extracted — handles P2P integration, optimistic actions, host state)
-    this.guestSyncManager = new GuestSyncManager(this);
+    // Optimistic animation tracker (dedup guest-played animations from host responses)
+    this.optimisticTracker = new OptimisticAnimationTracker();
 
     // Single-player inventory manager (extracted — save/load, inventory, card discovery, ship components)
     this.singlePlayerInventoryManager = new SinglePlayerInventoryManager(this);
@@ -131,24 +131,72 @@ class GameStateManager {
     this.gameFlowManager = gameFlowManager;
   }
 
-  // --- GUEST SYNC FACADES ---
-  // GFM and GMQS access these via this.gameStateManager — thin delegation to guestSyncManager
-  // See FUTURE_IMPROVEMENTS #9 — remove facades when GFM/GMQS receive guestSyncManager directly
+  // --- P2P WIRING ---
 
-  setupP2PIntegration(p2pManager) { this.guestSyncManager.setupP2PIntegration(p2pManager); }
-  startValidation(targetPhase, guestState) { this.guestSyncManager.startValidation(targetPhase, guestState); }
-  shouldValidateBroadcast(incomingPhase) { return this.guestSyncManager.shouldValidateBroadcast(incomingPhase); }
-  isMilestonePhase(phase) { return this.guestSyncManager.isMilestonePhase(phase); }
-  applyHostState(hostState) { this.guestSyncManager.applyHostState(hostState); }
-  trackOptimisticAnimations(animations) { this.guestSyncManager.trackOptimisticAnimations(animations); }
-  filterAnimations(actionAnimations, systemAnimations) { return this.guestSyncManager.filterAnimations(actionAnimations, systemAnimations); }
-  hasRecentOptimisticActions() { return this.guestSyncManager.hasRecentOptimisticActions(); }
-  clearOptimisticActions() { this.guestSyncManager.clearOptimisticActions(); }
+  /**
+   * Set up ActionProcessor ↔ P2PManager bidirectional wiring + host-side state_sync_requested handler.
+   * Called by useGameState.js and LobbyScreen.jsx.
+   * Guest-side P2P subscriptions (state_update_received) are handled by RemoteGameServer.initialize().
+   */
+  setupP2PIntegration(p2pManager) {
+    if (this._p2pIntegrationSetup) return;
 
-  // Property proxies — external code accesses these directly on GSM
-  get optimisticActionService() { return this.guestSyncManager.optimisticActionService; }
-  get validatingState() { return this.guestSyncManager.validatingState; }
-  set validatingState(value) { this.guestSyncManager.validatingState = value; }
+    this.actionProcessor.setP2PManager(p2pManager);
+    p2pManager.setActionProcessor(this.actionProcessor);
+
+    p2pManager.subscribe((event) => {
+      switch (event.type) {
+        case 'multiplayer_mode_change':
+          this.setMultiplayerMode(event.data.mode, event.data.isHost);
+          break;
+        case 'state_sync_requested': {
+          // Host-side: respond to guest state sync requests
+          const currentState = this.getState();
+          p2pManager.sendData({
+            type: 'GAME_STATE_SYNC',
+            state: currentState,
+            timestamp: Date.now(),
+          });
+          break;
+        }
+      }
+    });
+
+    this._p2pIntegrationSetup = true;
+  }
+
+  // --- GUEST SYNC METHODS ---
+
+  // Milestone phases where guest stops and validates state with host
+  static MILESTONE_PHASES = ['droneSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'];
+
+  isMilestonePhase(phase) {
+    return GameStateManager.MILESTONE_PHASES.includes(phase);
+  }
+
+  applyHostState(hostState) {
+    if (this.state.gameMode !== 'guest') {
+      debugLog('STATE_SYNC', 'applyHostState should only be called in guest mode');
+      return;
+    }
+
+    debugLog('BROADCAST_TIMING', `[GUEST APPLY] Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase}`);
+
+    // Preserve guest's local gameMode
+    const localGameMode = this.state.gameMode;
+    this.state = { ...hostState };
+    this.state.gameMode = localGameMode;
+
+    this.emit('HOST_STATE_UPDATE', { hostState });
+  }
+
+  trackOptimisticAnimations(animations) {
+    this.optimisticTracker.trackAction(animations);
+  }
+
+  filterAnimations(actionAnimations, systemAnimations) {
+    return this.optimisticTracker.filterAnimations(actionAnimations, systemAnimations);
+  }
 
   // --- EVENT SYSTEM ---
 

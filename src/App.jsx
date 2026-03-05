@@ -451,7 +451,11 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- 6.0 ACTION ROUTING HOOK ---
   const gameServer = useMemo(() => {
-    return GameServerFactory.create(gameState.gameMode, { gameStateManager, p2pManager });
+    const server = GameServerFactory.create(gameState.gameMode, { gameStateManager, p2pManager, phaseAnimationQueue });
+    if (server?.initialize) {
+      server.initialize();
+    }
+    return server;
   }, [gameState.gameMode, gameStateManager]);
 
   const {
