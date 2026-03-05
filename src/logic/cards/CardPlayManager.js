@@ -397,7 +397,7 @@ class CardPlayManager {
    * Routes effect through EffectRouter with fallback for non-extracted effects.
    */
   resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') {
-    const context = { actingPlayerId, playerStates, placedSections, target, callbacks, card, localPlayerId, gameMode };
+    const context = { actingPlayerId, playerStates, placedSections, target, callbacks, card, localPlayerId, isPlayerAI: (pid) => gameMode === 'local' && pid === 'player2' };
     const modularResult = this.effectRouter.routeEffect(effect, context);
     if (modularResult !== null) {
       return modularResult;

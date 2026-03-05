@@ -36,7 +36,7 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, playerStates, placedSections, localPlayerId = 'player1', gameMode = 'local' } = context;
+    const { actingPlayerId, playerStates, placedSections, localPlayerId = 'player1', isPlayerAI } = context;
     const newPlayerStates = this.clonePlayerStates(playerStates);
 
     const targetPlayerId = actingPlayerId || 'player1';
@@ -86,9 +86,7 @@ class SearchAndDrawProcessor extends BaseEffectProcessor {
     }
 
     // Determine if this is an AI player
-    // In single-player (gameMode === 'local'), only player2 is AI
-    // In multiplayer, both players are human and need card selection UI
-    const isAI = gameMode === 'local' && targetPlayerId === 'player2';
+    const isAI = isPlayerAI?.(targetPlayerId) ?? false;
 
     // For AI players (single-player player2 only), automatically select the best cards
     if (isAI) {

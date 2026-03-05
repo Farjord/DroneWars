@@ -70,7 +70,6 @@ class PhaseRequirementChecker {
     const player2Exceeds = player2HandCount > player2HandLimit;
 
     debugLog('PHASE_TRANSITIONS', `🃏 Hand limit check:`, {
-      gameMode: gameState.gameMode,
       player1: { handCount: player1HandCount, handLimit: player1HandLimit, exceeds: player1Exceeds },
       player2: { handCount: player2HandCount, handLimit: player2HandLimit, exceeds: player2Exceeds },
       anyPlayerExceeds: player1Exceeds || player2Exceeds

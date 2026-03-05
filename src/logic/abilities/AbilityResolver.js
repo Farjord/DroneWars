@@ -134,7 +134,7 @@ class AbilityResolver {
     }
 
     // Apply effects using modular handler
-    const effectResult = this.resolveDroneAbilityEffect(effect, userDrone, targetDrone, newPlayerStates, placedSections, { resolveAttackCallback }, actingPlayerId);
+    const effectResult = this.resolveDroneAbilityEffect(effect, userDrone, targetDrone, newPlayerStates, placedSections, { resolveAttackCallback }, actingPlayerId, {});
 
     // Update states from effect result
     newPlayerStates.player1 = effectResult.newPlayerStates.player1;
@@ -165,7 +165,7 @@ class AbilityResolver {
    * @param {string} playerId - 'player1' or 'player2'
    * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents, requiresShieldReallocation?, mandatoryAction? }
    */
-  resolveShipAbility(ability, sectionName, target, playerStates, placedSections, callbacks, playerId) {
+  resolveShipAbility(ability, sectionName, target, playerStates, placedSections, callbacks, playerId, { isPlayerAI } = {}) {
     const { logCallback, resolveAttackCallback } = callbacks || {};
     const { cost, effect } = ability;
     const actingPlayerState = playerStates[playerId];
@@ -215,7 +215,7 @@ class AbilityResolver {
       };
     } else {
       // Handle other ship ability effects using modular handler
-      const effectResult = this.resolveShipAbilityEffect(effect, sectionName, target, newPlayerStates, placedSections, { resolveAttackCallback }, playerId);
+      const effectResult = this.resolveShipAbilityEffect(effect, sectionName, target, newPlayerStates, placedSections, { resolveAttackCallback }, playerId, { isPlayerAI });
 
       // Update states from effect result
       newPlayerStates.player1 = effectResult.newPlayerStates.player1;
@@ -266,7 +266,7 @@ class AbilityResolver {
    * @param {Object} callbacks - Callback functions
    * @returns {Object} { newPlayerStates, additionalEffects, animationEvents }
    */
-  resolveDroneAbilityEffect(effect, userDrone, targetDrone, playerStates, placedSections, callbacks, actingPlayerId = 'player1') {
+  resolveDroneAbilityEffect(effect, userDrone, targetDrone, playerStates, placedSections, callbacks, actingPlayerId = 'player1', { isPlayerAI } = {}) {
     // Route ability effects through EffectRouter (uses extracted processors)
     const effectRouter = new EffectRouter();
 
@@ -278,7 +278,7 @@ class AbilityResolver {
       placedSections,
       callbacks,
       localPlayerId: actingPlayerId,
-      gameMode: 'local'
+      isPlayerAI
     };
 
     const result = effectRouter.routeEffect(effect, context);
@@ -306,7 +306,7 @@ class AbilityResolver {
    * @param {string} playerId - 'player1' or 'player2'
    * @returns {Object} { newPlayerStates, additionalEffects, animationEvents, needsDiscardSelection? }
    */
-  resolveShipAbilityEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId) {
+  resolveShipAbilityEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId, { isPlayerAI } = {}) {
     const shipSource = { name: sectionName };
 
     // Try routing through EffectRouter for extracted effect types (DAMAGE, DRAW, HEAL, etc.)
@@ -320,7 +320,7 @@ class AbilityResolver {
       placedSections,
       callbacks,
       localPlayerId: playerId,
-      gameMode: 'local'
+      isPlayerAI
     };
 
     const result = effectRouter.routeEffect(effect, context);

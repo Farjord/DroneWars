@@ -274,7 +274,7 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
         ...mockContext,
         actingPlayerId: 'player2',
         localPlayerId: 'player1',
-        gameMode: 'local',
+        isPlayerAI: (pid) => pid === 'player2',
         card: mockCard,
         playerStates: mockPlayerStates,
       };
@@ -301,7 +301,7 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
         ...mockContext,
         actingPlayerId: 'player2',
         localPlayerId: 'player1',
-        gameMode: 'local',
+        isPlayerAI: (pid) => pid === 'player2',
         card: { ...mockCard, effects: [effect] },
         playerStates: mockPlayerStates,
       };

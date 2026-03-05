@@ -29,10 +29,10 @@ class RecalculateAbilityProcessor {
    * @param {string} payload.playerId - Player ID
    * @param {Object} playerStates - Current game state { player1, player2 }
    * @param {string} localPlayerId - Local human player ID (for AI detection)
-   * @param {string} gameMode - 'local', 'host', or 'guest'
+   * @param {Object} options - { isPlayerAI } function
    * @returns {Object} { newPlayerStates, mandatoryAction?, shouldEndTurn }
    */
-  process(payload, playerStates, localPlayerId = 'player1', gameMode = 'local') {
+  process(payload, playerStates, localPlayerId = 'player1', { isPlayerAI } = {}) {
     const { sectionName, playerId } = payload;
 
     debugLog('SHIP_ABILITY', `📊 RecalculateAbilityProcessor: ${playerId} using Recalculate`);
@@ -73,7 +73,7 @@ class RecalculateAbilityProcessor {
         actingPlayerId: playerId,
         playerStates: newPlayerStates,
         localPlayerId,
-        gameMode
+        isPlayerAI
       }
     );
 
@@ -84,7 +84,7 @@ class RecalculateAbilityProcessor {
     debugLog('SHIP_ABILITY', `📥 RecalculateAbilityProcessor: Drew 1 card, hand size now: ${updatedPlayerState.hand.length}`);
 
     // Step 3: Determine if AI or human
-    const isAI = gameMode === 'local' && playerId === 'player2';
+    const isAI = isPlayerAI?.(playerId) ?? false;
 
     if (isAI) {
       // AI auto-discards worst card immediately

@@ -83,7 +83,6 @@ export async function processCommitment(payload, ctx) {
   });
 
   const currentState = ctx.getState();
-  const gameMode = currentState.gameMode;
 
   if (!currentState.commitments[phase]) {
     currentState.commitments[phase] = {
@@ -131,20 +130,12 @@ export async function processCommitment(payload, ctx) {
   // PhaseManager integration
   const phaseManager = ctx.getPhaseManager();
   if (phaseManager) {
-    if (gameMode === 'host' && playerId === 'player1') {
+    if (playerId === 'player1') {
       phaseManager.notifyHostAction('commit', { phase });
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host committed to ${phase}`);
-    } else if (gameMode === 'host' && playerId === 'player2') {
+    } else {
       phaseManager.notifyGuestAction('commit', { phase });
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest committed to ${phase} (via network)`);
-    } else if (gameMode === 'local') {
-      if (playerId === 'player1') {
-        phaseManager.notifyHostAction('commit', { phase });
-      } else {
-        phaseManager.notifyGuestAction('commit', { phase });
-      }
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase} (local mode)`);
     }
+    debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase}`);
   }
 
   let bothComplete = currentState.commitments[phase].player1.completed &&
@@ -158,14 +149,10 @@ export async function processCommitment(payload, ctx) {
     bothComplete
   });
 
-  if (gameMode === 'host') {
-    debugLog('COMMITMENTS', `📡 Broadcasting commitment state to guest for ${phase}`);
-    ctx.broadcastStateToGuest();
-    debugLog('COMMITMENTS', `✅ Commitment state broadcast complete`);
-  }
+  ctx.broadcastStateToGuest();
 
-  // For single-player mode, auto-complete AI commitment immediately
-  if (playerId === 'player1' && currentState.gameMode === 'local' && !bothComplete) {
+  // Auto-complete AI commitment immediately when opponent is AI
+  if (!bothComplete && ctx.isPlayerAI('player2') && playerId === 'player1') {
     debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment immediately');
     debugLog('SHIELD_CLICKS', '🤖 About to call handleAICommitment for AI auto-commit');
     if (aiPhaseProcessor) {

@@ -188,8 +188,7 @@ export async function processPhaseTransition(payload, ctx) {
     const phaseAnimationQueue = ctx.getPhaseAnimationQueue();
     debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Attempting to queue`, {
       phase: newPhase,
-      hasQueue: !!phaseAnimationQueue,
-      gameMode: currentState.gameMode
+      hasQueue: !!phaseAnimationQueue
     });
 
     if (phaseAnimationQueue) {

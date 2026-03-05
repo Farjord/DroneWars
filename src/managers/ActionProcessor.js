@@ -274,6 +274,10 @@ class ActionProcessor {
       // Commitment delegation
       clearPhaseCommitments: (phase) => ap.clearPhaseCommitments(phase),
 
+      // Mode-agnostic queries
+      isPlayerAI: (playerId) => ap.gameServer?.isPlayerAI(playerId) ?? (playerId === 'player2'),
+      getAnimationSource: () => ap.getAnimationSource(),
+
       // Late-bound references
       getAiPhaseProcessor: () => ap.aiPhaseProcessor,
       getPhaseManager: () => ap.phaseManager,
@@ -333,6 +337,15 @@ class ActionProcessor {
   }
 
   /**
+   * Set GameServer reference for mode-agnostic queries (isPlayerAI, etc.)
+   * @param {Object} gameServer - GameServer instance
+   */
+  setGameServer(gameServer) {
+    this.gameServer = gameServer;
+    debugLog('STATE_SYNC', '🔗 ActionProcessor: GameServer reference set');
+  }
+
+  /**
    * Set AIPhaseProcessor reference for AI interception decisions
    * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
@@ -357,7 +370,6 @@ setAnimationManager(animationManager) {
   async queueAction(action) {
     debugLog('PASS_LOGIC', `🟣 [QUEUE ACTION] Action queued`, {
       type: action.type,
-      gameMode: this.gameStateManager?.getState()?.gameMode,
       queueLength: this.actionQueue.length
     });
 
@@ -378,8 +390,7 @@ setAnimationManager(animationManager) {
   async processQueue() {
     debugLog('PASS_LOGIC', `🟠 [PROCESS QUEUE] Processing queue`, {
       isProcessing: this.isProcessing,
-      queueLength: this.actionQueue.length,
-      gameMode: this.gameStateManager?.getState()?.gameMode
+      queueLength: this.actionQueue.length
     });
 
     if (this.isProcessing || this.actionQueue.length === 0) {
@@ -699,15 +710,11 @@ setAnimationManager(animationManager) {
   async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
     if (!animations || animations.length === 0) return;
 
-    const gameMode = this.gameStateManager.get('gameMode');
-
-    // Capture for guest broadcasting (host only)
-    if (gameMode === 'host') {
-      this.broadcastService.captureAnimations(animations, isSystemAnimation);
-    }
+    // Capture for guest broadcasting (BroadcastService has internal host guard)
+    this.broadcastService.captureAnimations(animations, isSystemAnimation);
 
     if (this.animationManager) {
-      const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
+      const source = this.getAnimationSource();
       if (waitForCompletion) {
         await this.animationManager.executeAnimations(animations, source);
       } else {

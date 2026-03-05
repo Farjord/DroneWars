@@ -455,6 +455,9 @@ const App = ({ phaseAnimationQueue }) => {
     if (server?.initialize) {
       server.initialize();
     }
+    if (server) {
+      gameStateManager.actionProcessor.setGameServer(server);
+    }
     return server;
   }, [gameState.gameMode, gameStateManager]);
 
@@ -927,7 +930,7 @@ const App = ({ phaseAnimationQueue }) => {
      ) : (
        <StaticBackground imagePath={currentBackground.path} />
      )}
-     <div className="absolute inset-0 z-0 bg-black/50 pointer-events-none" />
+     <div className="absolute inset-0 z-0 bg-black/50 backdrop-blur-[0.8px] pointer-events-none" />
      <TargetingArrowLayer
        arrowState={arrowState}
        cardDragArrowState={cardDragArrowState}

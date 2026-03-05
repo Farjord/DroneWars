@@ -52,7 +52,7 @@ export async function processAttack(payload, ctx) {
       });
 
       // AI Defender - wait then decide automatically
-      if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
+      if (ctx.isPlayerAI(defendingPlayerId)) {
         debugLog('COMBAT', '🛡️ [INTERCEPTION] AI defender has interceptors');
 
         // Wait 1 second (modal visible to human attacker)

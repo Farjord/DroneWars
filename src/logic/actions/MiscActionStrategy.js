@@ -47,16 +47,11 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
       }];
 
       ctx.captureAnimationsForBroadcast(animation);
-
-      const gameMode = currentState.gameMode;
-      if (gameMode === 'host' && animation.length > 0) {
-        ctx.broadcastStateToGuest(`${statusType}Consumption`);
-      }
+      ctx.broadcastStateToGuest(`${statusType}Consumption`);
 
       const animationManager = ctx.getAnimationManager();
       if (animationManager) {
-        const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
-        await animationManager.executeAnimations(animation, source);
+        await animationManager.executeAnimations(animation, ctx.getAnimationSource());
       }
 
       return {

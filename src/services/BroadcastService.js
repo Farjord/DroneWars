@@ -46,6 +46,7 @@ class BroadcastService {
    */
   captureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) return;
+    if (this.gameStateManager.get('gameMode') !== 'host') return;
     (isSystemAnimation ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...animations);
   }
 

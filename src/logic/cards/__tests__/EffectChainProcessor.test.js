@@ -230,7 +230,7 @@ function createCtx(playerStates, overrides = {}) {
     placedSections: { player1: ['bridge'], player2: ['bridge'] },
     callbacks: { logCallback: vi.fn(), resolveAttackCallback: vi.fn() },
     localPlayerId: 'player1',
-    gameMode: 'local',
+    isPlayerAI: (pid) => pid === 'player2',
     ...overrides,
   };
 }

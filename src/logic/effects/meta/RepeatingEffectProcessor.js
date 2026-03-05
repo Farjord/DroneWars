@@ -51,7 +51,7 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, playerStates, localPlayerId = 'player1', gameMode = 'local' } = context;
+    const { actingPlayerId, playerStates } = context;
     let currentStates = this.clonePlayerStates(playerStates);
     const allAdditionalEffects = [];
     const allAnimationEvents = [];

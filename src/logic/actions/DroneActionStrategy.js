@@ -291,23 +291,14 @@ export async function processPlayerPass(payload, ctx) {
   ctx.setPassInfo(newPassInfo);
 
   // Notify PhaseManager
-  const gameMode = currentState.gameMode;
   const phaseManager = ctx.getPhaseManager();
   if (phaseManager) {
-    if (gameMode === 'host' && playerId === 'player1') {
+    if (playerId === 'player1') {
       phaseManager.notifyHostAction('pass', { phase: turnPhase });
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host passed in ${turnPhase}`);
-    } else if (gameMode === 'host' && playerId === 'player2') {
+    } else {
       phaseManager.notifyGuestAction('pass', { phase: turnPhase });
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest passed in ${turnPhase} (via network)`);
-    } else if (gameMode === 'local') {
-      if (playerId === 'player1') {
-        phaseManager.notifyHostAction('pass', { phase: turnPhase });
-      } else {
-        phaseManager.notifyGuestAction('pass', { phase: turnPhase });
-      }
-      debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} passed in ${turnPhase} (local mode)`);
     }
+    debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} passed in ${turnPhase}`);
   }
 
   // Increment turn counter ONLY for action phase passes

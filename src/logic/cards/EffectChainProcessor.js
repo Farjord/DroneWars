@@ -190,7 +190,7 @@ class EffectChainProcessor {
    * @param {Object} card - Card being played (must have effects[])
    * @param {Array} selections - Per-effect selections: [{ target, lane, destination? }, ...]
    * @param {string} playerId - Acting player ID
-   * @param {Object} ctx - { playerStates, placedSections, callbacks, localPlayerId, gameMode }
+   * @param {Object} ctx - { playerStates, placedSections, callbacks, localPlayerId, isPlayerAI }
    * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents }
    */
   processEffectChain(card, selections, playerId, ctx) {
@@ -362,7 +362,7 @@ class EffectChainProcessor {
           callbacks,
           card,
           localPlayerId: ctx.localPlayerId || 'player1',
-          gameMode: ctx.gameMode || 'local',
+          isPlayerAI: ctx.isPlayerAI,
           gameSeed: ctx.gameSeed,
           roundNumber: ctx.roundNumber,
         };

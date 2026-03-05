@@ -4,9 +4,10 @@
 import GameServer from './GameServer.js';
 
 class LocalGameServer extends GameServer {
-  constructor(gameStateManager) {
+  constructor(gameStateManager, { isMultiplayer = false } = {}) {
     super();
     this.gameStateManager = gameStateManager;
+    this.isMultiplayer = isMultiplayer;
   }
 
   async submitAction(type, payload) {
@@ -26,7 +27,7 @@ class LocalGameServer extends GameServer {
   }
 
   isPlayerAI(playerId) {
-    return playerId === 'player2'; // Local mode: player2 is always AI
+    return !this.isMultiplayer && playerId === 'player2';
   }
 
   onStateUpdate(callback) {

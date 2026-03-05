@@ -142,6 +142,12 @@ describe('BroadcastService', () => {
       );
     });
 
+    it('captureAnimations is no-op when not host', () => {
+      mockGameStateManager.get.mockReturnValue('local');
+      broadcastService.captureAnimations([{ animationName: 'A' }], false);
+      expect(broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
+    });
+
     it('captureAnimationsForBroadcast is no-op when not host', () => {
       mockGameStateManager.get.mockReturnValue('single');
       broadcastService.captureAnimationsForBroadcast([{ animationName: 'MOVE' }]);
@@ -157,6 +163,7 @@ describe('BroadcastService', () => {
 
   describe('getAndClear methods', () => {
     it('getAndClearPendingActionAnimations returns and clears', () => {
+      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.captureAnimations([{ animationName: 'A' }], false);
       const result = broadcastService.getAndClearPendingActionAnimations();
       expect(result).toEqual([{ animationName: 'A' }]);
@@ -164,6 +171,7 @@ describe('BroadcastService', () => {
     });
 
     it('getAndClearPendingSystemAnimations returns and clears', () => {
+      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.captureAnimations([{ animationName: 'S' }], true);
       const result = broadcastService.getAndClearPendingSystemAnimations();
       expect(result).toEqual([{ animationName: 'S' }]);
@@ -173,6 +181,7 @@ describe('BroadcastService', () => {
 
   describe('reset', () => {
     it('clears all pending state', () => {
+      mockGameStateManager.get.mockReturnValue('host');
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });
       broadcastService.captureAnimations([{ animationName: 'X' }], false);
       broadcastService.captureAnimations([{ animationName: 'Y' }], true);

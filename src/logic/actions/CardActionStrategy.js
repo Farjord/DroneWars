@@ -103,7 +103,7 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     placedSections,
     callbacks,
     localPlayerId: ctx.getLocalPlayerId(),
-    gameMode: currentState.gameMode || 'local',
+    isPlayerAI: ctx.isPlayerAI,
     gameSeed: currentState.gameSeed,
     roundNumber: currentState.roundNumber,
   });

@@ -41,19 +41,19 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
    * @param {string} context.actingPlayerId - Player performing action
    * @param {Object} context.playerStates - Current player states
    * @param {string} context.localPlayerId - Local human player ID
-   * @param {string} context.gameMode - 'local' or 'host' or 'guest'
+   * @param {Function} context.isPlayerAI - Function to check if player is AI
    * @returns {Object} Result { newPlayerStates, needsDiscardSelection? } or full result for AI
    */
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, playerStates, localPlayerId = 'player1', gameMode = 'local' } = context;
+    const { actingPlayerId, playerStates, localPlayerId = 'player1', isPlayerAI } = context;
     let currentStates = this.clonePlayerStates(playerStates);
 
     debugLog('EFFECT_PROCESSING', `[DRAW_THEN_DISCARD] ${actingPlayerId} executing draw-then-discard`, {
       drawCount: effect.value.draw,
       discardCount: effect.value.discard,
-      isAI: gameMode === 'local' && actingPlayerId === 'player2'
+      isAI: isPlayerAI?.(actingPlayerId) ?? false
     });
 
     // Step 1: Execute DRAW effect immediately
@@ -70,7 +70,7 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
     debugLog('EFFECT_PROCESSING', `[DRAW_THEN_DISCARD] Drew ${effect.value.draw} cards, hand size now: ${actingPlayerState.hand.length}`);
 
     // Step 2: Determine if AI or human
-    const isAI = gameMode === 'local' && actingPlayerId === 'player2';
+    const isAI = isPlayerAI?.(actingPlayerId) ?? false;
 
     if (isAI) {
       // AI auto-discards worst cards

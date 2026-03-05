@@ -127,7 +127,8 @@ describe('ActionProcessor — processCommitment', () => {
 
     // Manually set player2 commitment (simulating non-local mode)
     storedState.commitments.placement.player2 = { completed: true, placedSections: ['bridge', 'powerCell', 'droneControlHub'] };
-    storedState.gameMode = 'host'; // Prevent AI auto-commit path
+    // Prevent AI auto-commit by making isPlayerAI return false
+    ap.setGameServer({ isPlayerAI: () => false });
 
     // Player 2 commits
     const result = await ap.processCommitment({

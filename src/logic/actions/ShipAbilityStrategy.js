@@ -68,7 +68,8 @@ export async function processShipAbility(payload, ctx) {
     playerStates,
     placedSections,
     callbacks,
-    playerId
+    playerId,
+    { isPlayerAI: ctx.isPlayerAI }
   );
 
   const animations = ctx.mapAnimationEvents(result.animationEvents);
@@ -202,7 +203,7 @@ export async function processRecalculateAbility(payload, ctx) {
     payload,
     { player1: currentState.player1, player2: currentState.player2 },
     localPlayerId,
-    currentState.gameMode
+    { isPlayerAI: ctx.isPlayerAI }
   );
 
   if (result.newPlayerStates) {

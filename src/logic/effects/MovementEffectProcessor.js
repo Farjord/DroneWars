@@ -42,12 +42,10 @@ class MovementEffectProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, localPlayerId = 'player1', gameMode = 'local', card } = context;
+    const { actingPlayerId, localPlayerId = 'player1', isPlayerAI, card } = context;
 
     // Determine if this is an AI player
-    // In single-player (gameMode === 'local'), only player2 is AI
-    // In multiplayer, both players are human and need card selection UI
-    const isAI = gameMode === 'local' && actingPlayerId === 'player2';
+    const isAI = isPlayerAI?.(actingPlayerId) ?? false;
 
     if (!isAI) {
       // Return needsCardSelection for human players
