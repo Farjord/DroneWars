@@ -47,9 +47,31 @@ describe('GameEngine', () => {
 
       expect(mockGSM.processAction).toHaveBeenCalledWith('attack', { droneId: 'd1' });
       expect(response).toHaveProperty('state');
+      expect(response).toHaveProperty('animations');
       expect(response).toHaveProperty('result');
       expect(response.result).toBe(actionResult);
       expect(response.state).toBe(mockState);
+    });
+
+    it('extracts collectedAnimations from result into animations field', async () => {
+      const mockAnims = {
+        actionAnimations: [{ animationName: 'ATTACK', payload: {} }],
+        systemAnimations: [{ animationName: 'PHASE_ANNOUNCE', payload: {} }],
+      };
+      const actionResult = { success: true, collectedAnimations: mockAnims };
+      mockGSM.processAction.mockResolvedValue(actionResult);
+
+      const response = await engine.processAction('attack', { droneId: 'd1' });
+
+      expect(response.animations).toEqual(mockAnims);
+    });
+
+    it('returns empty animation arrays when result has no collectedAnimations', async () => {
+      mockGSM.processAction.mockResolvedValue({ success: true });
+
+      const response = await engine.processAction('move', { droneId: 'd1' });
+
+      expect(response.animations).toEqual({ actionAnimations: [], systemAnimations: [] });
     });
   });
 

@@ -15,12 +15,16 @@ class GameEngine {
    * Process a game action authoritatively.
    * @param {string} type - Action type
    * @param {Object} payload - Action payload
-   * @returns {Promise<{state: Object, result: Object}>}
+   * @returns {Promise<{state: Object, animations: Object, result: Object}>}
    */
   async processAction(type, payload) {
     const result = await this.gameStateManager.processAction(type, payload);
     const state = this.gameStateManager.getState();
-    return { state, result };
+
+    // Extract collected animations from ActionProcessor result (Phase 2 contract)
+    const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
+
+    return { state, animations, result };
   }
 
   getState() {

@@ -190,6 +190,11 @@ class ActionProcessor {
     this.lastActionResult = null;
     this.lastActionType = null;
 
+    // Accumulates all animations executed during a single processAction call.
+    // Unlike BroadcastService pending arrays, this is NOT cleared by intermediate broadcasts.
+    // Used by GameEngine to return animations alongside state in the response.
+    this._actionAnimationLog = { actionAnimations: [], systemAnimations: [] };
+
     debugLog('STATE_SYNC', '⚙️ ActionProcessor initialized');
   }
 
@@ -256,6 +261,11 @@ class ActionProcessor {
           };
         }),
       captureAnimationsForBroadcast: (animations) => {
+        // Log for GameEngine response (filter STATE_SNAPSHOT same as BroadcastService)
+        if (animations?.length) {
+          const broadcastAnims = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
+          ap._actionAnimationLog.actionAnimations.push(...broadcastAnims);
+        }
         ap.broadcastService.captureAnimationsForBroadcast(animations);
       },
 
@@ -432,6 +442,9 @@ setAnimationManager(animationManager) {
   async processAction(action) {
     const { type, payload, isNetworkAction = false } = action;
 
+    // Reset animation log for this action
+    this._actionAnimationLog = { actionAnimations: [], systemAnimations: [] };
+
     // Get current state for validation
     const currentState = this.gameStateManager.getState();
 
@@ -519,6 +532,11 @@ setAnimationManager(animationManager) {
         result.shouldEndTurn = true;
       } else {
         throw new Error(`Unknown action type: ${type}`);
+      }
+
+      // Attach accumulated animations to result for GameEngine consumption
+      if (result) {
+        result.collectedAnimations = { ...this._actionAnimationLog };
       }
 
       // Store result for event emission in finally block
@@ -707,6 +725,9 @@ setAnimationManager(animationManager) {
 
   async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
     if (!animations || animations.length === 0) return;
+
+    // Log animations for GameEngine response (never cleared by broadcasts)
+    (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
 
     // Capture for guest broadcasting (BroadcastService has internal host guard)
     this.broadcastService.captureAnimations(animations, isSystemAnimation);
