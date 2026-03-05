@@ -126,7 +126,6 @@ function createMockActionProcessor() {
   return {
     processCommitment: vi.fn().mockResolvedValue({ success: true, bothPlayersComplete: false }),
     processPass: vi.fn().mockResolvedValue({ success: true }),
-    broadcastStateToGuest: vi.fn(),
     broadcastService: { broadcastIfNeeded: vi.fn() },
     notifyPhaseManager: vi.fn()
   };

@@ -47,7 +47,7 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
       }];
 
       ctx.captureAnimationsForBroadcast(animation);
-      ctx.broadcastStateToGuest(`${statusType}Consumption`);
+      ctx.broadcastService.broadcastIfNeeded(`${statusType}Consumption`);
 
       const animationManager = ctx.getAnimationManager();
       if (animationManager) {

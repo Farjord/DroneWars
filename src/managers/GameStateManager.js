@@ -490,9 +490,12 @@ class GameStateManager {
     }
 
     // Generate random game seed for deterministic gameplay
-    // Host/Local generates, Guest receives from first broadcast
-    const gameSeed = gameMode === 'guest'
-      ? null  // Guest will receive seed from Host
+    // Host/Local generates, Guest receives seed from Host's first broadcast
+    // Note: gameServer isn't set yet at startGame time (created after gameMode state update),
+    // so gameMode param is the correct signal here.
+    const isGuestRole = gameMode === 'guest';
+    const gameSeed = isGuestRole
+      ? null
       : Math.floor(Math.random() * 2147483647);
 
     const gameState = {

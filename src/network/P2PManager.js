@@ -395,10 +395,8 @@ class P2PManager {
     if (!this._requireConnection('Cannot broadcast state')) return;
 
     try {
-      debugLog('MULTIPLAYER', '[P2P HOST] Broadcasting state - checking player2 hand:', {
-        player2HandSize: state.player2?.hand?.length || 0,
-        sampleCard: state.player2?.hand?.[0] || null,
-        sampleInstanceId: state.player2?.hand?.[0]?.instanceId
+      debugLog('MULTIPLAYER', '[P2P HOST] Broadcasting state', {
+        player2HandSize: state.player2?.hand?.length || state.player2?.handCount || 0,
       });
 
       // Increment sequence for each broadcast

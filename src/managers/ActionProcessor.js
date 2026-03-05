@@ -267,7 +267,7 @@ class ActionProcessor {
       processDeployment: (payload) => ap.processDeployment(payload),
       processCommitment: (payload) => ap.processCommitment(payload),
       processDestroyDrone: (payload) => ap.processDestroyDrone(payload),
-      broadcastStateToGuest: (...args) => ap.broadcastStateToGuest(...args),
+      broadcastService: ap.broadcastService,
 
       // Win condition
       checkWinCondition: () => ap.checkWinCondition(),
@@ -893,14 +893,6 @@ setAnimationManager(animationManager) {
    * Called after every action that changes game state
    * @param {string} trigger - Reason for broadcast (e.g., 'after_action', 'phase_transition')
    */
-  /**
-   * Broadcast current game state to guest (host only).
-   * Thin delegation to BroadcastService — kept for backward compat during migration.
-   * @param {string} trigger - Reason for broadcast
-   */
-  broadcastStateToGuest(trigger = 'unknown') {
-    this.broadcastService.broadcastIfNeeded(trigger);
-  }
 
   // --- Delegation methods (public API for external callers and ActionContext) ---
   async processPlayerPass(payload) { return _processPlayerPass(payload, this._getActionContext()); }

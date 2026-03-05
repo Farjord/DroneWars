@@ -6,10 +6,16 @@ describe('LocalGameServer', () => {
   let server;
   let mockGSM;
 
+  const mockState = {
+    phase: 'battle',
+    player1: { hand: [{ id: 'c1' }], deck: [], discardPile: [], hp: 10 },
+    player2: { hand: [{ id: 'c2' }], deck: [], discardPile: [], hp: 10 },
+  };
+
   beforeEach(() => {
     mockGSM = {
       processAction: vi.fn().mockResolvedValue({ success: true, animations: [] }),
-      getState: vi.fn().mockReturnValue({ phase: 'battle', players: {} }),
+      getState: vi.fn().mockReturnValue(mockState),
       getLocalPlayerId: vi.fn().mockReturnValue('player1'),
       subscribe: vi.fn().mockReturnValue(vi.fn()),
     };
@@ -32,14 +38,17 @@ describe('LocalGameServer', () => {
     it('delegates to gameStateManager.getState', () => {
       const state = server.getState();
       expect(mockGSM.getState).toHaveBeenCalled();
-      expect(state).toEqual({ phase: 'battle', players: {} });
+      expect(state).toBe(mockState);
     });
   });
 
   describe('getPlayerView', () => {
-    it('returns getState() as pass-through (redaction deferred to Phase 8)', () => {
+    it('returns redacted state hiding opponent cards', () => {
       const view = server.getPlayerView('player1');
-      expect(view).toEqual({ phase: 'battle', players: {} });
+      // Player1 hand preserved, player2 hand redacted
+      expect(view.player1.hand).toEqual([{ id: 'c1' }]);
+      expect(view.player2.hand).toEqual([]);
+      expect(view.player2.handCount).toBe(1);
     });
   });
 

@@ -14,6 +14,7 @@ import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import MultiplayerLobby from './MultiplayerLobby.jsx';
 import p2pManager from '../../network/P2PManager.js';
+import StateRedactor from '../../server/StateRedactor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import SoundManager from '../../managers/SoundManager.js';
@@ -130,7 +131,8 @@ function LobbyScreen() {
     if (isHost && p2pManager.isConnected) {
       debugLog('PHASE_TRANSITIONS', '📡 Host broadcasting initial game state to guest');
       const initialState = gameStateManager.getState();
-      p2pManager.broadcastState(initialState);
+      const redactedState = StateRedactor.redactForPlayer(initialState, 'player2');
+      p2pManager.broadcastState(redactedState);
     }
   };
 

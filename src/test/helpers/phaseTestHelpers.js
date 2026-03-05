@@ -180,7 +180,7 @@ export const assertFirstPasser = (phaseManager, expectedPlayerId) => {
  */
 export const createMockActionProcessor = () => {
   return {
-    broadcastStateToGuest: vi.fn(),
+    broadcastService: { broadcastIfNeeded: vi.fn() },
     queueAction: vi.fn(),
     processPlayerPass: vi.fn(),
     processCommitment: vi.fn()
@@ -316,9 +316,9 @@ export const createIntegrationActionProcessor = () => {
   const broadcasts = [];
 
   return {
-    broadcastStateToGuest: vi.fn(() => {
+    broadcastService: { broadcastIfNeeded: vi.fn(() => {
       broadcasts.push({ timestamp: Date.now() });
-    }),
+    }) },
     processPhaseTransition: vi.fn(async (data) => {
       phaseTransitions.push(data);
       return { success: true };

@@ -2,6 +2,7 @@
 // Every method delegates to GameStateManager. No behavior change from direct GSM calls.
 
 import GameServer from './GameServer.js';
+import StateRedactor from './StateRedactor.js';
 
 class LocalGameServer extends GameServer {
   constructor(gameStateManager, { isMultiplayer = false } = {}) {
@@ -18,8 +19,8 @@ class LocalGameServer extends GameServer {
     return this.gameStateManager.getState();
   }
 
-  getPlayerView(_playerId) {
-    return this.getState(); // Phase 8: redaction
+  getPlayerView(playerId) {
+    return StateRedactor.redactForPlayer(this.getState(), playerId);
   }
 
   getLocalPlayerId() {
