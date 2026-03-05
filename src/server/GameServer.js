@@ -1,5 +1,5 @@
 // GameServer — Abstract interface for game action routing.
-// Subclasses: LocalGameServer (Phase 1), HostGameServer (Phase 2), GuestGameServer (Phase 3).
+// Subclasses: LocalGameServer (local/host), RemoteGameServer (guest).
 
 class GameServer {
   async submitAction(_type, _payload) { throw new Error('Not implemented'); }
