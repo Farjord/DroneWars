@@ -102,7 +102,7 @@ function DroneSelectionScreen() {
     // Also check what's in the other player's data
     player1Trio: gameState.player1DroneSelectionTrio?.map(d => d.name),
     player2Trio: gameState.player2DroneSelectionTrio?.map(d => d.name),
-    gameMode: gameState.gameMode
+    localPlayerId
   });
 
   // Local state for drone selection process
@@ -168,15 +168,15 @@ function DroneSelectionScreen() {
 
     // DEBUG LOGGING
     debugLog('DRONE_SELECTION', 'Submitting commitment:', {
-      gameMode: gameState.gameMode,
+      localPlayerId,
       playerId: localPlayerId,
       droneCount: tempSelectedDrones.length,
       commitmentsBefore: gameState.commitments?.droneSelection
     });
 
-    // Guest mode: Send action to host with immediate UI feedback
-    if (gameState.gameMode === 'guest') {
-      debugLog('COMMITMENTS', '[GUEST] Sending drone selection commitment to host:', {
+    // Remote player: Send action to host with immediate UI feedback
+    if (getLocalPlayerId() === 'player2') {
+      debugLog('COMMITMENTS', '[REMOTE] Sending drone selection commitment to host:', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -236,12 +236,12 @@ function DroneSelectionScreen() {
     }
   }, [gameState.commitments, localPlayerId, isSubmitting, getOpponentPlayerId]);
 
-  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
+  // Notify GuestMessageQueueService when React has finished rendering (remote player only)
   useEffect(() => {
-    if (gameState.gameMode === 'guest') {
+    if (getLocalPlayerId() === 'player2') {
       gameStateManager.emit('render_complete');
     }
-  }, [gameState, gameStateManager]);
+  }, [gameState, gameStateManager, getLocalPlayerId]);
 
   // Check completion status directly from gameState.commitments
   const opponentPlayerId = getOpponentPlayerId();
@@ -250,7 +250,7 @@ function DroneSelectionScreen() {
 
   // DEBUG LOGGING
   debugLog('DRONE_SELECTION', 'Render check:', {
-    gameMode: gameState.gameMode,
+    localPlayerId,
     isMultiplayer: isMultiplayer(),
     localPlayerId,
     opponentPlayerId,

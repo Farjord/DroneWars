@@ -103,7 +103,7 @@ function ShipPlacementScreen() {
     // Only handle during placement phase
     if (turnPhase !== 'placement') return;
 
-    debugLog('PLACEMENT', '🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
+    debugLog('PLACEMENT', '🔧 handleSelectSectionForPlacement called with:', sectionName, 'localPlayerId:', getLocalPlayerId());
 
     // If clicking a section in the top "unplaced" row
     if (localUnplacedSections.includes(sectionName)) {
@@ -134,7 +134,7 @@ function ShipPlacementScreen() {
     // Only handle during placement phase
     if (turnPhase !== 'placement') return;
 
-    debugLog('PLACEMENT', '🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
+    debugLog('PLACEMENT', '🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'localPlayerId:', getLocalPlayerId());
 
     if (selectedSectionForPlacement) {
       // If the lane is occupied, swap with the selected section
@@ -195,9 +195,9 @@ function ShipPlacementScreen() {
       actionData: { placedSections: localPlacedSections }
     };
 
-    // Guest mode: Send action to host with immediate UI feedback
-    if (gameState.gameMode === 'guest') {
-      debugLog('COMMITMENTS', '[GUEST] Sending ship placement commitment to host:', {
+    // Remote player: Send action to host with immediate UI feedback
+    if (getLocalPlayerId() === 'player2') {
+      debugLog('COMMITMENTS', '[REMOTE] Sending ship placement commitment to host:', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -257,12 +257,12 @@ function ShipPlacementScreen() {
     }
   };
 
-  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
+  // Notify GuestMessageQueueService when React has finished rendering (remote player only)
   useEffect(() => {
-    if (gameState.gameMode === 'guest') {
+    if (getLocalPlayerId() === 'player2') {
       gameStateManager.emit('render_complete');
     }
-  }, [gameState, gameStateManager]);
+  }, [gameState, gameStateManager, getLocalPlayerId]);
 
   // Reset submitting state when host confirms commitment
   useEffect(() => {
@@ -282,7 +282,7 @@ function ShipPlacementScreen() {
   const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
 
   debugLog('PLACEMENT', '🔍 [SHIP PLACEMENT] Render check:', {
-    gameMode: gameState.gameMode,
+    localPlayerId,
     isMultiplayer: isMultiplayer(),
     localPlayerId,
     opponentPlayerId,

@@ -121,9 +121,9 @@ function DeckSelectionScreen() {
       }
     };
 
-    // Guest mode: Send action to host with immediate UI feedback
-    if (gameState.gameMode === 'guest') {
-      debugLog('COMMITMENTS', '[GUEST] Sending deck selection commitment to host:', {
+    // Remote player: Send action to host with immediate UI feedback
+    if (getLocalPlayerId() === 'player2') {
+      debugLog('COMMITMENTS', '[REMOTE] Sending deck selection commitment to host:', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -259,9 +259,9 @@ function DeckSelectionScreen() {
       }
     };
 
-    // Guest mode: Send action to host with immediate UI feedback
-    if (gameState.gameMode === 'guest') {
-      debugLog('COMMITMENTS', '[GUEST] Sending custom deck commitment to host:', {
+    // Remote player: Send action to host with immediate UI feedback
+    if (getLocalPlayerId() === 'player2') {
+      debugLog('COMMITMENTS', '[REMOTE] Sending custom deck commitment to host:', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -316,12 +316,12 @@ function DeckSelectionScreen() {
     return { success: true };
   };
 
-  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
+  // Notify GuestMessageQueueService when React has finished rendering (remote player only)
   useEffect(() => {
-    if (gameState.gameMode === 'guest') {
+    if (getLocalPlayerId() === 'player2') {
       gameStateManager.emit('render_complete');
     }
-  }, [gameState, gameStateManager]);
+  }, [gameState, gameStateManager, getLocalPlayerId]);
 
   // Reset submitting state when host confirms commitment
   useEffect(() => {
@@ -341,7 +341,7 @@ function DeckSelectionScreen() {
   const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
 
   debugLog('DECK_SELECTION', '🔍 [DECK SELECTION] Render check:', {
-    gameMode: gameState.gameMode,
+    localPlayerId,
     isMultiplayer: isMultiplayer(),
     localPlayerId,
     opponentPlayerId,
