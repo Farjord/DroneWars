@@ -26,11 +26,29 @@ describe('LocalGameServer', () => {
     expect(server).toBeInstanceOf(GameServer);
   });
 
-  describe('submitAction', () => {
+  describe('submitAction (legacy path — no gameEngine)', () => {
     it('delegates to gameStateManager.processAction and returns result', async () => {
       const result = await server.submitAction('deployment', { lane: 'mid' });
       expect(mockGSM.processAction).toHaveBeenCalledWith('deployment', { lane: 'mid' });
       expect(result).toEqual({ success: true, animations: [] });
+    });
+  });
+
+  describe('submitAction (gameEngine path)', () => {
+    it('delegates to gameEngine.processAction and returns the inner result', async () => {
+      const mockEngine = {
+        processAction: vi.fn().mockResolvedValue({
+          state: mockState,
+          result: { success: true, shouldEndTurn: false },
+        }),
+      };
+      const engineServer = new LocalGameServer(mockGSM, { gameEngine: mockEngine });
+
+      const result = await engineServer.submitAction('attack', { droneId: 'd1' });
+
+      expect(mockEngine.processAction).toHaveBeenCalledWith('attack', { droneId: 'd1' });
+      expect(mockGSM.processAction).not.toHaveBeenCalled();
+      expect(result).toEqual({ success: true, shouldEndTurn: false });
     });
   });
 
@@ -43,12 +61,21 @@ describe('LocalGameServer', () => {
   });
 
   describe('getPlayerView', () => {
-    it('returns redacted state hiding opponent cards', () => {
+    it('returns redacted state hiding opponent cards (legacy path)', () => {
       const view = server.getPlayerView('player1');
-      // Player1 hand preserved, player2 hand redacted
       expect(view.player1.hand).toEqual([{ id: 'c1' }]);
       expect(view.player2.hand).toEqual([]);
       expect(view.player2.handCount).toBe(1);
+    });
+
+    it('delegates to gameEngine.getPlayerView when available', () => {
+      const mockView = { player1: {}, player2: {} };
+      const mockEngine = { getPlayerView: vi.fn().mockReturnValue(mockView) };
+      const engineServer = new LocalGameServer(mockGSM, { gameEngine: mockEngine });
+
+      const view = engineServer.getPlayerView('player1');
+      expect(mockEngine.getPlayerView).toHaveBeenCalledWith('player1');
+      expect(view).toBe(mockView);
     });
   });
 
