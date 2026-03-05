@@ -7,8 +7,8 @@
 import React from 'react';
 import { Settings } from 'lucide-react';
 
-const OUTER_HEX = '39,0 78,22 78,66 39,88 0,66 0,22';
-const INNER_HEX = '39,8 70,26 70,62 39,80 8,62 8,26';
+// Flat-bottom hex orientation (flat edges on top and bottom)
+const HEX_POINTS = '88,38 66,76 22,76 0,38 22,0 66,0';
 
 const ShipHexPortrait = ({ side, shipImageUrl, isClickable = false, onClick, factionColors, children }) => {
   const handleClick = isClickable && onClick ? onClick : undefined;
@@ -22,49 +22,41 @@ const ShipHexPortrait = ({ side, shipImageUrl, isClickable = false, onClick, fac
       style={{
         position: 'absolute',
         top: '50%',
-        transform: 'translateY(-50%)',
+        transform: 'translateY(-45%)',
         zIndex: 4,
-        width: 'clamp(60px, 6.5vw, 82px)',
-        height: 'clamp(68px, 7.5vw, 92px)',
+        width: 'clamp(88px, 9.5vw, 120px)',
+        height: 'clamp(76px, 8.2vw, 104px)',
         cursor: handleClick ? 'pointer' : 'default',
         ...positionStyle,
       }}
       onClick={handleClick}
     >
       <svg
-        viewBox="0 0 78 88"
+        viewBox="0 0 88 76"
         width="100%"
         height="100%"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Outer hex border */}
+        {/* Hex with border */}
         <polygon
-          points={OUTER_HEX}
-          fill="none"
+          points={HEX_POINTS}
+          fill="rgba(10, 14, 24, 0.9)"
           stroke={factionColors.borderStrong}
           strokeWidth="2"
-        />
-
-        {/* Inner hex with background */}
-        <polygon
-          points={INNER_HEX}
-          fill="rgba(10, 14, 24, 0.9)"
-          stroke={factionColors.border}
-          strokeWidth="1.5"
         />
 
         {/* Clipped ship image */}
         <defs>
           <clipPath id={`hex-clip-${side}`}>
-            <polygon points={INNER_HEX} />
+            <polygon points={HEX_POINTS} />
           </clipPath>
         </defs>
         <image
           href={shipImageUrl}
-          x="4"
-          y="4"
-          width="70"
-          height="80"
+          x="0"
+          y="0"
+          width="88"
+          height="76"
           clipPath={`url(#hex-clip-${side})`}
           preserveAspectRatio="xMidYMid slice"
         />

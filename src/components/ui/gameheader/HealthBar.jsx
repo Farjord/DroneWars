@@ -5,10 +5,12 @@
 // Opponent: number LEFT, bar RIGHT | Player: bar LEFT, number RIGHT
 
 import React from 'react';
+import { Shield } from 'lucide-react';
 
 const MAX_SEGMENTS = 30;
 
 const HealthBar = ({ current, max, side, factionColors }) => {
+  const isPlayer = side === 'player';
   const segmentCount = Math.min(max, MAX_SEGMENTS);
   const filledCount = max > MAX_SEGMENTS
     ? Math.round((current / max) * MAX_SEGMENTS)
@@ -16,19 +18,22 @@ const HealthBar = ({ current, max, side, factionColors }) => {
 
   const segments = Array.from({ length: segmentCount }, (_, i) => {
     const isFilled = i < filledCount;
+    const bgColor = isFilled
+      ? (isPlayer ? '#22d3ee' : '#ef4444')
+      : '#9ca3af';
     return (
       <div
         key={i}
         data-testid={isFilled ? 'health-segment-filled' : 'health-segment-empty'}
         style={{
-          flex: 1,
-          minWidth: '2px',
-          maxWidth: '10px',
-          height: '8px',
-          borderRadius: '1px',
-          background: isFilled ? factionColors.filledSeg : factionColors.emptySeg,
-          boxShadow: isFilled ? factionColors.filledGlow : 'none',
-          border: isFilled ? 'none' : `1px solid ${factionColors.emptyBorder}`,
+          flexShrink: 0,
+          width: '0.65vw',
+          height: '0.7vw',
+          minWidth: '5px',
+          minHeight: '5px',
+          borderRadius: '2px',
+          background: bgColor,
+          border: '1px solid rgba(0,0,0,0.5)',
         }}
       />
     );
@@ -38,15 +43,21 @@ const HealthBar = ({ current, max, side, factionColors }) => {
     <div
       data-testid="health-number"
       style={{
-        color: factionColors.primary,
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        fontWeight: 700,
-        whiteSpace: 'nowrap',
-        letterSpacing: '0.5px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'clamp(2px, 0.25vw, 4px)',
+        flexShrink: 0,
       }}
     >
-      {current}/{max}
+      <Shield size={14} color={isPlayer ? '#22d3ee' : '#ef4444'} />
+      <span style={{
+        color: '#b8bcc8',
+        fontSize: 'clamp(11px, 1.1vw, 16px)',
+        fontWeight: 700,
+        whiteSpace: 'nowrap',
+      }}>
+        {current} / {max}
+      </span>
     </div>
   );
 
@@ -55,7 +66,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
       data-testid="health-segments"
       style={{
         display: 'flex',
-        gap: '2px',
+        gap: '1px',
         flex: 1,
         alignItems: 'center',
       }}
@@ -69,9 +80,8 @@ const HealthBar = ({ current, max, side, factionColors }) => {
   return (
     <div
       style={{
-        background: 'rgba(0, 0, 0, 0.3)',
-        borderTop: '1px solid rgba(60, 80, 120, 0.2)',
-        padding: '4px 10px',
+        width: '100%',
+        padding: '0 3%',
       }}
     >
       <div
@@ -79,7 +89,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: 'clamp(3px, 0.4vw, 6px)',
         }}
       >
         {isOpponent ? numberEl : barEl}

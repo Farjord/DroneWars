@@ -26,37 +26,40 @@ function SettingsDropdown({
   onShowAIStrategy,
   onOpenLog,
   onOpenLogModal,
-  handleExitGame
+  handleExitGame,
+  hideButton = false
 }) {
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-        className="relative"
-        style={{
-          background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
-          border: '1px solid rgba(6, 182, 212, 0.3)',
-          borderRadius: '2px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)',
-          clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
-        }}
-        aria-label="Settings"
-      >
-        {/* Angular corner accent */}
-        <div
-          className="absolute top-0 left-0 w-2 h-2 z-10 pointer-events-none"
+      {!hideButton && (
+        <button
+          onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+          className="relative"
           style={{
-            borderTop: '1px solid rgba(6, 182, 212, 0.5)',
-            borderLeft: '1px solid rgba(6, 182, 212, 0.5)'
+            background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+            border: '1px solid rgba(6, 182, 212, 0.3)',
+            borderRadius: '2px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)',
+            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
           }}
-        />
-        <div className="px-2 py-1.5 flex items-center gap-1">
-          <Settings size={20} className="text-cyan-400" />
-          <ChevronDown size={16} className="text-cyan-400" />
-        </div>
-      </button>
+          aria-label="Settings"
+        >
+          {/* Angular corner accent */}
+          <div
+            className="absolute top-0 left-0 w-2 h-2 z-10 pointer-events-none"
+            style={{
+              borderTop: '1px solid rgba(6, 182, 212, 0.5)',
+              borderLeft: '1px solid rgba(6, 182, 212, 0.5)'
+            }}
+          />
+          <div className="px-2 py-1.5 flex items-center gap-1">
+            <Settings size={20} className="text-cyan-400" />
+            <ChevronDown size={16} className="text-cyan-400" />
+          </div>
+        </button>
+      )}
 
       {showSettingsDropdown && (
         <div

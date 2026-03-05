@@ -344,10 +344,10 @@ describe('RoundInitializationProcessor', () => {
       expect(momentumCalls.length).toBe(0);
     });
 
-    it('caps momentum at 4', async () => {
+    it('caps momentum at 5', async () => {
       mockGSM = createMockGameStateManager({
         roundNumber: 2,
-        player1: { hand: [], dronesOnBoard: {}, energy: 0, momentum: 4 }
+        player1: { hand: [], dronesOnBoard: {}, energy: 0, momentum: 5 }
       });
       processor = new RoundInitializationProcessor(mockGSM, mockAP);
 
@@ -359,7 +359,7 @@ describe('RoundInitializationProcessor', () => {
 
       const momentumCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'momentumAward');
       expect(momentumCalls.length).toBe(1);
-      expect(momentumCalls[0][0].payload.player1.momentum).toBe(4); // Capped, not 5
+      expect(momentumCalls[0][0].payload.player1.momentum).toBe(5); // Capped, not 6
     });
   });
 });

@@ -200,7 +200,7 @@ class RoundInitializationProcessor {
       });
 
       let momentumUpdates = {};
-      const MOMENTUM_CAP = 4;
+      const MOMENTUM_CAP = 5;
 
       if (player1Lanes > player2Lanes) {
         const newMomentum = Math.min((postTriggersState.player1.momentum || 0) + 1, MOMENTUM_CAP);
