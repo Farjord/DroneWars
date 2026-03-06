@@ -1,0 +1,122 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import LocalTransport from '../LocalTransport.js';
+
+describe('LocalTransport', () => {
+  let transport;
+  let mockEngine;
+
+  const mockState = {
+    player1: { hand: [{ id: 'c1' }], deck: [{ id: 'c3' }], discardPile: [], hp: 10 },
+    player2: { hand: [{ id: 'c2' }], deck: [], discardPile: [], hp: 10 },
+  };
+
+  const mockAnimations = {
+    actionAnimations: [{ animationName: 'ATTACK' }],
+    systemAnimations: [],
+  };
+
+  beforeEach(() => {
+    mockEngine = {
+      processAction: vi.fn().mockResolvedValue({
+        state: mockState,
+        animations: mockAnimations,
+        result: { success: true },
+      }),
+    };
+    transport = new LocalTransport(mockEngine, { playerId: 'player1' });
+  });
+
+  describe('sendAction', () => {
+    it('delegates to gameEngine.processAction', async () => {
+      transport.onResponse(() => {});
+      await transport.sendAction('attack', { droneId: 'd1' });
+
+      expect(mockEngine.processAction).toHaveBeenCalledWith('attack', { droneId: 'd1' });
+    });
+
+    it('invokes response callback with redacted state', async () => {
+      const callback = vi.fn();
+      transport.onResponse(callback);
+
+      await transport.sendAction('attack', { droneId: 'd1' });
+
+      expect(callback).toHaveBeenCalledOnce();
+      const response = callback.mock.calls[0][0];
+
+      // Player1's own hand is preserved
+      expect(response.state.player1.hand).toEqual([{ id: 'c1' }]);
+      // Opponent's hand is redacted
+      expect(response.state.player2.hand).toEqual([]);
+      expect(response.state.player2.handCount).toBe(1);
+    });
+
+    it('passes animations and result through unchanged', async () => {
+      const callback = vi.fn();
+      transport.onResponse(callback);
+
+      await transport.sendAction('move', {});
+
+      const response = callback.mock.calls[0][0];
+      expect(response.animations).toBe(mockAnimations);
+      expect(response.result).toEqual({ success: true });
+    });
+
+    it('does not throw when no response callback is registered', async () => {
+      await expect(transport.sendAction('attack', {})).resolves.not.toThrow();
+    });
+  });
+
+  describe('onResponse', () => {
+    it('registers a callback that receives responses', async () => {
+      const callback = vi.fn();
+      transport.onResponse(callback);
+
+      await transport.sendAction('pass', {});
+
+      expect(callback).toHaveBeenCalledOnce();
+    });
+
+    it('replaces the previous callback', async () => {
+      const first = vi.fn();
+      const second = vi.fn();
+
+      transport.onResponse(first);
+      transport.onResponse(second);
+
+      await transport.sendAction('pass', {});
+
+      expect(first).not.toHaveBeenCalled();
+      expect(second).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('dispose', () => {
+    it('clears the response callback', async () => {
+      const callback = vi.fn();
+      transport.onResponse(callback);
+
+      transport.dispose();
+
+      await transport.sendAction('pass', {});
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('state redaction for player2', () => {
+    it('redacts player1 hand when playerId is player2', async () => {
+      const p2Transport = new LocalTransport(mockEngine, { playerId: 'player2' });
+      const callback = vi.fn();
+      p2Transport.onResponse(callback);
+
+      await p2Transport.sendAction('attack', {});
+
+      const response = callback.mock.calls[0][0];
+      // Player2's own hand is preserved
+      expect(response.state.player2.hand).toEqual([{ id: 'c2' }]);
+      // Player1's hand is redacted
+      expect(response.state.player1.hand).toEqual([]);
+      expect(response.state.player1.handCount).toBe(1);
+      expect(response.state.player1.deckCount).toBe(1);
+    });
+  });
+});
