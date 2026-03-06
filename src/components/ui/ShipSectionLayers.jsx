@@ -92,11 +92,15 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {/* Layer 1: Outer glow bloom */}
       <div style={{
-        position: 'absolute', inset: '-0.6%',
-        clipPath,
-        background: 'transparent',
-        filter: `drop-shadow(0 0 1.2vw ${glow}30) drop-shadow(0 0 2.5vw ${glow}15)`,
-      }} />
+        position: 'absolute', inset: 0,
+        filter: `drop-shadow(0 0 1.2vw ${glow}55) drop-shadow(0 0 2.5vw ${glow}30)`,
+      }}>
+        <div style={{
+          width: '100%', height: '100%',
+          clipPath,
+          background: `${pri}18`,
+        }} />
+      </div>
 
       {/* Layer 2: Bright outer border */}
       <div style={{
@@ -113,14 +117,20 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
         {shipImage && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: `url(${shipImage})`,
-            backgroundPosition: 'center center',
-            backgroundRepeat: 'no-repeat',
-            backgroundSize: '100% auto',
-            opacity: 0.7,
-          }} />
+          <>
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url(${shipImage})`,
+              backgroundPosition: 'center center',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '100% auto',
+              opacity: 0.7,
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)',
+            }} />
+          </>
         )}
 
         {/* Layer 4: Inner border line */}

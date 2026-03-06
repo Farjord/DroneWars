@@ -179,8 +179,8 @@ const ShipSectionSlot = ({
         isCardTarget={isCardTarget}
         isInMiddleLane={sectionIndex === 1}
         isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName && hoveredTarget?.isOpponent === !isPlayer}
-        onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { ...sectionStats, name: sectionName }, type: 'section', isOpponent: true })}
-        onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
+        onMouseEnter={() => setHoveredTarget({ target: { ...sectionStats, name: sectionName }, type: 'section', isOpponent: !isPlayer })}
+        onMouseLeave={() => setHoveredTarget(null)}
         reallocationState={reallocationState}
         gameEngine={gameEngine}
         turnPhase={turnPhase}

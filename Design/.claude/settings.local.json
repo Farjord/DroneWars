@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(npx react-scripts:*)",
+      "Bash(npx vitest:*)",
+      "Bash(node:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

@@ -44,14 +44,14 @@ function GameHeaderLayers() {
 
       {/* ─── Red accent wash — left side (opponent) ─── */}
       <div style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0, width: '30%',
-        background: `linear-gradient(90deg, ${opponentPri}0c 0%, transparent 100%)`,
+        position: 'absolute', left: 0, top: 0, bottom: '0.5vw', width: '30%',
+        background: `linear-gradient(90deg, ${opponentPri}1a 0%, transparent 100%)`,
         pointerEvents: 'none', zIndex: 1,
       }} />
       {/* ─── Blue accent wash — right side (player) ─── */}
       <div style={{
-        position: 'absolute', right: 0, top: 0, bottom: 0, width: '30%',
-        background: `linear-gradient(270deg, ${playerPri}0c 0%, transparent 100%)`,
+        position: 'absolute', right: 0, top: 0, bottom: '0.5vw', width: '30%',
+        background: `linear-gradient(270deg, ${playerPri}1a 0%, transparent 100%)`,
         pointerEvents: 'none', zIndex: 1,
       }} />
 
@@ -59,7 +59,7 @@ function GameHeaderLayers() {
       <svg viewBox="0 0 1000 20" preserveAspectRatio="none" style={{
         position: 'absolute', bottom: '-0.4vw', left: 0, right: 0,
         width: '100%', height: '1.2vw',
-        pointerEvents: 'none', zIndex: 5,
+        pointerEvents: 'none', zIndex: 2,
         filter: 'drop-shadow(0 0 3px rgba(0,180,255,0.3))',
       }}>
         <defs>
@@ -85,7 +85,7 @@ function GameHeaderLayers() {
       <svg viewBox="0 0 1000 20" preserveAspectRatio="none" style={{
         position: 'absolute', bottom: '-0.4vw', left: 0, right: 0,
         width: '100%', height: '1.2vw',
-        pointerEvents: 'none', zIndex: 4,
+        pointerEvents: 'none', zIndex: 1,
         filter: 'blur(3px)',
         opacity: 0.6,
       }}>

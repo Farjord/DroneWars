@@ -71,9 +71,6 @@ const ShipSectionCompact = ({
     }
   }
 
-  const hoverEffect = isHovered ? 'shadow-xl' : '';
-  const shadowColor = isOpponent ? 'shadow-red-500/20' : 'shadow-cyan-500/20';
-
   // Handle clicks — shield allocation/targeting takes priority, then view full card
   const handleClick = (e) => {
     const consumed = onClick ? onClick(e) === true : false;
@@ -89,13 +86,27 @@ const ShipSectionCompact = ({
       className={`
         relative h-full cursor-pointer
         transition-all duration-300
-        ${shadowColor} ${hoverEffect}
         ${reallocationEffect}
       `}
       onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
+      {/* Hover glow — shape-aware via filter-on-parent / clip-on-child */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        filter: `drop-shadow(0 0 8px ${fc.glow}) drop-shadow(0 0 18px ${fc.glow}aa) drop-shadow(0 0 34px ${fc.glow}55)`,
+        pointerEvents: 'none',
+        opacity: isHovered ? 1 : 0,
+        transition: 'opacity 0.25s ease-in-out',
+      }}>
+        <div style={{
+          width: '100%', height: '100%',
+          clipPath,
+          background: fc.primary + '40',
+        }} />
+      </div>
+
       {/* Clipped visual layer — 11 decorative layers + ship art, no interaction */}
       <div
         className={isCardTarget ? 'animate-pulse' : ''}
