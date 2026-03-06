@@ -87,10 +87,10 @@ const DEBUG_CONFIG = {
     ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
-    MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)
-    MP_SYNC_TRACE: false,         // State broadcast cycle trace (11 numbered steps)
-    MP_GAME_TRACE: false,         // Game start trace (5 numbered steps)
-    MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
+    MP_JOIN_TRACE: true,         // Connection lifecycle trace (7 numbered steps)
+    MP_SYNC_TRACE: true,         // State broadcast cycle trace (11 numbered steps)
+    MP_GAME_TRACE: true,         // Game start trace (5 numbered steps)
+    MESSAGE_QUEUE: true,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
     ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
