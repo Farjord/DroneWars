@@ -19,6 +19,23 @@ import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js'
 import { performAutomaticDraw } from '../logic/cards/cardDrawUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
+function _countDrones(playerState) {
+  if (!playerState?.dronesOnBoard) return 0;
+  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
+}
+
+function _buildStateSnapshot(gs) {
+  const snap = (p) => ({
+    drones: _countDrones(p), hand: p?.hand?.length || 0,
+    energy: p?.energy || 0, momentum: p?.momentum || 0,
+    deck: p?.deck?.length || 0,
+  });
+  return {
+    round: gs.roundNumber, phase: gs.turnPhase, currentPlayer: gs.currentPlayer,
+    p1: snap(gs.player1), p2: snap(gs.player2),
+  };
+}
+
 class RoundInitializationProcessor {
   constructor(gameStateManager, actionProcessor) {
     this.gameStateManager = gameStateManager;
@@ -36,6 +53,12 @@ class RoundInitializationProcessor {
   async process({ isRoundLoop, executeQuickDeploy } = {}) {
     const currentState = this.gameStateManager.getState();
     let gameStageTransitioned = false;
+
+    debugLog('ROUND_TRACE', '[1/7] Round initialization started', {
+      roundNumber: currentState.roundNumber || 1,
+      isRoundLoop,
+      gameStageTransitioned: !isRoundLoop,
+    });
 
     // ========================================
     // STEP 1: Game Stage Transition & Round Number Initialization
@@ -59,6 +82,10 @@ class RoundInitializationProcessor {
     debugLog('PHASE_TRANSITIONS', '🎯 Step 2: Determining first player');
     const firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
     debugLog('PHASE_TRANSITIONS', '✅ First player determination completed:', firstPlayerResult);
+    debugLog('ROUND_TRACE', '[2/7] First player determined', {
+      firstPlayer: firstPlayerResult,
+      roundNumber: this.gameStateManager.get('roundNumber'),
+    });
 
     // ========================================
     // STEP 3: Energy & Resource Reset
@@ -141,6 +168,14 @@ class RoundInitializationProcessor {
       }
     });
 
+    debugLog('ROUND_TRACE', '[3/7] Energy & resources reset', {
+      p1Energy: updatedPlayer1.energy,
+      p1Budget: updatedPlayer1.deploymentBudget || updatedPlayer1.initialDeploymentBudget,
+      p2Energy: updatedPlayer2.energy,
+      p2Budget: updatedPlayer2.deploymentBudget || updatedPlayer2.initialDeploymentBudget,
+      shields: { p1: shieldsToAllocate, p2: opponentShieldsToAllocate },
+    });
+
     // ========================================
     // STEP 3b: ON_ROUND_START Triggered Abilities
     // ========================================
@@ -171,6 +206,11 @@ class RoundInitializationProcessor {
         animationEventsCount: roundStartResult.animationEvents?.length || 0
       });
     }
+
+    debugLog('ROUND_TRACE', '[4/7] Round-start triggers processed', {
+      triggered: !!roundStartResult,
+      animCount: roundStartResult?.animationEvents?.length || 0,
+    });
 
     // ========================================
     // STEP 3b2: Momentum Award (Lane Control Bonus)
@@ -228,8 +268,16 @@ class RoundInitializationProcessor {
           payload: momentumUpdates
         });
         debugLog('PHASE_TRANSITIONS', '✅ Momentum award complete');
+        debugLog('ROUND_TRACE', '[5/7] Momentum awarded', {
+          awarded: true,
+          recipient: momentumUpdates.player1 ? 'player1' : 'player2',
+          newValue: momentumUpdates.player1?.momentum || momentumUpdates.player2?.momentum,
+        });
+      } else {
+        debugLog('ROUND_TRACE', '[5/7] Momentum tied — no award', { awarded: false });
       }
     } else {
+      debugLog('ROUND_TRACE', '[5/7] Momentum skipped', { skipped: true });
       debugLog('PHASE_TRANSITIONS', '⏭️ Skipping momentum award (Round 1)');
     }
 
@@ -267,6 +315,11 @@ class RoundInitializationProcessor {
       debugLog('PHASE_TRANSITIONS', '✅ Drone rebuild progress complete');
     }
 
+    debugLog('ROUND_TRACE', '[6/7] Rebuild progress processed', {
+      p1Rebuilt: !!rebuildUpdates.player1,
+      p2Rebuilt: !!rebuildUpdates.player2,
+    });
+
     // ========================================
     // STEP 4: Card Draw
     // ========================================
@@ -285,6 +338,16 @@ class RoundInitializationProcessor {
     });
 
     debugLog('PHASE_TRANSITIONS', '✅ Card draw complete');
+
+    const postDrawState = this.gameStateManager.getState();
+    debugLog('ROUND_TRACE', '[7/7] Card draw complete — round init done', {
+      p1HandSize: postDrawState.player1?.hand?.length || 0,
+      p2HandSize: postDrawState.player2?.hand?.length || 0,
+      roundInitComplete: true,
+    });
+
+    // STATE_CHECKPOINT: snapshot after all init substeps
+    debugLog('STATE_CHECKPOINT', '[ROUND_START]', _buildStateSnapshot(postDrawState));
 
     // ========================================
     // STEP 5: Quick Deploy (Round 1 only)

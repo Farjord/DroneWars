@@ -25,7 +25,7 @@ export const useGameState = () => {
   // Subscribe to game state changes via ClientStateStore
   useEffect(() => {
     if (!initTraceStep4Logged) {
-      debugLog('INIT_TRACE', '[4/8] useGameState subscribed to ClientStateStore', {
+      debugLog('INIT_TRACE', '[3/8] useGameState subscribed to ClientStateStore', {
         initialPhase: clientStateStore.getState().turnPhase,
         initialAppState: clientStateStore.getState().appState,
       });

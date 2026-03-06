@@ -57,7 +57,7 @@ function AppRouter() {
   if (!gameFlowManagerRef.current) {
     gameFlowManagerRef.current = new GameFlowManager(phaseAnimationQueueRef.current);
 
-    debugLog('INIT_TRACE', '[1/8] PhaseAnimationQueue + GameFlowManager created', {
+    debugLog('INIT_TRACE', '[2/8] PhaseAnimationQueue + GameFlowManager created', {
       hasQueue: !!phaseAnimationQueueRef.current,
       hasGFM: !!gameFlowManagerRef.current,
     });
@@ -212,7 +212,7 @@ function AppRouter() {
       // Set up reverse reference for automatic phase validation
       gameStateManager.setGameFlowManager(gameFlowManagerRef.current);
 
-      debugLog('INIT_TRACE', '[2/8] GameFlowManager.initialize()', {
+      debugLog('INIT_TRACE', '[4/8] GameFlowManager.initialize()', {
         mode: gameStateManager.gameServer?.isMultiplayer?.() ? 'multiplayer' : 'local',
         hasActionProcessor: !!gameStateManager.actionProcessor,
         hasAIProcessor: !!aiPhaseProcessor,

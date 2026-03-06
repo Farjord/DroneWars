@@ -68,6 +68,9 @@ export function clearPhaseCommitments(phase = null, ctx) {
 export async function processCommitment(payload, ctx) {
   const { playerId, phase, actionData } = payload;
 
+  debugLog('COMMIT_TRACE', '[1/6] Commitment received', {
+    phase, playerId, dataKeys: actionData ? Object.keys(actionData) : [],
+  });
   debugLog('COMMITMENTS', `🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
   debugLog('COMMITMENTS', `📦 Full commitment payload:`, {
     playerId,
@@ -127,6 +130,15 @@ export async function processCommitment(payload, ctx) {
     opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
   }, 'COMMITMENT_UPDATE');
 
+  let bothComplete = currentState.commitments[phase].player1.completed &&
+                      currentState.commitments[phase].player2.completed;
+
+  debugLog('COMMIT_TRACE', '[2/6] Commitment stored', {
+    phase, p1: currentState.commitments[phase].player1.completed,
+    p2: currentState.commitments[phase].player2.completed, bothComplete,
+  });
+  debugLog('COMMITMENTS', `✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
+
   // PhaseManager integration
   const phaseManager = ctx.getPhaseManager();
   if (phaseManager) {
@@ -137,11 +149,6 @@ export async function processCommitment(payload, ctx) {
     }
     debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase}`);
   }
-
-  let bothComplete = currentState.commitments[phase].player1.completed &&
-                      currentState.commitments[phase].player2.completed;
-
-  debugLog('COMMITMENTS', `✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
   debugLog('COMMITMENTS', `📊 Commitment state after update:`, {
     phase,
     player1Completed: currentState.commitments[phase].player1.completed,
@@ -157,6 +164,9 @@ export async function processCommitment(payload, ctx) {
     debugLog('SHIELD_CLICKS', '🤖 About to call handleAICommitment for AI auto-commit');
     if (aiPhaseProcessor) {
       try {
+        debugLog('COMMIT_TRACE', '[3/6] AI auto-commit starting', {
+          phase, willTriggerPhaseCompletion: true,
+        });
         debugLog('SHIELD_CLICKS', '⏳ Calling handleAICommitment...');
         await handleAICommitment(phase, currentState, ctx);
         debugLog('COMMITMENTS', '✅ AI commitment completed successfully');
@@ -337,6 +347,9 @@ export function applyPhaseCommitments(phase, ctx) {
     return {};
   }
 
+  debugLog('COMMIT_TRACE', '[4/6] Applying phase commitments', {
+    phase, updateKeys: Object.keys(phaseCommitments),
+  });
   debugLog('COMMITMENTS', `📋 ActionProcessor: Applying ${phase} commitments to game state`, phaseCommitments);
 
   const stateUpdates = {};

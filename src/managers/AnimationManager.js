@@ -267,6 +267,14 @@ class AnimationManager {
     // Split animations by timing requirements
     const { preState, postState, independent } = this.splitByTiming(animations);
 
+    debugLog('ANIM_TRACE', '[4/7] AnimationManager.executeWithStateUpdate timing split', {
+      source: executor.getAnimationSource?.() || 'unknown',
+      preStateCount: preState.length,
+      postStateCount: postState.length,
+      independentCount: independent.length,
+      names: animations.map(a => a.animationName),
+    });
+
     debugLog('ANIMATIONS', '🔍 [ORCHESTRATE] Animation timing split:', {
       preStateCount: preState.length,
       postStateCount: postState.length,
@@ -298,6 +306,9 @@ class AnimationManager {
 
     debugLog('ANIMATIONS', '📝 [ORCHESTRATE] Applying state update via executor...');
     executor.applyPendingStateUpdate();
+    debugLog('ANIM_TRACE', '[5/7] State update applied mid-animation', {
+      source: executor.getAnimationSource?.() || 'unknown',
+    });
     debugLog('ANIMATIONS', '✅ [ORCHESTRATE] State update complete');
 
     timingLog('[ANIM MGR] State applied', {}, stateStart);
@@ -352,6 +363,12 @@ class AnimationManager {
         count: teleportAnimations.length
       }, teleportStart);
     }
+
+    debugLog('ANIM_TRACE', '[6/7] Animation execution complete', {
+      source: executor.getAnimationSource?.() || 'unknown',
+      totalAnimations: animations.length,
+      durationMs: Date.now() - executionStart,
+    });
 
     debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] executeWithStateUpdate() COMPLETE');
 

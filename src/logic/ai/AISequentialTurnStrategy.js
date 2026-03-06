@@ -69,11 +69,11 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
   });
 
   if (aiDecision.type === 'pass') {
-    debugLog('AI_TURN_TRACE', `[AI-04] Decision | type=pass, reason=noHighImpactPlays`);
+    debugLog('AI_TURN_TRACE', `[AI-04b] Decision dispatched | type=pass, reason=noHighImpactPlays`);
     await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
   } else if (aiDecision.type === 'deploy') {
-    debugLog('AI_TURN_TRACE', `[AI-04] Decision | type=deploy, drone=${aiDecision.payload.droneToDeploy?.name}, lane=${aiDecision.payload.targetLane}`);
-    debugLog('AI_TURN_TRACE', `[AI-05] Dispatching | deployment action`);
+    debugLog('AI_TURN_TRACE', `[AI-04b] Decision dispatched | type=deploy, drone=${aiDecision.payload.droneToDeploy?.name}, lane=${aiDecision.payload.targetLane}`);
+    debugLog('AI_TURN_TRACE', `[AI-04c] Dispatching | deployment action`);
 
     const result = await actionProcessor.queueAction({
       type: 'deployment',

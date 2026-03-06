@@ -114,13 +114,14 @@ const useCardSelection = ({
 
   // Effect chain auto-commit — when all selections are gathered, dispatch the card play
   useEffect(() => {
+    if (!effectChainState) return;
+
     debugLog('CARD_PLAY_TRACE', '[1.4] Auto-commit useEffect fired', {
-      hasChainState: !!effectChainState,
-      complete: effectChainState?.complete,
-      card: effectChainState?.card?.name,
+      complete: effectChainState.complete,
+      card: effectChainState.card?.name,
     });
 
-    if (!effectChainState?.complete) return;
+    if (!effectChainState.complete) return;
 
     const { card, selections } = effectChainState;
     // Build chainSelections for the engine (convert chain format to engine format)

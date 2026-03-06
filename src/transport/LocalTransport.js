@@ -14,15 +14,19 @@ class LocalTransport extends Transport {
   }
 
   async sendAction(type, payload) {
-    debugLog('DEPLOY_TRACE', '[3/12] LocalTransport.sendAction calling GameEngine', {
-      type,
-      playerId: this.playerId,
-    });
+    if (type === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[3/12] LocalTransport.sendAction calling GameEngine', {
+        type,
+        playerId: this.playerId,
+      });
+    }
     const { state, animations, result } = await this.gameEngine.processAction(type, payload);
     const redactedState = StateRedactor.redactForPlayer(state, this.playerId);
-    debugLog('DEPLOY_TRACE', '[9/12] LocalTransport state redacted', {
-      playerId: this.playerId,
-    });
+    if (type === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[9/12] LocalTransport state redacted', {
+        playerId: this.playerId,
+      });
+    }
 
     if (this._responseCallback) {
       await this._responseCallback({ state: redactedState, animations, result });

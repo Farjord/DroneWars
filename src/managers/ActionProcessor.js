@@ -67,6 +67,12 @@ import {
 } from '../logic/actions/MiscActionStrategy.js';
 import BroadcastService from '../services/BroadcastService.js';
 
+// --- Helpers ---
+function _countDrones(playerState) {
+  if (!playerState?.dronesOnBoard) return 0;
+  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
+}
+
 // --- Strategy Registry ---
 // Maps action type strings to instance method names.
 // processAction uses this map instead of a switch statement.
@@ -229,8 +235,8 @@ class ActionProcessor {
       executeActionSteps: (steps) => ap.animationManager.executeActionSteps(steps, ap),
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
-      mapAnimationEvents: (events) => (events || [])
-        .map((event, idx) => {
+      mapAnimationEvents: (events) => {
+        const mapped = (events || []).map((event, idx) => {
           if (event.type === 'STATE_SNAPSHOT') {
             return {
               animationName: 'STATE_SNAPSHOT',
@@ -259,13 +265,29 @@ class ActionProcessor {
               droneId: event.sourceId || event.targetId
             }
           };
-        }),
+        });
+        if (mapped.length > 0) {
+          debugLog('ANIM_TRACE', '[1/7] mapAnimationEvents: raw events transformed', {
+            inputCount: events?.length || 0,
+            outputCount: mapped.length,
+            types: [...new Set(mapped.map(a => a.animationName))],
+            timings: mapped.reduce((acc, a) => { acc[a.timing] = (acc[a.timing] || 0) + 1; return acc; }, {}),
+          });
+        }
+        return mapped;
+      },
       captureAnimationsForBroadcast: (animations) => {
         // Log for GameEngine response (filter STATE_SNAPSHOT same as BroadcastService)
+        const broadcastAnims = animations?.filter(a => a.animationName !== 'STATE_SNAPSHOT') || [];
         if (animations?.length) {
-          const broadcastAnims = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
           ap._actionAnimationLog.actionAnimations.push(...broadcastAnims);
         }
+        debugLog('ANIM_TRACE', '[2/7] captureAnimationsForBroadcast', {
+          totalCount: animations?.length || 0,
+          broadcastCount: broadcastAnims.length,
+          filteredOut: (animations?.length || 0) - broadcastAnims.length,
+          names: broadcastAnims.map(a => a.animationName),
+        });
         ap.broadcastService.captureAnimationsForBroadcast(animations);
       },
 
@@ -646,6 +668,17 @@ setAnimationManager(animationManager) {
 
     // Call WinConditionChecker to check win condition
     const result = WinConditionChecker.checkGameStateForWinner(playerStates, callbacks);
+
+    if (result) {
+      const gs = this.gameStateManager.getState();
+      debugLog('STATE_CHECKPOINT', '[GAME_OVER]', {
+        round: gs.roundNumber, phase: gs.turnPhase, currentPlayer: gs.currentPlayer,
+        winner: result.winner,
+        p1: { drones: _countDrones(gs.player1), hand: gs.player1?.hand?.length, energy: gs.player1?.energy, momentum: gs.player1?.momentum },
+        p2: { drones: _countDrones(gs.player2), hand: gs.player2?.hand?.length, energy: gs.player2?.energy, momentum: gs.player2?.momentum },
+      });
+    }
+
     return result;
   }
 
@@ -682,6 +715,12 @@ setAnimationManager(animationManager) {
 
   async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
     if (!animations || animations.length === 0) return;
+
+    debugLog('ANIM_TRACE', '[1b/7] executeAndCaptureAnimations (bypass path)', {
+      count: animations.length,
+      isSystem: isSystemAnimation,
+      names: animations.map(a => a.animationName),
+    });
 
     // Log animations for GameEngine response (never cleared by broadcasts)
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
@@ -773,6 +812,13 @@ setAnimationManager(animationManager) {
     // Also keep local references for AnimationManager's applyPendingState callback
     this.pendingStateUpdate = pendingStateUpdate;
     this.pendingFinalState = pendingFinalState;
+
+    debugLog('ANIM_TRACE', '[3/7] _executeAnimationPhase entry', {
+      animCount: animations?.length || 0,
+      hasTeleport: animations?.some(a => a.animationName === 'TELEPORT_IN') || false,
+      hasAnimationManager: !!this.animationManager,
+      animNames: animations?.map(a => a.animationName) || [],
+    });
 
     this.broadcastService.broadcastIfNeeded('animation_phase');
 

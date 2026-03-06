@@ -17,6 +17,24 @@ import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
 
+// --- Trace Helpers ---
+function _countDrones(playerState) {
+  if (!playerState?.dronesOnBoard) return 0;
+  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
+}
+
+function _buildStateSnapshot(gs) {
+  const snap = (p) => ({
+    drones: _countDrones(p), hand: p?.hand?.length || 0,
+    energy: p?.energy || 0, momentum: p?.momentum || 0,
+    deck: p?.deck?.length || 0,
+  });
+  return {
+    round: gs.roundNumber, phase: gs.turnPhase, currentPlayer: gs.currentPlayer,
+    p1: snap(gs.player1), p2: snap(gs.player2),
+  };
+}
+
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
  */
@@ -248,6 +266,13 @@ class GameFlowManager {
       turnPhase: currentState.turnPhase
     });
 
+    const suppressTypes = ['aiAction', 'turnTransition'];
+    if (!suppressTypes.includes(actionType)) {
+      debugLog('PHASE_TRACE', '[1/8] handleActionCompletion', {
+        actionType, turnPhase: currentState.turnPhase,
+        shouldEndTurn: result?.shouldEndTurn, currentPlayer: currentState.currentPlayer,
+      });
+    }
     debugLog('TURN_TRANSITION_DEBUG', 'handleActionCompletion entry', {
       actionType,
       shouldEndTurn: result?.shouldEndTurn,
@@ -359,6 +384,7 @@ class GameFlowManager {
       const updatedState = this.gameStateManager.getState();
       const nextPlayer = updatedState.currentPlayer === 'player1' ? 'player2' : 'player1';
 
+      debugLog('PHASE_TRACE', '[2/8] Turn decision: turnTransition', { nextPlayer });
       debugLog('CONSUMPTION_DEBUG', '🟢 [7] GameFlowManager: Calling processTurnTransition', { nextPlayer });
       debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Processing turn transition to ${nextPlayer}`);
 
@@ -378,7 +404,8 @@ class GameFlowManager {
 
       // Broadcast state to guest AFTER turn transition completes
       this.actionProcessor.broadcastService.broadcastIfNeeded('turn_transition');
-    } else {
+    } else if (result && result.shouldEndTurn === false) {
+      debugLog('PHASE_TRACE', '[2/8] Turn decision: goAgain', { currentPlayer: currentState.currentPlayer });
       debugLog('PHASE_TRANSITIONS', `⏭️ GameFlowManager: Action has goAgain, keeping same player`);
 
       // Broadcast even for goAgain actions (action completed, just same player's turn)
@@ -499,11 +526,17 @@ class GameFlowManager {
       return;
     }
 
+    debugLog('PHASE_TRACE', '[4/8] onSimultaneousPhaseComplete', {
+      phase, applyingCommitments: true,
+    });
     debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Simultaneous phase '${phase}' completed`, data);
 
     // Apply commitments to permanent game state before transitioning
     if (this.actionProcessor) {
       const stateUpdates = this.actionProcessor.applyPhaseCommitments(phase);
+      debugLog('COMMIT_TRACE', '[5/6] Commitments applied', {
+        phase, stateUpdatesApplied: Object.keys(stateUpdates).length,
+      });
 
       // Initialize drone selection data when deckSelection completes
       // This must happen on host so data gets broadcast to guest
@@ -602,6 +635,9 @@ class GameFlowManager {
       // Check if we're transitioning from simultaneous to sequential phase
       if (this.isSequentialPhase(nextPhase)) {
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Handover to sequential phase '${nextPhase}'`);
+        debugLog('COMMIT_TRACE', '[6/6] Transition after commitments', {
+          from: phase, to: nextPhase, transitionType: 'sim→seq',
+        });
         this.initiateSequentialPhase(nextPhase);
 
         // Broadcast state to guest AFTER phase transition completes
@@ -616,6 +652,9 @@ class GameFlowManager {
       } else {
         // Continue with normal simultaneous phase transition
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Continuing with simultaneous phase '${nextPhase}'`);
+        debugLog('COMMIT_TRACE', '[6/6] Transition after commitments', {
+          from: phase, to: nextPhase, transitionType: 'sim→sim',
+        });
         await this.transitionToPhase(nextPhase);
 
         // Broadcast state to guest AFTER phase transition completes
@@ -688,6 +727,9 @@ class GameFlowManager {
    * @param {Object} data - Phase completion data
    */
   async onSequentialPhaseComplete(phase, data) {
+    debugLog('PHASE_TRACE', '[3/8] onSequentialPhaseComplete', {
+      phase, reason: data?.reason, nextPhase: this.getNextPhase(phase),
+    });
     debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
 
     // PHASE MANAGER INTEGRATION: Non-authority cannot trigger phase completion
@@ -704,6 +746,7 @@ class GameFlowManager {
     if (nextPhase) {
       // Queue DEPLOYMENT COMPLETE announcement when transitioning from deployment to action
       if (phase === 'deployment' && nextPhase === 'action') {
+        debugLog('STATE_CHECKPOINT', '[DEPLOY_END]', _buildStateSnapshot(this.gameStateManager.getState()));
         await this.actionProcessor.processPhaseTransition({
           newPhase: 'deploymentComplete',
           resetPassInfo: false,
@@ -715,6 +758,7 @@ class GameFlowManager {
     } else {
       // End of action phase - start new round
       if (phase === 'action') {
+        debugLog('STATE_CHECKPOINT', '[ACTION_END]', _buildStateSnapshot(this.gameStateManager.getState()));
         // Queue ACTION PHASE COMPLETE announcement before starting new round
         await this.actionProcessor.processPhaseTransition({
           newPhase: 'actionComplete',
@@ -947,6 +991,9 @@ class GameFlowManager {
    * @param {string} previousPhase - The phase we're transitioning from (should be 'placement')
    */
   async processRoundInitialization(previousPhase) {
+    debugLog('PHASE_TRACE', '[6/8] processRoundInitialization entry', {
+      previousPhase, startingRoundInit: true,
+    });
     debugLog('PHASE_TRANSITIONS', '🎯 GameFlowManager: Processing roundInitialization phase (atomic round setup)');
 
     try {
@@ -983,6 +1030,9 @@ class GameFlowManager {
 
       // Return next phase
       const nextPhase = this.getNextPhase('roundInitialization');
+      debugLog('PHASE_TRACE', '[7/8] roundInitialization complete', {
+        roundNumber: currentRoundNumber, nextPhase,
+      });
       debugLog('PHASE_TRANSITIONS', `✅ roundInitialization complete, next phase: ${nextPhase}`);
       return nextPhase;
 
@@ -1226,6 +1276,10 @@ class GameFlowManager {
       roundNumber: this.gameStateManager.get('roundNumber'),
       handoverType: 'simultaneous-to-sequential'
     });
+
+    debugLog('PHASE_TRACE', '[8/8] Phase landed', {
+      phase, from: previousPhase,
+    });
   }
 
   /**
@@ -1283,6 +1337,11 @@ class GameFlowManager {
       to: newPhase,
       mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
       trigger: trigger
+    });
+
+    debugLog('PHASE_TRACE', '[5/8] transitionToPhase', {
+      from: previousPhase, to: newPhase,
+      mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
     });
 
     this.currentPhase = newPhase;
@@ -1382,6 +1441,10 @@ class GameFlowManager {
       mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
       trigger: trigger
     }, transitionStartTime);
+
+    debugLog('PHASE_TRACE', '[8/8] Phase landed', {
+      phase: newPhase, from: previousPhase,
+    });
   }
 
   /**

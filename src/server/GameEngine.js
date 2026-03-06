@@ -19,7 +19,9 @@ class GameEngine {
    * @returns {Promise<{state: Object, animations: Object, result: Object}>}
    */
   async processAction(type, payload) {
-    debugLog('DEPLOY_TRACE', '[4/12] GameEngine.processAction delegating to GSM', { type });
+    if (type === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[4/12] GameEngine.processAction delegating to GSM', { type });
+    }
     const result = await this.gameStateManager.processAction(type, payload);
     const state = this.gameStateManager.getState();
 
@@ -27,10 +29,12 @@ class GameEngine {
     const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
 
     const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
-    debugLog('DEPLOY_TRACE', '[8/12] GameEngine returns {state, animations}', {
-      animCount,
-      turnPhase: state.turnPhase,
-    });
+    if (type === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[8/12] GameEngine returns {state, animations}', {
+        animCount,
+        turnPhase: state.turnPhase,
+      });
+    }
 
     return { state, animations, result };
   }

@@ -7,7 +7,7 @@ import { debugLog } from '../utils/debugLogger.js';
 
 const clientStateStore = new ClientStateStore(gameStateManager);
 
-debugLog('INIT_TRACE', '[3/8] ClientStateStore singleton created', {
+debugLog('INIT_TRACE', '[1/8] ClientStateStore singleton created', {
   hasGSM: !!gameStateManager,
 });
 

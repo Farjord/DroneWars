@@ -221,10 +221,16 @@ class AIPhaseProcessor {
       return;
     }
 
-    debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
-
     // Clear any existing timer and schedule new turn
     clearTimeout(this.turnTimer);
+
+    // Deduplicate [AI-01] log — only log when phase/round actually changes
+    const turnKey = `${state.turnPhase}-${state.roundNumber}-${state.currentPlayer}`;
+    if (turnKey !== this._lastAI01Key) {
+      this._lastAI01Key = turnKey;
+      debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
+    }
+
     this.turnTimer = setTimeout(() => {
       this.executeTurn();  // No state parameter - will fetch fresh state
     }, 1500); // 1.5 second delay

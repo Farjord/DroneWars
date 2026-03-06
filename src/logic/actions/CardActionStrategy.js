@@ -110,6 +110,11 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
 
   let animations;
   if (result.actionSteps) {
+    debugLog('CARD_PLAY_TRACE', '[5b] Animation path: actionSteps', {
+      card: card.name,
+      cardOnlyAnimCount: result.cardOnlyAnimationEvents?.length || 0,
+      actionStepCount: result.actionSteps.length,
+    });
     debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: actionSteps path', {
       stateBeforeTriggersDrones: _snapshotDrones(result.stateBeforeTriggers),
       cardOnlyAnimationTypes: result.cardOnlyAnimationEvents?.map(e => e.type ?? e.animationName),
@@ -127,6 +132,11 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     // Apply final state (after finishCardPlay - card in discard, turn state updated)
     ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
   } else {
+    debugLog('CARD_PLAY_TRACE', '[5b] Animation path: flat', {
+      card: card.name,
+      animCount: result.animationEvents?.length || 0,
+      hasStateSnapshot: result.animationEvents?.some(e => e.type === 'STATE_SNAPSHOT') || false,
+    });
     debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: flat animation path', {
       animationTypes: result.animationEvents?.map(e => e.type),
     });

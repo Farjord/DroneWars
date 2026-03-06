@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: false,        // Numbered step-by-step AI turn trace
+    AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
     MULTIPLAYER: false,          // Network sync and multiplayer
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
     ANIMATIONS: false,           // Animation system
@@ -79,11 +79,18 @@ const DEBUG_CONFIG = {
     EFFECT_CHAIN_DEBUG: false,   // Temporary: effect chain auto-commit investigation
 
     // Card Play Pipeline
-    CARD_PLAY_TRACE: false,      // End-to-end card play milestone trace (10 numbered steps)
+    CARD_PLAY_TRACE: true,       // End-to-end card play milestone trace (10 numbered steps)
 
     // Client-Server Architecture Traces
     INIT_TRACE: true,             // End-to-end game initialization trace (8 numbered steps)
     DEPLOY_TRACE: true,           // End-to-end drone deployment trace (12 numbered steps)
+    ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
+
+    // Extended Pipeline Traces
+    ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
+    PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
+    COMMIT_TRACE: true,           // Simultaneous phase commitment trace (6 numbered steps)
+    STATE_CHECKPOINT: true,       // Master game state snapshots at key moments
 
     // Effect System - Modular Processor Logging
     EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)

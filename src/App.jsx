@@ -939,7 +939,7 @@ const App = ({ phaseAnimationQueue }) => {
   const currentBackground = getBackgroundById(selectedBackground);
 
   if (!initTraceStep8Ref.current) {
-    debugLog('INIT_TRACE', '[8/8] Initial render with state from ClientStateStore', {
+    debugLog('INIT_TRACE', '[7/8] Initial render with state from ClientStateStore', {
       turnPhase,
       gameMode: gameState.gameMode,
       gameActive: gameState.gameActive,

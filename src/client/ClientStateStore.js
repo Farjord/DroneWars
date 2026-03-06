@@ -31,7 +31,7 @@ class ClientStateStore {
    * @param {Object} state - Complete game state from engine response
    */
   applyUpdate(state) {
-    debugLog('DEPLOY_TRACE', '[11/12] ClientStateStore.applyUpdate notifying', {
+    debugLog('ANIM_TRACE', '[7c/7] ClientStateStore.applyUpdate notifying', {
       eventType: 'ENGINE_UPDATE',
       listenerCount: this._listeners.length,
     });

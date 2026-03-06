@@ -48,10 +48,12 @@ class GameClient extends GameServer {
   // --- GameServer interface ---
 
   async submitAction(type, payload) {
-    debugLog('DEPLOY_TRACE', '[2/12] GameClient.submitAction routing to transport', {
-      type,
-      hasTransport: !!this.transport,
-    });
+    if (type === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[2/12] GameClient.submitAction routing to transport', {
+        type,
+        hasTransport: !!this.transport,
+      });
+    }
     return this.transport.sendAction(type, payload);
   }
 
@@ -85,7 +87,7 @@ class GameClient extends GameServer {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnims = this._collectAnimations(animations);
-    debugLog('DEPLOY_TRACE', '[10/12] GameClient._onResponse received', {
+    debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
       previousPhase,
       newPhase,
       animCount: allAnims.length,
@@ -101,6 +103,13 @@ class GameClient extends GameServer {
     state = { ...state, gameMode: this.getState().gameMode };
 
     const allAnimations = this._collectAnimations(animations);
+
+    debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
+      animCount: allAnimations.length,
+      animNames: allAnimations.map(a => a.animationName),
+      hasAnimationManager: !!this.animationManager,
+      willPlayAnimations: !!this.animationManager && allAnimations.length > 0,
+    });
 
     if (!this.animationManager || allAnimations.length === 0) {
       this._applyState(state);

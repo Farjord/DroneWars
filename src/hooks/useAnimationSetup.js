@@ -108,7 +108,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     // ActionProcessor needs AnimationManager for AI/system actions (bypasses GameClient)
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
 
-    debugLog('INIT_TRACE', '[7/8] AnimationManager created + wired to GameClient + ActionProcessor', {
+    debugLog('INIT_TRACE', '[8/8] AnimationManager created + wired to GameClient + ActionProcessor', {
       handlerGroupsRegistered: 5,
       wiredToGameServer: !!gameServerRef?.current,
       wiredToActionProcessor: !!gameStateManager.actionProcessor,

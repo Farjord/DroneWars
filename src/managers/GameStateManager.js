@@ -927,10 +927,12 @@ class GameStateManager {
    * @returns {Promise} Resolves when action is complete
    */
   async processAction(actionType, payload) {
-    debugLog('DEPLOY_TRACE', '[5/12] GSM.processAction routing to ActionProcessor', {
-      actionType,
-      queueLength: this.actionProcessor?.actionQueue?.length || 0,
-    });
+    if (actionType === 'deployment') {
+      debugLog('DEPLOY_TRACE', '[5/12] GSM.processAction routing to ActionProcessor', {
+        actionType,
+        queueLength: this.actionProcessor?.actionQueue?.length || 0,
+      });
+    }
     return await this.actionProcessor.queueAction({
       type: actionType,
       payload: payload
