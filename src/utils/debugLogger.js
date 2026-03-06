@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: true,        // Numbered step-by-step AI turn trace
+    AI_TURN_TRACE: false,        // Numbered step-by-step AI turn trace
     MULTIPLAYER: false,          // Network sync and multiplayer
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
     ANIMATIONS: false,           // Animation system
@@ -76,10 +76,14 @@ const DEBUG_CONFIG = {
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
     // Effect Chain Investigation
-    EFFECT_CHAIN_DEBUG: true,   // Temporary: effect chain auto-commit investigation
+    EFFECT_CHAIN_DEBUG: false,   // Temporary: effect chain auto-commit investigation
 
     // Card Play Pipeline
-    CARD_PLAY_TRACE: true,      // End-to-end card play milestone trace (10 numbered steps)
+    CARD_PLAY_TRACE: false,      // End-to-end card play milestone trace (10 numbered steps)
+
+    // Client-Server Architecture Traces
+    INIT_TRACE: true,             // End-to-end game initialization trace (8 numbered steps)
+    DEPLOY_TRACE: true,           // End-to-end drone deployment trace (12 numbered steps)
 
     // Effect System - Modular Processor Logging
     EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
@@ -90,7 +94,7 @@ const DEBUG_CONFIG = {
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
-    MOVEMENT_EFFECT: true,        // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
+    MOVEMENT_EFFECT: false,        // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation
     AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
     SINGLE_MOVE_FLOW: false,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
@@ -117,7 +121,7 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
-    TRIGGERS: true,                     // Unified trigger system (TriggerProcessor)
+    TRIGGERS: false,                     // Unified trigger system (TriggerProcessor)
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration

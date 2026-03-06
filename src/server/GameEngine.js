@@ -3,6 +3,7 @@
 // Returns { state, animations, result } from every processAction call.
 
 import StateRedactor from './StateRedactor.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 class GameEngine {
   constructor(gameStateManager, actionProcessor, gameFlowManager) {
@@ -18,11 +19,18 @@ class GameEngine {
    * @returns {Promise<{state: Object, animations: Object, result: Object}>}
    */
   async processAction(type, payload) {
+    debugLog('DEPLOY_TRACE', '[4/12] GameEngine.processAction delegating to GSM', { type });
     const result = await this.gameStateManager.processAction(type, payload);
     const state = this.gameStateManager.getState();
 
     // Extract collected animations from ActionProcessor result (Phase 2 contract)
     const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
+
+    const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
+    debugLog('DEPLOY_TRACE', '[8/12] GameEngine returns {state, animations}', {
+      animCount,
+      turnPhase: state.turnPhase,
+    });
 
     return { state, animations, result };
   }

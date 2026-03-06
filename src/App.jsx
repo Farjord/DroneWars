@@ -464,12 +464,20 @@ const App = ({ phaseAnimationQueue }) => {
       p2pManager,
       phaseAnimationQueue,
     });
+    debugLog('INIT_TRACE', '[5/8] GameServerFactory.create()', {
+      gameMode: gameState.gameMode,
+      playerId: gameStateManager.getLocalPlayerId(),
+    });
     gameServerRef.current = server;
     if (server) {
       gameStateManager.setGameServer(server);
       gameStateManager.actionProcessor.setGameServer(server);
       gameStateManager.actionProcessor.broadcastService.setGameServer(server);
     }
+    debugLog('INIT_TRACE', '[6/8] GameClient wired to managers', {
+      hasGameServer: !!server,
+      hasClientStateStore: !!clientStateStore,
+    });
     return server;
   }, [gameState.gameMode, gameStateManager]);
 
@@ -928,6 +936,13 @@ const App = ({ phaseAnimationQueue }) => {
 
   // Get current background configuration
   const currentBackground = getBackgroundById(selectedBackground);
+
+  debugLog('INIT_TRACE', '[8/8] Initial render with state from ClientStateStore', {
+    turnPhase,
+    gameMode: gameState.gameMode,
+    gameActive: gameState.gameActive,
+    hasGameServer: !!gameServer,
+  });
 
   return (
     <div className="h-screen w-screen bg-black flex flex-col items-center overflow-hidden">

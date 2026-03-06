@@ -22,12 +22,24 @@ export const useGameState = () => {
 
   // Subscribe to game state changes via ClientStateStore
   useEffect(() => {
+    debugLog('INIT_TRACE', '[4/8] useGameState subscribed to ClientStateStore', {
+      initialPhase: clientStateStore.getState().turnPhase,
+      initialAppState: clientStateStore.getState().appState,
+    });
+
     const unsubscribe = clientStateStore.subscribe((event) => {
       // DEBUG: Log when hook receives events
       if (event.type === 'PLAYER_STATES_SET') {
         debugLog('RESOURCE_RESET', `👂 [USEGAMESTATE] Received PLAYER_STATES_SET event, calling setGameState`, {
           timestamp: Date.now(),
           eventType: event.type
+        });
+      }
+
+      if (event.type === 'ENGINE_UPDATE') {
+        debugLog('DEPLOY_TRACE', '[12/12] useGameState setGameState triggering re-render', {
+          newPhase: clientStateStore.getState().turnPhase,
+          eventType: event.type,
         });
       }
 

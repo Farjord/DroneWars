@@ -49,6 +49,13 @@ export async function processDeployment(payload, ctx) {
     playerId
   );
 
+  debugLog('DEPLOY_TRACE', '[7/12] processDeployment executing via DeploymentProcessor', {
+    droneName: droneData?.name,
+    lane: laneId,
+    success: result.success,
+    animationCount: result.animationEvents?.length || 0,
+  });
+
   if (result.success) {
     const animations = ctx.mapAnimationEvents(result.animationEvents);
     ctx.captureAnimationsForBroadcast(animations);

@@ -38,6 +38,11 @@ const useActionRouting = ({
 
   // --- Deployment Execution ---
   const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
+    debugLog('DEPLOY_TRACE', '[1/12] executeDeployment called', {
+      droneName: droneToDeployed?.name,
+      lane,
+      playerId: getLocalPlayerId(),
+    });
     debugLog('DRAG_DROP_DEPLOY', '🚀 executeDeployment entered', { lane, droneName: droneToDeployed?.name, hasSelectedDrone: !!selectedDrone, usedParam: droneToDeployed !== selectedDrone });
     try {
       debugLog('DEPLOYMENT', '🎯 Deploying drone:', {

@@ -48,6 +48,10 @@ class GameClient extends GameServer {
   // --- GameServer interface ---
 
   async submitAction(type, payload) {
+    debugLog('DEPLOY_TRACE', '[2/12] GameClient.submitAction routing to transport', {
+      type,
+      hasTransport: !!this.transport,
+    });
     return this.transport.sendAction(type, payload);
   }
 
@@ -80,6 +84,13 @@ class GameClient extends GameServer {
   async _onResponse({ state, animations }) {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
+    const allAnims = this._collectAnimations(animations);
+    debugLog('DEPLOY_TRACE', '[10/12] GameClient._onResponse received', {
+      previousPhase,
+      newPhase,
+      animCount: allAnims.length,
+      hasTeleportIn: allAnims.some(a => a.animationName === 'TELEPORT_IN'),
+    });
 
     // Queue phase announcements for multiplayer transitions
     if (this._isMultiplayer) {

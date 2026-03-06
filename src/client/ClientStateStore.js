@@ -2,6 +2,8 @@
 // Wraps GameStateManager for backward compatibility, adding applyUpdate()
 // for engine/guest response paths. UI subscribes here instead of GSM directly.
 
+import { debugLog } from '../utils/debugLogger.js';
+
 class ClientStateStore {
   constructor(gameStateManager) {
     this.gameStateManager = gameStateManager;
@@ -29,6 +31,10 @@ class ClientStateStore {
    * @param {Object} state - Complete game state from engine response
    */
   applyUpdate(state) {
+    debugLog('DEPLOY_TRACE', '[11/12] ClientStateStore.applyUpdate notifying', {
+      eventType: 'ENGINE_UPDATE',
+      listenerCount: this._listeners.length,
+    });
     this._appliedState = state;
     this._notify({ type: 'ENGINE_UPDATE' });
   }

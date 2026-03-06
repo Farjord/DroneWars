@@ -524,6 +524,11 @@ setAnimationManager(animationManager) {
       const methodName = ACTION_STRATEGIES[type];
       const statusType = STATUS_CONSUMPTION_TYPES[type];
 
+      debugLog('DEPLOY_TRACE', '[6/12] ActionProcessor strategy dispatch', {
+        type,
+        methodName: methodName || statusType || 'unknown',
+      });
+
       if (methodName) {
         result = await this[methodName](payload);
       } else if (statusType) {

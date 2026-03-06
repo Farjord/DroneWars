@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { debugLog } from '../utils/debugLogger.js';
 import AnimationManager from '../managers/AnimationManager.js';
 import { registerProjectileAnimations } from './animationSetup/useProjectileAnimations.js';
 import { registerStatusAnimations } from './animationSetup/useStatusAnimations.js';
@@ -104,6 +105,11 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     if (gameServerRef?.current) {
       gameServerRef.current.animationManager = animationManager;
     }
+
+    debugLog('INIT_TRACE', '[7/8] AnimationManager created + wired to GameClient', {
+      handlerGroupsRegistered: 5,
+      wiredToGameServer: !!gameServerRef?.current,
+    });
 
     return unsubscribe;
 }, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, gameServerRef]);
