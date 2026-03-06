@@ -56,12 +56,12 @@ function AppRouter() {
   const gameFlowManagerRef = useRef(null);
   if (!gameFlowManagerRef.current) {
     gameFlowManagerRef.current = new GameFlowManager(phaseAnimationQueueRef.current);
-  }
 
-  debugLog('INIT_TRACE', '[1/8] PhaseAnimationQueue + GameFlowManager created', {
-    hasQueue: !!phaseAnimationQueueRef.current,
-    hasGFM: !!gameFlowManagerRef.current,
-  });
+    debugLog('INIT_TRACE', '[1/8] PhaseAnimationQueue + GameFlowManager created', {
+      hasQueue: !!phaseAnimationQueueRef.current,
+      hasGFM: !!gameFlowManagerRef.current,
+    });
+  }
 
   // Initialize sound system (autoplay unlock + event bridge)
   useSoundSetup(gameStateManager, phaseAnimationQueueRef.current);

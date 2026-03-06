@@ -208,6 +208,7 @@ const App = ({ phaseAnimationQueue }) => {
   const isResolvingAttackRef = useRef(false);
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
+  const initTraceStep8Ref = useRef(false);
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -937,12 +938,15 @@ const App = ({ phaseAnimationQueue }) => {
   // Get current background configuration
   const currentBackground = getBackgroundById(selectedBackground);
 
-  debugLog('INIT_TRACE', '[8/8] Initial render with state from ClientStateStore', {
-    turnPhase,
-    gameMode: gameState.gameMode,
-    gameActive: gameState.gameActive,
-    hasGameServer: !!gameServer,
-  });
+  if (!initTraceStep8Ref.current) {
+    debugLog('INIT_TRACE', '[8/8] Initial render with state from ClientStateStore', {
+      turnPhase,
+      gameMode: gameState.gameMode,
+      gameActive: gameState.gameActive,
+      hasGameServer: !!gameServer,
+    });
+    initTraceStep8Ref.current = true;
+  }
 
   return (
     <div className="h-screen w-screen bg-black flex flex-col items-center overflow-hidden">

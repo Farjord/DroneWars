@@ -11,6 +11,8 @@ import p2pManager from '../network/P2PManager.js';
 import { isSimultaneousPhase, isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
+let initTraceStep4Logged = false;
+
 export const useGameState = () => {
   const [gameState, setGameState] = useState(clientStateStore.getState());
   const [p2pStatus, setP2pStatus] = useState(p2pManager.getStatus());
@@ -22,10 +24,13 @@ export const useGameState = () => {
 
   // Subscribe to game state changes via ClientStateStore
   useEffect(() => {
-    debugLog('INIT_TRACE', '[4/8] useGameState subscribed to ClientStateStore', {
-      initialPhase: clientStateStore.getState().turnPhase,
-      initialAppState: clientStateStore.getState().appState,
-    });
+    if (!initTraceStep4Logged) {
+      debugLog('INIT_TRACE', '[4/8] useGameState subscribed to ClientStateStore', {
+        initialPhase: clientStateStore.getState().turnPhase,
+        initialAppState: clientStateStore.getState().appState,
+      });
+      initTraceStep4Logged = true;
+    }
 
     const unsubscribe = clientStateStore.subscribe((event) => {
       // DEBUG: Log when hook receives events
