@@ -320,6 +320,11 @@ class P2PManager {
               elapsedMs,
               isConnected: this.isConnected
             });
+            // Clean up zombie room to prevent leaked action handlers on retry
+            if (this.room) {
+              this.room.leave();
+              this.room = null;
+            }
             reject(new Error('Failed to join room - timeout'));
           }
         }, 30000);
@@ -512,7 +517,7 @@ class P2PManager {
 
     try {
       // Update sequence to match what we're sending
-      this.broadcastSequence = sequenceId || this.broadcastSequence;
+      this.broadcastSequence = sequenceId !== undefined ? sequenceId : this.broadcastSequence;
 
       const stateData = {
         sequenceId: this.broadcastSequence,

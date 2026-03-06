@@ -96,7 +96,7 @@ describe('BroadcastService', () => {
   describe('animation capture and clear-on-broadcast', () => {
     it('captures action animations', () => {
       const anims = [{ animationName: 'MOVE', payload: {} }];
-      broadcastService.captureAnimations(anims, false);
+      broadcastService.captureAnimations(anims);
 
       broadcastService.broadcastIfNeeded('test');
 
@@ -107,7 +107,7 @@ describe('BroadcastService', () => {
 
     it('captures system animations separately', () => {
       const anims = [{ animationName: 'PHASE_ANNOUNCE', payload: {} }];
-      broadcastService.captureAnimations(anims, true);
+      broadcastService.captureAnimations(anims, { isSystem: true });
 
       broadcastService.broadcastIfNeeded('test');
 
@@ -117,8 +117,8 @@ describe('BroadcastService', () => {
     });
 
     it('clears animations after broadcast', () => {
-      broadcastService.captureAnimations([{ animationName: 'MOVE' }], false);
-      broadcastService.captureAnimations([{ animationName: 'SYS' }], true);
+      broadcastService.captureAnimations([{ animationName: 'MOVE' }]);
+      broadcastService.captureAnimations([{ animationName: 'SYS' }], { isSystem: true });
 
       broadcastService.broadcastIfNeeded('test');
       // Second broadcast should have empty animations
@@ -134,7 +134,7 @@ describe('BroadcastService', () => {
         { animationName: 'STATE_SNAPSHOT', payload: {} },
         { animationName: 'MOVE', payload: {} },
       ];
-      broadcastService.captureAnimationsForBroadcast(anims);
+      broadcastService.captureAnimations(anims, { excludeStateSnapshot: true });
 
       broadcastService.broadcastIfNeeded('test');
 
@@ -147,13 +147,13 @@ describe('BroadcastService', () => {
 
     it('captureAnimations is no-op when not host', () => {
       mockGameServer.getLocalPlayerId.mockReturnValue('player2');
-      broadcastService.captureAnimations([{ animationName: 'A' }], false);
+      broadcastService.captureAnimations([{ animationName: 'A' }]);
       expect(broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
     });
 
-    it('captureAnimationsForBroadcast is no-op when not host', () => {
+    it('captureAnimations with excludeStateSnapshot is no-op when not host', () => {
       mockGameServer.getLocalPlayerId.mockReturnValue('player2');
-      broadcastService.captureAnimationsForBroadcast([{ animationName: 'MOVE' }]);
+      broadcastService.captureAnimations([{ animationName: 'MOVE' }], { excludeStateSnapshot: true });
 
       mockGameServer.getLocalPlayerId.mockReturnValue('player1');
       broadcastService.broadcastIfNeeded('test');
@@ -166,14 +166,14 @@ describe('BroadcastService', () => {
 
   describe('getAndClear methods', () => {
     it('getAndClearPendingActionAnimations returns and clears', () => {
-      broadcastService.captureAnimations([{ animationName: 'A' }], false);
+      broadcastService.captureAnimations([{ animationName: 'A' }]);
       const result = broadcastService.getAndClearPendingActionAnimations();
       expect(result).toEqual([{ animationName: 'A' }]);
       expect(broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
     });
 
     it('getAndClearPendingSystemAnimations returns and clears', () => {
-      broadcastService.captureAnimations([{ animationName: 'S' }], true);
+      broadcastService.captureAnimations([{ animationName: 'S' }], { isSystem: true });
       const result = broadcastService.getAndClearPendingSystemAnimations();
       expect(result).toEqual([{ animationName: 'S' }]);
       expect(broadcastService.getAndClearPendingSystemAnimations()).toEqual([]);
@@ -183,8 +183,8 @@ describe('BroadcastService', () => {
   describe('reset', () => {
     it('clears all pending state', () => {
       broadcastService.setPendingStates({ a: 1 }, { b: 2 });
-      broadcastService.captureAnimations([{ animationName: 'X' }], false);
-      broadcastService.captureAnimations([{ animationName: 'Y' }], true);
+      broadcastService.captureAnimations([{ animationName: 'X' }]);
+      broadcastService.captureAnimations([{ animationName: 'Y' }], { isSystem: true });
 
       broadcastService.reset();
 
@@ -199,8 +199,8 @@ describe('BroadcastService', () => {
   describe('broadcast failure: preserves animations when not connected', () => {
     it('preserves pending animations when broadcast fails due to disconnect', () => {
       // Capture some animations
-      broadcastService.captureAnimations([{ animationName: 'ATTACK', payload: {} }], false);
-      broadcastService.captureAnimations([{ animationName: 'PHASE_CHANGE', payload: {} }], true);
+      broadcastService.captureAnimations([{ animationName: 'ATTACK', payload: {} }]);
+      broadcastService.captureAnimations([{ animationName: 'PHASE_CHANGE', payload: {} }], { isSystem: true });
 
       // Disconnect
       mockP2pManager.isConnected = false;

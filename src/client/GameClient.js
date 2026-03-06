@@ -38,6 +38,7 @@ class GameClient extends GameServer {
     // stateProvider protocol fields (used by AnimationManager.executeWithStateUpdate)
     this.pendingHostState = null;
     this.pendingFinalHostState = null;
+    this._localGameMode = null; // Cached on first response to avoid per-response store reads
 
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
@@ -86,12 +87,12 @@ class GameClient extends GameServer {
   async _onResponse({ state, animations }) {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
-    const allAnims = this._collectAnimations(animations);
+    const allAnimations = this._collectAnimations(animations);
     debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
       previousPhase,
       newPhase,
-      animCount: allAnims.length,
-      hasTeleportIn: allAnims.some(a => a.animationName === 'TELEPORT_IN'),
+      animCount: allAnimations.length,
+      hasTeleportIn: allAnimations.some(a => a.animationName === 'TELEPORT_IN'),
     });
 
     // Queue phase announcements for multiplayer transitions
@@ -99,10 +100,11 @@ class GameClient extends GameServer {
       this._queuePhaseAnnouncements(previousPhase, newPhase);
     }
 
-    // Preserve local gameMode
-    state = { ...state, gameMode: this.getState().gameMode };
-
-    const allAnimations = this._collectAnimations(animations);
+    // Preserve local gameMode (cached on first response to avoid per-response spread overhead)
+    if (!this._localGameMode) {
+      this._localGameMode = this.getState().gameMode;
+    }
+    state = { ...state, gameMode: this._localGameMode };
 
     debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
       animCount: allAnimations.length,
@@ -221,8 +223,7 @@ class GameClient extends GameServer {
 
     debugLog('STATE_SYNC', `[GameClient] Action rejected: ${actionType} — ${error}`);
     if (authoritativeState) {
-      const localGameMode = this.getState().gameMode;
-      this._applyState({ ...authoritativeState, gameMode: localGameMode });
+      this._applyState({ ...authoritativeState, gameMode: this._localGameMode || this.getState().gameMode });
     }
   }
 

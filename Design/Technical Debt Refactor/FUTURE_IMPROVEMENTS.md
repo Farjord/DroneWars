@@ -65,6 +65,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 66 | Card targeting UI | Full lanes should not highlight as valid targets for token deployment cards; show disabled/greyed state | Lane capacity limit | 2026-03-02 | Low |
 | 67 | App.jsx + ModalLayer.jsx | Move ModalLayer outside `gameAreaRef` div (from inside the gameArea to after its closing `</div>`). Modals use `position: fixed` and don't need to be DOM children of gameArea. Eliminates entire class of click-suppression bugs where drag-end handlers interfere with modal button clicks. | Modal double-click fix | 2026-03-02 | Medium |
 | 68 | Design/ | Create `UNIFIED_MULTIPLAYER_ARCHITECTURE.md` documenting the final multiplayer architecture (Phases 0–10c). Covers GameServer abstraction, BroadcastService, StateRedactor, P2PManager, and host/guest flow. | Multiplayer Phase 10c audit | 2026-03-05 | Low |
+| 69 | HostGameServer.js, GameServerFactory.js | Most fragile wiring in multiplayer (factory mode switching, p2pManager monkey-patching) has minimal test coverage. Add unit tests for factory mode selection edge cases and HostGameServer guest action flow (error paths, broadcast ordering). | Multiplayer code review | 2026-03-06 | Medium |
 
 ## Audit Findings (2026-02-23)
 

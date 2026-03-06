@@ -426,8 +426,8 @@ describe('ActionProcessor — clearQueue Full Cleanup', () => {
   });
 
   it('clears pending animation arrays via broadcastService', () => {
-    ap.broadcastService.captureAnimations([{ type: 'move' }, { type: 'attack' }], false);
-    ap.broadcastService.captureAnimations([{ type: 'system1' }], true);
+    ap.broadcastService.captureAnimations([{ type: 'move' }, { type: 'attack' }]);
+    ap.broadcastService.captureAnimations([{ type: 'system1' }], { isSystem: true });
     ap.clearQueue();
     expect(ap.broadcastService.getAndClearPendingActionAnimations()).toEqual([]);
     expect(ap.broadcastService.getAndClearPendingSystemAnimations()).toEqual([]);

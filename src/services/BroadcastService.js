@@ -25,7 +25,11 @@ class BroadcastService {
   }
 
   _isHost() {
-    return this.gameServer?.getLocalPlayerId() === 'player1';
+    if (!this.gameServer) {
+      debugLog('BROADCAST_TIMING', '⚠️ BroadcastService._isHost() called before gameServer wired');
+      return false;
+    }
+    return this.gameServer.getLocalPlayerId() === 'player1';
   }
 
   /**
@@ -55,25 +59,17 @@ class BroadcastService {
   }
 
   /**
-   * Capture animations for broadcasting (used by executeAndCaptureAnimations).
+   * Capture animations for broadcasting.
    * @param {Array} animations - Animation events to capture
-   * @param {boolean} isSystemAnimation - True for system animations, false for action animations
+   * @param {{ isSystem?: boolean, excludeStateSnapshot?: boolean }} options
    */
-  captureAnimations(animations, isSystemAnimation = false) {
+  captureAnimations(animations, { isSystem = false, excludeStateSnapshot = false } = {}) {
     if (!animations || animations.length === 0) return;
     if (!this._isHost()) return;
-    (isSystemAnimation ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...animations);
-  }
-
-  /**
-   * Capture action animations for broadcast, filtering out STATE_SNAPSHOT.
-   * Used by ActionContext's captureAnimationsForBroadcast.
-   * @param {Array} animations - Animation events to capture
-   */
-  captureAnimationsForBroadcast(animations) {
-    if (!this._isHost() || !animations || animations.length === 0) return;
-    const broadcastAnimations = animations.filter(a => a.animationName !== 'STATE_SNAPSHOT');
-    this.pendingActionAnimations.push(...broadcastAnimations);
+    const filtered = excludeStateSnapshot
+      ? animations.filter(a => a.animationName !== 'STATE_SNAPSHOT')
+      : animations;
+    (isSystem ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...filtered);
   }
 
   getAndClearPendingActionAnimations() {

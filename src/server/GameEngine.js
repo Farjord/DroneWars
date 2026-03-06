@@ -2,7 +2,6 @@
 // Wraps ActionProcessor + GameStateManager + GameFlowManager.
 // Returns { state, animations, result } from every processAction call.
 
-import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class GameEngine {
@@ -43,8 +42,8 @@ class GameEngine {
     return this.gameStateManager.getState();
   }
 
-  getPlayerView(playerId) {
-    return StateRedactor.redactForPlayer(this.getState(), playerId);
+  getPlayerView(_playerId) {
+    return this.getState();
   }
 }
 

@@ -18,9 +18,10 @@ class Transport {
 
   /**
    * Register callback for action acknowledgements (P2P only).
+   * No-op by default — only P2PTransport provides acks.
    * @param {function({actionType, success, error, authoritativeState}): void} callback
    */
-  onActionAck(_callback) { throw new Error('Not implemented'); }
+  onActionAck(_callback) {}
 
   /**
    * Register callback for when the message queue has drained (P2P only).

@@ -33,7 +33,7 @@ const GameServerFactory = {
       });
     }
 
-    return null;
+    throw new Error(`GameServerFactory: unknown game mode "${gameMode}"`);
   },
 };
 

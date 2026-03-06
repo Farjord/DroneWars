@@ -52,6 +52,22 @@ describe('MessageQueue', () => {
     });
   });
 
+  describe('enqueue with duplicate/already-processed sequenceId', () => {
+    it('drops messages with sequenceId <= lastProcessedSequence', async () => {
+      const msg1 = { type: 'state_update_received', data: { sequenceId: 1 } };
+      queue.enqueue(msg1);
+      await vi.waitFor(() => expect(processMessage).toHaveBeenCalledTimes(1));
+
+      // Re-enqueue same sequenceId — should be dropped
+      queue.enqueue({ type: 'state_update_received', data: { sequenceId: 1 } });
+      // And an older one
+      queue.enqueue({ type: 'state_update_received', data: { sequenceId: 0 } });
+
+      await Promise.resolve();
+      expect(processMessage).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('enqueue with out-of-order sequenceId', () => {
     it('buffers message and does NOT call processMessage', async () => {
       // sequenceId 3 arrives first (gap: expected 1)

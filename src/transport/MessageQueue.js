@@ -42,6 +42,11 @@ export default class MessageQueue {
     }
 
     if (sequenceId !== undefined && message.type === 'state_update_received') {
+      if (sequenceId <= this.lastProcessedSequence) {
+        debugLog('MESSAGE_QUEUE', `Duplicate message dropped: seq=${sequenceId}, lastProcessed=${this.lastProcessedSequence}`);
+        return;
+      }
+
       if (sequenceId > this.lastProcessedSequence + 1) {
         debugLog('MESSAGE_QUEUE', `OOO message buffered: seq=${sequenceId}, expected=${this.lastProcessedSequence + 1}`);
         this.pendingOutOfOrderMessages.set(sequenceId, { ...message });

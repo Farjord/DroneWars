@@ -78,7 +78,7 @@ const useMultiplayerSync = ({
       if (event.type === 'sync_requested' && gameStateManager.getLocalPlayerId() === 'player1') {
         debugLog('MULTIPLAYER', '🔄 Guest requested full state sync - sending response');
         const redactedState = StateRedactor.redactForPlayer(gameStateManager.getState(), 'player2');
-        p2pManager.sendFullSyncResponse(redactedState);
+        p2pManager.sendFullSyncResponse(redactedState, p2pManager.broadcastSequence);
       }
     };
 

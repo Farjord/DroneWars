@@ -61,8 +61,7 @@ class HostGameServer {
           ),
         });
       }
-
-      throw error;
+      // Don't re-throw: ack already sent, and caller is an unhandled async P2P callback
     }
   }
 
@@ -71,7 +70,7 @@ class HostGameServer {
   }
 
   getPlayerView(playerId) {
-    return this.gameEngine.getPlayerView(playerId);
+    return StateRedactor.redactForPlayer(this.gameEngine.getState(), playerId);
   }
 }
 

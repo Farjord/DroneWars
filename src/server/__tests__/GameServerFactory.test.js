@@ -104,11 +104,10 @@ describe('GameServerFactory', () => {
   });
 
   describe('unknown mode', () => {
-    it('returns null', () => {
-      const server = GameServerFactory.create('spectator', {
+    it('throws for unknown game mode', () => {
+      expect(() => GameServerFactory.create('spectator', {
         gameStateManager: mockGSM, actionProcessor: mockAP, gameFlowManager: mockGFM,
-      });
-      expect(server).toBeNull();
+      })).toThrow('GameServerFactory: unknown game mode "spectator"');
     });
   });
 });

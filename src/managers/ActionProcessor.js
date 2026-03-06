@@ -288,7 +288,7 @@ class ActionProcessor {
           filteredOut: (animations?.length || 0) - broadcastAnims.length,
           names: broadcastAnims.map(a => a.animationName),
         });
-        ap.broadcastService.captureAnimationsForBroadcast(animations);
+        ap.broadcastService.captureAnimations(animations, { excludeStateSnapshot: true });
       },
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
@@ -726,7 +726,7 @@ setAnimationManager(animationManager) {
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
 
     // Capture for guest broadcasting (BroadcastService has internal host guard)
-    this.broadcastService.captureAnimations(animations, isSystemAnimation);
+    this.broadcastService.captureAnimations(animations, { isSystem: isSystemAnimation });
 
     if (this.animationManager) {
       const source = this.getAnimationSource();

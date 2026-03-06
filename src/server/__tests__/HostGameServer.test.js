@@ -98,12 +98,11 @@ describe('HostGameServer', () => {
       expect(result).toBe(mockResponse);
     });
 
-    it('sends error ack with authoritative state on failure', async () => {
+    it('sends error ack with authoritative state on failure (no re-throw)', async () => {
       mockEngine.processAction.mockRejectedValue(new Error('Invalid action'));
 
-      await expect(
-        hostServer.handleGuestAction({ type: 'attack', payload: {} })
-      ).rejects.toThrow('Invalid action');
+      // handleGuestAction no longer throws — it sends ack and swallows the error
+      await hostServer.handleGuestAction({ type: 'attack', payload: {} });
 
       expect(mockP2P.sendActionAck).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -117,9 +116,7 @@ describe('HostGameServer', () => {
     it('includes redacted state in error ack', async () => {
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
-      try {
-        await hostServer.handleGuestAction({ type: 'attack', payload: {} });
-      } catch { /* expected */ }
+      await hostServer.handleGuestAction({ type: 'attack', payload: {} });
 
       const ackCall = mockP2P.sendActionAck.mock.calls[0][0];
       // authoritativeState should be redacted for player2 (guest)
@@ -142,9 +139,7 @@ describe('HostGameServer', () => {
       });
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
-      try {
-        await customHost.handleGuestAction({ type: 'attack', payload: {} });
-      } catch { /* expected */ }
+      await customHost.handleGuestAction({ type: 'attack', payload: {} });
 
       const ackCall = mockP2P.sendActionAck.mock.calls[0][0];
       // Redacted for player1 (the custom guest), so player1's hand is preserved
@@ -157,9 +152,8 @@ describe('HostGameServer', () => {
       const noP2P = new HostGameServer(mockEngine, mockBroadcast);
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
-      await expect(
-        noP2P.handleGuestAction({ type: 'attack', payload: {} })
-      ).rejects.toThrow('bad');
+      // Should not throw — error is caught and swallowed
+      await noP2P.handleGuestAction({ type: 'attack', payload: {} });
       // No error from missing p2pManager
     });
   });
@@ -172,9 +166,12 @@ describe('HostGameServer', () => {
       expect(mockEngine.getState).toHaveBeenCalled();
     });
 
-    it('getPlayerView delegates to gameEngine', () => {
-      hostServer.getPlayerView('player1');
-      expect(mockEngine.getPlayerView).toHaveBeenCalledWith('player1');
+    it('getPlayerView redacts state for the given player', () => {
+      const view = hostServer.getPlayerView('player1');
+      // player1's own hand preserved, player2's hand redacted
+      expect(view.player1.hand).toEqual([{ id: 'c1' }]);
+      expect(view.player2.hand).toEqual([]);
+      expect(mockEngine.getState).toHaveBeenCalled();
     });
   });
 });

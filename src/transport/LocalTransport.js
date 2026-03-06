@@ -39,10 +39,6 @@ class LocalTransport extends Transport {
     this._responseCallback = callback;
   }
 
-  onActionAck(_callback) {
-    // No-op: local transport has no ack mechanism
-  }
-
   dispose() {
     this._responseCallback = null;
   }

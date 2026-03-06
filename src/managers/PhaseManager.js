@@ -369,8 +369,7 @@ class PhaseManager {
    * Check if phase is sequential (deployment, action)
    */
   isSequentialPhase(phase) {
-    const sequentialPhases = ['deployment', 'action'];
-    return sequentialPhases.includes(phase);
+    return PhaseManager.SEQUENTIAL_PHASES.includes(phase);
   }
 
   /**

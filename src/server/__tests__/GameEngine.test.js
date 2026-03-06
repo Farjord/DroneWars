@@ -84,11 +84,9 @@ describe('GameEngine', () => {
   });
 
   describe('getPlayerView', () => {
-    it('returns redacted state hiding opponent cards', () => {
+    it('returns raw state (redaction is handled by callers)', () => {
       const view = engine.getPlayerView('player1');
-      expect(view.player1.hand).toEqual([{ id: 'c1' }]);
-      expect(view.player2.hand).toEqual([]);
-      expect(view.player2.handCount).toBe(1);
+      expect(view).toBe(mockState);
     });
   });
 });
