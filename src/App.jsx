@@ -204,6 +204,7 @@ const App = ({ phaseAnimationQueue }) => {
   const droneRefs = useRef({});
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
+  const gameServerRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
@@ -241,7 +242,8 @@ const App = ({ phaseAnimationQueue }) => {
   setRailgunTurrets,
   setRailgunBeams,
   setStatusConsumptions,
-  setStatChangeEffects
+  setStatChangeEffects,
+  gameServerRef
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -462,9 +464,7 @@ const App = ({ phaseAnimationQueue }) => {
       p2pManager,
       phaseAnimationQueue,
     });
-    if (server?.initialize) {
-      server.initialize();
-    }
+    gameServerRef.current = server;
     if (server) {
       gameStateManager.setGameServer(server);
       gameStateManager.actionProcessor.setGameServer(server);

@@ -61,6 +61,23 @@ describe('LocalTransport', () => {
       expect(response.result).toEqual({ success: true });
     });
 
+    it('returns the result from gameEngine response', async () => {
+      transport.onResponse(() => {});
+      const result = await transport.sendAction('attack', { droneId: 'd1' });
+      expect(result).toEqual({ success: true });
+    });
+
+    it('awaits the response callback before returning', async () => {
+      const order = [];
+      transport.onResponse(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+        order.push('callback');
+      });
+      await transport.sendAction('attack', {});
+      order.push('after');
+      expect(order).toEqual(['callback', 'after']);
+    });
+
     it('does not throw when no response callback is registered', async () => {
       await expect(transport.sendAction('attack', {})).resolves.not.toThrow();
     });
@@ -87,6 +104,12 @@ describe('LocalTransport', () => {
 
       expect(first).not.toHaveBeenCalled();
       expect(second).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('onActionAck', () => {
+    it('does not throw (no-op for local transport)', () => {
+      expect(() => transport.onActionAck(() => {})).not.toThrow();
     });
   });
 

@@ -38,6 +38,11 @@ describe('P2PTransport', () => {
       await transport.sendAction('attack', { droneId: 'd1' });
       expect(p2p.sendActionToHost).toHaveBeenCalledWith('attack', { droneId: 'd1' });
     });
+
+    it('returns { success: true, pending: true }', async () => {
+      const result = await transport.sendAction('attack', { droneId: 'd1' });
+      expect(result).toEqual({ success: true, pending: true });
+    });
   });
 
   // --- onResponse ---
@@ -191,6 +196,58 @@ describe('P2PTransport', () => {
         state: { round: 5 },
         animations: { actionAnimations: [], systemAnimations: [] },
       });
+    });
+  });
+
+  // --- onQueueDrained ---
+
+  describe('onQueueDrained', () => {
+    it('fires callback after queue drains', async () => {
+      const drainCallback = vi.fn();
+      const responseCallback = vi.fn();
+      transport.onResponse(responseCallback);
+      transport.onQueueDrained(drainCallback);
+
+      p2p._emit({
+        type: 'state_update_received',
+        data: { state: { round: 1 }, actionAnimations: [], systemAnimations: [], sequenceId: 1 },
+      });
+
+      // processQueue is async — flush microtasks
+      await vi.waitFor(() => {
+        expect(drainCallback).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('does not fire when no callback registered', () => {
+      const responseCallback = vi.fn();
+      transport.onResponse(responseCallback);
+
+      // Should not throw even without onQueueDrained registered
+      expect(() => {
+        p2p._emit({
+          type: 'state_update_received',
+          data: { state: { round: 1 }, actionAnimations: [], systemAnimations: [], sequenceId: 1 },
+        });
+      }).not.toThrow();
+    });
+
+    it('clears callback on dispose', () => {
+      const drainCallback = vi.fn();
+      transport.onQueueDrained(drainCallback);
+
+      transport.dispose();
+
+      // Re-create transport since the old one is disposed
+      const newTransport = new P2PTransport(p2p);
+      newTransport.onResponse(() => {});
+
+      p2p._emit({
+        type: 'state_update_received',
+        data: { state: { round: 1 }, actionAnimations: [], systemAnimations: [], sequenceId: 1 },
+      });
+
+      expect(drainCallback).not.toHaveBeenCalled();
     });
   });
 

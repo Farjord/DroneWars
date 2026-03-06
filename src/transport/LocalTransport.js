@@ -17,12 +17,18 @@ class LocalTransport extends Transport {
     const redactedState = StateRedactor.redactForPlayer(state, this.playerId);
 
     if (this._responseCallback) {
-      this._responseCallback({ state: redactedState, animations, result });
+      await this._responseCallback({ state: redactedState, animations, result });
     }
+
+    return result;
   }
 
   onResponse(callback) {
     this._responseCallback = callback;
+  }
+
+  onActionAck(_callback) {
+    // No-op: local transport has no ack mechanism
   }
 
   dispose() {

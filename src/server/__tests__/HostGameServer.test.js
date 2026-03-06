@@ -135,6 +135,24 @@ describe('HostGameServer', () => {
       // No error thrown, no ack sent
     });
 
+    it('uses parameterized guestPlayerId for error ack redaction', async () => {
+      const customHost = new HostGameServer(mockEngine, mockBroadcast, {
+        p2pManager: mockP2P,
+        guestPlayerId: 'player1',
+      });
+      mockEngine.processAction.mockRejectedValue(new Error('bad'));
+
+      try {
+        await customHost.handleGuestAction({ type: 'attack', payload: {} });
+      } catch { /* expected */ }
+
+      const ackCall = mockP2P.sendActionAck.mock.calls[0][0];
+      // Redacted for player1 (the custom guest), so player1's hand is preserved
+      expect(ackCall.authoritativeState.player1.hand).toEqual([{ id: 'c1' }]);
+      // Player2's hand is redacted (they're the host in this scenario)
+      expect(ackCall.authoritativeState.player2.hand).toEqual([]);
+    });
+
     it('does not send ack on error when p2pManager is null', async () => {
       const noP2P = new HostGameServer(mockEngine, mockBroadcast);
       mockEngine.processAction.mockRejectedValue(new Error('bad'));

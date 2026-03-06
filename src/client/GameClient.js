@@ -1,7 +1,7 @@
 // GameClient — Unified client for all game modes.
 // Delegates action sending to a Transport, receives { state, animations }
 // responses, plays animations via AnimationManager, and pushes state to
-// ClientStateStore. Unified client for all game modes.
+// ClientStateStore.
 
 import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';

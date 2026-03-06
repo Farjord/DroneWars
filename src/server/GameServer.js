@@ -1,5 +1,5 @@
 // GameServer — Abstract interface for game action routing.
-// Subclasses: LocalGameServer (local/host), RemoteGameServer (guest).
+// Subclasses: GameClient (all modes via Transport injection).
 
 class GameServer {
   async submitAction(_type, _payload) { throw new Error('Not implemented'); }

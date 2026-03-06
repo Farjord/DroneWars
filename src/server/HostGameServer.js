@@ -8,10 +8,11 @@ import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class HostGameServer {
-  constructor(gameEngine, broadcastService, { p2pManager = null } = {}) {
+  constructor(gameEngine, broadcastService, { p2pManager = null, guestPlayerId = 'player2' } = {}) {
     this.gameEngine = gameEngine;
     this.broadcastService = broadcastService;
     this.p2pManager = p2pManager;
+    this.guestPlayerId = guestPlayerId;
   }
 
   /**
@@ -56,7 +57,7 @@ class HostGameServer {
           success: false,
           error: error.message,
           authoritativeState: StateRedactor.redactForPlayer(
-            this.gameEngine.getState(), 'player2'
+            this.gameEngine.getState(), this.guestPlayerId
           ),
         });
       }

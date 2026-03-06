@@ -24,11 +24,17 @@ function makeState(overrides = {}) {
 
 function makeTransport() {
   let responseCallback = null;
+  let ackCallback = null;
+  let queueDrainedCallback = null;
   return {
     sendAction: vi.fn().mockResolvedValue(undefined),
     onResponse(cb) { responseCallback = cb; },
+    onActionAck(cb) { ackCallback = cb; },
+    onQueueDrained(cb) { queueDrainedCallback = cb; },
     getResponseCallback() { return responseCallback; },
     simulateResponse(response) { responseCallback?.(response); },
+    simulateAck(ack) { ackCallback?.(ack); },
+    simulateQueueDrained() { queueDrainedCallback?.(); },
     dispose: vi.fn(),
   };
 }
@@ -407,6 +413,104 @@ describe('GameClient', () => {
       });
       noQueueClient._queuePhaseAnnouncements('action', 'deployment');
       // No error thrown
+    });
+  });
+
+  // --- Action ack handling (M1) ---
+
+  describe('action ack handling', () => {
+    it('successful ack logs but does not change state', () => {
+      transport.simulateAck({ actionType: 'attack', success: true });
+      expect(mockStore.applyUpdate).not.toHaveBeenCalled();
+    });
+
+    it('rejected ack with authoritativeState applies state preserving gameMode', () => {
+      mockStore.getState.mockReturnValue(makeState({ gameMode: 'guest' }));
+      const authState = makeState({ turnPhase: 'deployment', gameMode: 'host' });
+
+      transport.simulateAck({
+        actionType: 'attack',
+        success: false,
+        error: 'Invalid target',
+        authoritativeState: authState,
+      });
+
+      expect(mockStore.applyUpdate).toHaveBeenCalledOnce();
+      const appliedState = mockStore.applyUpdate.mock.calls[0][0];
+      expect(appliedState.gameMode).toBe('guest');
+      expect(appliedState.turnPhase).toBe('deployment');
+    });
+
+    it('rejected ack without authoritativeState does not crash', () => {
+      expect(() => {
+        transport.simulateAck({
+          actionType: 'attack',
+          success: false,
+          error: 'Bad action',
+        });
+      }).not.toThrow();
+      expect(mockStore.applyUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- Queue drain handling (M2) ---
+
+  describe('queue drain handling', () => {
+    it('triggers phaseAnimationQueue.startPlayback in multiplayer after drain', () => {
+      vi.useFakeTimers();
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+      mockPAQ.getQueueLength.mockReturnValue(2);
+
+      transport.simulateQueueDrained();
+      vi.advanceTimersByTime(50);
+
+      expect(mockPAQ.startPlayback).toHaveBeenCalledWith('GameClient:after_drain');
+      vi.useRealTimers();
+    });
+
+    it('does NOT trigger playback in single-player mode', () => {
+      vi.useFakeTimers();
+      mockPAQ.getQueueLength.mockReturnValue(2);
+
+      transport.simulateQueueDrained();
+      vi.advanceTimersByTime(50);
+
+      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('does NOT trigger playback when queue is empty', () => {
+      vi.useFakeTimers();
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+      mockPAQ.getQueueLength.mockReturnValue(0);
+
+      transport.simulateQueueDrained();
+      vi.advanceTimersByTime(50);
+
+      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('does NOT trigger playback when already playing', () => {
+      vi.useFakeTimers();
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+      mockPAQ.getQueueLength.mockReturnValue(2);
+      mockPAQ.isPlaying.mockReturnValue(true);
+
+      transport.simulateQueueDrained();
+      vi.advanceTimersByTime(50);
+
+      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 

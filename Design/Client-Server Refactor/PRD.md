@@ -103,8 +103,10 @@ No game logic depends on animation completion — animations are purely visual. 
 | Host animation timing changes | Host currently plays animations inline; new model plays them post-response | `GameClient._onResponse` already handles this correctly with `pendingHostState` pattern |
 | BroadcastService call sites | ~8 sites in AP/GFM that call broadcast directly | `HostGameServer` centralizes broadcast after `processAction` — existing sites already consolidated via BroadcastService |
 | MessageQueue complexity | Only needed for unreliable P2P transport (message ordering) | `P2PTransport` encapsulates `MessageQueue` internally; `GameClient` never sees it |
-| AP inline animation removal | Removing `animationManager` from AP could break collection | Already guarded with `if (this.animationManager)` — safe to set null |
+| AP inline animation removal | Removing `animationManager` from AP could break collection | Already guarded with `if (this.animationManager)` — safe to set null. `_executeAnimationPhase` null guard added in Phase 3.5 |
 | Phase announcement logic duplication | Both `RemoteGameServer` and `GameClient` have identical `_queuePhaseAnnouncements` | `GameClient` absorbs this logic once; `RemoteGameServer` is deleted |
+| Guest desync on rejected actions | GameClient must apply authoritative state from host when action is rejected | Fixed in Phase 3.5: `_onActionAck` handler applies `authoritativeState` preserving local gameMode |
+| Phase animations not playing in guest mode | Queued phase announcements never trigger playback | Fixed in Phase 3.5: `_onQueueDrained` handler triggers `startPlayback()` after MessageQueue drains |
 
 ---
 

@@ -6,7 +6,7 @@ class Transport {
    * Send a game action to the server.
    * @param {string} type - Action type
    * @param {Object} payload - Action payload
-   * @returns {Promise<void>}
+   * @returns {Promise<Object|undefined>} Action result (LocalTransport) or pending marker (P2PTransport)
    */
   async sendAction(_type, _payload) { throw new Error('Not implemented'); }
 
@@ -20,7 +20,14 @@ class Transport {
    * Register callback for action acknowledgements (P2P only).
    * @param {function({actionType, success, error, authoritativeState}): void} callback
    */
-  onActionAck(_callback) { /* Optional — not all transports support acks */ }
+  onActionAck(_callback) { throw new Error('Not implemented'); }
+
+  /**
+   * Register callback for when the message queue has drained (P2P only).
+   * Optional — only relevant for transports with message queuing.
+   * @param {function(): void} callback
+   */
+  onQueueDrained(_callback) {}
 
   dispose() {}
 }
