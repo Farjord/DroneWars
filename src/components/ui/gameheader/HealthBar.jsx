@@ -2,7 +2,7 @@
 // HEALTH BAR COMPONENT
 // ========================================
 // Segmented health strip with faction-colored segments
-// Opponent: number LEFT, bar RIGHT | Player: bar LEFT, number RIGHT
+// Opponent: number then bar; Player: bar then number (segments grow toward hex)
 
 import React from 'react';
 import { Shield } from 'lucide-react';
@@ -56,7 +56,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
         fontWeight: 700,
         whiteSpace: 'nowrap',
       }}>
-        {current} / {max}
+        {current}/{max}
       </span>
     </div>
   );
@@ -68,6 +68,8 @@ const HealthBar = ({ current, max, side, factionColors }) => {
         display: 'flex',
         gap: '1px',
         flex: 1,
+        minWidth: 0,
+        overflow: 'hidden',
         alignItems: 'center',
       }}
     >
@@ -75,13 +77,10 @@ const HealthBar = ({ current, max, side, factionColors }) => {
     </div>
   );
 
-  const isOpponent = side === 'opponent';
-
   return (
     <div
       style={{
         width: '100%',
-        padding: '0 3%',
       }}
     >
       <div
@@ -92,8 +91,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
           gap: 'clamp(3px, 0.4vw, 6px)',
         }}
       >
-        {isOpponent ? numberEl : barEl}
-        {isOpponent ? barEl : numberEl}
+        {numberEl}{barEl}
       </div>
     </div>
   );

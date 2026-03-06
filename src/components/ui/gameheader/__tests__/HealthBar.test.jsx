@@ -69,7 +69,7 @@ describe('HealthBar', () => {
     expect(numberIdx).toBeLessThan(barIdx);
   });
 
-  it('player side: bar appears before number in DOM', () => {
+  it('player side: number appears before bar in DOM', () => {
     const { container } = render(
       <HealthBar current={5} max={10} side="player" factionColors={playerColors} />
     );
@@ -77,6 +77,6 @@ describe('HealthBar', () => {
     const children = Array.from(contentRow.children);
     const numberIdx = children.findIndex(el => el.dataset.testid === 'health-number');
     const barIdx = children.findIndex(el => el.dataset.testid === 'health-segments');
-    expect(barIdx).toBeLessThan(numberIdx);
+    expect(numberIdx).toBeLessThan(barIdx);
   });
 });
