@@ -177,6 +177,7 @@ const ActionCard = ({
                 className={`w-full h-full object-cover object-center ${!isPlayable && !isMandatoryTarget ? 'grayscale' : ''}`}
                 style={{ objectFit: 'cover' }}
               />
+              <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
             </div>
           </div>
 

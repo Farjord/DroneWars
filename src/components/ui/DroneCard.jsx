@@ -120,19 +120,21 @@ const DroneCard = ({
     transformOrigin: 'center center'
   } : {};
 
-  // 3D tilt parallax during drag + hover
-  const tiltRef = useCardTilt(isDragging);
-
   // Get rarity-based border classes (Drones use Tactic/cyan color)
   const isDisabled = !isInteractive && !isViewOnly;
   const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
+
+  // 3D tilt parallax during drag + hover
+  const glowFilter = isDisabled ? null
+    : `drop-shadow(0 0 6px var(--card-tactic-glow-dim)) drop-shadow(0 0 12px var(--card-tactic-glow-dim))`;
+  const tiltRef = useCardTilt(isDragging, { glowFilter });
 
   return (
     <div
       ref={tiltRef}
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
-        rounded-lg p-[4px] relative group
+        rounded-lg p-[2px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
@@ -161,7 +163,7 @@ const DroneCard = ({
             ${isDisabled ? 'grayscale' : ''}
           `}
         />
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
 
         {/* Content Wrapper */}
         <div className="relative z-10 flex flex-col h-full">
