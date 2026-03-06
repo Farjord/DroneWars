@@ -376,7 +376,7 @@ const DroneToken = ({
             {/* Main Token Body */}
             <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
               <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
-              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
               <div className="relative z-10 h-full">
                 <div className="absolute bottom-6 left-0 right-0 w-full flex flex-col gap-1 px-2">
                   <div className="flex w-full justify-center gap-1 min-h-[12px]">
