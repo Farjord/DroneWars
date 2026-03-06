@@ -67,7 +67,6 @@ const HealthBar = ({ current, max, side, factionColors }) => {
       style={{
         display: 'flex',
         gap: '1px',
-        flex: 1,
         minWidth: 0,
         overflow: 'hidden',
         alignItems: 'center',
@@ -89,6 +88,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
           display: 'flex',
           alignItems: 'center',
           gap: 'clamp(3px, 0.4vw, 6px)',
+          justifyContent: isPlayer ? 'flex-end' : 'flex-start',
         }}
       >
         {numberEl}{barEl}

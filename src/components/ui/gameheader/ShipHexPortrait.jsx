@@ -13,21 +13,20 @@ const HEX_POINTS = '88,38 66,76 22,76 0,38 22,0 66,0';
 const ShipHexPortrait = ({ side, shipImageUrl, isClickable = false, onClick, factionColors, children }) => {
   const handleClick = isClickable && onClick ? onClick : undefined;
 
-  const positionStyle = side === 'opponent'
-    ? { left: '-1%' }
-    : { right: '-1%' };
-
   return (
     <div
       style={{
-        position: 'absolute',
-        top: '50%',
-        transform: 'translateY(-45%)',
+        position: 'relative',
         zIndex: 4,
         width: 'clamp(88px, 9.5vw, 120px)',
         height: 'clamp(76px, 8.2vw, 104px)',
         cursor: handleClick ? 'pointer' : 'default',
-        ...positionStyle,
+        alignSelf: 'center',
+        flexShrink: 0,
+        marginBottom: 'clamp(-18px, -2vw, -12px)',
+        ...(side === 'opponent'
+          ? { marginRight: 'clamp(-40px, -4vw, -30px)' }
+          : { marginLeft: 'clamp(-40px, -4vw, -30px)' }),
       }}
       onClick={handleClick}
     >
@@ -68,21 +67,22 @@ const ShipHexPortrait = ({ side, shipImageUrl, isClickable = false, onClick, fac
           data-testid="cog-badge"
           style={{
             position: 'absolute',
-            bottom: '2px',
-            right: '2px',
-            width: '18px',
-            height: '18px',
+            bottom: '14px',
+            right: '12px',
+            transform: 'translate(25%, 25%)',
+            width: '30px',
+            height: '30px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: '50%',
-            background: 'rgba(10, 14, 24, 0.8)',
-            border: `1px solid ${factionColors.border}`,
-            opacity: 0.7,
+            background: 'rgba(10, 14, 24, 0.85)',
+            border: `1.5px solid ${factionColors.border}`,
+            opacity: 0.8,
             transition: 'opacity 0.2s ease',
           }}
         >
-          <Settings size={11} color={factionColors.primary} />
+          <Settings size={17} color={factionColors.primary} />
         </div>
       )}
 
