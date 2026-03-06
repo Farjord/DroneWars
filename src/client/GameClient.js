@@ -217,11 +217,11 @@ class GameClient extends GameServer {
 
   _onActionAck({ actionType, success, error, authoritativeState }) {
     if (success) {
-      debugLog('STATE_SYNC', `[GameClient] Action acknowledged: ${actionType}`);
+      debugLog('MP_SYNC_TRACE', '[7/11] GameClient action acknowledged', { actionType, success: true });
       return;
     }
 
-    debugLog('STATE_SYNC', `[GameClient] Action rejected: ${actionType} — ${error}`);
+    debugLog('MP_SYNC_TRACE', '[7/11] GameClient action rejected', { actionType, success: false, error });
     if (authoritativeState) {
       this._applyState({ ...authoritativeState, gameMode: this._localGameMode || this.getState().gameMode });
     }

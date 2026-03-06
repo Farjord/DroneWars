@@ -70,13 +70,8 @@ const useMultiplayerSync = ({
     if (!isMultiplayer()) return;
 
     const handleP2PData = (event) => {
-      debugLog('MULTIPLAYER', '🔥 P2P Event received in App:', event);
-      if (event.type === 'PHASE_COMPLETED') {
-        const { phase } = event.data || event;
-        debugLog('MULTIPLAYER', `🔥 Opponent completed phase: ${phase}`);
-      }
       if (event.type === 'sync_requested' && gameStateManager.getLocalPlayerId() === 'player1') {
-        debugLog('MULTIPLAYER', '🔄 Guest requested full state sync - sending response');
+        debugLog('MP_GAME_TRACE', '[5/5] Full sync request/response', { syncResponse: true });
         const redactedState = StateRedactor.redactForPlayer(gameStateManager.getState(), 'player2');
         p2pManager.sendFullSyncResponse(redactedState, p2pManager.broadcastSequence);
       }

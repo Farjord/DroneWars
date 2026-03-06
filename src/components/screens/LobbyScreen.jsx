@@ -35,7 +35,7 @@ function LobbyScreen() {
   // Setup P2P integration when entering multiplayer mode
   useEffect(() => {
     if (isMultiplayer) {
-      debugLog('PHASE_TRANSITIONS', '🔌 Setting up P2P integration for multiplayer');
+      debugLog('MP_GAME_TRACE', '[3/5] P2P integration wired to GSM', { p2pIntegration: true });
       gameStateManager.setupP2PIntegration(p2pManager);
     }
   }, [isMultiplayer]);
@@ -56,20 +56,17 @@ function LobbyScreen() {
 
       // Validate AI drone pool has minimum required drones
       if (!selectedAI.dronePool || !Array.isArray(selectedAI.dronePool)) {
-        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has invalid dronePool configuration.`;
-        debugLog('MULTIPLAYER', '❌', errorMsg);
+        debugLog('VALIDATION', `Cannot start game: AI '${selectedAI.name}' has invalid dronePool configuration.`);
         return;
       }
 
       if (selectedAI.dronePool.length < 5) {
-        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has only ${selectedAI.dronePool.length} drones. Minimum 5 drones required.`;
-        debugLog('MULTIPLAYER', '❌', errorMsg);
+        debugLog('VALIDATION', `Cannot start game: AI '${selectedAI.name}' has only ${selectedAI.dronePool.length} drones. Minimum 5 required.`);
         return;
       }
 
       if (selectedAI.dronePool.length > 10) {
-        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has ${selectedAI.dronePool.length} drones. Maximum 10 drones allowed.`;
-        debugLog('MULTIPLAYER', '❌', errorMsg);
+        debugLog('VALIDATION', `Cannot start game: AI '${selectedAI.name}' has ${selectedAI.dronePool.length} drones. Maximum 10 allowed.`);
         return;
       }
 
@@ -113,13 +110,11 @@ function LobbyScreen() {
   };
 
   const handleMultiplayerGameStart = () => {
-    debugLog('PHASE_TRANSITIONS', '🎮 Starting multiplayer game after connection');
-
     // Determine game mode based on P2P role
     const isHost = p2pManager.isHost;
     const gameMode = isHost ? 'host' : 'guest';
 
-    debugLog('PHASE_TRANSITIONS', `🎮 Multiplayer mode: ${gameMode}`);
+    debugLog('MP_GAME_TRACE', '[2/5] LobbyScreen starting multiplayer game', { role: gameMode, gameMode });
 
     // Start the game with appropriate mode
     gameStateManager.startGame(gameMode,
@@ -129,7 +124,7 @@ function LobbyScreen() {
 
     // Host broadcasts initial game state to guest
     if (isHost && p2pManager.isConnected) {
-      debugLog('PHASE_TRANSITIONS', '📡 Host broadcasting initial game state to guest');
+      debugLog('MP_GAME_TRACE', '[4/5] Host broadcasting initial state', { initialBroadcast: true });
       const initialState = gameStateManager.getState();
       const redactedState = StateRedactor.redactForPlayer(initialState, 'player2');
       p2pManager.broadcastState(redactedState);

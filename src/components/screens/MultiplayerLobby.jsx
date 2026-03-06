@@ -21,8 +21,6 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
   useEffect(() => {
     // Subscribe to P2P events
     const unsubscribe = p2pManager.subscribe((event) => {
-      debugLog('MULTIPLAYER', 'P2P Event:', event);
-
       switch (event.type) {
         case 'room_created':
           setRoomCode(event.data.roomCode);
@@ -39,6 +37,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
           break;
 
         case 'connected':
+          debugLog('MP_JOIN_TRACE', '[6/7] UI updated to connected', { uiMode: 'connected' });
           setMode('connected');
           setConnectionStatus('connected');
           setIsLoading(false);
@@ -72,10 +71,10 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
     setMode('host');
 
     try {
-      const code = await p2pManager.hostGame();
-      debugLog('MULTIPLAYER', 'Room created with code:', code);
+      debugLog('MP_JOIN_TRACE', '[1/7] User clicked Host button', { action: 'host' });
+      await p2pManager.hostGame();
     } catch (error) {
-      debugLog('MULTIPLAYER', 'Failed to host game:', error);
+      debugLog('MP_JOIN_TRACE', 'Host game failed', { error: true, message: error.message });
       setError(error.message);
       setIsLoading(false);
       setMode('menu');
@@ -93,9 +92,10 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
     setMode('join');
 
     try {
+      debugLog('MP_JOIN_TRACE', '[1/7] User clicked Join button', { action: 'join', roomCode: inputRoomCode });
       await p2pManager.joinGame(inputRoomCode);
     } catch (error) {
-      debugLog('MULTIPLAYER', 'Failed to join game:', error);
+      debugLog('MP_JOIN_TRACE', 'Join game failed', { error: true, message: error.message });
       setError(error.message);
       setIsLoading(false);
       setMode('menu');
@@ -107,13 +107,14 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
       await navigator.clipboard.writeText(roomCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      debugLog('MULTIPLAYER', 'Failed to copy room code:', error);
+    } catch {
+      // Clipboard API may fail in some browsers — non-critical
     }
   };
 
   const handleStartGame = () => {
     if (connectionStatus === 'connected') {
+      debugLog('MP_GAME_TRACE', '[1/5] Host clicked Start Game', { connected: true });
       onGameStart();
     }
   };
@@ -159,9 +160,6 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
         );
     }
   };
-
-  // Debug logging
-  debugLog('MULTIPLAYER', '🎮 MultiplayerLobby rendering - mode:', mode, 'connectionStatus:', connectionStatus);
 
   return (
     <div style={{

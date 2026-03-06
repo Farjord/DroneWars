@@ -63,12 +63,12 @@ class P2PTransport extends Transport {
   }
 
   _onResyncNeeded() {
-    debugLog('STATE_SYNC', '[P2PTransport] Requesting full sync from host');
+    debugLog('MP_SYNC_TRACE', 'P2PTransport requesting full sync', { resync: true, requesting: true });
     this.p2pManager.requestFullSync();
   }
 
   _onResyncResponse(fullState) {
-    debugLog('STATE_SYNC', '[P2PTransport] Resync response received');
+    debugLog('MP_SYNC_TRACE', 'P2PTransport resync response received', { resync: true, received: true });
     if (fullState.state && this._responseCallback) {
       this._responseCallback({
         state: fullState.state,

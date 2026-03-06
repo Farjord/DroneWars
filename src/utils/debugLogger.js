@@ -26,15 +26,15 @@ const DEBUG_CONFIG = {
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
     AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
-    MULTIPLAYER: false,          // Network sync and multiplayer
-    P2P_CONNECTION: false,      // PeerJS connection diagnostics
+    MULTIPLAYER: false,          // DEPRECATED — replaced by MP_*_TRACE categories
+    P2P_CONNECTION: false,      // DEPRECATED — replaced by MP_JOIN_TRACE
     ANIMATIONS: false,           // Animation system
     OPTIMISTIC: false,           // Animation deduplication and matching logic
     COMMITMENTS: false,          // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
     STATE_SYNC: false,          // State synchronization
-    BROADCAST_TIMING: false,    // Broadcast timing and state validation
+    BROADCAST_TIMING: false,    // DEPRECATED — replaced by MP_SYNC_TRACE
     ENERGY: false,              // Energy management (shield allocation)
     RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds
     CARDS: false,                // Card play and effects
@@ -85,6 +85,12 @@ const DEBUG_CONFIG = {
     INIT_TRACE: true,             // End-to-end game initialization trace (8 numbered steps)
     DEPLOY_TRACE: true,           // End-to-end drone deployment trace (12 numbered steps)
     ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
+
+    // Multiplayer Pipeline Traces
+    MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)
+    MP_SYNC_TRACE: false,         // State broadcast cycle trace (11 numbered steps)
+    MP_GAME_TRACE: false,         // Game start trace (5 numbered steps)
+    MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
     ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)

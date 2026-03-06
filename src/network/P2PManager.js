@@ -55,7 +55,7 @@ class P2PManager {
       try {
         listener({ type, data });
       } catch (error) {
-        debugLog('MULTIPLAYER', '❌ Error in P2P listener:', error);
+        debugLog('MP_JOIN_TRACE', 'Error in P2P listener', { error: true, message: error.message });
       }
     });
   }
@@ -78,24 +78,20 @@ class P2PManager {
     this.actions.stateUpdate = { send: sendStateUpdate, receive: receiveStateUpdate };
 
     receiveStateUpdate((data, peerId) => {
-      const receiveTime = Date.now();  // Use Date.now() for cross-window synchronization
+      const receiveTime = Date.now();
       const networkLatency = receiveTime - data.timestamp;
 
       timingLog('[NETWORK] Guest received', {
         phase: data.state?.turnPhase,
         animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
-        latency: `${networkLatency.toFixed(0)}ms`,  // Use toFixed(0) since Date.now() returns integers
+        latency: `${networkLatency.toFixed(0)}ms`,
         isFullSync: data.isFullSync || false
       });
 
-      debugLog('MULTIPLAYER', '[P2P GUEST] Received state update with animations:', {
-        hasActionAnimations: data.actionAnimations && data.actionAnimations.length > 0,
-        hasSystemAnimations: data.systemAnimations && data.systemAnimations.length > 0,
-        actionAnimationCount: data.actionAnimations?.length || 0,
-        systemAnimationCount: data.systemAnimations?.length || 0,
+      debugLog('MP_SYNC_TRACE', '[4/11] Guest received STATE_UPDATE', {
         sequenceId: data.sequenceId,
-        isFullSync: data.isFullSync || false,
-        fromPeer: peerId
+        animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
+        isFullSync: data.isFullSync || false
       });
 
       this.emit('state_update_received', {
@@ -112,11 +108,9 @@ class P2PManager {
     this.actions.guestAction = { send: sendGuestAction, receive: receiveGuestAction };
 
     receiveGuestAction(async (data, peerId) => {
-      debugLog('MULTIPLAYER', '[P2P HOST] Received guest action:', data.action);
+      debugLog('MP_SYNC_TRACE', '[9/11] Host received guest action', { actionType: data.action?.type });
       if (this.hostGameServer) {
         await this.hostGameServer.handleGuestAction(data.action);
-      } else {
-        debugLog('MULTIPLAYER', '❌ HostGameServer not set - cannot process guest action');
       }
     });
 
@@ -147,7 +141,7 @@ class P2PManager {
     this.actions.syncRequest = { send: sendSyncRequest, receive: receiveSyncRequest };
 
     receiveSyncRequest((data, peerId) => {
-      debugLog('MULTIPLAYER', '[P2P HOST] Received sync request from guest');
+      debugLog('MP_SYNC_TRACE', 'Host received sync request', { resync: true });
 
       // Only host responds to sync requests
       if (this.isHost) {
@@ -160,7 +154,7 @@ class P2PManager {
     this.actions.actionAck = { send: sendActionAck, receive: receiveActionAck };
 
     receiveActionAck((data, peerId) => {
-      debugLog('MULTIPLAYER', '[P2P GUEST] Received action acknowledgement:', {
+      debugLog('MP_SYNC_TRACE', '[7/11] Guest received action ack', {
         actionType: data.actionType,
         success: data.success
       });
@@ -175,40 +169,22 @@ class P2PManager {
     try {
       const startTime = Date.now();
 
-      debugLog('P2P_CONNECTION', '🔍 Checking browser WebRTC support', {
-        RTCPeerConnection: !!window.RTCPeerConnection,
-        RTCDataChannel: !!window.RTCDataChannel,
-        navigator_onLine: navigator.onLine
-      });
-
       this.isHost = true;
       this.roomCode = this.generateRoomCode();
 
-      debugLog('P2P_CONNECTION', '🎲 Generated room code:', this.roomCode);
-      debugLog('P2P_CONNECTION', '🔧 Creating Trystero room with Firebase strategy...', {
-        roomCode: this.roomCode,
-        firebaseUrl: this.firebaseConfig.appId
-      });
+      debugLog('MP_JOIN_TRACE', '[2/7] P2PManager.hostGame entry', { role: 'host', roomCode: this.roomCode });
 
       // Join room using Trystero (creates it if doesn't exist)
       this.room = joinRoom(this.firebaseConfig, this.roomCode);
 
-      debugLog('P2P_CONNECTION', '✅ Room created successfully', {
-        roomCode: this.roomCode,
-        elapsedMs: Date.now() - startTime
-      });
+      debugLog('MP_JOIN_TRACE', '[3/7] Trystero room created', { role: 'host', elapsedMs: Date.now() - startTime });
 
       // Setup action handlers
       this.setupActionHandlers();
 
       // Setup peer join/leave handlers
       this.room.onPeerJoin(peerId => {
-        const elapsedMs = Date.now() - startTime;
-        debugLog('P2P_CONNECTION', '🤝 Guest connected', {
-          guestPeerId: peerId,
-          elapsedMs
-        });
-        debugLog('MULTIPLAYER', 'Guest connected:', peerId);
+        debugLog('MP_JOIN_TRACE', '[4/7] Peer detected', { role: 'host', guestPeerId: peerId, elapsedMs: Date.now() - startTime });
 
         this.peers.add(peerId);
         this.currentPeerId = peerId;
@@ -221,7 +197,7 @@ class P2PManager {
       });
 
       this.room.onPeerLeave(peerId => {
-        debugLog('P2P_CONNECTION', '🚪 Peer disconnected:', peerId);
+        debugLog('MP_JOIN_TRACE', '[7/7] Peer left', { role: 'host', peerId });
         this.peers.delete(peerId);
         if (peerId === this.currentPeerId) {
           this.currentPeerId = null;
@@ -234,15 +210,12 @@ class P2PManager {
       this.emit('multiplayer_mode_change', { mode: 'host', isHost: true });
       this.emit('room_created', { roomCode: this.roomCode });
 
+      debugLog('MP_JOIN_TRACE', '[5/7] Host events emitted', { role: 'host', roomCode: this.roomCode });
+
       return this.roomCode;
 
     } catch (error) {
-      debugLog('P2P_CONNECTION', '❌ Exception caught in hostGame()', {
-        error: error,
-        errorMessage: error?.message,
-        errorStack: error?.stack
-      });
-      debugLog('MULTIPLAYER', '❌ Failed to host game:', error);
+      debugLog('MP_JOIN_TRACE', 'hostGame failed', { error: true, message: error.message });
       this.emit('connection_error', { error: error.message });
       throw error;
     }
@@ -255,24 +228,15 @@ class P2PManager {
     try {
       const startTime = Date.now();
 
-      debugLog('P2P_CONNECTION', '🔍 Attempting to join room', {
-        roomCode,
-        RTCPeerConnection: !!window.RTCPeerConnection,
-        navigator_onLine: navigator.onLine
-      });
-
       this.isHost = false;
       this.roomCode = roomCode;
 
-      debugLog('P2P_CONNECTION', '🔧 Joining Trystero room as guest...');
+      debugLog('MP_JOIN_TRACE', '[2/7] P2PManager.joinGame entry', { role: 'guest', roomCode });
 
       // Join room using Trystero
       this.room = joinRoom(this.firebaseConfig, roomCode);
 
-      debugLog('P2P_CONNECTION', '✅ Room joined successfully', {
-        roomCode,
-        elapsedMs: Date.now() - startTime
-      });
+      debugLog('MP_JOIN_TRACE', '[3/7] Trystero room joined', { role: 'guest', elapsedMs: Date.now() - startTime });
 
       // Setup action handlers
       this.setupActionHandlers();
@@ -280,13 +244,7 @@ class P2PManager {
       return new Promise((resolve, reject) => {
         // Setup peer join/leave handlers
         this.room.onPeerJoin(peerId => {
-          const elapsedMs = Date.now() - startTime;
-          debugLog('P2P_CONNECTION', '✅ Connected to host!', {
-            hostPeerId: peerId,
-            elapsedMs,
-            roomCode
-          });
-          debugLog('MULTIPLAYER', 'Connected to host:', peerId);
+          debugLog('MP_JOIN_TRACE', '[4/7] Peer detected', { role: 'guest', hostPeerId: peerId, elapsedMs: Date.now() - startTime });
 
           this.peers.add(peerId);
           this.currentPeerId = peerId;
@@ -299,11 +257,13 @@ class P2PManager {
             roomCode: this.roomCode
           });
 
+          debugLog('MP_JOIN_TRACE', '[5/7] Guest events emitted', { role: 'guest', roomCode });
+
           resolve();
         });
 
         this.room.onPeerLeave(peerId => {
-          debugLog('P2P_CONNECTION', '🚪 Peer disconnected:', peerId);
+          debugLog('MP_JOIN_TRACE', '[7/7] Peer left', { role: 'guest', peerId });
           this.peers.delete(peerId);
           if (peerId === this.currentPeerId) {
             this.currentPeerId = null;
@@ -315,11 +275,7 @@ class P2PManager {
         // Timeout after 30 seconds
         setTimeout(() => {
           if (!this.isConnected) {
-            const elapsedMs = Date.now() - startTime;
-            debugLog('P2P_CONNECTION', '⏰ Guest timeout reached (30s)', {
-              elapsedMs,
-              isConnected: this.isConnected
-            });
+            debugLog('MP_JOIN_TRACE', '[4/7] Guest timeout', { timeout: true, elapsedMs: Date.now() - startTime });
             // Clean up zombie room to prevent leaked action handlers on retry
             if (this.room) {
               this.room.leave();
@@ -331,11 +287,7 @@ class P2PManager {
       });
 
     } catch (error) {
-      debugLog('P2P_CONNECTION', '❌ Exception caught in joinGame()', {
-        error: error,
-        errorMessage: error?.message
-      });
-      debugLog('MULTIPLAYER', '❌ Failed to join game:', error);
+      debugLog('MP_JOIN_TRACE', 'joinGame failed', { error: true, message: error.message });
       this.emit('connection_error', { error: error.message });
       throw error;
     }
@@ -348,7 +300,7 @@ class P2PManager {
    */
   _requireConnection(context) {
     if (!this.isConnected || !this.currentPeerId) {
-      debugLog('MULTIPLAYER', `⚠️ ${context} - no connection available`);
+      debugLog('MP_SYNC_TRACE', `Guard: ${context} — no connection`, { guard: true });
       return false;
     }
     return true;
@@ -369,10 +321,10 @@ class P2PManager {
       } else if (data.type === 'PHASE_COMPLETED') {
         this.actions.phaseCompleted.send(data.data, this.currentPeerId);
       } else {
-        debugLog('MULTIPLAYER', '⚠️ Unknown data type for sendData:', data.type);
+        debugLog('MP_SYNC_TRACE', 'Unknown data type for sendData', { guard: true, type: data.type });
       }
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to send data:', error);
+      debugLog('MP_SYNC_TRACE', 'Failed to send data', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
     }
   }
@@ -385,27 +337,23 @@ class P2PManager {
    */
   broadcastState(state, actionAnimations = [], systemAnimations = []) {
     if (!this.isHost) {
-      debugLog('MULTIPLAYER', '⚠️ Only host can broadcast state');
+      debugLog('MP_SYNC_TRACE', 'Guard: only host can broadcast state', { guard: true });
       return;
     }
 
     if (!this._requireConnection('Cannot broadcast state')) return;
 
     try {
-      debugLog('MULTIPLAYER', '[P2P HOST] Broadcasting state', {
-        player2HandSize: state.player2?.hand?.length || state.player2?.handCount || 0,
-      });
-
       // Increment sequence for each broadcast
       this.broadcastSequence++;
 
-      const networkSendTime = Date.now();  // Use Date.now() for cross-window synchronization
+      const networkSendTime = Date.now();
       const stateData = {
-        sequenceId: this.broadcastSequence,  // For message ordering on guest side
+        sequenceId: this.broadcastSequence,
         state: state,
         actionAnimations: actionAnimations,
         systemAnimations: systemAnimations,
-        timestamp: networkSendTime  // Synchronized timestamp for accurate latency calculation
+        timestamp: networkSendTime
       };
 
       timingLog('[NETWORK] Host sending', {
@@ -415,13 +363,12 @@ class P2PManager {
 
       this.actions.stateUpdate.send(stateData, this.currentPeerId);
 
-      debugLog('MULTIPLAYER', '[P2P HOST] Broadcasted state update to guest', {
-        hasAnimations: (actionAnimations.length + systemAnimations.length) > 0,
-        actionAnimationCount: actionAnimations.length,
-        systemAnimationCount: systemAnimations.length
+      debugLog('MP_SYNC_TRACE', '[3/11] Host broadcasted state', {
+        sequenceId: this.broadcastSequence,
+        animCount: actionAnimations.length + systemAnimations.length
       });
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to broadcast state:', error);
+      debugLog('MP_SYNC_TRACE', 'broadcastState failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
     }
   }
@@ -433,7 +380,7 @@ class P2PManager {
    */
   sendActionToHost(actionType, payload) {
     if (this.isHost) {
-      debugLog('MULTIPLAYER', '⚠️ Host should not send actions to itself');
+      debugLog('MP_SYNC_TRACE', 'Guard: host should not send actions to itself', { guard: true });
       return;
     }
 
@@ -446,9 +393,9 @@ class P2PManager {
       };
 
       this.actions.guestAction.send(actionData, this.currentPeerId);
-      debugLog('MULTIPLAYER', '[P2P GUEST] Sent action to host:', actionType);
+      debugLog('MP_SYNC_TRACE', '[8/11] Guest sent action to host', { actionType });
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to send action to host:', error);
+      debugLog('MP_SYNC_TRACE', 'sendActionToHost failed', { error: true, actionType, message: error.message });
       this.emit('send_error', { error: error.message });
     }
   }
@@ -459,7 +406,7 @@ class P2PManager {
    */
   requestFullSync() {
     if (this.isHost) {
-      debugLog('MULTIPLAYER', '⚠️ Host should not request sync from itself');
+      debugLog('MP_SYNC_TRACE', 'Guard: host should not request sync from itself', { guard: true });
       return;
     }
 
@@ -472,9 +419,9 @@ class P2PManager {
       };
 
       this.actions.syncRequest.send(requestData, this.currentPeerId);
-      debugLog('MULTIPLAYER', '[P2P GUEST] Requested full state sync from host');
+      debugLog('MP_SYNC_TRACE', 'Guest requesting full sync', { resync: true, requesting: true });
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to request sync:', error);
+      debugLog('MP_SYNC_TRACE', 'requestFullSync failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
     }
   }
@@ -485,7 +432,7 @@ class P2PManager {
    */
   sendActionAck(ackData) {
     if (!this.isHost) {
-      debugLog('MULTIPLAYER', '⚠️ Only host can send action acks');
+      debugLog('MP_SYNC_TRACE', 'Guard: only host can send action acks', { guard: true });
       return;
     }
 
@@ -493,12 +440,12 @@ class P2PManager {
 
     try {
       this.actions.actionAck.send(ackData, this.currentPeerId);
-      debugLog('MULTIPLAYER', '[P2P HOST] Sent action ack:', {
+      debugLog('MP_SYNC_TRACE', '[11/11] Host sent action ack', {
         actionType: ackData.actionType,
         success: ackData.success
       });
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to send action ack:', error);
+      debugLog('MP_SYNC_TRACE', 'sendActionAck failed', { error: true, message: error.message });
     }
   }
 
@@ -509,7 +456,7 @@ class P2PManager {
    */
   sendFullSyncResponse(state, sequenceId) {
     if (!this.isHost) {
-      debugLog('MULTIPLAYER', '⚠️ Only host can send sync response');
+      debugLog('MP_SYNC_TRACE', 'Guard: only host can send sync response', { guard: true });
       return;
     }
 
@@ -529,11 +476,9 @@ class P2PManager {
       };
 
       this.actions.stateUpdate.send(stateData, this.currentPeerId);
-      debugLog('MULTIPLAYER', '[P2P HOST] Sent full sync response to guest', {
-        sequenceId: this.broadcastSequence
-      });
+      debugLog('MP_SYNC_TRACE', 'Host sent full sync response', { resync: true, sequenceId: this.broadcastSequence });
     } catch (error) {
-      debugLog('MULTIPLAYER', '❌ Failed to send sync response:', error);
+      debugLog('MP_SYNC_TRACE', 'sendFullSyncResponse failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
     }
   }

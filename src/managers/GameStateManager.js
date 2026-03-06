@@ -170,7 +170,7 @@ class GameStateManager {
       return;
     }
 
-    debugLog('BROADCAST_TIMING', `[GUEST APPLY] Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase}`);
+    debugLog('MP_SYNC_TRACE', '[6/11] Guest applying host state', { fieldCount: Object.keys(hostState).length, phase: hostState.turnPhase });
 
     // IMPORTANT: Host broadcasts include gameMode:'host' which would overwrite guest's 'guest' value.
     // This breaks App.jsx's useMemo that recreates GameServer based on gameState.gameMode.

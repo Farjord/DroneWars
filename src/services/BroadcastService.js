@@ -26,7 +26,7 @@ class BroadcastService {
 
   _isHost() {
     if (!this.gameServer) {
-      debugLog('BROADCAST_TIMING', '⚠️ BroadcastService._isHost() called before gameServer wired');
+      debugLog('MP_SYNC_TRACE', 'BroadcastService._isHost() called before gameServer wired', { guard: true });
       return false;
     }
     return this.gameServer.getLocalPlayerId() === 'player1';
@@ -42,7 +42,7 @@ class BroadcastService {
 
     // If not connected, preserve pending animations for next successful broadcast
     if (!this.p2pManager?.isConnected) {
-      debugLog('BROADCAST_TIMING', `⚠️ [HOST BROADCAST] Not connected — preserving pending animations | Trigger: ${trigger}`);
+      debugLog('MP_SYNC_TRACE', 'Not connected — preserving pending animations', { guard: true, preservingAnimations: true, trigger });
       return;
     }
 
@@ -52,7 +52,7 @@ class BroadcastService {
     const systemAnimations = this.getAndClearPendingSystemAnimations();
 
     const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
-    debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Anims: ${actionAnimations.length + systemAnimations.length}`);
+    debugLog('MP_SYNC_TRACE', '[2/11] Broadcast decision', { stateSource, trigger, animCount: actionAnimations.length + systemAnimations.length });
 
     const redactedState = StateRedactor.redactForPlayer(stateToBroadcast, 'player2');
     this.p2pManager.broadcastState(redactedState, actionAnimations, systemAnimations);
