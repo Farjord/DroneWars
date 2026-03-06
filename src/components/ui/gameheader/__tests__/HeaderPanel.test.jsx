@@ -13,71 +13,45 @@ const testColors = {
 describe('HeaderPanel', () => {
   it('renders label text correctly for opponent side', () => {
     render(
-      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors} isFirst={false} hasPassed={false} />
+      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors} />
     );
     expect(screen.getByText('OPPONENT')).toBeTruthy();
   });
 
   it('renders label text correctly for player side', () => {
     render(
-      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} isFirst={false} hasPassed={false} />
+      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} />
     );
     expect(screen.getByText('PLAYER')).toBeTruthy();
   });
 
-  it('SVG polygon points are correct for opponent side', () => {
+  it('uses CSS clipPath trapezoid for opponent side', () => {
     const { container } = render(
-      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors} isFirst={false} hasPassed={false} />
+      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors}>
+        <div>KPI</div>
+      </HeaderPanel>
     );
-    const polygons = container.querySelectorAll('polygon');
-    expect(polygons.length).toBeGreaterThanOrEqual(2);
-    expect(polygons[0].getAttribute('points')).toBe('20,0 460,0 460,64 20,64 0,32');
-    expect(polygons[1].getAttribute('points')).toBe('20,0 460,0 460,64 20,64 0,32');
+    const clippedEls = Array.from(container.querySelectorAll('*')).filter(
+      el => el.style.clipPath && el.style.clipPath.includes('polygon')
+    );
+    expect(clippedEls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('SVG polygon points are correct for player side', () => {
+  it('uses CSS clipPath trapezoid for player side', () => {
     const { container } = render(
-      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} isFirst={false} hasPassed={false} />
+      <HeaderPanel side="player" label="PLAYER" factionColors={testColors}>
+        <div>KPI</div>
+      </HeaderPanel>
     );
-    const polygons = container.querySelectorAll('polygon');
-    expect(polygons.length).toBeGreaterThanOrEqual(2);
-    expect(polygons[0].getAttribute('points')).toBe('0,0 440,0 460,32 440,64 0,64');
-    expect(polygons[1].getAttribute('points')).toBe('0,0 440,0 460,32 440,64 0,64');
-  });
-
-  it('renders first badge when isFirst is true', () => {
-    render(
-      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors} isFirst={true} hasPassed={false} />
+    const clippedEls = Array.from(container.querySelectorAll('*')).filter(
+      el => el.style.clipPath && el.style.clipPath.includes('polygon')
     );
-    expect(screen.getByTestId('first-badge')).toBeTruthy();
-    expect(screen.getByTestId('first-badge').textContent).toBe('(1st)');
-  });
-
-  it('does not render first badge when isFirst is false', () => {
-    render(
-      <HeaderPanel side="opponent" label="OPPONENT" factionColors={testColors} isFirst={false} hasPassed={false} />
-    );
-    expect(screen.queryByTestId('first-badge')).toBeNull();
-  });
-
-  it('renders passed badge when hasPassed is true', () => {
-    render(
-      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} isFirst={false} hasPassed={true} />
-    );
-    expect(screen.getByTestId('passed-badge')).toBeTruthy();
-    expect(screen.getByTestId('passed-badge').textContent).toBe('(Passed)');
-  });
-
-  it('does not render passed badge when hasPassed is false', () => {
-    render(
-      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} isFirst={false} hasPassed={false} />
-    );
-    expect(screen.queryByTestId('passed-badge')).toBeNull();
+    expect(clippedEls.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders children inside the bar content', () => {
     render(
-      <HeaderPanel side="player" label="PLAYER" factionColors={testColors} isFirst={false} hasPassed={false}>
+      <HeaderPanel side="player" label="PLAYER" factionColors={testColors}>
         <div data-testid="child-content">Hello</div>
       </HeaderPanel>
     );

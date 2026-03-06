@@ -18,7 +18,7 @@ import ShipHexPortrait from './gameheader/ShipHexPortrait.jsx';
 import HealthBar from './gameheader/HealthBar.jsx';
 import GameHeaderLayers from './GameHeaderLayers.jsx';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
-import { getShipById } from '../../data/shipData.js';
+import { getShipPortraitImage } from '../../logic/cards/shipSectionImageResolver.js';
 
 const playerPri = FACTION_COLORS.player.primary;
 
@@ -330,14 +330,14 @@ function GameHeader({
   const contextStyle = CONTEXT_COLORS[contextual.color];
 
   // Ship images for hex portraits
-  const playerShipImage = getShipById(localPlayerState?.shipId)?.image;
-  const opponentShipImage = getShipById(opponentPlayerState?.shipId)?.image;
+  const playerShipImage = getShipPortraitImage(localPlayerState?.shipId, true);
+  const opponentShipImage = getShipPortraitImage(opponentPlayerState?.shipId, false);
 
-  // Status badges
+  // Active turn and passed status for hex portrait visual effects
   const isDeployOrAction = turnPhase === 'deployment' || turnPhase === 'action';
-  const opponentIsFirst = isDeployOrAction && firstPlayerOfRound === getOpponentPlayerId();
+  const playerIsActiveTurn = isDeployOrAction && isMyTurn();
+  const opponentIsActiveTurn = isDeployOrAction && !isMyTurn();
   const opponentHasPassed = isDeployOrAction && passInfo[`${getOpponentPlayerId()}Passed`];
-  const playerIsFirst = isDeployOrAction && firstPlayerOfRound === getLocalPlayerId();
   const playerHasPassed = isDeployOrAction && passInfo[`${getLocalPlayerId()}Passed`];
 
   return (
@@ -383,13 +383,13 @@ function GameHeader({
           side="opponent"
           label="OPPONENT"
           factionColors={OPPONENT_PANEL_COLORS}
-          isFirst={opponentIsFirst}
-          hasPassed={opponentHasPassed}
           hexPortrait={
             <ShipHexPortrait
               side="opponent"
               shipImageUrl={opponentShipImage}
               factionColors={OPPONENT_PANEL_COLORS}
+              isActiveTurn={opponentIsActiveTurn}
+              hasPassed={opponentHasPassed}
             />
           }
         >
@@ -587,8 +587,6 @@ function GameHeader({
           side="player"
           label="PLAYER"
           factionColors={PLAYER_PANEL_COLORS}
-          isFirst={playerIsFirst}
-          hasPassed={playerHasPassed}
           hexPortrait={
             <ShipHexPortrait
               side="player"
@@ -596,6 +594,8 @@ function GameHeader({
               isClickable
               onClick={() => setShowSettingsDropdown(prev => !prev)}
               factionColors={PLAYER_PANEL_COLORS}
+              isActiveTurn={playerIsActiveTurn}
+              hasPassed={playerHasPassed}
             >
               <SettingsDropdown
                 showSettingsDropdown={showSettingsDropdown}

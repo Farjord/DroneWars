@@ -1,62 +1,68 @@
 import React from 'react';
 
-const POLYGON_POINTS = {
-  opponent: '0,0 440,0 460,64 0,64',
-  player: '20,0 460,0 460,64 0,64',
-};
-
-export default function HeaderPanel({ side, label, factionColors, isFirst, hasPassed, hexPortrait, children }) {
+export default function HeaderPanel({ side, label, factionColors, hexPortrait, children }) {
   const isOpponent = side === 'opponent';
+  const childArray = React.Children.toArray(children);
+  const kpiChild = childArray[0];
+  const healthChild = childArray[1];
 
   const labelStyle = {
-    position: 'absolute',
-    top: '2%',
-    ...(isOpponent ? { left: '18%' } : { right: '18%' }),
+    position: 'relative',
+    zIndex: 4,
     textTransform: 'uppercase',
     letterSpacing: '2.5px',
-    fontSize: 'clamp(8px, 0.9vw, 11px)',
+    fontSize: 'clamp(12px, 1.3vw, 16px)',
+    marginBottom: 'clamp(4px, 0.6vh, 8px)',
     fontWeight: 700,
     color: factionColors.primary,
     textShadow: `0 0 10px ${factionColors.glow}, 0 0 20px ${factionColors.glow}`,
-    zIndex: 4,
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    padding: isOpponent ? '0 2% 0 8%' : '0 8% 0 2%',
+    justifyContent: isOpponent ? 'flex-start' : 'flex-end',
   };
 
-  const kpiMargin = isOpponent
-    ? { marginLeft: '17%', marginRight: '2%' }
-    : { marginRight: '17%', marginLeft: '2%', justifyContent: 'flex-end' };
+  // Trapezoid clip paths — KPI bar narrower on top, health bar wider below
+  const kpiClip = isOpponent
+    ? 'polygon(0% 0%, 96% 0%, 100% 100%, 0% 100%)'
+    : 'polygon(4% 0%, 100% 0%, 100% 100%, 0% 100%)';
 
-  const healthMargin = isOpponent
-    ? { marginLeft: '17%' }
-    : { marginRight: '17%' };
+  const healthClip = isOpponent
+    ? 'polygon(0% 0%, 96% 0%, 100% 100%, 0% 100%)'
+    : 'polygon(4% 0%, 100% 0%, 100% 100%, 0% 100%)';
 
-  const points = POLYGON_POINTS[side];
+  const barBase = {
+    position: 'relative',
+    backdropFilter: 'blur(2px)',
+    WebkitBackdropFilter: 'blur(2px)',
+  };
 
   return (
-    <div style={{ display: 'flex', justifyContent: isOpponent ? 'flex-start' : 'flex-end', height: '80%' }}>
-      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'flex-end' }}>
-        {/* Floating label */}
+    <div style={{ display: 'flex', flexDirection: 'row', height: '80%',
+      justifyContent: isOpponent ? 'flex-start' : 'flex-end' }}>
+
+      {/* Opponent: hex first */}
+      {isOpponent && hexPortrait}
+
+      {/* Content column: label + KPI + health */}
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+        flex: 1, minWidth: 0, position: 'relative' }}>
+
+        {/* Label — above KPI bar */}
         <div style={labelStyle}>
           <span>{label}</span>
-          {isFirst && <span data-testid="first-badge" style={{ color: 'yellow' }}>(1st)</span>}
-          {hasPassed && <span data-testid="passed-badge" style={{ color: 'red' }}>(Passed)</span>}
         </div>
 
-        {/* Bar container */}
+        {/* KPI bar — narrower (top) */}
         <div style={{
-          position: 'relative',
-          width: '92%',
-          height: '68%',
-          clipPath: isOpponent
-            ? 'polygon(0% 0%, 96% 0%, 100% 100%, 0% 100%)'
-            : 'polygon(4% 0%, 100% 0%, 100% 100%, 0% 100%)',
+          ...barBase,
+          width: '95%',
+          clipPath: kpiClip,
           background: 'linear-gradient(180deg, rgba(12,30,48,0.6), rgba(0, 0, 0, 0.6))',
-          backdropFilter: 'blur(2px)',
-          WebkitBackdropFilter: 'blur(2px)',
           border: `0.06vw solid ${factionColors.border}`,
-          ...(isOpponent ? { marginLeft: '8%' } : { marginRight: '8%' }),
+          padding: 'clamp(4px, 0.5vh, 8px) 0',
+          alignSelf: isOpponent ? 'flex-start' : 'flex-end',
         }}>
           {/* Top accent line */}
           <div style={{
@@ -76,17 +82,47 @@ export default function HeaderPanel({ side, label, factionColors, isFirst, hasPa
             background: 'linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%, rgba(255,255,255,0.01))',
             pointerEvents: 'none',
           }} />
-          {/* Bar content area — children split 50/50 */}
-          <div style={{ position: 'relative', zIndex: 3, display: 'grid', gridTemplateRows: '1fr 1fr', height: '100%', width: '100%', overflow: 'hidden' }}>
-            {React.Children.map(children, (child, index) => (
-              <div style={{ overflow: 'hidden', minHeight: 0, display: 'flex', alignItems: 'center', width: '100%', ...(index === 0 ? kpiMargin : healthMargin) }}>{child}</div>
-            ))}
+          {/* KPI content */}
+          <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', overflow: 'hidden',
+            padding: '0 2%', ...(isOpponent ? { paddingLeft: '8%' } : { paddingRight: '8%' }) }}>
+            {kpiChild}
           </div>
         </div>
 
-        {/* Hex portrait — overlaps the bar, positioned at outer edge */}
-        {hexPortrait}
+        {/* Health bar — wider (bottom) */}
+        {healthChild && (
+          <div style={{
+            ...barBase,
+            width: '100%',
+            clipPath: healthClip,
+            background: 'linear-gradient(180deg, rgba(8,20,32,0.4), rgba(0, 0, 0, 0.4))',
+            border: `0.05vw solid ${factionColors.border}44`,
+            marginTop: '-1px',
+            padding: 'clamp(3px, 0.4vh, 6px) 0',
+          }}>
+            {/* Bottom accent line */}
+            <div style={{
+              position: 'absolute', bottom: 0, left: '6%', right: '6%', height: '0.05vw',
+              background: `linear-gradient(90deg, transparent, ${factionColors.primary}20, transparent)`,
+              pointerEvents: 'none',
+            }} />
+            {/* Sheen overlay */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%, rgba(255,255,255,0.01))',
+              pointerEvents: 'none',
+            }} />
+            {/* Health content */}
+            <div style={{ position: 'relative', zIndex: 3, display: 'flex', alignItems: 'center', overflow: 'hidden',
+              padding: '0 2%', ...(isOpponent ? { paddingLeft: '8%' } : { paddingRight: '8%' }) }}>
+              {healthChild}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Player: hex last */}
+      {!isOpponent && hexPortrait}
     </div>
   );
 }

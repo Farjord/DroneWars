@@ -58,6 +58,11 @@ const dynamicShipSectionImages = SHIP_FOLDER_NAMES.flatMap(ship =>
   )
 );
 
+// Generate ship portrait images (Player/Opponent perspective images for header hex portraits)
+const dynamicShipPortraitImages = SHIP_FOLDER_NAMES.flatMap(ship =>
+  PERSPECTIVE_FOLDERS.map(perspective => `/DroneWars/Ships/${ship}/${perspective}/${perspective}.png`)
+);
+
 // Add fallback images for sections
 const fallbackSectionImages = Object.values(FALLBACK_PATHS);
 
@@ -110,6 +115,7 @@ export const assetManifest = {
   aiPortraits: aiImages,
   backgrounds: backgroundImages,
   ships: shipImages,
+  shipPortraits: dynamicShipPortraitImages,
   menu: staticAssets.menu,
   hangar: staticAssets.hangar,
   tactical: staticAssets.tactical,
@@ -151,6 +157,7 @@ export const CATEGORY_LABELS = {
   aiPortraits: 'AI Profiles',
   backgrounds: 'Backgrounds',
   ships: 'Ship Models',
+  shipPortraits: 'Ship Portraits',
   menu: 'Menu Graphics',
   hangar: 'Hangar Interface',
   tactical: 'Tactical Maps',

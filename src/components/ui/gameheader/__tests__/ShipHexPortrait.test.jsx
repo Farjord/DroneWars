@@ -86,4 +86,57 @@ describe('ShipHexPortrait', () => {
     );
     expect(screen.getByTestId('child-dropdown')).toBeTruthy();
   });
+
+  it('applies greyscale filter to ship image when hasPassed is true', () => {
+    const { container } = render(
+      <ShipHexPortrait
+        side="player"
+        shipImageUrl="/ships/corvette.png"
+        factionColors={defaultColors}
+        hasPassed={true}
+      />
+    );
+    const image = container.querySelector('image');
+    expect(image.getAttribute('filter')).toBe('url(#greyscale-player)');
+    const filter = container.querySelector('#greyscale-player');
+    expect(filter).toBeTruthy();
+    const colorMatrix = filter.querySelector('feColorMatrix');
+    expect(colorMatrix.getAttribute('type')).toBe('saturate');
+    expect(colorMatrix.getAttribute('values')).toBe('0');
+  });
+
+  it('applies pulsing glow animation when isActiveTurn is true', () => {
+    const { container } = render(
+      <ShipHexPortrait
+        side="opponent"
+        shipImageUrl="/ships/enemy.png"
+        factionColors={defaultColors}
+        isActiveTurn={true}
+      />
+    );
+    const style = container.querySelector('style');
+    expect(style).toBeTruthy();
+    expect(style.textContent).toContain('hex-pulse-opponent');
+    expect(style.textContent).toContain('drop-shadow');
+    const svg = container.querySelector('[data-testid="hex-svg"]');
+    expect(svg.style.animation).toContain('hex-pulse-opponent');
+  });
+
+  it('has no visual effects when both isActiveTurn and hasPassed are false', () => {
+    const { container } = render(
+      <ShipHexPortrait
+        side="player"
+        shipImageUrl="/ships/corvette.png"
+        factionColors={defaultColors}
+        isActiveTurn={false}
+        hasPassed={false}
+      />
+    );
+    const style = container.querySelector('style');
+    expect(style).toBeNull();
+    const image = container.querySelector('image');
+    expect(image.getAttribute('filter')).toBeNull();
+    const svg = container.querySelector('[data-testid="hex-svg"]');
+    expect(svg.style.animation).toBe('');
+  });
 });

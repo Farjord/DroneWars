@@ -11,7 +11,8 @@ import {
   normalizeShipName,
   normalizeSectionType,
   getFallbackImagePath,
-  getShipSpecificImagePath
+  getShipSpecificImagePath,
+  getShipPortraitImage
 } from '../shipSectionImageResolver.js';
 
 // ========================================
@@ -169,6 +170,34 @@ describe('getShipSpecificImagePath', () => {
 
   it('should return null if sectionType is null', () => {
     expect(getShipSpecificImagePath('Corvette', null)).toBeNull();
+  });
+});
+
+// ========================================
+// GET SHIP PORTRAIT IMAGE TESTS
+// ========================================
+describe('getShipPortraitImage', () => {
+  it('should return Player portrait path for known ship ID', () => {
+    expect(getShipPortraitImage('SHIP_001', true))
+      .toBe('/DroneWars/Ships/Corvette/Player/Player.png');
+  });
+
+  it('should return Opponent portrait path for known ship ID', () => {
+    expect(getShipPortraitImage('SHIP_002', false))
+      .toBe('/DroneWars/Ships/Carrier/Opponent/Opponent.png');
+  });
+
+  it('should default to Player when isPlayer omitted', () => {
+    expect(getShipPortraitImage('SHIP_003'))
+      .toBe('/DroneWars/Ships/Scout/Player/Player.png');
+  });
+
+  it('should return null for null input', () => {
+    expect(getShipPortraitImage(null)).toBeNull();
+  });
+
+  it('should return null for unknown ship ID', () => {
+    expect(getShipPortraitImage('SHIP_999')).toBeNull();
   });
 });
 

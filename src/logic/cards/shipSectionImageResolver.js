@@ -234,4 +234,20 @@ export const resolveShipSectionStats = (sectionStats, ship, isPlayer = true) => 
   };
 };
 
+// ========================================
+// GET SHIP PORTRAIT IMAGE
+// ========================================
+/**
+ * Constructs the portrait image path for a ship (used in header hex portraits)
+ * @param {string|Object} shipOrId - Ship ID, full name, or ship object
+ * @param {boolean} [isPlayer=true] - Whether to use Player or Opponent artwork
+ * @returns {string|null} Portrait image path or null if ship unknown
+ */
+export const getShipPortraitImage = (shipOrId, isPlayer = true) => {
+  const shipName = normalizeShipName(shipOrId);
+  if (!shipName) return null;
+  const perspective = isPlayer ? 'Player' : 'Opponent';
+  return `/DroneWars/Ships/${shipName}/${perspective}/${perspective}.png`;
+};
+
 export default resolveShipSectionImage;
