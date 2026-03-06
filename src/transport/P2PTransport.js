@@ -2,7 +2,7 @@
 // Wraps P2PManager + MessageQueue for reliable ordered message delivery.
 
 import Transport from './Transport.js';
-import MessageQueue from '../server/MessageQueue.js';
+import MessageQueue from './MessageQueue.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class P2PTransport extends Transport {
@@ -11,13 +11,14 @@ class P2PTransport extends Transport {
     this.p2pManager = p2pManager;
     this._responseCallback = null;
     this._ackCallback = null;
+    this._queueDrainedCallback = null;
     this._unsubscribe = null;
 
     this.messageQueue = new MessageQueue({
       processMessage: (message) => this._processMessage(message),
       onResyncNeeded: () => this._onResyncNeeded(),
       onResyncResponse: (fullState) => this._onResyncResponse(fullState),
-      onQueueDrained: () => {},
+      onQueueDrained: () => this._queueDrainedCallback?.(),
     });
 
     this._unsubscribe = this.p2pManager.subscribe((event) => {
@@ -31,6 +32,7 @@ class P2PTransport extends Transport {
 
   async sendAction(type, payload) {
     this.p2pManager.sendActionToHost(type, payload);
+    return { success: true, pending: true };
   }
 
   onResponse(callback) {
@@ -39,6 +41,10 @@ class P2PTransport extends Transport {
 
   onActionAck(callback) {
     this._ackCallback = callback;
+  }
+
+  onQueueDrained(callback) {
+    this._queueDrainedCallback = callback;
   }
 
   // --- MessageQueue callbacks ---
@@ -76,6 +82,7 @@ class P2PTransport extends Transport {
     this._unsubscribe = null;
     this._responseCallback = null;
     this._ackCallback = null;
+    this._queueDrainedCallback = null;
   }
 }
 

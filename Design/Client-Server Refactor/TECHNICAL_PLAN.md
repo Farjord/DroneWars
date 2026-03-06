@@ -75,115 +75,97 @@ Server-side orchestrator for P2P host mode:
 
 ---
 
-## Phase 3: P2PTransport + HostGameServer — PARTIAL
+## Phase 3: P2PTransport + HostGameServer — COMPLETE
 
-### HostGameServer — Created, needs tests
+**Files created:**
+- `src/server/HostGameServer.js` (78 lines) — Server-side orchestrator for P2P host mode
+- `src/server/__tests__/HostGameServer.test.js` — 15 tests passing
+- `src/transport/P2PTransport.js` (87 lines) — Transport wrapping P2PManager + MessageQueue
+- `src/transport/__tests__/P2PTransport.test.js` — 15 tests passing
 
-**File:** `src/server/HostGameServer.js` (77 lines)
-
-- `processAction(type, payload)` — delegates to `GameEngine`, broadcasts via `BroadcastService`
-- `handleGuestAction(action)` — processes guest action, broadcasts, sends ack (success or error with authoritative state)
-- Same `processAction` signature as `GameEngine` — `LocalTransport` calls it transparently
-
-### P2PTransport — Not yet created
-
-**File to create:** `src/transport/P2PTransport.js`
-
-Wraps `P2PManager` + `MessageQueue` for unreliable P2P channel:
-
-```javascript
-class P2PTransport extends Transport {
-  constructor(p2pManager) {
-    this.p2pManager = p2pManager;
-    this.messageQueue = new MessageQueue({ processMessage, onResyncNeeded, ... });
-    // Subscribe to P2P events, route to MessageQueue or ack handler
-  }
-
-  async sendAction(type, payload) {
-    this.p2pManager.sendActionToHost(type, payload);
-  }
-
-  onResponse(callback) { this._responseCallback = callback; }
-  onActionAck(callback) { this._ackCallback = callback; }
-  dispose() { /* cleanup subscriptions */ }
-}
-```
-
-### Remaining work
-
-1. Write `HostGameServer` tests — processAction flow, guest action handling, error/ack paths
-2. Create `P2PTransport.js` — wraps P2PManager + MessageQueue
-3. Write `P2PTransport` tests — sendAction, message routing, ack handling, resync
+**Key decisions:**
+- `HostGameServer.processAction()` matches `GameEngine` interface — `LocalTransport` works unchanged
+- `P2PTransport` routes `state_update_received` through `MessageQueue`, `action_ack_received` directly to callback
+- `onQueueDrained` wired from `MessageQueue` to stored callback for phase animation playback
 
 ---
 
-## Phase 4: Rewire GameServerFactory + App.jsx
+## Phase 3.5: Review Fixes — COMPLETE
 
-### GameServerFactory changes
+Code review (code-reviewer + simplifier agents) found 2 MAJOR behavioral gaps, 2 CRITICAL Phase 4 blockers, and 5 MINOR quality issues. All fixed here.
 
-```javascript
-// Current: creates LocalGameServer or RemoteGameServer based on gameMode
-// New: creates Transport + GameClient for all modes
+### Critical fixes
+- **C1**: `_executeAnimationPhase` null guard — AP line ~806 calls `this.animationManager.executeWithStateUpdate()` with no null guard. Added `if (!this.animationManager) return;` (prerequisite for Phase 4 server mode)
+- **C2**: Phase 4 animationManager wiring documented below
 
-GameServerFactory.create(gameMode, deps) {
-  const gameEngine = new GameEngine(gsm, ap, gfm);
+### Major fixes
+- **M1**: GameClient now handles action acks via `transport.onActionAck()` → `_onActionAck()`. Rejected actions with `authoritativeState` are applied (preserving local gameMode), preventing guest desync
+- **M2**: GameClient now handles queue drain via `transport.onQueueDrained()` → `_onQueueDrained()`. Triggers `phaseAnimationQueue.startPlayback()` with 50ms delay after all queued messages are processed (multiplayer only)
 
-  if (gameMode === 'local') {
-    const transport = new LocalTransport(gameEngine, { playerId: 'player1' });
-    return new GameClient(transport, { clientStateStore, playerId: 'player1' });
-  }
+### Minor fixes
+- **m1**: Removed dead `_lastResult` assignments from GameClient
+- **m2**: Replaced nested ternary in `_queuePhaseAnnouncements` with `PHASE_SUBTITLE_MAP` lookup
+- **m3**: Parameterized `guestPlayerId` in HostGameServer constructor (default `'player2'`)
+- **m4**: `Transport.onActionAck` now throws like `sendAction`/`onResponse`; `LocalTransport` overrides as no-op
+- **m5**: Updated stale comment in GameServer.js
 
-  if (gameMode === 'host') {
-    const hostServer = new HostGameServer(gameEngine, broadcastService, { p2pManager });
-    const transport = new LocalTransport(hostServer, { playerId: 'player1' });
-    return new GameClient(transport, { clientStateStore, playerId: 'player1', isMultiplayer: true, ... });
-  }
-
-  if (gameMode === 'guest') {
-    const transport = new P2PTransport(p2pManager);
-    return new GameClient(transport, { clientStateStore, playerId: 'player2', isMultiplayer: true, ... });
-  }
-}
-```
-
-### AP animationManager
-
-- Server mode: `ActionProcessor.animationManager` set to null — animations collected but not played
-- Client mode: `GameClient` owns `AnimationManager` for playback
-- The `if (this.animationManager)` guards in AP already handle this
-
-### Files affected
-
-| File | Change |
-|-|-|
-| `src/server/GameServerFactory.js` | Rewrite to create Transport + GameClient |
-| `src/App.jsx` | Update initialization to pass animationManager to GameClient |
+### Deferred items (resolved in Phase 5)
+- ~~`GameClient extends GameServer` naming oddity~~ — kept as-is (correct interface inheritance)
+- ~~`MessageQueue` in `server/` used by `transport/`~~ — moved to `transport/`
+- ~~No `dispose()` on HostGameServer~~ — not needed (no owned resources to clean up)
+- ~~`_collectAnimations` dual-format support~~ — flat array path removed (confirmed unused)
 
 ---
 
-## Phase 5: Delete Old Servers + Cleanup
+## Phase 4: Rewire GameServerFactory + App.jsx — COMPLETE
 
-### Files to delete
+**Files modified:**
+- `src/transport/LocalTransport.js` — `sendAction` now awaits callback and returns `result`
+- `src/transport/P2PTransport.js` — `sendAction` now returns `{ success: true, pending: true }`
+- `src/transport/__tests__/LocalTransport.test.js` — Added return value + await tests (11 tests)
+- `src/transport/__tests__/P2PTransport.test.js` — Added return value test (16 tests)
+- `src/server/GameServerFactory.js` — Rewritten to create Transport + GameClient
+- `src/server/__tests__/GameServerFactory.test.js` — Rewritten for new factory (10 tests)
+- `src/App.jsx` — Added `gameServerRef`, removed `server.initialize()`, passed ref to `useAnimationSetup`
+- `src/hooks/useAnimationSetup.js` — Accepts `gameServerRef`, sets `animationManager` on `GameClient`
 
-| File | Reason |
-|-|-|
-| `src/server/LocalGameServer.js` | Replaced by GameClient + LocalTransport |
-| `src/server/RemoteGameServer.js` | Replaced by GameClient + P2PTransport |
-| `src/server/__tests__/LocalGameServer.test.js` | Tests for deleted class |
-| `src/server/__tests__/RemoteGameServer.test.js` | Tests for deleted class |
+**Key decisions:**
+- `gameServerRef` bridges `useAnimationSetup` (called before `useMemo`) to the `GameClient` instance
+- `AnimationManager` set on `GameClient` via ref, not passed to constructor (timing: `useEffect` runs after render, by which time `useMemo` has populated the ref)
+- `ActionProcessor.animationManager` stays null — all AP methods have null guards from Phase 3.5
+- `LocalTransport.sendAction` returns `result` and `await`s callback (timing parity with old `LocalGameServer.submitAction`)
+- `P2PTransport.sendAction` returns `{ success: true, pending: true }` (matches old `RemoteGameServer`)
 
-### setGameServer() replacement
+---
 
-Replace `GameStateManager.setGameServer()` with `setSessionConfig({ localPlayerId, isMultiplayer, isPlayerAI })`:
-- Removes GSM's dependency on GameServer instance
-- Passes only the data GSM actually needs (player identity, mode flags)
-- Updates: `AIPhaseProcessor`, `GSM`, `ActionProcessor`, `BroadcastService`
+## Phase 5: Delete Old Servers + Cleanup — COMPLETE
 
-### Cleanup tasks
+**Files deleted:**
+- `src/server/LocalGameServer.js` — replaced by GameClient + LocalTransport
+- `src/server/RemoteGameServer.js` — replaced by GameClient + P2PTransport
+- `src/server/__tests__/LocalGameServer.test.js` — tests for deleted class
+- `src/server/__tests__/RemoteGameServer.test.js` — tests for deleted class
+- `src/utils/stateComparisonUtils.js` — zero imports, was only used by RemoteGameServer
 
-- Remove `gameMode` branching from client-layer code
-- Update any imports referencing deleted files
-- Verify no remaining references to `LocalGameServer` or `RemoteGameServer`
+**Files moved:**
+- `src/server/MessageQueue.js` → `src/transport/MessageQueue.js`
+- `src/server/__tests__/MessageQueue.test.js` → `src/transport/__tests__/MessageQueue.test.js`
+
+**Changes:**
+- Guest action routing rewired: `P2PManager` → `HostGameServer.handleGuestAction()` (was `AP.processGuestAction()`)
+- `AP.processGuestAction()` deleted — replaced by `HostGameServer.handleGuestAction()`
+- `isNetworkAction` flag removed from `AP.processAction()` — guest turn validation now runs through GameEngine
+- `P2PManager.setActionProcessor()` removed — replaced by `p2pManager.hostGameServer` set in GameServerFactory
+- `_collectAnimations` flat array branch removed (confirmed unused)
+- Stale `RemoteGameServer` references updated across comments and tests
+- `StateRedactor` import removed from ActionProcessor (was only used by deleted `processGuestAction`)
+
+**Key decisions:**
+- D1: `setGameServer(GameClient)` pattern kept — correct interface-based injection, no benefit from replacement
+- D2: Guest actions routed through `HostGameServer.handleGuestAction()` which processes via GameEngine with full validation
+- D3: `isNetworkAction` bypass removed — guest actions now validated by turn check (correct: they arrive on guest's turn)
+- D4: `stateComparisonUtils.js` deleted — zero imports anywhere
+- D5: `AP.setAnimationManager` kept — still actively used internally
 
 ---
 
@@ -196,15 +178,18 @@ Replace `GameStateManager.setGameServer()` with `setSessionConfig({ localPlayerI
 | `src/transport/__tests__/LocalTransport.test.js` | 1 | Created (8 tests) |
 | `src/client/GameClient.js` | 2 | Created |
 | `src/client/__tests__/GameClient.test.js` | 2 | Created (35 tests) |
-| `src/server/HostGameServer.js` | 3 | Created (needs tests) |
-| `src/server/__tests__/HostGameServer.test.js` | 3 | To create |
-| `src/transport/P2PTransport.js` | 3 | To create |
-| `src/transport/__tests__/P2PTransport.test.js` | 3 | To create |
+| `src/server/HostGameServer.js` | 3 | Created (15 tests) |
+| `src/server/__tests__/HostGameServer.test.js` | 3 | Created |
+| `src/transport/P2PTransport.js` | 3 | Created (15 tests) |
+| `src/transport/__tests__/P2PTransport.test.js` | 3 | Created |
 | `src/server/GameServerFactory.js` | 4 | Rewrite |
 | `src/App.jsx` | 4 | Update |
-| `src/server/LocalGameServer.js` | 5 | Delete |
-| `src/server/RemoteGameServer.js` | 5 | Delete |
-| `src/server/GameStateManager.js` | 5 | Update (setSessionConfig) |
+| `src/server/LocalGameServer.js` | 5 | Deleted |
+| `src/server/RemoteGameServer.js` | 5 | Deleted |
+| `src/utils/stateComparisonUtils.js` | 5 | Deleted |
+| `src/transport/MessageQueue.js` | 5 | Moved from server/ |
+| `src/network/P2PManager.js` | 5 | Updated (guest action routing) |
+| `src/managers/ActionProcessor.js` | 5 | Cleaned (processGuestAction, isNetworkAction removed) |
 
 ---
 

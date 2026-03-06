@@ -5,7 +5,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
-import StateRedactor from '../server/StateRedactor.js';
+
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import {
   processAttack as _processAttack,
@@ -440,7 +440,7 @@ setAnimationManager(animationManager) {
    * @param {Object} action - Action to process
    */
   async processAction(action) {
-    const { type, payload, isNetworkAction = false } = action;
+    const { type, payload } = action;
 
     // Reset animation log for this action
     this._actionAnimationLog = { actionAnimations: [], systemAnimations: [] };
@@ -479,8 +479,8 @@ setAnimationManager(animationManager) {
         // Determine which player is attempting this action
         const actionPlayerId = payload.playerId || currentState.currentPlayer;
 
-        // Verify it's their turn (skip for network actions from host which are already validated)
-        if (actionPlayerId !== currentState.currentPlayer && !isNetworkAction) {
+        // Verify it's their turn
+        if (actionPlayerId !== currentState.currentPlayer) {
           debugLog('PASS_LOGIC', `🚨 [SECURITY] Blocking ${type} action - ${actionPlayerId} attempted action but it's ${currentState.currentPlayer}'s turn`);
           throw new Error(`Invalid action: ${actionPlayerId} attempted ${type} but it's ${currentState.currentPlayer}'s turn`);
         }
@@ -658,56 +658,6 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Process action from guest client (host only)
-   * Host receives guest actions and processes them authoritatively
-   * @param {Object} action - Action from guest {type, payload}
-   */
-  async processGuestAction(action) {
-    if (this.gameServer?.getLocalPlayerId() !== 'player1') {
-      debugLog('STATE_SYNC', 'processGuestAction called on non-host');
-      return;
-    }
-
-    debugLog('STATE_SYNC', '[HOST] Processing guest action:', action);
-
-    // Process the action in background (non-blocking)
-    // Guest already played animations optimistically, so host doesn't need to block UI
-    // Broadcasting happens immediately after state calculation (before animations)
-    this.queueAction({
-      type: action.type,
-      payload: action.payload,
-      isNetworkAction: true // Prevent re-broadcasting to guest
-    }).then((result) => {
-      debugLog('STATE_SYNC', '[HOST] Guest action processing complete:', action.type);
-
-      // Send success acknowledgement to guest
-      if (this.p2pManager) {
-        this.p2pManager.sendActionAck({
-          actionType: action.type,
-          success: true
-        });
-      }
-      return result;
-    }).catch((error) => {
-      debugLog('STATE_SYNC', '[HOST] Error processing guest action:', error);
-
-      // Send failure acknowledgement with authoritative state so guest can reconcile
-      if (this.p2pManager) {
-        this.p2pManager.sendActionAck({
-          actionType: action.type,
-          success: false,
-          error: error.message,
-          authoritativeState: StateRedactor.redactForPlayer(this.gameStateManager.getState(), 'player2')
-        });
-      }
-    });
-
-    // Return immediately - host UI remains responsive
-    debugLog('STATE_SYNC', '[HOST] Guest action queued for background processing:', action.type);
-    return { success: true, processing: true };
-  }
-
-  /**
    * Execute animations and capture them for broadcasting to guest
    * @param {Array} animations - Animation events to execute
    * @param {boolean} isSystemAnimation - True for system animations (phase announcements), false for action animations
@@ -804,6 +754,8 @@ setAnimationManager(animationManager) {
    * @param {Object} newPlayerStates - { player1, player2 } from game logic result
    */
   async _executeAnimationPhase(animations, newPlayerStates) {
+    if (!this.animationManager) return;
+
     const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
       animations,
       newPlayerStates

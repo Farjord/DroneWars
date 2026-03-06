@@ -11,7 +11,7 @@ import { debugLog } from '../utils/debugLogger.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import StateValidationService from '../logic/state/StateValidationService.js';
-import OptimisticAnimationTracker from '../server/OptimisticAnimationTracker.js';
+
 import SinglePlayerInventoryManager from './SinglePlayerInventoryManager.js';
 import TacticalItemManager from './TacticalItemManager.js';
 import ShipSlotManager from './ShipSlotManager.js';
@@ -98,7 +98,7 @@ class GameStateManager {
     this.gameFlowManager = null;
 
     // Optimistic animation tracker (dedup guest-played animations from host responses)
-    this.optimisticTracker = new OptimisticAnimationTracker();
+    // OptimisticAnimationTracker removed (Phase 4 — server-authoritative model)
 
     // Single-player inventory manager (extracted — save/load, inventory, card discovery, ship components)
     this.singlePlayerInventoryManager = new SinglePlayerInventoryManager(this);
@@ -135,15 +135,14 @@ class GameStateManager {
   // --- P2P WIRING ---
 
   /**
-   * Set up ActionProcessor ↔ P2PManager bidirectional wiring.
+   * Set up ActionProcessor ↔ P2PManager wiring.
    * Called by useGameState.js and LobbyScreen.jsx.
-   * Guest-side P2P subscriptions (state_update_received) are handled by RemoteGameServer.initialize().
+   * Guest-side P2P subscriptions (state_update_received) are handled by P2PTransport.
    */
   setupP2PIntegration(p2pManager) {
     if (this._p2pIntegrationSetup) return;
 
     this.actionProcessor.setP2PManager(p2pManager);
-    p2pManager.setActionProcessor(this.actionProcessor);
 
     p2pManager.subscribe((event) => {
       switch (event.type) {
@@ -185,12 +184,10 @@ class GameStateManager {
     this.emit('HOST_STATE_UPDATE', { hostState });
   }
 
-  trackOptimisticAnimations(animations) {
-    this.optimisticTracker.trackAction(animations);
-  }
-
+  // No-ops: optimistic animation tracking removed (Phase 4 — server-authoritative model)
+  trackOptimisticAnimations() {}
   filterAnimations(actionAnimations, systemAnimations) {
-    return this.optimisticTracker.filterAnimations(actionAnimations, systemAnimations);
+    return { actionAnimations, systemAnimations };
   }
 
   // --- EVENT SYSTEM ---

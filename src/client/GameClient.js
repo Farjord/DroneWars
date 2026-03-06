@@ -1,11 +1,16 @@
 // GameClient — Unified client for all game modes.
 // Delegates action sending to a Transport, receives { state, animations }
 // responses, plays animations via AnimationManager, and pushes state to
-// ClientStateStore. Replaces both LocalGameServer and RemoteGameServer.
+// ClientStateStore. Unified client for all game modes.
 
 import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
+
+const PHASE_SUBTITLE_MAP = {
+  roundInitialization: 'Drawing Cards, Gaining Energy, Resetting Drones...',
+  actionComplete: 'Transitioning to Next Round',
+};
 
 const PHASE_TEXT_MAP = {
   roundAnnouncement: 'ROUND',
@@ -34,8 +39,10 @@ class GameClient extends GameServer {
     this.pendingHostState = null;
     this.pendingFinalHostState = null;
 
-    // Wire up transport response handler
+    // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
+    this.transport.onActionAck(ack => this._onActionAck(ack));
+    this.transport.onQueueDrained(() => this._onQueueDrained());
   }
 
   // --- GameServer interface ---
@@ -70,7 +77,7 @@ class GameClient extends GameServer {
 
   // --- Transport response handler ---
 
-  async _onResponse({ state, animations, result }) {
+  async _onResponse({ state, animations }) {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
 
@@ -86,7 +93,6 @@ class GameClient extends GameServer {
 
     if (!this.animationManager || allAnimations.length === 0) {
       this._applyState(state);
-      this._lastResult = result;
       return;
     }
 
@@ -111,8 +117,6 @@ class GameClient extends GameServer {
       this.pendingHostState = null;
       this.pendingFinalHostState = null;
     }
-
-    this._lastResult = result;
   }
 
   // --- stateProvider protocol (AnimationManager.executeWithStateUpdate) ---
@@ -142,12 +146,10 @@ class GameClient extends GameServer {
 
   _collectAnimations(animations) {
     if (!animations) return [];
-    // Support both { actionAnimations, systemAnimations } object and flat array
-    if (Array.isArray(animations)) return animations;
     return [...(animations.actionAnimations || []), ...(animations.systemAnimations || [])];
   }
 
-  // --- Phase announcement queueing (absorbed from RemoteGameServer) ---
+  // --- Phase announcement queueing ---
 
   _queuePhaseAnnouncements(guestPhase, hostPhase) {
     if (!this.phaseAnimationQueue || guestPhase === hostPhase) return;
@@ -184,13 +186,38 @@ class GameClient extends GameServer {
 
     // PATTERN 3: Generic phase announcement for target phase
     if (PHASE_TEXT_MAP[hostPhase]) {
-      const subtitle = hostPhase === 'roundInitialization'
-        ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
-        : hostPhase === 'actionComplete'
-          ? 'Transitioning to Next Round'
-          : null;
-
+      const subtitle = PHASE_SUBTITLE_MAP[hostPhase] ?? null;
       this.phaseAnimationQueue.queueAnimation(hostPhase, PHASE_TEXT_MAP[hostPhase], subtitle, 'GC:pattern3_generic');
+    }
+  }
+
+  // --- Action ack handling (M1: guest desync prevention) ---
+
+  _onActionAck({ actionType, success, error, authoritativeState }) {
+    if (success) {
+      debugLog('STATE_SYNC', `[GameClient] Action acknowledged: ${actionType}`);
+      return;
+    }
+
+    debugLog('STATE_SYNC', `[GameClient] Action rejected: ${actionType} — ${error}`);
+    if (authoritativeState) {
+      const localGameMode = this.getState().gameMode;
+      this._applyState({ ...authoritativeState, gameMode: localGameMode });
+    }
+  }
+
+  // --- Queue drain handler (M2: phase animation playback trigger) ---
+
+  _onQueueDrained() {
+    if (!this._isMultiplayer || !this.phaseAnimationQueue) return;
+    if (this.phaseAnimationQueue.isPlaying()) return;
+
+    const queueLength = this.phaseAnimationQueue.getQueueLength();
+    if (queueLength > 0) {
+      debugLog('TIMING', '[GameClient] Scheduling animation playback after queue drain (50ms delay)');
+      setTimeout(() => {
+        this.phaseAnimationQueue.startPlayback('GameClient:after_drain');
+      }, 50);
     }
   }
 

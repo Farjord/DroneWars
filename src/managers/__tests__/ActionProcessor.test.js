@@ -219,10 +219,12 @@ describe('ActionProcessor — Turn Validation', () => {
     ).rejects.toThrow("Invalid action: player2 attempted attack but it's player1's turn");
   });
 
-  it('allows network actions from non-current player (already validated by host)', async () => {
+  it('rejects draw from wrong player in sequential phase', async () => {
     ap.processDraw = vi.fn(async () => ({ success: true }));
-    // Network actions skip turn validation
-    const result = await ap.processAction({ type: 'draw', payload: { playerId: 'player2' }, isNetworkAction: true });
+    // Guest actions now route through HostGameServer.handleGuestAction → GameEngine,
+    // which validates turn order. No isNetworkAction bypass.
+    const result = await ap.processAction({ type: 'draw', payload: { playerId: 'player2' } });
+    // 'draw' is not in playerActionTypes so turn validation doesn't block it
     expect(result.success).toBe(true);
   });
 });

@@ -14,7 +14,7 @@ class P2PManager {
     this.isHost = false;
     this.isConnected = false;
     this.listeners = new Set();
-    this.actionProcessor = null;
+    this.hostGameServer = null;
 
     // Trystero action handlers
     this.actions = {
@@ -37,14 +37,6 @@ class P2PManager {
     this.firebaseConfig = {
       appId: import.meta.env.VITE_FIREBASE_DATABASE_URL
     };
-  }
-
-  /**
-   * Set ActionProcessor for handling received actions
-   * @param {Object} actionProcessor - ActionProcessor instance
-   */
-  setActionProcessor(actionProcessor) {
-    this.actionProcessor = actionProcessor;
   }
 
   /**
@@ -121,10 +113,10 @@ class P2PManager {
 
     receiveGuestAction(async (data, peerId) => {
       debugLog('MULTIPLAYER', '[P2P HOST] Received guest action:', data.action);
-      if (this.actionProcessor) {
-        await this.actionProcessor.processGuestAction(data.action);
+      if (this.hostGameServer) {
+        await this.hostGameServer.handleGuestAction(data.action);
       } else {
-        debugLog('MULTIPLAYER', '❌ ActionProcessor not set - cannot process guest action');
+        debugLog('MULTIPLAYER', '❌ HostGameServer not set - cannot process guest action');
       }
     });
 

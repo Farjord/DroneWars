@@ -148,7 +148,7 @@ class GameFlowManager {
         const { state, type: eventType } = event;
 
         // Non-authority (guest) waits for Host's authoritative state before starting cascade
-        // RemoteGameServer applies Host state and triggers checkSimultaneousPhaseCompletion
+        // GameClient applies Host state and triggers checkSimultaneousPhaseCompletion
         if (this.isPhaseAuthority) {
           this.checkSimultaneousPhaseCompletion(state, eventType);
         }
@@ -1355,7 +1355,7 @@ class GameFlowManager {
       firstPlayerResult
     });
 
-    // CHECKPOINT VALIDATION: Handled automatically in RemoteGameServer
+    // CHECKPOINT VALIDATION: Handled automatically by P2PTransport message ordering
     // Guest stops at checkpoint phases and waits for matching host broadcast
     // Validation happens when host reaches same checkpoint (no explicit call needed)
 
