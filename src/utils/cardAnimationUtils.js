@@ -61,7 +61,7 @@ export const calculateCardFanRotation = (index, totalCards) => {
  */
 export const getHoverTransform = () => {
   const { translateY } = CARD_FAN_CONFIG.hoverEffect;
-  return `translateY(${translateY}px)`;
+  return `translateY(${translateY}px) scale(1.2)`;
 };
 
 /**

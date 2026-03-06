@@ -381,9 +381,9 @@ describe('HandView action card drag-and-drop', () => {
       );
 
       const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
-      // Elevated cards get translateY(-105px) via transform, scale via zoom property
+      // Elevated cards get translateY(-105px) and scale(1.2) via transform
       expect(cardWrapper.style.transform).toContain('translateY(-105px)');
-      expect(cardWrapper.style.zoom).toBe('1.2');
+      expect(cardWrapper.style.transform).toContain('scale(1.2)');
     });
   });
 });
