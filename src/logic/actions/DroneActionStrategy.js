@@ -67,6 +67,12 @@ export async function processDeployment(payload, ctx) {
 
     await ctx.executeAnimationPhase(animations, newPlayerStates);
 
+    debugLog('DEPLOY_TRACE', '[7b/12] Deployment animation + state commit complete', {
+      droneName: droneData?.name,
+      lane: laneId,
+      playerId,
+    });
+
     debugLog('TURN_TRANSITION_DEBUG', 'processDeployment returning', {
       success: result.success,
       shouldEndTurn: true,

@@ -41,13 +41,6 @@ export const useGameState = () => {
         });
       }
 
-      if (event.type === 'ENGINE_UPDATE') {
-        debugLog('DEPLOY_TRACE', '[12/12] useGameState setGameState triggering re-render', {
-          newPhase: clientStateStore.getState().turnPhase,
-          eventType: event.type,
-        });
-      }
-
       setGameState(clientStateStore.getState());
     });
 
