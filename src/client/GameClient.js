@@ -52,8 +52,13 @@ class GameClient extends GameServer {
   async submitAction(type, payload) {
     // Local "YOU PASSED" for Guest (mirrors DroneActionStrategy on Host)
     if (type === 'playerPass' && this._isMultiplayer && this.phaseAnimationQueue) {
+      const startedPlayback = !this.phaseAnimationQueue.isPlaying();
       this.phaseAnimationQueue.queueAnimation('playerPass', 'YOU PASSED', null, 'GC:local_you_passed');
-      if (!this.phaseAnimationQueue.isPlaying()) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-PASS-2] Guest queued local YOU PASSED', {
+        utc: new Date().toISOString(), role: 'GUEST',
+        startedPlayback,
+      });
+      if (startedPlayback) {
         this.phaseAnimationQueue.startPlayback('GC:after_local_pass');
       }
     }
@@ -229,6 +234,10 @@ class GameClient extends GameServer {
     const opponentPassKey = this.playerId === 'player1' ? 'player2Passed' : 'player1Passed';
     if (newPassInfo[opponentPassKey] && !prevPassInfo[opponentPassKey]) {
       this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GC:broadcast_opponent_passed');
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-PASS-1] Guest detected opponent pass from broadcast', {
+        utc: new Date().toISOString(), role: 'GUEST',
+        opponentPassKey,
+      });
     }
   }
 
@@ -300,8 +309,10 @@ class GameClient extends GameServer {
 
     const queueLength = this.phaseAnimationQueue.getQueueLength();
     if (queueLength > 0) {
-      const hasRoundAnnouncement = this.phaseAnimationQueue.queue?.some(a => a.phaseName === 'roundAnnouncement');
-      if (hasRoundAnnouncement) {
+      const hasTrackedAnnouncement = this.phaseAnimationQueue.queue?.some(a =>
+        a.phaseName === 'roundAnnouncement' || a.phaseName === 'playerPass'
+      );
+      if (hasTrackedAnnouncement) {
         debugLog('ROUND_TRANSITION_TRACE', '[RT-16] Guest scheduling playback after message queue drain', {
           utc: new Date().toISOString(), role: 'GUEST',
           queueLength,

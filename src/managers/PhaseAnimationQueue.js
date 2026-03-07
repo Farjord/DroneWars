@@ -97,7 +97,9 @@ class PhaseAnimationQueue {
     });
 
     this.isPlayingAnimations = true;
-    this._inRoundTransitionPlayback = this.queue.some(a => a.phaseName === 'roundAnnouncement' || a.phaseName === 'actionComplete');
+    this._inRoundTransitionPlayback = this.queue.some(a =>
+      a.phaseName === 'roundAnnouncement' || a.phaseName === 'actionComplete' || a.phaseName === 'playerPass'
+    );
     if (this._inRoundTransitionPlayback) {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-17] Playback started for round-transition announcements', {
         utc: new Date().toISOString(), role: 'BOTH',
