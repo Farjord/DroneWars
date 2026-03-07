@@ -84,6 +84,51 @@ describe('GameClient', () => {
       await client.submitAction('attack', { droneId: 'd1' });
       expect(transport.sendAction).toHaveBeenCalledWith('attack', { droneId: 'd1' });
     });
+
+    it('queues local "YOU PASSED" for multiplayer playerPass', async () => {
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+
+      await mpClient.submitAction('playerPass', {});
+
+      expect(mockPAQ.queueAnimation).toHaveBeenCalledWith(
+        'playerPass', 'YOU PASSED', null, 'GC:local_you_passed'
+      );
+      expect(mockPAQ.startPlayback).toHaveBeenCalledWith('GC:after_local_pass');
+      expect(transport.sendAction).toHaveBeenCalledWith('playerPass', {});
+    });
+
+    it('does not queue "YOU PASSED" for non-pass actions in multiplayer', async () => {
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+
+      await mpClient.submitAction('attack', { droneId: 'd1' });
+
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+    });
+
+    it('does not queue "YOU PASSED" in single-player mode', async () => {
+      await client.submitAction('playerPass', {});
+
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+    });
+
+    it('does not start playback if already playing', async () => {
+      const mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+      });
+      mockPAQ.isPlaying.mockReturnValue(true);
+
+      await mpClient.submitAction('playerPass', {});
+
+      expect(mockPAQ.queueAnimation).toHaveBeenCalled();
+      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
+    });
   });
 
   describe('getState', () => {
@@ -300,13 +345,25 @@ describe('GameClient', () => {
       expect(mpClient.getAnimationSource()).toBe('HOST_RESPONSE');
     });
 
-    it('revealTeleportedDrones pushes final state to clientStateStore', () => {
-      const finalState = makeState();
+    it('revealTeleportedDrones merges only lane data from pendingFinalHostState onto current state', () => {
+      const currentState = makeState({ currentPlayer: 'player2', turnPhase: 'deployment' });
+      const finalState = makeState({
+        currentPlayer: 'player1', turnPhase: 'action',
+        player1: { hand: [], dronesOnBoard: {}, hp: 20, lanes: { 1: [{ id: 'd1' }] } },
+        player2: { hand: [], dronesOnBoard: {}, hp: 20, lanes: { 2: [{ id: 'd2' }] } },
+      });
+      mockStore.getState.mockReturnValue(currentState);
       client.pendingFinalHostState = finalState;
 
       client.revealTeleportedDrones();
 
-      expect(mockStore.applyUpdate).toHaveBeenCalledWith(finalState);
+      const applied = mockStore.applyUpdate.mock.calls[0][0];
+      // Lanes come from pendingFinalHostState
+      expect(applied.player1.lanes).toEqual({ 1: [{ id: 'd1' }] });
+      expect(applied.player2.lanes).toEqual({ 2: [{ id: 'd2' }] });
+      // currentPlayer/turnPhase preserved from current state, not stale snapshot
+      expect(applied.currentPlayer).toBe('player2');
+      expect(applied.turnPhase).toBe('deployment');
     });
 
     it('revealTeleportedDrones does nothing when no pending final state', () => {
@@ -413,6 +470,49 @@ describe('GameClient', () => {
       });
       noQueueClient._queuePhaseAnnouncements('action', 'deployment');
       // No error thrown
+    });
+  });
+
+  // --- Pass announcements from broadcasts ---
+
+  describe('_queuePassAnnouncements', () => {
+    let mpClient;
+
+    beforeEach(() => {
+      mpClient = new GameClient(transport, {
+        clientStateStore: mockStore, playerId: 'player2',
+        isMultiplayer: true, phaseAnimationQueue: mockPAQ,
+        animationManager: mockAnimMgr,
+      });
+    });
+
+    it('queues "OPPONENT PASSED" when opponent pass transitions from false to true', () => {
+      // First broadcast establishes baseline
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: false, player2Passed: false } });
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+
+      // Second broadcast: opponent (player1) passed
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: true, player2Passed: false } });
+      expect(mockPAQ.queueAnimation).toHaveBeenCalledWith(
+        'playerPass', 'OPPONENT PASSED', null, 'GC:broadcast_opponent_passed'
+      );
+    });
+
+    it('does not queue when own pass transitions (not opponent)', () => {
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: false, player2Passed: false } });
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: false, player2Passed: true } });
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+    });
+
+    it('skips first broadcast (no previous passInfo to compare)', () => {
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: true, player2Passed: false } });
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+    });
+
+    it('handles null passInfo gracefully', () => {
+      mpClient._queuePassAnnouncements({ passInfo: { player1Passed: false, player2Passed: false } });
+      mpClient._queuePassAnnouncements({ passInfo: null });
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
     });
   });
 

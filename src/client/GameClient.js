@@ -39,6 +39,7 @@ class GameClient extends GameServer {
     this.pendingHostState = null;
     this.pendingFinalHostState = null;
     this._localGameMode = null; // Cached on first response to avoid per-response store reads
+    this._lastPassInfo = null; // Tracks passInfo across broadcasts for mid-phase pass detection
 
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
@@ -49,6 +50,14 @@ class GameClient extends GameServer {
   // --- GameServer interface ---
 
   async submitAction(type, payload) {
+    // Local "YOU PASSED" for Guest (mirrors DroneActionStrategy on Host)
+    if (type === 'playerPass' && this._isMultiplayer && this.phaseAnimationQueue) {
+      this.phaseAnimationQueue.queueAnimation('playerPass', 'YOU PASSED', null, 'GC:local_you_passed');
+      if (!this.phaseAnimationQueue.isPlaying()) {
+        this.phaseAnimationQueue.startPlayback('GC:after_local_pass');
+      }
+    }
+
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[2/10] GameClient.submitAction routing to transport', {
         type,
@@ -105,6 +114,7 @@ class GameClient extends GameServer {
           previousPhase, newPhase,
         });
       }
+      this._queuePassAnnouncements(state);
       this._queuePhaseAnnouncements(previousPhase, newPhase);
     }
 
@@ -205,6 +215,21 @@ class GameClient extends GameServer {
   _collectAnimations(animations) {
     if (!animations) return [];
     return [...(animations.actionAnimations || []), ...(animations.systemAnimations || [])];
+  }
+
+  // --- Pass announcement detection (mid-phase, from state broadcasts) ---
+
+  _queuePassAnnouncements(incomingState) {
+    if (!this.phaseAnimationQueue) return;
+    const prevPassInfo = this._lastPassInfo;
+    const newPassInfo = incomingState?.passInfo;
+    this._lastPassInfo = newPassInfo ? { ...newPassInfo } : null;
+    if (!newPassInfo || !prevPassInfo) return;
+
+    const opponentPassKey = this.playerId === 'player1' ? 'player2Passed' : 'player1Passed';
+    if (newPassInfo[opponentPassKey] && !prevPassInfo[opponentPassKey]) {
+      this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GC:broadcast_opponent_passed');
+    }
   }
 
   // --- Phase announcement queueing ---
