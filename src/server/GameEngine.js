@@ -1,7 +1,9 @@
 // GameEngine — Authoritative game action processing facade.
 // Wraps ActionProcessor + GameStateManager + GameFlowManager.
 // Returns { state, animations, result } from every processAction call.
+// Pushes { state, animations } to registered clients via event callbacks.
 
+import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class GameEngine {
@@ -9,6 +11,26 @@ class GameEngine {
     this.gameStateManager = gameStateManager;
     this.actionProcessor = actionProcessor;
     this.gameFlowManager = gameFlowManager;
+    this._clients = new Map(); // playerId -> callback
+  }
+
+  /**
+   * Register a client to receive push responses after each processAction.
+   * @param {string} playerId - The player this client represents
+   * @param {Function} callback - Called with { state, animations } after each action
+   */
+  registerClient(playerId, callback) {
+    this._clients.set(playerId, callback);
+    debugLog('STATE_SYNC', `GameEngine: client registered for ${playerId}`);
+  }
+
+  /**
+   * Unregister a client (e.g. on disconnect/dispose).
+   * @param {string} playerId
+   */
+  unregisterClient(playerId) {
+    this._clients.delete(playerId);
+    debugLog('STATE_SYNC', `GameEngine: client unregistered for ${playerId}`);
   }
 
   /**
@@ -36,7 +58,20 @@ class GameEngine {
       });
     }
 
+    this._emitToClients(state, animations);
+
     return { state, animations, result };
+  }
+
+  /**
+   * Push state+animations to all registered clients.
+   * Each client receives state redacted for their player perspective.
+   */
+  _emitToClients(state, animations) {
+    for (const [playerId, callback] of this._clients) {
+      const redactedState = StateRedactor.redactForPlayer(state, playerId);
+      callback({ state: redactedState, animations });
+    }
   }
 
   getState() {
