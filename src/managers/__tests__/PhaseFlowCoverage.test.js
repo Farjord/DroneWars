@@ -93,8 +93,8 @@ function createMockGameStateManager(initialState = {}) {
 /**
  * Create mock PhaseManager
  */
-function createMockPhaseManager(gameStateManager, { isAuthority = true, isMultiplayer = false } = {}) {
-  const pm = new PhaseManager(gameStateManager, { isAuthority, isMultiplayer });
+function createMockPhaseManager(gameStateManager, { isAuthority = true } = {}) {
+  const pm = new PhaseManager(gameStateManager, { isAuthority });
   return pm;
 }
 

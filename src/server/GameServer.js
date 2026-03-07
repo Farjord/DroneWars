@@ -8,7 +8,7 @@ class GameServer {
   getPlayerView(_playerId) { throw new Error('Not implemented'); }
   getLocalPlayerId() { throw new Error('Not implemented'); }
   isPlayerAI(_playerId) { throw new Error('Not implemented'); }
-  isMultiplayer() { return false; }
+  isMultiplayer() { throw new Error('Not implemented'); }
 }
 
 export default GameServer;

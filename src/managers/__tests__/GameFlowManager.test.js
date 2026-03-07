@@ -614,15 +614,6 @@ describe('GameFlowManager - Sequential Phases', () => {
       expect(gameFlowManager.listeners).toEqual([]);
     });
 
-    it('should reset guestCascadeRunner', () => {
-      // Simulate a guest cascade runner with active cascade
-      gameFlowManager.guestCascadeRunner = { isInCheckpointCascade: true, reset: vi.fn() };
-
-      gameFlowManager.reset();
-
-      expect(gameFlowManager.guestCascadeRunner.reset).toHaveBeenCalled();
-    });
-
     it('should call phaseManager.reset() if available', () => {
       // Spy on phaseManager.reset
       const resetSpy = vi.fn();

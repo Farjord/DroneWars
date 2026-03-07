@@ -15,7 +15,6 @@ import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
-import GuestCascadeRunner from './GuestCascadeRunner.js';
 
 // --- Trace Helpers ---
 function _countDrones(playerState) {
@@ -60,7 +59,6 @@ class GameFlowManager {
     this.roundNumber = 0;
     this.isProcessingAutomaticPhase = false; // Flag to track automatic phase processing
     this._quickDeployExecutedThisRound = false; // Flag to track quick deploy execution (prevents race condition)
-    this.guestCascadeRunner = null; // Initialized for non-authority in initialize()
     this._isRoundTransition = false; // ROUND_TRANSITION_TRACE gating flag
 
     // Event listeners
@@ -71,7 +69,6 @@ class GameFlowManager {
     this.actionProcessor = null;
     this.actionProcessorUnsubscribe = null; // Store unsubscribe function to prevent duplicate subscriptions
     this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
-    this.isMultiplayer = false;
     this.gameDataService = null;
     this.phaseManager = null; // Phase Manager instance (initialized later)
 
@@ -85,10 +82,9 @@ class GameFlowManager {
    * Initialize with external system references
    * @param {Object} gameStateManager - GameStateManager instance
    * @param {Object} actionProcessor - ActionProcessor instance
-   * @param {Function} isMultiplayerFn - Function to check if game is multiplayer
    * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
-  initialize(gameStateManager, actionProcessor, isMultiplayerFn, aiPhaseProcessor) {
+  initialize(gameStateManager, actionProcessor, _isMultiplayerFn, aiPhaseProcessor) {
     // Check if already initialized
     if (this.isInitialized) {
       debugLog('PHASE_TRANSITIONS', '🔧 GameFlowManager already initialized, skipping...');
@@ -97,20 +93,13 @@ class GameFlowManager {
 
     this.gameStateManager = gameStateManager;
     this.actionProcessor = actionProcessor;
-    this.isMultiplayer = isMultiplayerFn;
 
-    // Phase authority: local/host drive transitions; guest only processes optimistically
+    // Phase authority: local/host drive transitions; guest receives server-pushed state
     this.isPhaseAuthority = gameStateManager.getLocalPlayerId() !== 'player2';
-
-    // Initialize GuestCascadeRunner for non-authority optimistic processing
-    if (!this.isPhaseAuthority) {
-      this.guestCascadeRunner = new GuestCascadeRunner(this);
-    }
 
     // Initialize PhaseManager for authoritative phase transitions
     this.phaseManager = new PhaseManager(gameStateManager, {
       isAuthority: this.isPhaseAuthority,
-      isMultiplayer: this.isMultiplayer ? this.isMultiplayer() : false
     });
     debugLog('PHASE_TRANSITIONS', `✅ PhaseManager initialized in GameFlowManager (authority: ${this.isPhaseAuthority})`);
 
@@ -129,7 +118,8 @@ class GameFlowManager {
 
     // Initialize AIPhaseProcessor with execution dependencies (single-player only)
     // Only re-initialize if in single-player mode and AI has already been set up
-    if (aiPhaseProcessor && aiPhaseProcessor.initialize && this.isMultiplayer && !this.isMultiplayer()) {
+    const isSinglePlayerInit = gameStateManager.getState()?.gameMode === 'local';
+    if (aiPhaseProcessor && aiPhaseProcessor.initialize && isSinglePlayerInit) {
       // Get current initialization state
       const currentPersonality = aiPhaseProcessor.currentAIPersonality;
       const currentDronePool = aiPhaseProcessor.dronePool;
@@ -865,17 +855,11 @@ class GameFlowManager {
       // Always clear the flag when automatic phase processing is complete
       this.isProcessingAutomaticPhase = false;
 
-      // NON-AUTHORITY OPTIMISTIC EXECUTION: Track animations for deduplication
-      if (this.guestCascadeRunner) {
-        this.guestCascadeRunner.trackOptimisticAnimations(phase);
-      }
-
       // AUTHORITY: Start animation playback after automatic cascade completes
-      // Only start if we're authority, NOT in cascade mode, and landed on non-automatic phase
+      // Only start if we're authority and landed on non-automatic phase
       const currentPhase = this.gameStateManager.getState().turnPhase;
-      const cascadeActive = this.guestCascadeRunner?.isInCheckpointCascade ?? false;
 
-      if (this.isPhaseAuthority && !cascadeActive && !this.isAutomaticPhase(currentPhase)) {
+      if (this.isPhaseAuthority && !this.isAutomaticPhase(currentPhase)) {
         if (this._tryStartPlayback('GFM:auto_cascade:880')) {
           debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after automatic cascade`, { finalPhase: currentPhase });
         }
@@ -1298,17 +1282,10 @@ class GameFlowManager {
     }
 
     // Handle automatic phases directly
-    // SKIP during cascade mode - cascade loop handles processing explicitly
-    const cascadeActive = this.guestCascadeRunner?.isInCheckpointCascade ?? false;
-    if (this.isAutomaticPhase(newPhase) && !cascadeActive) {
+    if (this.isAutomaticPhase(newPhase)) {
       debugLog('PHASE_TRANSITIONS', `🤖 GameFlowManager: Auto-processing automatic phase '${newPhase}'`);
       await this.processAutomaticPhase(newPhase, previousPhase);
       return; // Don't emit transition event yet - will emit after automatic processing
-    }
-
-    // During cascade mode, automatic phases are handled by cascade loop
-    if (this.isAutomaticPhase(newPhase) && cascadeActive) {
-      debugLog('GUEST_CASCADE', `⏭️ [TRANSITION] Skipping auto-process - cascade mode handles explicitly`, { phase: newPhase });
     }
 
     // Emit transition event for non-automatic phases
@@ -1330,7 +1307,7 @@ class GameFlowManager {
     // Sequential→Sequential transitions (e.g., deployment→action) don't go through automatic cascade
     // so we need to manually trigger animation playback here
     // Works for BOTH host and guest now (guest receives pass notifications from optimistic execution)
-    if (!cascadeActive && this.isSequentialPhase(newPhase)) {
+    if (this.isSequentialPhase(newPhase)) {
       if (this._tryStartPlayback('GFM:seq_transition:2060')) {
         debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
         if (this._isRoundTransition) {
@@ -1373,7 +1350,8 @@ class GameFlowManager {
     }
 
     const gameState = this.gameStateManager.getState();
-    const isSinglePlayer = !this.isMultiplayer || !this.isMultiplayer();
+    const gameMode = this.gameStateManager.getState()?.gameMode;
+    const isSinglePlayer = gameMode === 'local';
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
 
     // Check which players need to act based on the phase
@@ -1559,9 +1537,6 @@ class GameFlowManager {
 
     // Clear event listeners to prevent stale subscriptions
     this.listeners = [];
-
-    // Reset guest cascade runner
-    this.guestCascadeRunner?.reset();
 
     // Reset PhaseManager state (clears transitionHistory, passInfo, commitments)
     if (this.phaseManager?.reset) {

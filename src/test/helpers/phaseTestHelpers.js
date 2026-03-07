@@ -75,12 +75,12 @@ export const createMockGameStateManager = () => {
 
 /**
  * Creates a PhaseManager instance for testing
- * @param {object} options - { isAuthority, isMultiplayer }
+ * @param {object} options - { isAuthority }
  * @returns {PhaseManager}
  */
-export const createMockPhaseManager = ({ isAuthority = true, isMultiplayer = false } = {}) => {
+export const createMockPhaseManager = ({ isAuthority = true } = {}) => {
   const mockGameStateManager = createMockGameStateManager();
-  return new PhaseManager(mockGameStateManager, { isAuthority, isMultiplayer });
+  return new PhaseManager(mockGameStateManager, { isAuthority });
 };
 
 /**

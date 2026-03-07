@@ -33,10 +33,9 @@ class PhaseManager {
     'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
     'mandatoryDroneRemoval', 'droneSelection', 'deckSelection', 'determineFirstPlayer'
   ];
-  constructor(gameStateManager, { isAuthority = true, isMultiplayer = false } = {}) {
+  constructor(gameStateManager, { isAuthority = true } = {}) {
     this.gameStateManager = gameStateManager;
     this.isAuthority = isAuthority;
-    this.isMultiplayer = isMultiplayer;
 
     // Host's local state (what Host has done)
     this.hostLocalState = {
@@ -73,7 +72,7 @@ class PhaseManager {
     // Lock to prevent concurrent transitions
     this.isTransitioning = false;
 
-    debugLog('PHASE_MANAGER', `✅ PhaseManager initialized (authority: ${isAuthority}, multiplayer: ${isMultiplayer})`);
+    debugLog('PHASE_MANAGER', `✅ PhaseManager initialized (authority: ${isAuthority})`);
   }
 
   /**
