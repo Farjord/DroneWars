@@ -320,7 +320,6 @@ class ActionProcessor {
 
       // Mode-agnostic queries
       isPlayerAI: (playerId) => ap.gameServer?.isPlayerAI(playerId) ?? false,
-      getAnimationSource: () => ap.getAnimationSource(),
 
       // Late-bound references
       getAiPhaseProcessor: () => ap.aiPhaseProcessor,
@@ -724,21 +723,21 @@ setAnimationManager(animationManager) {
     await this.executeAndCaptureAnimations(goAgainAnim);
   }
 
-  async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
+  async executeAndCaptureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) return;
 
-    debugLog('ANIM_TRACE', '[1b/7] executeAndCaptureAnimations (bypass path)', {
+    debugLog('ANIM_TRACE', '[1b/7] executeAndCaptureAnimations', {
       count: animations.length,
       isSystem: isSystemAnimation,
       names: animations.map(a => a.animationName),
     });
 
-    // Stamp triggerSyncId for TRIGGER_SYNC_TRACE correlation (bypass path)
+    // Stamp triggerSyncId for TRIGGER_SYNC_TRACE correlation
     const triggerAnims = animations.filter(a => a.animationName === 'TRIGGER_FIRED');
     if (triggerAnims.length > 0) {
       const triggerSyncId = Date.now();
       triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-      debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast (bypass path)', {
+      debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast', {
         utc: new Date().toISOString(),
         triggerSyncId,
         triggerCount: triggerAnims.length,
@@ -752,18 +751,8 @@ setAnimationManager(animationManager) {
     // Capture for guest broadcasting (BroadcastService has internal host guard)
     this.broadcastService.captureAnimations(animations, { isSystem: isSystemAnimation });
 
-    // Broadcast immediately so guest receives animations before host blocks on playback
-    // (mirrors _executeAnimationPhase pattern where broadcastIfNeeded precedes await)
+    // Broadcast so guest receives animations
     this.broadcastService.broadcastIfNeeded('bypass_animation');
-
-    if (this.animationManager) {
-      const source = this.getAnimationSource();
-      if (waitForCompletion) {
-        await this.animationManager.executeAnimations(animations, source);
-      } else {
-        return this.animationManager.executeAnimations(animations, source);
-      }
-    }
   }
 
   getAndClearPendingActionAnimations() {
@@ -828,8 +817,6 @@ setAnimationManager(animationManager) {
    * @param {Object} newPlayerStates - { player1, player2 } from game logic result
    */
   async _executeAnimationPhase(animations, newPlayerStates) {
-    if (!this.animationManager) return;
-
     const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
       animations,
       newPlayerStates
@@ -837,26 +824,14 @@ setAnimationManager(animationManager) {
 
     this.broadcastService.setPendingStates(pendingStateUpdate, pendingFinalState);
 
-    // Also keep local references for AnimationManager's applyPendingState callback
-    this.pendingStateUpdate = pendingStateUpdate;
-    this.pendingFinalState = pendingFinalState;
-
     debugLog('ANIM_TRACE', '[3/7] _executeAnimationPhase entry', {
       animCount: animations?.length || 0,
       hasTeleport: animations?.some(a => a.animationName === 'TELEPORT_IN') || false,
-      hasAnimationManager: !!this.animationManager,
       animNames: animations?.map(a => a.animationName) || [],
     });
 
     this.broadcastService.broadcastIfNeeded('animation_phase');
-
-    try {
-      await this.animationManager.executeWithStateUpdate(animations, this);
-    } finally {
-      this.broadcastService.clearPendingStates();
-      this.pendingStateUpdate = null;
-      this.pendingFinalState = null;
-    }
+    this.broadcastService.clearPendingStates();
   }
 
   /**
@@ -879,68 +854,9 @@ setAnimationManager(animationManager) {
    * @param {Array} animations - All animations being played
    * @returns {Object} Modified player states with isTeleporting flags
    */
-  /**
-   * Apply intermediate trigger state (called by AnimationManager when encountering STATE_SNAPSHOT)
-   * Allows per-trigger state visibility during animation playback
-   * @param {Object} playerStates - Intermediate player states { player1, player2 }
-   */
-  applyIntermediateState(playerStates) {
-    if (playerStates) {
-      debugLog('ANIMATIONS', '[STATE_SNAPSHOT] Applying intermediate trigger state');
-      this.gameStateManager.setPlayerStates(playerStates.player1, playerStates.player2);
-    }
-  }
-
-  /**
-   * Apply pending state update (called by AnimationManager during orchestration)
-   * Used by AnimationManager.executeWithStateUpdate() to apply state at correct timing
-   */
-  applyPendingStateUpdate() {
-    if (this.pendingStateUpdate) {
-      debugLog('ANIMATIONS', '📝 [STATE UPDATE] ActionProcessor applying pending state update');
-      this.gameStateManager.setPlayerStates(
-        this.pendingStateUpdate.player1,
-        this.pendingStateUpdate.player2
-      );
-    } else {
-      debugLog('ANIMATIONS', '⚠️ [STATE UPDATE] No pending state update to apply');
-    }
-  }
-
-  /**
-   * Get animation source for current game mode
-   * Used by AnimationManager.executeWithStateUpdate() for logging
-   * @returns {string} Animation source identifier
-   */
-  getAnimationSource() {
-    const localId = this.gameServer?.getLocalPlayerId() ?? 'player1';
-    const isMultiplayer = this.gameServer?.isMultiplayer() ?? false;
-    if (!isMultiplayer) return 'LOCAL';
-    return localId === 'player2' ? 'GUEST_OPTIMISTIC' : 'HOST_LOCAL';
-  }
-
-  /**
-   * Reveal teleported drones mid-animation (called by AnimationManager)
-   * Removes isTeleporting flags to make drones visible at 70% of TELEPORT_IN animation
-   * @param {Array} teleportAnimations - TELEPORT_IN animations being played
-   */
-  revealTeleportedDrones(teleportAnimations) {
-    debugLog('ANIMATIONS', '✨ [TELEPORT REVEAL] ActionProcessor revealing teleported drones:', {
-      count: teleportAnimations.length,
-      hasPendingFinalState: !!this.pendingFinalState
-    });
-
-    if (this.pendingFinalState) {
-      // Apply final state without isTeleporting flags
-      this.gameStateManager.setPlayerStates(
-        this.pendingFinalState.player1,
-        this.pendingFinalState.player2
-      );
-      debugLog('ANIMATIONS', '✅ [TELEPORT REVEAL] Drones revealed');
-    } else {
-      debugLog('ANIMATIONS', '⚠️ [TELEPORT REVEAL] No pending final state to apply');
-    }
-  }
+  // stateProvider methods (applyPendingStateUpdate, revealTeleportedDrones,
+  // getAnimationSource, applyIntermediateState) moved to GameClient.
+  // Server no longer plays animations — it only collects and emits them.
 
   /**
    * Broadcast current game state to guest (host only)

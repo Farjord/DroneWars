@@ -58,7 +58,7 @@ class GameEngine {
       });
     }
 
-    this._emitToClients(state, animations);
+    await this._emitToClients(state, animations);
 
     return { state, animations, result };
   }
@@ -66,11 +66,12 @@ class GameEngine {
   /**
    * Push state+animations to all registered clients.
    * Each client receives state redacted for their player perspective.
+   * Awaits each callback so LocalTransport can block until animations finish.
    */
-  _emitToClients(state, animations) {
+  async _emitToClients(state, animations) {
     for (const [playerId, callback] of this._clients) {
       const redactedState = StateRedactor.redactForPlayer(state, playerId);
-      callback({ state: redactedState, animations });
+      await callback({ state: redactedState, animations });
     }
   }
 

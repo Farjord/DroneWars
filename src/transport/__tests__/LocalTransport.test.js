@@ -16,14 +16,38 @@ describe('LocalTransport', () => {
   };
 
   beforeEach(() => {
+    // Mock GameEngine with registerClient/unregisterClient and processAction.
+    // processAction triggers _emitToClients which calls the registered callback.
+    const registeredClients = new Map();
     mockEngine = {
-      processAction: vi.fn().mockResolvedValue({
-        state: mockState,
-        animations: mockAnimations,
-        result: { success: true },
+      registerClient: vi.fn((playerId, cb) => registeredClients.set(playerId, cb)),
+      unregisterClient: vi.fn((playerId) => registeredClients.delete(playerId)),
+      processAction: vi.fn(async () => {
+        // Simulate GameEngine._emitToClients: call all registered callbacks with redacted state
+        for (const [pid, cb] of registeredClients) {
+          // Simplified redaction: give each player their own data, redact opponent
+          const opponentId = pid === 'player1' ? 'player2' : 'player1';
+          const opponentState = mockState[opponentId];
+          const redactedOpponent = {
+            ...opponentState,
+            hand: [], deck: [], discardPile: [],
+            handCount: opponentState.hand.length,
+            deckCount: opponentState.deck.length,
+            discardCount: opponentState.discardPile.length,
+          };
+          const redactedState = { ...mockState, [opponentId]: redactedOpponent };
+          await cb({ state: redactedState, animations: mockAnimations });
+        }
+        return { state: mockState, animations: mockAnimations, result: { success: true } };
       }),
     };
     transport = new LocalTransport(mockEngine, { playerId: 'player1' });
+  });
+
+  describe('constructor', () => {
+    it('registers as a client on GameEngine', () => {
+      expect(mockEngine.registerClient).toHaveBeenCalledWith('player1', expect.any(Function));
+    });
   });
 
   describe('sendAction', () => {
@@ -34,7 +58,7 @@ describe('LocalTransport', () => {
       expect(mockEngine.processAction).toHaveBeenCalledWith('attack', { droneId: 'd1' });
     });
 
-    it('invokes response callback with redacted state', async () => {
+    it('delivers state via push callback (not return value)', async () => {
       const callback = vi.fn();
       transport.onResponse(callback);
 
@@ -50,15 +74,14 @@ describe('LocalTransport', () => {
       expect(response.state.player2.handCount).toBe(1);
     });
 
-    it('strips animations (host plays them via ActionProcessor) and passes result through', async () => {
+    it('delivers full animations (no longer strips them)', async () => {
       const callback = vi.fn();
       transport.onResponse(callback);
 
       await transport.sendAction('move', {});
 
       const response = callback.mock.calls[0][0];
-      expect(response.animations).toEqual({ actionAnimations: [], systemAnimations: [] });
-      expect(response.result).toEqual({ success: true });
+      expect(response.animations).toEqual(mockAnimations);
     });
 
     it('returns the result from gameEngine response', async () => {
@@ -79,6 +102,7 @@ describe('LocalTransport', () => {
     });
 
     it('does not throw when no response callback is registered', async () => {
+      // Response callback is null but the registered client callback handles it gracefully
       await expect(transport.sendAction('attack', {})).resolves.not.toThrow();
     });
   });
@@ -114,12 +138,15 @@ describe('LocalTransport', () => {
   });
 
   describe('dispose', () => {
-    it('clears the response callback', async () => {
+    it('unregisters from GameEngine and clears the response callback', async () => {
       const callback = vi.fn();
       transport.onResponse(callback);
 
       transport.dispose();
 
+      expect(mockEngine.unregisterClient).toHaveBeenCalledWith('player1');
+
+      // After dispose, the push callback no longer fires _responseCallback
       await transport.sendAction('pass', {});
       expect(callback).not.toHaveBeenCalled();
     });

@@ -175,8 +175,9 @@ describe('ActionProcessor — processAttack go-again', () => {
     });
 
     expect(result.shouldEndTurn).toBe(false);
-    // GO_AGAIN_NOTIFICATION should have been executed
-    expect(ap.animationManager.executeAnimations).toHaveBeenCalled();
+    // GO_AGAIN_NOTIFICATION should have been collected for client delivery
+    const collected = ap._actionAnimationLog.actionAnimations;
+    expect(collected.some(a => a.animationName === 'GO_AGAIN_NOTIFICATION')).toBe(true);
   });
 });
 

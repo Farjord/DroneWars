@@ -49,11 +49,6 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
       ctx.captureAnimationsForBroadcast(animation);
       ctx.broadcastService.broadcastIfNeeded(`${statusType}Consumption`);
 
-      const animationManager = ctx.getAnimationManager();
-      if (animationManager) {
-        await animationManager.executeAnimations(animation, ctx.getAnimationSource());
-      }
-
       return {
         success: true,
         animations: {

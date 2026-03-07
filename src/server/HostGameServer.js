@@ -65,6 +65,15 @@ class HostGameServer {
     }
   }
 
+  // Delegate client registration to GameEngine (LocalTransport calls these)
+  registerClient(playerId, callback) {
+    this.gameEngine.registerClient(playerId, callback);
+  }
+
+  unregisterClient(playerId) {
+    this.gameEngine.unregisterClient(playerId);
+  }
+
   getState() {
     return this.gameEngine.getState();
   }
