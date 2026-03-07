@@ -53,6 +53,7 @@ describe('GameClient', () => {
       getState: vi.fn().mockReturnValue(makeState()),
       subscribe: vi.fn().mockReturnValue(vi.fn()),
       applyUpdate: vi.fn(),
+      gameStateManager: { syncFromServer: vi.fn() },
     };
     mockPAQ = {
       queueAnimation: vi.fn(),
@@ -67,7 +68,6 @@ describe('GameClient', () => {
     client = new GameClient(transport, {
       clientStateStore: mockStore,
       playerId: 'player1',
-      isMultiplayer: false,
       phaseAnimationQueue: mockPAQ,
       animationManager: mockAnimMgr,
     });
@@ -113,15 +113,19 @@ describe('GameClient', () => {
   });
 
   describe('isMultiplayer', () => {
-    it('returns false by default', () => {
+    it('returns false when gameMode is local', () => {
+      mockStore.getState.mockReturnValue(makeState({ gameMode: 'local' }));
       expect(client.isMultiplayer()).toBe(false);
     });
 
-    it('returns true when configured', () => {
-      const mpClient = new GameClient(transport, {
-        clientStateStore: mockStore, playerId: 'player1', isMultiplayer: true,
-      });
-      expect(mpClient.isMultiplayer()).toBe(true);
+    it('returns true when gameMode is host', () => {
+      mockStore.getState.mockReturnValue(makeState({ gameMode: 'host' }));
+      expect(client.isMultiplayer()).toBe(true);
+    });
+
+    it('returns true when gameMode is guest', () => {
+      mockStore.getState.mockReturnValue(makeState({ gameMode: 'guest' }));
+      expect(client.isMultiplayer()).toBe(true);
     });
   });
 
@@ -135,11 +139,9 @@ describe('GameClient', () => {
     });
 
     it('returns false for all players in multiplayer', () => {
-      const mpClient = new GameClient(transport, {
-        clientStateStore: mockStore, playerId: 'player1', isMultiplayer: true,
-      });
-      expect(mpClient.isPlayerAI('player1')).toBe(false);
-      expect(mpClient.isPlayerAI('player2')).toBe(false);
+      mockStore.getState.mockReturnValue(makeState({ gameMode: 'host' }));
+      expect(client.isPlayerAI('player1')).toBe(false);
+      expect(client.isPlayerAI('player2')).toBe(false);
     });
   });
 
@@ -289,15 +291,8 @@ describe('GameClient', () => {
       expect(mockStore.applyUpdate).not.toHaveBeenCalled();
     });
 
-    it('getAnimationSource returns LOCAL_ENGINE for single-player', () => {
-      expect(client.getAnimationSource()).toBe('LOCAL_ENGINE');
-    });
-
-    it('getAnimationSource returns HOST_RESPONSE for multiplayer', () => {
-      const mpClient = new GameClient(transport, {
-        clientStateStore: mockStore, playerId: 'player2', isMultiplayer: true,
-      });
-      expect(mpClient.getAnimationSource()).toBe('HOST_RESPONSE');
+    it('getAnimationSource always returns SERVER', () => {
+      expect(client.getAnimationSource()).toBe('SERVER');
     });
 
     it('revealTeleportedDrones merges only lane data from pendingFinalHostState onto current state', () => {

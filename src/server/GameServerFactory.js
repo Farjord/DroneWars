@@ -20,16 +20,14 @@ const GameServerFactory = {
       p2pManager.hostGameServer = hostServer;
       const transport = new LocalTransport(hostServer, { playerId: 'player1' });
       return new GameClient(transport, {
-        clientStateStore, playerId: 'player1',
-        isMultiplayer: true, phaseAnimationQueue,
+        clientStateStore, playerId: 'player1', phaseAnimationQueue,
       });
     }
 
     if (gameMode === 'guest') {
       const transport = new P2PTransport(p2pManager);
       return new GameClient(transport, {
-        clientStateStore, playerId: 'player2',
-        isMultiplayer: true, phaseAnimationQueue,
+        clientStateStore, playerId: 'player2', phaseAnimationQueue,
       });
     }
 

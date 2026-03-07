@@ -164,24 +164,18 @@ class GameStateManager {
     return GameStateManager.MILESTONE_PHASES.includes(phase);
   }
 
-  applyHostState(hostState) {
-    if (this.getLocalPlayerId() !== 'player2') {
-      debugLog('STATE_SYNC', 'applyHostState should only be called in guest mode');
-      return;
-    }
+  syncFromServer(serverState) {
+    debugLog('MP_SYNC_TRACE', '[6/11] Guest syncing server state', { fieldCount: Object.keys(serverState).length, phase: serverState.turnPhase });
 
-    debugLog('MP_SYNC_TRACE', '[6/11] Guest applying host state', { fieldCount: Object.keys(hostState).length, phase: hostState.turnPhase });
-
-    // IMPORTANT: Host broadcasts include gameMode:'host' which would overwrite guest's 'guest' value.
-    // This breaks App.jsx's useMemo that recreates GameServer based on gameState.gameMode.
-    // Same for localPlayerId — host sends 'player1' which would break guest routing.
+    // Preserve local gameMode and localPlayerId — server broadcasts may carry the host's
+    // values which would break client-side routing (App.jsx gameMode useMemo, etc.).
     const localGameMode = this.state.gameMode;
     const localPlayerId = this.state.localPlayerId;
-    this.state = { ...hostState };
+    this.state = { ...serverState };
     this.state.gameMode = localGameMode;
     this.state.localPlayerId = localPlayerId;
 
-    this.emit('HOST_STATE_UPDATE', { hostState });
+    this.emit('HOST_STATE_UPDATE', { hostState: serverState });
   }
 
   // No-ops: optimistic animation tracking removed (Phase 4 — server-authoritative model)

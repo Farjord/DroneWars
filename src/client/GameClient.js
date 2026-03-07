@@ -8,12 +8,11 @@ import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class GameClient extends GameServer {
-  constructor(transport, { clientStateStore, playerId, isMultiplayer = false, phaseAnimationQueue = null, animationManager = null }) {
+  constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
     super();
     this.transport = transport;
     this.clientStateStore = clientStateStore;
     this.playerId = playerId;
-    this._isMultiplayer = isMultiplayer;
     this.phaseAnimationQueue = phaseAnimationQueue;
     this.animationManager = animationManager;
 
@@ -53,11 +52,12 @@ class GameClient extends GameServer {
   }
 
   isMultiplayer() {
-    return this._isMultiplayer;
+    const gameMode = this.getState()?.gameMode;
+    return gameMode === 'host' || gameMode === 'guest';
   }
 
   isPlayerAI(playerId) {
-    return !this._isMultiplayer && playerId !== this.playerId;
+    return !this.isMultiplayer() && playerId !== this.playerId;
   }
 
   onStateUpdate(callback) {
@@ -147,7 +147,7 @@ class GameClient extends GameServer {
   }
 
   getAnimationSource() {
-    return this._isMultiplayer ? 'HOST_RESPONSE' : 'LOCAL_ENGINE';
+    return 'SERVER';
   }
 
   revealTeleportedDrones() {
@@ -168,9 +168,9 @@ class GameClient extends GameServer {
       turnPhase: state.turnPhase, currentPlayer: state.currentPlayer,
       gameMode: state.gameMode,
     });
-    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current host-broadcast data
-    if (this._isMultiplayer && state.gameMode === 'guest') {
-      this.clientStateStore.gameStateManager.applyHostState(state);
+    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server-broadcast data
+    if (state.gameMode === 'guest') {
+      this.clientStateStore.gameStateManager.syncFromServer(state);
     }
     this.clientStateStore.applyUpdate(state);
   }

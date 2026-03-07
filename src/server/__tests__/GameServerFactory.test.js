@@ -10,11 +10,14 @@ describe('GameServerFactory', () => {
   const mockGSM = { processAction: () => {}, getState: () => {}, getLocalPlayerId: () => 'player1', subscribe: () => () => {} };
   const mockAP = { queueAction: () => {}, broadcastService: { broadcastIfNeeded: () => {} } };
   const mockGFM = {};
-  const mockClientStateStore = {
-    getState: () => ({ turnPhase: 'action' }),
-    subscribe: () => () => {},
-    applyUpdate: () => {},
-  };
+  function makeMockClientStateStore(gameMode = 'local') {
+    return {
+      getState: () => ({ turnPhase: 'action', gameMode }),
+      subscribe: () => () => {},
+      applyUpdate: () => {},
+    };
+  }
+  const mockClientStateStore = makeMockClientStateStore('local');
   const mockP2P = {
     sendActionToHost: () => {},
     requestFullSync: () => {},
@@ -58,19 +61,21 @@ describe('GameServerFactory', () => {
   });
 
   describe('host mode', () => {
-    it('creates a GameClient with isMultiplayer=true', () => {
+    it('creates a multiplayer GameClient', () => {
+      const hostStore = makeMockClientStateStore('host');
       const server = GameServerFactory.create('host', {
         gameStateManager: mockGSM, actionProcessor: mockAP, gameFlowManager: mockGFM,
-        clientStateStore: mockClientStateStore, p2pManager: mockP2P, phaseAnimationQueue: mockPAQ,
+        clientStateStore: hostStore, p2pManager: mockP2P, phaseAnimationQueue: mockPAQ,
       });
       expect(server).toBeInstanceOf(GameClient);
       expect(server.isMultiplayer()).toBe(true);
     });
 
     it('no players are AI in host mode', () => {
+      const hostStore = makeMockClientStateStore('host');
       const server = GameServerFactory.create('host', {
         gameStateManager: mockGSM, actionProcessor: mockAP, gameFlowManager: mockGFM,
-        clientStateStore: mockClientStateStore, p2pManager: mockP2P, phaseAnimationQueue: mockPAQ,
+        clientStateStore: hostStore, p2pManager: mockP2P, phaseAnimationQueue: mockPAQ,
       });
       expect(server.isPlayerAI('player1')).toBe(false);
       expect(server.isPlayerAI('player2')).toBe(false);
@@ -79,25 +84,28 @@ describe('GameServerFactory', () => {
 
   describe('guest mode', () => {
     it('creates a GameClient with P2PTransport', () => {
+      const guestStore = makeMockClientStateStore('guest');
       const server = GameServerFactory.create('guest', {
         gameStateManager: mockGSM, p2pManager: mockP2P,
-        clientStateStore: mockClientStateStore, phaseAnimationQueue: mockPAQ,
+        clientStateStore: guestStore, phaseAnimationQueue: mockPAQ,
       });
       expect(server).toBeInstanceOf(GameClient);
     });
 
     it('playerId is player2', () => {
+      const guestStore = makeMockClientStateStore('guest');
       const server = GameServerFactory.create('guest', {
         gameStateManager: mockGSM, p2pManager: mockP2P,
-        clientStateStore: mockClientStateStore, phaseAnimationQueue: mockPAQ,
+        clientStateStore: guestStore, phaseAnimationQueue: mockPAQ,
       });
       expect(server.getLocalPlayerId()).toBe('player2');
     });
 
     it('is multiplayer', () => {
+      const guestStore = makeMockClientStateStore('guest');
       const server = GameServerFactory.create('guest', {
         gameStateManager: mockGSM, p2pManager: mockP2P,
-        clientStateStore: mockClientStateStore, phaseAnimationQueue: mockPAQ,
+        clientStateStore: guestStore, phaseAnimationQueue: mockPAQ,
       });
       expect(server.isMultiplayer()).toBe(true);
     });

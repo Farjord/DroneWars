@@ -75,7 +75,7 @@ function createMockGameStateManager(initialState = {}) {
       Object.assign(state, updates);
       subscribers.forEach(cb => cb(state, eventType));
     }),
-    applyHostState: vi.fn((newState) => {
+    syncFromServer: vi.fn((newState) => {
       Object.assign(state, newState);
       subscribers.forEach(cb => cb(state, 'HOST_STATE_APPLIED'));
     }),
