@@ -61,6 +61,7 @@ class GameFlowManager {
     this.isProcessingAutomaticPhase = false; // Flag to track automatic phase processing
     this.isInCheckpointCascade = false; // Flag to prevent recursive auto-processing during optimistic cascade
     this._quickDeployExecutedThisRound = false; // Flag to track quick deploy execution (prevents race condition)
+    this._isRoundTransition = false; // ROUND_TRANSITION_TRACE gating flag
 
     // Event listeners
     this.listeners = [];
@@ -322,22 +323,25 @@ class GameFlowManager {
 
         // PHASE MANAGER INTEGRATION: Non-authority waits for Host's PhaseManager broadcast
         // Shows immediate UI feedback (animations) but doesn't transition phases
-        debugLog('PHASE_TRANSITIONS', `✅ [OPTIMISTIC] Pass processed, waiting for Host's PhaseManager broadcast`);
         return;
       }
 
       // Host and Local modes: Handle both phase transitions and playback
       // Guest mode was already filtered out above (line 235)
       if (bothPassed) {
-        debugLog('PHASE_TRANSITIONS', `✅ [${modeLabel}] Both players passed, triggering phase transition synchronously`);
+        if (updatedState.turnPhase === 'action') {
+          this._isRoundTransition = true;
+          debugLog('ROUND_TRANSITION_TRACE', '[RT-01] Both passed in action phase — round transition starting', {
+            utc: new Date().toISOString(), role: 'HOST',
+            round: updatedState.roundNumber, phase: updatedState.turnPhase,
+          });
+        }
 
         // Trigger phase transition synchronously BEFORE broadcasting
         await this.onSequentialPhaseComplete(updatedState.turnPhase, {
           reason: 'both_passed',
           passInfo: updatedState.passInfo
         });
-
-        debugLog('PHASE_TRANSITIONS', `✅ Phase transition completed, broadcasting updated state`);
 
         // Broadcast state AFTER phase transition completes
         this.actionProcessor.broadcastService.broadcastIfNeeded('phase_transition_both_passed');
@@ -356,6 +360,9 @@ class GameFlowManager {
     // This guard is AFTER pass playback handling so non-authority can trigger their own animations
     // Only apply in actual P2P networked mode (when p2pManager exists)
     if (!this.isPhaseAuthority && this.actionProcessor?.p2pManager) {
+      debugLog('PHASE_TRACE', 'handleActionCompletion authority guard (P2P guest blocks turn transition)', {
+        actionType, isPhaseAuthority: this.isPhaseAuthority,
+      });
       debugLog('PASS_LOGIC', `🚫 [OPTIMISTIC] Early return - non-authority blocks turn transitions (P2P)`, {
         actionType
       });
@@ -384,6 +391,9 @@ class GameFlowManager {
       const updatedState = this.gameStateManager.getState();
       const nextPlayer = updatedState.currentPlayer === 'player1' ? 'player2' : 'player1';
 
+      debugLog('PHASE_TRACE', 'Turn transition', {
+        actionType, fromPlayer: updatedState.currentPlayer, toPlayer: nextPlayer,
+      });
       debugLog('PHASE_TRACE', '[2/8] Turn decision: turnTransition', { nextPlayer });
       debugLog('CONSUMPTION_DEBUG', '🟢 [7] GameFlowManager: Calling processTurnTransition', { nextPlayer });
       debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Processing turn transition to ${nextPlayer}`);
@@ -402,14 +412,10 @@ class GameFlowManager {
 
       debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Turn transition completed`);
 
-      // Broadcast state to guest AFTER turn transition completes
-      this.actionProcessor.broadcastService.broadcastIfNeeded('turn_transition');
+      // No broadcast needed here — HostGameServer broadcasts final state after processAction returns.
     } else if (result && result.shouldEndTurn === false) {
       debugLog('PHASE_TRACE', '[2/8] Turn decision: goAgain', { currentPlayer: currentState.currentPlayer });
       debugLog('PHASE_TRANSITIONS', `⏭️ GameFlowManager: Action has goAgain, keeping same player`);
-
-      // Broadcast even for goAgain actions (action completed, just same player's turn)
-      this.actionProcessor.broadcastService.broadcastIfNeeded('go_again_action');
     }
   }
 
@@ -730,7 +736,12 @@ class GameFlowManager {
     debugLog('PHASE_TRACE', '[3/8] onSequentialPhaseComplete', {
       phase, reason: data?.reason, nextPhase: this.getNextPhase(phase),
     });
-    debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
+    if (phase === 'action' && this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-02] Action phase ending — entering round-end sequence', {
+        utc: new Date().toISOString(), role: 'HOST',
+        reason: data?.reason, nextPhase: this.getNextPhase(phase),
+      });
+    }
 
     // PHASE MANAGER INTEGRATION: Non-authority cannot trigger phase completion
     // Non-authority waits for PhaseManager broadcasts from Host
@@ -765,6 +776,11 @@ class GameFlowManager {
           resetPassInfo: false,
           guestAnnouncementOnly: true  // Always pseudo-phase (announcement-only)
         });
+        if (this._isRoundTransition) {
+          debugLog('ROUND_TRANSITION_TRACE', '[RT-03] actionComplete pseudo-phase announcement queued', {
+            utc: new Date().toISOString(), role: 'HOST',
+          });
+        }
 
         await this.startNewRound();
       }
@@ -816,8 +832,6 @@ class GameFlowManager {
    * @param {string} previousPhase - The phase we're transitioning from
    */
   async processAutomaticPhase(phase, previousPhase) {
-    debugLog('PHASE_TRANSITIONS', `🤖 GameFlowManager: Processing automatic phase '${phase}' from '${previousPhase}'`);
-
     // NON-AUTHORITY: Sync internal state from GameStateManager before processing
     // Non-authority's GameFlowManager initializes with defaults but needs to match Host's gameStage/roundNumber
     if (!this.isPhaseAuthority) {
@@ -838,7 +852,6 @@ class GameFlowManager {
       // Handle phase transition while still in automatic processing mode
       // Note: Each phase handler broadcasts at optimal timing (after state update, before blocking animations)
       if (nextPhase) {
-        debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Transitioning from automatic phase '${phase}' to '${nextPhase}'`);
         await this.transitionToPhase(nextPhase);
       } else {
         debugLog('PHASE_TRANSITIONS', `No next phase found after automatic phase: ${phase}`);
@@ -900,19 +913,14 @@ class GameFlowManager {
       mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'
     });
 
-    debugLog('PHASE_TRANSITIONS', `🔧 [PHASE LOGIC START] ${phase}`);
-
     let nextPhase = null;
 
     // Route to appropriate phase handler
     if (phase === 'roundInitialization') {
-      debugLog('PHASE_TRANSITIONS', `   ↳ Calling processRoundInitialization()`);
       nextPhase = await this.processRoundInitialization(previousPhase);
     } else {
       debugLog('PHASE_TRANSITIONS', `No handler for automatic phase: ${phase}`);
     }
-
-    debugLog('PHASE_TRANSITIONS', `🔧 [PHASE LOGIC END] ${phase} → returns next: ${nextPhase || 'null'}`);
 
     timingLog('[AUTO PHASE] Processing complete', {
       phase,
@@ -994,7 +1002,12 @@ class GameFlowManager {
     debugLog('PHASE_TRACE', '[6/8] processRoundInitialization entry', {
       previousPhase, startingRoundInit: true,
     });
-    debugLog('PHASE_TRANSITIONS', '🎯 GameFlowManager: Processing roundInitialization phase (atomic round setup)');
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-09] Round initialization processor starting', {
+        utc: new Date().toISOString(), role: 'HOST',
+        previousPhase,
+      });
+    }
 
     try {
       // Delegate Steps 1-5 to RoundInitializationProcessor
@@ -1028,15 +1041,22 @@ class GameFlowManager {
       // Broadcast state to guest ONCE after all updates complete
       this.actionProcessor.broadcastService.broadcastIfNeeded('round_initialization');
 
+      if (this._isRoundTransition) {
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-10] Round init complete — state broadcast to guest', {
+          utc: new Date().toISOString(), role: 'HOST',
+          roundNumber: currentRoundNumber,
+        });
+      }
+
       // Return next phase
       const nextPhase = this.getNextPhase('roundInitialization');
       debugLog('PHASE_TRACE', '[7/8] roundInitialization complete', {
         roundNumber: currentRoundNumber, nextPhase,
       });
-      debugLog('PHASE_TRANSITIONS', `✅ roundInitialization complete, next phase: ${nextPhase}`);
       return nextPhase;
 
     } catch (error) {
+      this._isRoundTransition = false;
       debugLog('PHASE_TRANSITIONS', 'Error during roundInitialization phase:', error);
       throw error;
     }
@@ -1343,6 +1363,13 @@ class GameFlowManager {
       from: previousPhase, to: newPhase,
       mode: this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC',
     });
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-08] Phase transition during round cascade', {
+        utc: new Date().toISOString(), role: 'HOST',
+        from: previousPhase, to: newPhase,
+        isAutomatic: this.isAutomaticPhase(newPhase),
+      });
+    }
 
     this.currentPhase = newPhase;
 
@@ -1433,6 +1460,13 @@ class GameFlowManager {
     if (!inCascade && this.isSequentialPhase(newPhase)) {
       if (this._tryStartPlayback('GFM:seq_transition:2060')) {
         debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
+        if (this._isRoundTransition) {
+          debugLog('ROUND_TRANSITION_TRACE', '[RT-13] Animation playback triggered — HOST flow complete', {
+            utc: new Date().toISOString(), role: 'HOST',
+            phase: newPhase,
+          });
+          this._isRoundTransition = false;
+        }
       }
     }
 
@@ -1445,6 +1479,12 @@ class GameFlowManager {
     debugLog('PHASE_TRACE', '[8/8] Phase landed', {
       phase: newPhase, from: previousPhase,
     });
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-12] Final non-automatic phase landed', {
+        utc: new Date().toISOString(), role: 'HOST',
+        phase: newPhase, from: previousPhase,
+      });
+    }
   }
 
   /**
@@ -1538,11 +1578,12 @@ class GameFlowManager {
     const nextRound = currentRound + 1;
     this.roundNumber = nextRound; // Sync local copy with source of truth
 
-    debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${nextRound}`, {
-      currentRound,
-      nextRound,
-      firstPasserFromPreviousRound
-    });
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-04] startNewRound entered', {
+        utc: new Date().toISOString(), role: 'HOST',
+        currentRound, nextRound, firstPasserFromPreviousRound,
+      });
+    }
 
     // Update gameState with new round number and first passer from previous round
     try {
@@ -1555,10 +1596,14 @@ class GameFlowManager {
     } finally {
       this.gameStateManager._updateContext = null;
     }
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-05] Round number incremented and committed', {
+        utc: new Date().toISOString(), role: 'HOST',
+        newRound: nextRound, turn: 1,
+      });
+    }
 
     // Queue ROUND announcement before transitioning to first phase of new round
-    // This ensures ROUND shows immediately, not after other announcements
-    debugLog('PHASE_TRANSITIONS', `🎯 Queueing ROUND ${nextRound} announcement before starting round phases`);
 
     await this.actionProcessor.processPhaseTransition({
       newPhase: 'roundAnnouncement',
@@ -1566,10 +1611,21 @@ class GameFlowManager {
       guestAnnouncementOnly: !this.isPhaseAuthority
     });
 
-    debugLog('PHASE_TRANSITIONS', `✅ ROUND ${nextRound} announcement queued`);
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-06] roundAnnouncement pseudo-phase queued', {
+        utc: new Date().toISOString(), role: 'HOST',
+        round: nextRound,
+      });
+    }
 
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
+    if (this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-07] First required phase of new round determined', {
+        utc: new Date().toISOString(), role: 'HOST',
+        firstRequiredPhase: firstRequiredPhase || 'deployment (fallback)',
+      });
+    }
 
     // Note: PassInfo will be reset by ActionProcessor.processPhaseTransition()
     // when transitioning to the first phase (resetPassInfo defaults to true)

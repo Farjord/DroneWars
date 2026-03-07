@@ -83,19 +83,21 @@ const DEBUG_CONFIG = {
 
     // Client-Server Architecture Traces
     INIT_TRACE: true,             // End-to-end game initialization trace (8 numbered steps)
-    DEPLOY_TRACE: true,           // End-to-end drone deployment trace (12 numbered steps)
+    DEPLOY_TRACE: true,           // End-to-end drone deployment trace (10 numbered steps)
     ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
     MP_JOIN_TRACE: true,         // Connection lifecycle trace (7 numbered steps)
     MP_SYNC_TRACE: true,         // State broadcast cycle trace (11 numbered steps)
     MP_GAME_TRACE: true,         // Game start trace (5 numbered steps)
+    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, host→guest)
     MESSAGE_QUEUE: true,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
     ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
     PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
-    COMMIT_TRACE: true,           // Simultaneous phase commitment trace (6 numbered steps)
+    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, HOST+GUEST)
+    COMMIT_TRACE: true,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
     STATE_CHECKPOINT: true,       // Master game state snapshots at key moments
 
     // Effect System - Modular Processor Logging

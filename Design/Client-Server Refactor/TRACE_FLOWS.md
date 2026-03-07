@@ -408,6 +408,129 @@ Structured logging in MessageQueue.js (6 calls). Tracks duplicate detection, out
 
 ---
 
+## TRIGGER_SYNC_TRACE (8 steps) — Trigger Animation Sync
+
+Traces the trigger animation pipeline from host capture through network transit to guest playback.
+Used to diagnose guest-side trigger animation delays in multiplayer.
+
+**Gated:** Only fires when `TRIGGER_FIRED` animations are present in the payload.
+**Correlation:** All steps share a `triggerSyncId` (stamped in step [1/8]) for cross-device log matching.
+All steps include `utc: new Date().toISOString()` for absolute timestamp comparison.
+
+| Step | Role | Location | What it measures |
+|-|-|-|-|
+| [1/8] | HOST | ActionProcessor.captureAnimationsForBroadcast / executeAndCaptureAnimations | Trigger captured into broadcast buffer (fires in both main and bypass paths) |
+| [2/8] | HOST | BroadcastService.broadcastIfNeeded | Trigger included in broadcast payload |
+| [3/8] | HOST | P2PManager.broadcastState | Network send (UTC + sequenceId) |
+| [4/8] | GUEST | P2PManager.receiveStateUpdate | Network receive + latency measurement |
+| [5/8] | GUEST | MessageQueue.processQueue | Message dequeued (queue wait time) |
+| [6/8] | GUEST | P2PTransport._processMessage | Dispatching to GameClient |
+| [7/8] | GUEST | GameClient._onResponse | Animations collected, about to execute |
+| [8/8] | BOTH | AnimationManager.executeWithStateUpdate / executeAnimations | Animation execution begins (fires in both main and bypass paths; role via getAnimationSource() or source param) |
+
+### Delay Diagnosis via Intervals
+
+| Interval | Reveals |
+|-|-|
+| [1]->[2] | BroadcastService overhead (~0ms expected) |
+| [2]->[3] | State redaction + P2P prep (~0ms expected) |
+| [3]->[4] | Network latency (WebRTC transit) |
+| [4]->[5] | MessageQueue wait (blocked by prior message?) |
+| [5]->[6] | Queue->transport overhead (~0ms expected) |
+| [6]->[7] | Transport->client overhead (~0ms expected) |
+| HOST[8] vs GUEST[8] | Total end-to-end sync gap |
+
+### Resolved: Callback Now Properly Awaited
+
+`P2PTransport._processMessage` now calls `await this._responseCallback(...)`, ensuring `GameClient._onResponse` (which awaits `AnimationManager.executeWithStateUpdate`) completes before the MessageQueue dequeues the next message. This prevents state regression when a second broadcast arrives during animation playback.
+
+### Expected Console Output
+
+**Host console:** Steps [1/8], [2/8], [3/8], [8/8] (role=HOST)
+**Guest console:** Steps [4/8], [5/8], [6/8], [7/8], [8/8] (role=GUEST)
+
+### Role Detection (Step 8)
+
+Uses `executor.getAnimationSource()`:
+- `HOST_LOCAL` → role=HOST (ActionProcessor on host)
+- `HOST_RESPONSE` → role=GUEST (GameClient on guest)
+- `LOCAL_ENGINE` / other → logged as-is (single-player, should not fire)
+
+**Enable:** `TRIGGER_SYNC_TRACE: true`
+
+---
+
+## ROUND_TRANSITION_TRACE (20 steps) — Round Boundary Flow
+
+Traces the complete round transition from both HOST and GUEST perspectives: action phase end → round initialization → phase cascade → announcement playback.
+Every step includes `utc: new Date().toISOString()` and `role: 'HOST'|'GUEST'|'BOTH'` for cross-window latency diagnosis.
+
+**Gating:** HOST steps gated by `_isRoundTransition` flag (set at RT-01 when bothPassed in action phase, cleared at RT-13). GUEST steps gated by `previousPhase === 'action'` or queue containing `roundAnnouncement`. PhaseAnimationQueue steps gated by `_inRoundTransitionPlayback` flag.
+
+### HOST Flow (RT-01 through RT-13)
+
+| Step | Location | What it proves |
+|-|-|-|
+| [RT-01] | GFM.handleActionCompletion | Both players passed detected, round transition starting |
+| [RT-02] | GFM.onSequentialPhaseComplete | Action phase ending, entering round-end sequence |
+| [RT-03] | GFM.onSequentialPhaseComplete | actionComplete pseudo-phase announcement queued |
+| [RT-04] | GFM.startNewRound entry | Round transition function entered, captures previous round data |
+| [RT-05] | GFM.startNewRound | Round number incremented and committed (newRound, turn=1) |
+| [RT-06] | GFM.startNewRound | roundAnnouncement pseudo-phase queued |
+| [RT-07] | GFM.startNewRound | First required phase of new round determined |
+| [RT-08] | GFM.transitionToPhase | Each phase transition during cascade (from→to, isAutomatic) |
+| [RT-08b] | PhaseTransitionStrategy.processPhaseTransition | Announcement queued for each cascade phase |
+| [RT-09] | GFM.processRoundInitialization entry | Round initialization processor starting |
+| [RT-10] | GFM.processRoundInitialization | Round init complete, state broadcast to guest |
+| [RT-11] | BroadcastService.broadcastIfNeeded | Network broadcast of round-transition state (trigger, animCount) |
+| [RT-12] | GFM.transitionToPhase (phase landed) | Final non-automatic phase landed (e.g., deployment) |
+| [RT-13] | GFM.transitionToPhase (_tryStartPlayback) | Animation playback triggered, HOST flow complete |
+
+### GUEST Flow (RT-14 through RT-20)
+
+| Step | Location | What it proves |
+|-|-|-|
+| [RT-14] | GameClient._onResponse | Guest received broadcast with phase change from action |
+| [RT-15] | GameClient._queuePhaseAnnouncements (Pattern 1) | Guest queued round-transition announcements |
+| [RT-16] | GameClient._onQueueDrained | Guest scheduling playback after message queue drain |
+| [RT-17] | PhaseAnimationQueue.startPlayback | Playback started for round-transition announcements |
+| [RT-18] | PhaseAnimationQueue.playNext | Individual announcement playing (phaseName, phaseText) |
+| [RT-19] | PhaseAnimationQueue.playNext (after duration) | Individual announcement displayed (1800ms complete) |
+| [RT-20] | PhaseAnimationQueue.playNext (queue empty) | All announcements played — round transition UI complete |
+
+**Enable:** `ROUND_TRANSITION_TRACE: true`
+
+### Expected Console Output
+
+**HOST window:**
+```
+[RT-01] → [RT-02] → [RT-03] → [RT-04] → [RT-05] → [RT-06] → [RT-07]
+→ [RT-08] (×N per phase) → [RT-08b] (×N) → [RT-09] → [RT-10] → [RT-11]
+→ [RT-08] (more phases) → [RT-12] → [RT-13]
+→ [RT-17] → [RT-18]/[RT-19] (per announcement) → [RT-20]
+```
+
+**GUEST window:**
+```
+[RT-14] → [RT-15] → [RT-16]
+→ [RT-17] → [RT-18]/[RT-19] (per announcement) → [RT-20]
+```
+
+### Delay Diagnosis via UTC Intervals
+
+| Interval | Reveals |
+|-|-|
+| HOST [RT-01]→[RT-05] | Round increment overhead |
+| HOST [RT-05]→[RT-10] | Round initialization duration |
+| HOST [RT-10]→[RT-11] | Broadcast prep time |
+| HOST [RT-11]→GUEST [RT-14] | Network latency (WebRTC) |
+| GUEST [RT-14]→[RT-16] | Announcement queueing + drain time |
+| GUEST [RT-16]→[RT-17] | 50ms scheduling delay |
+| [RT-17]→[RT-20] | Total announcement playback (N × 1800ms) |
+| HOST [RT-20] vs GUEST [RT-20] | Host/guest playback sync gap |
+
+---
+
 ## Known Behaviors
 
 ### Listener Count Growth

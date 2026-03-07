@@ -17,6 +17,7 @@ class PhaseAnimationQueue {
     this.currentAnimation = null;
     this.listeners = new Map();
     this.gameStateManager = gameStateManager; // For dynamic subtitle calculation
+    this._inRoundTransitionPlayback = false; // ROUND_TRANSITION_TRACE gating
   }
 
   /**
@@ -96,6 +97,14 @@ class PhaseAnimationQueue {
     });
 
     this.isPlayingAnimations = true;
+    this._inRoundTransitionPlayback = this.queue.some(a => a.phaseName === 'roundAnnouncement' || a.phaseName === 'actionComplete');
+    if (this._inRoundTransitionPlayback) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-17] Playback started for round-transition announcements', {
+        utc: new Date().toISOString(), role: 'BOTH',
+        queueLength: this.queue.length,
+        animations: this.queue.map(a => a.phaseName).join(' → '),
+      });
+    }
     this.emit('playbackStateChanged', true);
 
     // Start playing first animation (non-blocking)
@@ -109,6 +118,12 @@ class PhaseAnimationQueue {
   async playNext() {
     if (this.queue.length === 0) {
       // Queue empty, playback complete
+      if (this._inRoundTransitionPlayback) {
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-20] All announcements played — round transition UI complete', {
+          utc: new Date().toISOString(), role: 'BOTH',
+        });
+        this._inRoundTransitionPlayback = false;
+      }
       timingLog('[ANIMATION QUEUE] Playback complete');
       this.isPlayingAnimations = false;
       this.currentAnimation = null;
@@ -166,6 +181,13 @@ class PhaseAnimationQueue {
       subtitle: this.currentAnimation.subtitle || 'none',
       remaining: this.queue.length
     });
+    if (this._inRoundTransitionPlayback) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-18] Individual announcement playing', {
+        utc: new Date().toISOString(), role: 'BOTH',
+        phaseName: this.currentAnimation.phaseName,
+        phaseText: this.currentAnimation.phaseText,
+      });
+    }
 
     const startTime = timingLog('[ANIMATION QUEUE] Playing animation', {
       phaseName: this.currentAnimation.phaseName,
@@ -193,6 +215,13 @@ class PhaseAnimationQueue {
       phaseName: this.currentAnimation.phaseName,
       phaseText: this.currentAnimation.phaseText
     }, startTime);
+    if (this._inRoundTransitionPlayback) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-19] Individual announcement displayed (1800ms complete)', {
+        utc: new Date().toISOString(), role: 'BOTH',
+        phaseName: this.currentAnimation.phaseName,
+        phaseText: this.currentAnimation.phaseText,
+      });
+    }
 
     // Emit completion event
     this.emit('animationEnded', this.currentAnimation);

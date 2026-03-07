@@ -54,7 +54,31 @@ class BroadcastService {
     const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
     debugLog('MP_SYNC_TRACE', '[2/11] Broadcast decision', { stateSource, trigger, animCount: actionAnimations.length + systemAnimations.length });
 
+    const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+    if (triggerAnims.length > 0) {
+      debugLog('TRIGGER_SYNC_TRACE', '[2/8] HOST: Trigger in broadcast payload', {
+        utc: new Date().toISOString(),
+        triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+        triggerCount: triggerAnims.length,
+        stateSource,
+        trigger,
+      });
+    }
+
     const redactedState = StateRedactor.redactForPlayer(stateToBroadcast, 'player2');
+    debugLog('MP_SYNC_TRACE', '[2b/11] Broadcast payload — player2 data', {
+      p2DeckCount: redactedState.player2?.deckCount ?? redactedState.player2?.deck?.length ?? '?',
+      p2ShipSections: redactedState.player2?.shipSections?.length || 0,
+      p2ShipComponents: Object.keys(redactedState.player2?.selectedShipComponents || {}),
+      placedSections: redactedState.placedSections?.length || 0,
+      opponentPlacedSections: redactedState.opponentPlacedSections?.length || 0,
+    });
+    if (trigger === 'round_initialization' || trigger === 'phase_transition_both_passed') {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-11] Network broadcast of round-transition state', {
+        utc: new Date().toISOString(), role: 'HOST',
+        trigger, animCount: actionAnimations.length + systemAnimations.length,
+      });
+    }
     this.p2pManager.broadcastState(redactedState, actionAnimations, systemAnimations);
   }
 

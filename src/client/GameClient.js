@@ -50,7 +50,7 @@ class GameClient extends GameServer {
 
   async submitAction(type, payload) {
     if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[2/12] GameClient.submitAction routing to transport', {
+      debugLog('DEPLOY_TRACE', '[2/10] GameClient.submitAction routing to transport', {
         type,
         hasTransport: !!this.transport,
       });
@@ -88,15 +88,23 @@ class GameClient extends GameServer {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnimations = this._collectAnimations(animations);
-    debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
-      previousPhase,
-      newPhase,
-      animCount: allAnimations.length,
-      hasTeleportIn: allAnimations.some(a => a.animationName === 'TELEPORT_IN'),
-    });
+    if (allAnimations.length > 0) {
+      debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
+        previousPhase,
+        newPhase,
+        animCount: allAnimations.length,
+        hasTeleportIn: allAnimations.some(a => a.animationName === 'TELEPORT_IN'),
+      });
+    }
 
     // Queue phase announcements for multiplayer transitions
     if (this._isMultiplayer) {
+      if (previousPhase === 'action' && newPhase !== 'action') {
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-14] Guest received broadcast with phase change from action', {
+          utc: new Date().toISOString(), role: 'GUEST',
+          previousPhase, newPhase,
+        });
+      }
       this._queuePhaseAnnouncements(previousPhase, newPhase);
     }
 
@@ -104,14 +112,27 @@ class GameClient extends GameServer {
     if (!this._localGameMode) {
       this._localGameMode = this.getState().gameMode;
     }
-    state = { ...state, gameMode: this._localGameMode };
+    state = { ...state, gameMode: this._localGameMode, localPlayerId: this.playerId };
 
-    debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
-      animCount: allAnimations.length,
-      animNames: allAnimations.map(a => a.animationName),
-      hasAnimationManager: !!this.animationManager,
-      willPlayAnimations: !!this.animationManager && allAnimations.length > 0,
-    });
+    const triggerAnims = allAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+    if (triggerAnims.length > 0) {
+      debugLog('TRIGGER_SYNC_TRACE', '[7/8] GUEST: Trigger received by GameClient', {
+        utc: new Date().toISOString(),
+        triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+        triggerCount: triggerAnims.length,
+        totalAnimCount: allAnimations.length,
+        willAnimate: !!this.animationManager,
+      });
+    }
+
+    if (allAnimations.length > 0) {
+      debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
+        animCount: allAnimations.length,
+        animNames: allAnimations.map(a => a.animationName),
+        hasAnimationManager: !!this.animationManager,
+        willPlayAnimations: !!this.animationManager && allAnimations.length > 0,
+      });
+    }
 
     if (!this.animationManager || allAnimations.length === 0) {
       this._applyState(state);
@@ -155,14 +176,29 @@ class GameClient extends GameServer {
   }
 
   revealTeleportedDrones() {
-    if (this.pendingFinalHostState) {
-      this._applyState(this.pendingFinalHostState);
-    }
+    if (!this.pendingFinalHostState) return;
+    // Merge only lane data (removes isTeleporting flags) into current state,
+    // preserving currentPlayer/turnPhase from any newer broadcasts
+    const current = this.getState();
+    const revealed = {
+      ...current,
+      player1: { ...current.player1, lanes: this.pendingFinalHostState.player1?.lanes },
+      player2: { ...current.player2, lanes: this.pendingFinalHostState.player2?.lanes },
+    };
+    this._applyState(revealed);
   }
 
   // --- Internal helpers ---
 
   _applyState(state) {
+    debugLog('DEPLOY_TRACE', '[10/10] GameClient._applyState', {
+      turnPhase: state.turnPhase, currentPlayer: state.currentPlayer,
+      gameMode: state.gameMode,
+    });
+    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current host-broadcast data
+    if (this._isMultiplayer && state.gameMode === 'guest') {
+      this.clientStateStore.gameStateManager.applyHostState(state);
+    }
     this.clientStateStore.applyUpdate(state);
   }
 
@@ -187,6 +223,10 @@ class GameClient extends GameServer {
 
       this.phaseAnimationQueue.queueAnimation('actionComplete', 'ACTION PHASE COMPLETE', 'Transitioning to Next Round', 'GC:pattern1_actionComplete');
       this.phaseAnimationQueue.queueAnimation('roundAnnouncement', 'ROUND', null, 'GC:pattern1_round');
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-15] Guest queued round-transition announcements', {
+        utc: new Date().toISOString(), role: 'GUEST',
+        hostPhase, queueLength: this.phaseAnimationQueue.getQueueLength(),
+      });
     }
 
     // PATTERN 2: placement → roundInitialization (Round 1)
@@ -235,6 +275,13 @@ class GameClient extends GameServer {
 
     const queueLength = this.phaseAnimationQueue.getQueueLength();
     if (queueLength > 0) {
+      const hasRoundAnnouncement = this.phaseAnimationQueue.queue?.some(a => a.phaseName === 'roundAnnouncement');
+      if (hasRoundAnnouncement) {
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-16] Guest scheduling playback after message queue drain', {
+          utc: new Date().toISOString(), role: 'GUEST',
+          queueLength,
+        });
+      }
       debugLog('TIMING', '[GameClient] Scheduling animation playback after queue drain (50ms delay)');
       setTimeout(() => {
         this.phaseAnimationQueue.startPlayback('GameClient:after_drain');

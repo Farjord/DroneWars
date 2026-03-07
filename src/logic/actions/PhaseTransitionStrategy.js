@@ -83,8 +83,6 @@ export async function processPhaseTransition(payload, ctx) {
     return { success: true, message: 'Already in phase' };
   }
 
-  debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
-
   // Guest announcement-only pseudo-phase
   if (guestAnnouncementOnly) {
     const phaseTextMap = {
@@ -176,8 +174,6 @@ export async function processPhaseTransition(payload, ctx) {
   };
 
   if (phaseTextMap[newPhase]) {
-    debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Queueing announcement for: ${newPhase}`);
-
     const phaseText = phaseTextMap[newPhase];
     const subtitle = newPhase === 'roundInitialization'
       ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
@@ -186,20 +182,16 @@ export async function processPhaseTransition(payload, ctx) {
       : null;
 
     const phaseAnimationQueue = ctx.getPhaseAnimationQueue();
-    debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Attempting to queue`, {
-      phase: newPhase,
-      hasQueue: !!phaseAnimationQueue
-    });
-
     if (phaseAnimationQueue) {
       phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:host_transition:1892');
-      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Animation queued for: ${newPhase}`);
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-08b] Announcement queued for cascade phase', {
+        utc: new Date().toISOString(), role: 'HOST',
+        phase: newPhase, phaseText,
+      });
     } else {
       debugLog('PHASE_TRANSITIONS', `❌ [PHASE ANNOUNCEMENT] Queue not available for: ${newPhase}`);
     }
   }
-
-  debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);
 
   const finalState = ctx.getState();
   debugLog('PHASE_TRANSITIONS', `[PLACEMENT DATA DEBUG] AFTER transition to ${newPhase}:`, {
