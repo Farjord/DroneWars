@@ -82,11 +82,12 @@ describe('effectsAdapter — simple cards', () => {
     expect(card.effects[0].targeting.type).toBe('NONE');
   });
 
-  it('Deploy Jammers (no targeting field) produces NONE targeting', () => {
+  it('Deploy Jammer has LANE targeting with FRIENDLY affinity', () => {
     const card = findCard('DEPLOY_JAMMERS');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('CREATE_TECH');
-    expect(card.effects[0].targeting.type).toBe('NONE');
+    expect(card.effects[0].targeting.type).toBe('LANE');
+    expect(card.effects[0].targeting.affinity).toBe('FRIENDLY');
   });
 
   it('Sidewinder Missiles (LANE targeting with filter) preserves affectedFilter', () => {

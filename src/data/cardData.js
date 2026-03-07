@@ -1618,15 +1618,15 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_JAMMERS',
     baseCardId: 'DEPLOY_JAMMERS',
-    name: 'Deploy Jammers',
+    name: 'Deploy Jammer',
     maxInDeck: 2,
     rarity: 'Common',
     type: 'Tactic',
-    cost: 5,
+    cost: 2,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in each of your lanes. (Jammer: Opponent card effects targeting drones in this lane can only target this Jammer.)',
+    description: 'Create a Jammer in one of your lanes. (Jammer: Opponent card effects targeting drones in this lane can only target this Jammer.)',
     effects: [
-      { type: 'CREATE_TECH', tokenName: 'Jammer', locations: ['lane1', 'lane2', 'lane3'], targeting: { type: 'NONE' } },
+      { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
 
   },

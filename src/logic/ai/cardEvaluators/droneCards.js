@@ -148,7 +148,7 @@ export const evaluateReadyDroneCard = (card, target, context) => {
  * Evaluate a CREATE_TOKENS or CREATE_TECH card
  * Dispatches to specific evaluator based on token/tech name
  * @param {Object} card - The card being played
- * @param {Object} target - The target (null for Jammers, lane object for others)
+ * @param {Object} target - Lane target object { id: 'laneX' }
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
@@ -172,41 +172,48 @@ export const evaluateCreateTokensCard = (card, target, context) => {
 };
 
 /**
- * Evaluate a Jammer deployment card
+ * Evaluate a Jammer deployment card (single-lane targeting)
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
  */
 const evaluateJammerCard = (card, target, context) => {
   const { player2 } = context;
   const logic = [];
   let score = 0;
 
-  // Evaluate Jammers based on CPU value and available lanes
-  const allFriendlyDrones = Object.values(player2.dronesOnBoard).flat();
-  const totalCPUValue = allFriendlyDrones.reduce((sum, d) => sum + (d.class || 0), 0);
-  const highValueDrones = allFriendlyDrones.filter(d => d.class >= 3).length;
-
-  // Count available lanes (lanes without Jammers)
-  const lanes = ['lane1', 'lane2', 'lane3'];
-  const availableLanes = lanes.filter(laneId => !hasJammerInLane(player2, laneId)).length;
-  const scalingFactor = availableLanes / 3;
-
-  if (availableLanes === 0) {
-    score = INVALID_SCORE;
-    logic.push('❌ No available lanes (all have Jammers)');
-  } else {
-    const baseScore = CARD_EVALUATION.JAMMER_BASE_VALUE;
-    const cpuValueBonus = totalCPUValue * CARD_EVALUATION.JAMMER_CPU_VALUE_MULTIPLIER;
-    const highValueBonus = highValueDrones * CARD_EVALUATION.JAMMER_HIGH_VALUE_DRONE_BONUS;
-    const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
-
-    const unscaledScore = baseScore + cpuValueBonus + highValueBonus - costPenalty;
-    score = unscaledScore * scalingFactor;
-
-    logic.push(`✅ Base Value: +${baseScore}`);
-    logic.push(`✅ CPU Protection: +${cpuValueBonus} (${totalCPUValue} total CPU)`);
-    logic.push(`✅ High-Value Drones: +${highValueBonus} (${highValueDrones} drones)`);
-    logic.push(`⚠️ Cost: -${costPenalty}`);
-    logic.push(`📊 Available Lanes: ${availableLanes}/3 (${(scalingFactor * 100).toFixed(0)}% value)`);
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
+
+  // Check tech slot capacity
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
+  }
+
+  // Check if lane already has a Jammer (maxPerLane: 1)
+  if (hasJammerInLane(player2, targetLane)) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has a Jammer'] };
+  }
+
+  // Score based on drones in the target lane
+  const dronesInLane = (player2.dronesOnBoard[targetLane] || []).filter(d => !d.isToken);
+  const laneCPUValue = dronesInLane.reduce((sum, d) => sum + (d.class || 0), 0);
+  const highValueDrones = dronesInLane.filter(d => d.class >= 3).length;
+
+  const baseScore = CARD_EVALUATION.JAMMER_BASE_VALUE;
+  const cpuValueBonus = laneCPUValue * CARD_EVALUATION.JAMMER_CPU_VALUE_MULTIPLIER;
+  const highValueBonus = highValueDrones * CARD_EVALUATION.JAMMER_HIGH_VALUE_DRONE_BONUS;
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+
+  score = baseScore + cpuValueBonus + highValueBonus - costPenalty;
+
+  logic.push(`✅ Base Value: +${baseScore}`);
+  logic.push(`✅ CPU Protection: +${cpuValueBonus} (${laneCPUValue} CPU in lane)`);
+  logic.push(`✅ High-Value Drones: +${highValueBonus} (${highValueDrones} drones)`);
+  logic.push(`⚠️ Cost: -${costPenalty}`);
 
   return { score, logic };
 };

@@ -361,11 +361,10 @@ export const cardScoring = {
     },
 
     CREATE_TOKENS: {
-      name: "Create Tokens (Deploy Jammers)",
-      formula: "(30 + cpuValue×5 + highValueCount×15 - costPenalty) × availableLanes/3",
-      scaling: "Scales down if lanes already have Jammers",
-      blocked: "Score: -999 if all lanes have Jammers",
-      description: "Values protecting high-class drones with Jammer tokens"
+      name: "Create Tokens (Deploy Jammer)",
+      formula: "30 + laneCpuValue×5 + highValueCount×15 - costPenalty",
+      blocked: "Score: -999 if no target, lane has a Jammer, or tech slots full",
+      description: "Values protecting high-class drones in the target lane with a Jammer"
     },
 
     MODIFY_STAT: {
@@ -626,15 +625,15 @@ export const decisionExamples = [
   },
   {
     category: "Cards",
-    scenario: "AI has 12 energy, Deploy Jammers (4 cost) in hand, 3 high-value drones on board, 2 lanes available",
+    scenario: "AI has 12 energy, Deploy Jammer (2 cost) in hand, lane1 has 2 high-value drones (class 3+)",
     options: [
       {
-        choice: "Play Deploy Jammers",
-        calculation: "Base: +30, CPU Value (18×5): +90, High-Value (3×15): +45, Cost: -16, Scaling (2/3): ×0.67, Total: ~100"
+        choice: "Play Deploy Jammer on lane1",
+        calculation: "Base: +30, CPU Value (6×5): +30, High-Value (2×15): +30, Cost: -8, Total: 82"
       }
     ],
-    decision: "Plays Deploy Jammers (score: ~100)",
-    lesson: "AI highly values Jammer protection when it has expensive drones to protect"
+    decision: "Plays Deploy Jammer on lane1 (score: 82)",
+    lesson: "AI values Jammer protection for lanes with expensive drones to protect"
   }
 ];
 

@@ -1494,11 +1494,11 @@ describe('Card Evaluator Registry', () => {
 // ========================================
 
 describe('evaluateCreateTokensCard', () => {
-  it('calculates jammer value with drones on board', () => {
+  it('calculates jammer value for target lane drones', () => {
     const card = {
       id: 'DEPLOY_JAMMERS',
-      cost: 5,
-      effects: [{ type: 'CREATE_TOKENS' }]
+      cost: 2,
+      effects: [{ type: 'CREATE_TOKENS', tokenName: 'Jammer' }]
     };
 
     const drone1 = createMockDrone({ id: 'd1', class: 2 });
@@ -1507,31 +1507,29 @@ describe('evaluateCreateTokensCard', () => {
     const context = createMockContext({
       player2: createMockPlayer('player2', {
         dronesOnBoard: {
-          lane1: [drone1],
-          lane2: [drone2],
+          lane1: [drone1, drone2],
+          lane2: [],
           lane3: []
         }
       })
     });
 
-    const result = evaluateCreateTokensCard(card, null, context);
+    const result = evaluateCreateTokensCard(card, { id: 'lane1' }, context);
 
     // Base value: 30
-    // CPU: (2 + 3) × 5 = 25
+    // CPU in lane: (2 + 3) × 5 = 25
     // High value (class >= 3): 1 × 15 = 15
-    // Cost: 5 × 4 = 20
-    // Unscaled: 30 + 25 + 15 - 20 = 50
-    // Scaling: 3/3 = 1.0 (all lanes available)
-    // Expected: 50
-    expect(result.score).toBe(50);
+    // Cost: 2 × 4 = 8
+    // Expected: 30 + 25 + 15 - 8 = 62
+    expect(result.score).toBe(62);
     expect(result.logic.some(l => l.includes('CPU Protection'))).toBe(true);
   });
 
-  it('includes available lanes info in logic', () => {
+  it('returns invalid score when no target provided', () => {
     const card = {
       id: 'DEPLOY_JAMMERS',
-      cost: 5,
-      effects: [{ type: 'CREATE_TOKENS' }]
+      cost: 2,
+      effects: [{ type: 'CREATE_TOKENS', tokenName: 'Jammer' }]
     };
 
     const context = createMockContext({
@@ -1542,8 +1540,7 @@ describe('evaluateCreateTokensCard', () => {
 
     const result = evaluateCreateTokensCard(card, null, context);
 
-    // Should include available lanes info
-    expect(result.logic.some(l => l.includes('Available Lanes'))).toBe(true);
+    expect(result.score).toBe(-999);
   });
 });
 
