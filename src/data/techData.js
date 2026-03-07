@@ -101,6 +101,15 @@ const fullTechCollection = [
         description: 'While this Jammer is active, opponent card effects targeting drones in this lane can only target this Jammer.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
+      },
+      {
+        name: 'Auto-Destruct',
+        description: 'Destroyed at the start of the next round.',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_START',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effects: []
       }
     ]
   },
