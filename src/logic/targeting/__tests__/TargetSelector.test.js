@@ -1,4 +1,4 @@
-import { selectTargets } from '../TargetSelector.js';
+import { selectTargets, hashString } from '../TargetSelector.js';
 import { SeededRandom } from '../../../utils/seededRandom.js';
 
 const makeDrone = (id, overrides = {}) => ({
@@ -85,6 +85,13 @@ describe('selectTargets', () => {
 
   // --- getStatValue function ---
 
+  it('unknown method returns all drones', () => {
+    const result = selectTargets([droneA, droneB], { method: 'INVALID', count: 1 }, makeRng());
+    expect(result).toEqual([droneA, droneB]);
+  });
+
+  // --- getStatValue function ---
+
   it('uses getStatValue function when provided', () => {
     // Override: droneB has effective speed 10 (highest)
     const getStatValue = (drone) => drone.id === 'b' ? 10 : drone.speed;
@@ -96,5 +103,25 @@ describe('selectTargets', () => {
     );
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('b');
+  });
+});
+
+describe('hashString', () => {
+  it('produces different hashes for same-length strings', () => {
+    expect(hashString('inst_1')).not.toBe(hashString('inst_2'));
+  });
+
+  it('is deterministic', () => {
+    expect(hashString('test')).toBe(hashString('test'));
+  });
+
+  it('returns a non-negative integer', () => {
+    const result = hashString('anything');
+    expect(result).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(result)).toBe(true);
+  });
+
+  it('handles empty string', () => {
+    expect(hashString('')).toBe(5381);
   });
 });
