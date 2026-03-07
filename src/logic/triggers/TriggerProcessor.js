@@ -13,8 +13,9 @@ import EffectRouter from '../EffectRouter.js';
 import fullDroneCollection from '../../data/droneData.js';
 import fullTechCollection from '../../data/techData.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
-import { selectTargets } from '../targeting/TargetSelector.js';
+import { selectTargets, hashString } from '../targeting/TargetSelector.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
+import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
 
 // Combined collection for ability lookups — Tech definitions live in techData.js
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
@@ -860,10 +861,10 @@ class TriggerProcessor {
 
     // targetSelection: resolve drone pool from scope + affinity, then select
     if (effect.targetSelection) {
-      const pool = this._resolveDronePool(effect, reactorPlayerId, reactorLane, playerStates);
+      const { drones: pool, ownerId } = this._resolveDronePool(effect, reactorPlayerId, reactorLane, playerStates);
       const rng = SeededRandom.forTargetSelection(
         { gameSeed: gameSeed ?? 12345 },
-        reactorDrone.id?.length || pool.length
+        hashString(reactorDrone.id || '')
       );
       const selected = selectTargets(pool, effect.targetSelection, rng);
       // Return array of target objects
@@ -872,9 +873,9 @@ class TriggerProcessor {
         id: drone.id,
         droneId: drone.id,
         name: drone.name,
-        lane: this._findDroneLane(drone.id, drone._owner, playerStates),
-        owner: drone._owner,
-        playerId: drone._owner
+        lane: getLaneOfDrone(drone.id, playerStates[ownerId]),
+        owner: ownerId,
+        playerId: ownerId
       }));
     }
 
@@ -892,7 +893,7 @@ class TriggerProcessor {
 
   /**
    * Resolve a drone pool from effect scope + affinity for targetSelection.
-   * Tags each drone with _owner for target building.
+   * Returns { drones, ownerId } — ownership tracked separately to avoid property leaks.
    *
    * @private
    */
@@ -919,21 +920,7 @@ class TriggerProcessor {
       drones = drones.filter(d => !d.isMarked);
     }
 
-    // Tag with owner for target building
-    return drones.map(d => ({ ...d, _owner: targetPlayerId }));
-  }
-
-  /**
-   * Find which lane a drone is in.
-   * @private
-   */
-  _findDroneLane(droneId, playerId, playerStates) {
-    const board = playerStates[playerId]?.dronesOnBoard;
-    if (!board) return null;
-    for (const lane of ['lane1', 'lane2', 'lane3']) {
-      if (board[lane]?.some(d => d.id === droneId)) return lane;
-    }
-    return null;
+    return { drones, ownerId: targetPlayerId };
   }
 
   /**

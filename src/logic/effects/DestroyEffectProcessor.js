@@ -14,8 +14,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import { buildDefaultDestroyAnimation } from './destroy/animations/DefaultDestroyAnimation.js';
 import { buildNukeAnimation } from './destroy/animations/NukeAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { selectTargets } from '../targeting/TargetSelector.js';
-import { SeededRandom } from '../../utils/seededRandom.js';
+import { applyTargetSelection } from '../targeting/TargetSelector.js';
 
 /**
  * Processor for DESTROY effect type
@@ -192,16 +191,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     // Phase 2: Apply targetSelection (RANDOM, HIGHEST, LOWEST)
     const tsConfig = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if (tsConfig) {
-      const discriminator = card?.instanceId || candidateDrones.length;
-      const rng = SeededRandom.forTargetSelection(
-        { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
-        typeof discriminator === 'string' ? discriminator.length : discriminator
-      );
-      candidateDrones = selectTargets(candidateDrones, tsConfig, rng, (drone) => {
-        if (!tsConfig.stat) return 0;
-        const effectiveStats = calculateEffectiveStats(drone, laneId, targetPlayerState, actingPlayerState, placedSections || {});
-        return effectiveStats[tsConfig.stat] ?? drone[tsConfig.stat];
-      });
+      candidateDrones = applyTargetSelection(candidateDrones, tsConfig, context, laneId, targetPlayerState, actingPlayerState, placedSections, card);
     }
 
     // Phase 3: Destroy selected drones

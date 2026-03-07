@@ -24,8 +24,7 @@ import { buildRailgunAnimation } from './animations/RailgunAnimation.js';
 import { buildOverflowAnimation } from './animations/OverflowAnimation.js';
 import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
-import { selectTargets } from '../../targeting/TargetSelector.js';
-import { SeededRandom } from '../../../utils/seededRandom.js';
+import { applyTargetSelection } from '../../targeting/TargetSelector.js';
 
 /**
  * Processor for all damage effect types
@@ -184,17 +183,8 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     // Apply targetSelection (RANDOM, HIGHEST, LOWEST)
     const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
     if (targetSelection) {
-      const discriminator = card?.instanceId || affectedDrones.length;
-      const rng = SeededRandom.forTargetSelection(
-        { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
-        typeof discriminator === 'string' ? discriminator.length : discriminator
-      );
       const actingPlayer = newPlayerStates[actingPlayerId];
-      affectedDrones = selectTargets(affectedDrones, targetSelection, rng, (drone) => {
-        if (!targetSelection.stat) return 0;
-        const effectiveStats = calculateEffectiveStats(drone, laneId, targetPlayerState, actingPlayer, placedSections || {});
-        return effectiveStats[targetSelection.stat] ?? drone[targetSelection.stat];
-      });
+      affectedDrones = applyTargetSelection(affectedDrones, targetSelection, context, laneId, targetPlayerState, actingPlayer, placedSections, card);
     }
 
     // Track damage results for animation
