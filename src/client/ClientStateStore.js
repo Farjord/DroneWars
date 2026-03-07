@@ -12,8 +12,16 @@ class ClientStateStore {
 
     // Forward GSM events to our subscribers
     this._gsmUnsubscribe = gameStateManager.subscribe((event) => {
-      // Clear applied state so getState falls through to GSM
-      this._appliedState = null;
+      if (this._appliedState && event.payload?.updates) {
+        const updateKeys = Object.keys(event.payload.updates);
+        debugLog('MP_SYNC_TRACE', 'ClientStateStore: GSM event — MERGING into appliedState', {
+          eventType: event.type, updateKeys,
+        });
+        // Merge local changes into applied state (preserves host broadcast data for guest)
+        this._appliedState = { ...this._appliedState, ...event.payload.updates };
+      } else {
+        this._appliedState = null;
+      }
       this._notify(event);
     });
   }
@@ -31,9 +39,8 @@ class ClientStateStore {
    * @param {Object} state - Complete game state from engine response
    */
   applyUpdate(state) {
-    debugLog('ANIM_TRACE', '[7c/7] ClientStateStore.applyUpdate notifying', {
-      eventType: 'ENGINE_UPDATE',
-      listenerCount: this._listeners.length,
+    debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-5] Guest received broadcast', {
+      utc: new Date().toISOString(), turnPhase: state?.turnPhase, round: state?.roundNumber,
     });
     this._appliedState = state;
     this._notify({ type: 'ENGINE_UPDATE' });

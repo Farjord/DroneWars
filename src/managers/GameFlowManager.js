@@ -4,10 +4,9 @@
 // Master game flow controller - owns canonical phase state and transitions
 // Handles conditional phase logic and round loop management
 
-import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
+import { initializeDroneSelection, extractDronesFromDeck } from '../utils/droneSelectionUtils.js';
 import { SeededRandom } from '../utils/seededRandom.js';
 import { initializeShipPlacement } from '../logic/map/shipPlacementUtils.js';
-import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
 import PhaseManager from './PhaseManager.js';
@@ -16,6 +15,7 @@ import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
+import GuestCascadeRunner from './GuestCascadeRunner.js';
 
 // --- Trace Helpers ---
 function _countDrones(playerState) {
@@ -59,8 +59,8 @@ class GameFlowManager {
     this.gameStage = 'preGame'; // 'preGame', 'roundLoop', 'gameOver'
     this.roundNumber = 0;
     this.isProcessingAutomaticPhase = false; // Flag to track automatic phase processing
-    this.isInCheckpointCascade = false; // Flag to prevent recursive auto-processing during optimistic cascade
     this._quickDeployExecutedThisRound = false; // Flag to track quick deploy execution (prevents race condition)
+    this.guestCascadeRunner = null; // Initialized for non-authority in initialize()
     this._isRoundTransition = false; // ROUND_TRANSITION_TRACE gating flag
 
     // Event listeners
@@ -101,6 +101,11 @@ class GameFlowManager {
 
     // Phase authority: local/host drive transitions; guest only processes optimistically
     this.isPhaseAuthority = gameStateManager.getLocalPlayerId() !== 'player2';
+
+    // Initialize GuestCascadeRunner for non-authority optimistic processing
+    if (!this.isPhaseAuthority) {
+      this.guestCascadeRunner = new GuestCascadeRunner(this);
+    }
 
     // Initialize PhaseManager for authoritative phase transitions
     this.phaseManager = new PhaseManager(gameStateManager, {
@@ -338,13 +343,22 @@ class GameFlowManager {
         }
 
         // Trigger phase transition synchronously BEFORE broadcasting
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-2] About to start round transition', {
+          utc: new Date().toISOString(), turnPhase: updatedState.turnPhase, round: updatedState.roundNumber,
+        });
         await this.onSequentialPhaseComplete(updatedState.turnPhase, {
           reason: 'both_passed',
           passInfo: updatedState.passInfo
         });
 
+        const _postState = this.gameStateManager.getState();
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-3] Round transition COMPLETE', {
+          utc: new Date().toISOString(), turnPhase: _postState.turnPhase, round: _postState.roundNumber,
+        });
+
         // Broadcast state AFTER phase transition completes
-        this.actionProcessor.broadcastService.broadcastIfNeeded('phase_transition_both_passed');
+        const broadcastTrigger = this._isRoundTransition ? 'round_transition_both_passed' : 'phase_transition_both_passed';
+        this.actionProcessor.broadcastService.broadcastIfNeeded(broadcastTrigger);
         return;
       } else {
         // Single player passed - start PhaseAnimationQueue playback for pass notification
@@ -502,19 +516,13 @@ class GameFlowManager {
 
       // Apply phase data (gameStage and roundNumber already initialized in GameStateManager)
       if (Object.keys(phaseData).length > 0) {
-        try {
-          this.gameStateManager._updateContext = 'GameFlowManager';
-          this.gameStateManager.setState(phaseData, 'GAME_INITIALIZATION', 'phaseInitialization');
-        } finally {
-          this.gameStateManager._updateContext = null;
-        }
+        this._setStateAsGFM(phaseData, 'GAME_INITIALIZATION', 'phaseInitialization');
       }
     }
 
     this.emit('phaseTransition', {
       newPhase: startingPhase,
-      previousPhase: null,
-      gameStage: this.gameStage
+      previousPhase: null
     });
   }
 
@@ -566,7 +574,7 @@ class GameFlowManager {
 
           // Initialize for player1
           if (deckCommitments.player1?.drones) {
-            const player1Drones = this.extractDronesFromDeck(deckCommitments.player1.drones);
+            const player1Drones = extractDronesFromDeck(deckCommitments.player1.drones);
             const player1Rng = SeededRandom.forDroneSelection(gameState, 'player1');
             const player1DroneData = initializeDroneSelection(player1Drones, 2, player1Rng);
             stateUpdates.player1DroneSelectionTrio = player1DroneData.droneSelectionTrio;
@@ -580,7 +588,7 @@ class GameFlowManager {
 
           // Initialize for player2
           if (deckCommitments.player2?.drones) {
-            const player2Drones = this.extractDronesFromDeck(deckCommitments.player2.drones);
+            const player2Drones = extractDronesFromDeck(deckCommitments.player2.drones);
             const player2Rng = SeededRandom.forDroneSelection(gameState, 'player2');
             const player2DroneData = initializeDroneSelection(player2Drones, 2, player2Rng);
             stateUpdates.player2DroneSelectionTrio = player2DroneData.droneSelectionTrio;
@@ -599,12 +607,7 @@ class GameFlowManager {
       }
 
       if (Object.keys(stateUpdates).length > 0) {
-        try {
-          this.gameStateManager._updateContext = 'GameFlowManager';
-          this.gameStateManager.setState(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
-        } finally {
-          this.gameStateManager._updateContext = null;
-        }
+        this._setStateAsGFM(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
         debugLog('PHASE_TRANSITIONS', `📋 GameFlowManager: Applied ${phase} commitments to game state`);
       }
     }
@@ -644,7 +647,7 @@ class GameFlowManager {
         debugLog('COMMIT_TRACE', '[6/6] Transition after commitments', {
           from: phase, to: nextPhase, transitionType: 'sim→seq',
         });
-        this.initiateSequentialPhase(nextPhase);
+        await this.transitionToPhase(nextPhase);
 
         // Broadcast state to guest AFTER phase transition completes
         this.actionProcessor.broadcastService.broadcastIfNeeded('simultaneous_to_sequential');
@@ -654,6 +657,15 @@ class GameFlowManager {
         // (Non-authority gets playback via cascade finally block, but authority needs it here)
         if (this._tryStartPlayback('GFM:sim_to_seq:599')) {
           debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after simultaneous→sequential transition`, { phase: nextPhase });
+        }
+
+        // RT-13: Clear round transition flag after sim→seq playback starts
+        if (this._isRoundTransition) {
+          debugLog('ROUND_TRANSITION_TRACE', '[RT-13] Animation playback triggered — HOST flow complete', {
+            utc: new Date().toISOString(), role: 'HOST',
+            phase: nextPhase,
+          });
+          this._isRoundTransition = false;
         }
       } else {
         // Continue with normal simultaneous phase transition
@@ -862,35 +874,16 @@ class GameFlowManager {
       this.isProcessingAutomaticPhase = false;
 
       // NON-AUTHORITY OPTIMISTIC EXECUTION: Track animations for deduplication
-      // When non-authority processes automatic phases locally, track animations so they're
-      // filtered out when Host broadcast arrives (same pattern as drone deployment)
-      if (!this.isPhaseAuthority) {
-        const actionAnims = this.actionProcessor.getAndClearPendingActionAnimations();
-        const systemAnims = this.actionProcessor.getAndClearPendingSystemAnimations();
-
-        if ((actionAnims && actionAnims.length > 0) || (systemAnims && systemAnims.length > 0)) {
-          const animations = {
-            actionAnimations: actionAnims || [],
-            systemAnimations: systemAnims || []
-          };
-
-          debugLog('GUEST_CASCADE', `🎬 [ANIMATION SOURCE] Phase "${phase}" generated animations (OPTIMISTIC_CASCADE)`, {
-            actionCount: animations.actionAnimations.length,
-            systemCount: animations.systemAnimations.length,
-            actionTypes: animations.actionAnimations.map(a => a.animationName),
-            systemTypes: animations.systemAnimations.map(a => a.animationName)
-          });
-          this.gameStateManager.trackOptimisticAnimations(animations);
-        }
+      if (this.guestCascadeRunner) {
+        this.guestCascadeRunner.trackOptimisticAnimations(phase);
       }
 
       // AUTHORITY: Start animation playback after automatic cascade completes
       // Only start if we're authority, NOT in cascade mode, and landed on non-automatic phase
-      const currentState = this.gameStateManager.getState();
-      const inCascade = this.isInCheckpointCascade;
-      const currentPhase = currentState.turnPhase;
+      const currentPhase = this.gameStateManager.getState().turnPhase;
+      const cascadeActive = this.guestCascadeRunner?.isInCheckpointCascade ?? false;
 
-      if (this.isPhaseAuthority && !inCascade && !this.isAutomaticPhase(currentPhase)) {
+      if (this.isPhaseAuthority && !cascadeActive && !this.isAutomaticPhase(currentPhase)) {
         if (this._tryStartPlayback('GFM:auto_cascade:880')) {
           debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after automatic cascade`, { finalPhase: currentPhase });
         }
@@ -928,68 +921,6 @@ class GameFlowManager {
     }, phaseStartTime);
 
     return nextPhase;
-  }
-
-  /**
-   * Process automatic phases until reaching a checkpoint (Guest optimistic processing)
-   * Used after placement completes to process: roundInitialization → first required round phase
-   * Stops at first milestone phase (checkpoint) for validation with host
-   *
-   * @param {string} startPhase - Phase to start processing from (typically 'roundInitialization')
-   */
-  async processAutomaticPhasesUntilCheckpoint(startPhase) {
-    debugLog('GUEST_CASCADE', `🚀 [GUEST OPTIMISTIC] Starting automatic processing from: ${startPhase}`);
-
-    // Set flag to prevent recursive auto-processing during this cascade
-    this.isInCheckpointCascade = true;
-
-    try {
-      // Transition TO start phase first (queues phase announcement if exists)
-      // This ensures the first automatic phase announcement is shown to the guest
-      // Example: optionalDiscard completes → startPhase='draw' → queues DRAW announcement
-      await this.transitionToPhase(startPhase);
-
-      let currentPhase = startPhase;
-      const phasesProcessed = [];
-
-      while (true) {
-        // Process current phase logic and get next phase
-        const nextPhase = await this.processPhaseLogicOnly(currentPhase, null);
-        phasesProcessed.push(currentPhase);
-
-        debugLog('GUEST_CASCADE', `🔄 [GUEST OPTIMISTIC] Processed ${currentPhase}, next: ${nextPhase || 'none'}`);
-
-        // No next phase - end of sequence
-        if (!nextPhase) {
-          debugLog('GUEST_CASCADE', `🏁 [GUEST OPTIMISTIC] Complete - no more phases. Processed: ${phasesProcessed.join(' → ')}`);
-          break;
-        }
-
-        // Next phase is a checkpoint - transition to it and stop
-        if (this.gameStateManager.isMilestonePhase(nextPhase)) {
-          await this.transitionToPhase(nextPhase);
-          phasesProcessed.push(nextPhase);
-          debugLog('GUEST_CASCADE', `🎯 [GUEST OPTIMISTIC] Reached checkpoint: ${nextPhase}. Processed: ${phasesProcessed.join(' → ')}`);
-          break;
-        }
-
-        // Continue to next automatic phase
-        await this.transitionToPhase(nextPhase);
-        currentPhase = nextPhase;
-      }
-
-      debugLog('GUEST_CASCADE', `✅ [GUEST OPTIMISTIC] Processing complete. Total phases: ${phasesProcessed.length}`);
-    } finally {
-      // Always clear the flag when cascade processing completes
-      this.isInCheckpointCascade = false;
-
-      // Start animation playback for guest after optimistic processing completes
-      // Guest has queued all phase announcements (DETERMINING FIRST PLAYER, ENERGY RESET, etc.)
-      // and is now waiting at checkpoint - start playback so user sees announcements
-      if (this._tryStartPlayback('GFM:guest_cascade:987')) {
-        debugLog('TIMING', `🎬 [GUEST] Starting animation playback after optimistic cascade`);
-      }
-    }
   }
 
   /**
@@ -1032,10 +963,7 @@ class GameFlowManager {
       // Emit single phaseTransition event for roundInitialization
       this.emit('phaseTransition', {
         newPhase: 'roundInitialization',
-        previousPhase: previousPhase,
-        gameStage: this.gameStage,
-        roundNumber: currentRoundNumber,
-        automaticProcessed: true
+        previousPhase: previousPhase
       });
 
       // Broadcast state to guest ONCE after all updates complete
@@ -1263,46 +1191,6 @@ class GameFlowManager {
   }
 
   /**
-   * Initiate a sequential phase via ActionProcessor
-   * @param {string} phase - Sequential phase to start ('deployment' or 'action')
-   */
-  initiateSequentialPhase(phase) {
-    debugLog('PHASE_TRANSITIONS', `🎯 GameFlowManager: Initiating sequential phase '${phase}' via ActionProcessor`);
-
-    // Update current phase tracking
-    const previousPhase = this.currentPhase;
-    this.currentPhase = phase;
-
-    // Update GameStateManager via ActionProcessor to avoid bypass validation
-    if (this.actionProcessor && this.gameStateManager) {
-      // Use ActionProcessor to safely update game state for sequential phases
-      debugLog('PHASE_TRANSITIONS', `🔄 Starting ${phase} phase through ActionProcessor`);
-
-      // Update the phase through ActionProcessor with proper validation
-      this.actionProcessor.processPhaseTransition({
-        newPhase: phase,
-        gameStage: this.gameStage,
-        roundNumber: this.gameStateManager.get('roundNumber')
-      });
-    } else {
-      debugLog('PHASE_TRANSITIONS', 'ActionProcessor or GameStateManager not available for sequential phase initiation');
-    }
-
-    // Emit transition event
-    this.emit('phaseTransition', {
-      newPhase: phase,
-      previousPhase,
-      gameStage: this.gameStage,
-      roundNumber: this.gameStateManager.get('roundNumber'),
-      handoverType: 'simultaneous-to-sequential'
-    });
-
-    debugLog('PHASE_TRACE', '[8/8] Phase landed', {
-      phase, from: previousPhase,
-    });
-  }
-
-  /**
    * Transition to a new phase
    * @param {string} newPhase - Phase to transition to
    */
@@ -1383,7 +1271,6 @@ class GameFlowManager {
 
     // Initialize phase-specific data when transitioning to certain phases
     let phaseData = {};
-    let firstPlayerResult = null;
 
     // Note: Drone selection initialization moved to onSimultaneousPhaseComplete
     // to ensure data is created on host and broadcast to guest
@@ -1405,40 +1292,30 @@ class GameFlowManager {
         }
       });
 
-      // Apply game stage, round number, and phase-specific data directly
-      // These are GameFlowManager-specific metadata not handled by standard phase transitions
-      try {
-        this.gameStateManager._updateContext = 'GameFlowManager';
-        this.gameStateManager.setState({
-          gameStage: this.gameStage,
-          roundNumber: this.gameStateManager.get('roundNumber'),  // Use gameState as source of truth
-          ...phaseData
-        }, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
-      } finally {
-        this.gameStateManager._updateContext = null;
+      // Apply phase-specific data directly (e.g., placement initialization)
+      if (Object.keys(phaseData).length > 0) {
+        this._setStateAsGFM(phaseData, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
       }
     }
 
     // Handle automatic phases directly
     // SKIP during cascade mode - cascade loop handles processing explicitly
-    if (this.isAutomaticPhase(newPhase) && !this.isInCheckpointCascade) {
+    const cascadeActive = this.guestCascadeRunner?.isInCheckpointCascade ?? false;
+    if (this.isAutomaticPhase(newPhase) && !cascadeActive) {
       debugLog('PHASE_TRANSITIONS', `🤖 GameFlowManager: Auto-processing automatic phase '${newPhase}'`);
       await this.processAutomaticPhase(newPhase, previousPhase);
       return; // Don't emit transition event yet - will emit after automatic processing
     }
 
     // During cascade mode, automatic phases are handled by cascade loop
-    if (this.isAutomaticPhase(newPhase) && this.isInCheckpointCascade) {
+    if (this.isAutomaticPhase(newPhase) && cascadeActive) {
       debugLog('GUEST_CASCADE', `⏭️ [TRANSITION] Skipping auto-process - cascade mode handles explicitly`, { phase: newPhase });
     }
 
     // Emit transition event for non-automatic phases
     this.emit('phaseTransition', {
       newPhase,
-      previousPhase,
-      gameStage: this.gameStage,
-      roundNumber: this.gameStateManager.get('roundNumber'),
-      firstPlayerResult
+      previousPhase
     });
 
     // CHECKPOINT VALIDATION: Handled automatically by P2PTransport message ordering
@@ -1448,16 +1325,19 @@ class GameFlowManager {
     // Auto-complete commitments for players who don't need to act (single-player mandatory phases)
     if (this.isSimultaneousPhase(newPhase)) {
       await this.autoCompleteUnnecessaryCommitments(newPhase);
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-4] Landed on simultaneous phase', {
+        utc: new Date().toISOString(), phase: newPhase,
+        queueLength: this.phaseAnimationQueue?.getQueueLength() || 0,
+        isPlaying: this.phaseAnimationQueue?.isPlaying() || false,
+        isRoundTransition: this._isRoundTransition,
+      });
     }
 
     // Start animation playback for sequential phase transitions
     // Sequential→Sequential transitions (e.g., deployment→action) don't go through automatic cascade
     // so we need to manually trigger animation playback here
     // Works for BOTH host and guest now (guest receives pass notifications from optimistic execution)
-    const currentState = this.gameStateManager.getState();
-    const inCascade = this.isInCheckpointCascade;
-
-    if (!inCascade && this.isSequentialPhase(newPhase)) {
+    if (!cascadeActive && this.isSequentialPhase(newPhase)) {
       if (this._tryStartPlayback('GFM:seq_transition:2060')) {
         debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
         if (this._isRoundTransition) {
@@ -1586,16 +1466,11 @@ class GameFlowManager {
     }
 
     // Update gameState with new round number and first passer from previous round
-    try {
-      this.gameStateManager._updateContext = 'GameFlowManager';
-      this.gameStateManager.setState({
-        roundNumber: nextRound,
-        turn: 1,  // Reset turn counter to 1 at start of each round (increments on action phase passes)
-        firstPasserOfPreviousRound: firstPasserFromPreviousRound
-      }, 'ROUND_START', 'gameFlowManagerMetadata');
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._setStateAsGFM({
+      roundNumber: nextRound,
+      turn: 1,  // Reset turn counter to 1 at start of each round (increments on action phase passes)
+      firstPasserOfPreviousRound: firstPasserFromPreviousRound
+    }, 'ROUND_START', 'gameFlowManagerMetadata');
     if (this._isRoundTransition) {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-05] Round number incremented and committed', {
         utc: new Date().toISOString(), role: 'HOST',
@@ -1656,21 +1531,25 @@ class GameFlowManager {
       });
 
       // Set game stage and winner directly for game-level metadata
-      try {
-        this.gameStateManager._updateContext = 'GameFlowManager';
-        this.gameStateManager.setState({
-          gameStage: 'gameOver',
-          winner: winnerId
-        }, 'GAME_ENDED', 'gameEndMetadata');
-      } finally {
-        this.gameStateManager._updateContext = null;
-      }
+      this._setStateAsGFM({
+        gameStage: 'gameOver',
+        winner: winnerId
+      }, 'GAME_ENDED', 'gameEndMetadata');
     }
 
     this.emit('gameEnded', {
       winnerId,
       finalRound: this.gameStateManager.get('roundNumber')
     });
+  }
+
+  _setStateAsGFM(updates, type, source) {
+    try {
+      this.gameStateManager._updateContext = 'GameFlowManager';
+      this.gameStateManager.setState(updates, type, source);
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
   }
 
   /**
@@ -1688,8 +1567,8 @@ class GameFlowManager {
     // Clear event listeners to prevent stale subscriptions
     this.listeners = [];
 
-    // Reset checkpoint cascade flag
-    this.isInCheckpointCascade = false;
+    // Reset guest cascade runner
+    this.guestCascadeRunner?.reset();
 
     // Reset PhaseManager state (clears transitionHistory, passInfo, commitments)
     if (this.phaseManager?.reset) {
@@ -1717,29 +1596,6 @@ class GameFlowManager {
       },
       timestamp: new Date().toISOString()
     };
-  }
-
-  /**
-   * Extract drone objects from a drone name list (from deck)
-   * @param {Array} droneNames - Array of drone names from deck
-   * @returns {Array} Array of drone objects from collection
-   */
-  extractDronesFromDeck(droneNames) {
-    if (!droneNames || !Array.isArray(droneNames)) {
-      debugLog('PHASE_TRANSITIONS', 'Invalid drone names provided to extractDronesFromDeck');
-      return [];
-    }
-
-    const drones = droneNames.map(name => {
-      const drone = fullDroneCollection.find(d => d.name === name);
-      if (!drone) {
-        debugLog('PHASE_TRANSITIONS', `Drone "${name}" not found in collection`);
-      }
-      return drone;
-    }).filter(Boolean); // Remove any undefined entries
-
-    debugLog('PHASE_TRANSITIONS', `📦 Extracted ${drones.length} drones from deck: ${drones.map(d => d.name).join(', ')}`);
-    return drones;
   }
 
   /**
