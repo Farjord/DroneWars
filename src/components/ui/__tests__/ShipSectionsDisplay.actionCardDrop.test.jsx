@@ -56,8 +56,8 @@ const getOpponentSectionWrapper = (container) => {
 
 describe('BattleColumn ship section action card drop', () => {
   const mockShipSectionCard = {
-    id: 'CARD037',
-    instanceId: 'CARD037-inst-1',
+    id: 'SHIELD_BOOST',
+    instanceId: 'SHIELD_BOOST-inst-1',
     name: 'Shield Boost',
     cost: 2,
     type: 'Support',
@@ -66,8 +66,8 @@ describe('BattleColumn ship section action card drop', () => {
   };
 
   const mockDroneTargetCard = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',

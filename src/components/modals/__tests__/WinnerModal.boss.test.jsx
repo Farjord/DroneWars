@@ -241,7 +241,7 @@ describe('WinnerModal - Boss Loot Collection', () => {
     CombatOutcomeProcessor.processCombatEnd.mockReturnValue({
       success: true,
       outcome: 'victory',
-      loot: { cards: [{ id: 'CARD001' }], salvageItem: null }
+      loot: { cards: [{ id: 'CONVERGENCE_BEAM' }], salvageItem: null }
     });
 
     render(

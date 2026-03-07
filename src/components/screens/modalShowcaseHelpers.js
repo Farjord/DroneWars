@@ -54,7 +54,7 @@ export const getMockDrones = (count = 3) => {
 export const getMockCard = (name = null) => {
   const card = name
     ? fullCardCollection.find(c => c.name === name)
-    : fullCardCollection.find(c => c.id === 'CARD001') ?? fullCardCollection[0];
+    : fullCardCollection.find(c => c.id === 'CONVERGENCE_BEAM') ?? fullCardCollection[0];
 
   return {
     ...card,
@@ -469,8 +469,8 @@ export const getMockPropsForModal = (modalName) => {
         modalData: {
           droneName: 'Dart',
           upgrades: [
-            { instanceId: 'CARD020', name: 'Slimline Bodywork', description: '+1 to Deployment Limit', stat: 'limit', value: 1 },
-            { instanceId: 'CARD021', name: 'Overclocked Thrusters', description: '+1 Speed', stat: 'speed', value: 1 }
+            { instanceId: 'SLIMLINE_BODYWORK', name: 'Slimline Bodywork', description: '+1 to Deployment Limit', stat: 'limit', value: 1 },
+            { instanceId: 'OVERCLOCKED_THRUSTERS', name: 'Overclocked Thrusters', description: '+1 Speed', stat: 'speed', value: 1 }
           ]
         },
         onClose: () => console.log('Modal closed')
@@ -826,11 +826,11 @@ export const getMockPropsForModal = (modalName) => {
         show: true,
         loot: {
           cards: [
-            { cardId: 'CARD001', rarity: 'Common', cardName: 'Laser Blast', cardType: 'Ordnance' },
-            { cardId: 'CARD002', rarity: 'Common', cardName: 'Shield Boost', cardType: 'Support' },
-            { cardId: 'CARD003', rarity: 'Uncommon', cardName: 'Energy Surge', cardType: 'Tactic' },
-            { cardId: 'CARD007', rarity: 'Rare', cardName: 'Overcharge', cardType: 'Tactic' },
-            { cardId: 'CARD020', rarity: 'Mythic', cardName: 'Slimline Bodywork', cardType: 'Upgrade' }
+            { cardId: 'CONVERGENCE_BEAM', rarity: 'Common', cardName: 'Laser Blast', cardType: 'Ordnance' },
+            { cardId: 'SYSTEM_REBOOT', rarity: 'Common', cardName: 'Shield Boost', cardType: 'Support' },
+            { cardId: 'OUT_THINK', rarity: 'Uncommon', cardName: 'Energy Surge', cardType: 'Tactic' },
+            { cardId: 'EMERGENCY_PATCH', rarity: 'Rare', cardName: 'Overcharge', cardType: 'Tactic' },
+            { cardId: 'SLIMLINE_BODYWORK', rarity: 'Mythic', cardName: 'Slimline Bodywork', cardType: 'Upgrade' }
           ],
           salvageItem: { itemId: 'SALVAGE_NAV_MODULE', name: 'Navigation Module', creditValue: 150, image: '/Credits/nav-module.png', description: 'Functional navigation computer with intact star maps.' },
           blueprint: null
@@ -867,7 +867,7 @@ export const getMockPropsForModal = (modalName) => {
           mapCompletionPercent: 48,
           poisVisited: 5,
           totalPois: 8,
-          cardsCollected: [{ cardId: 'CARD001' }, { cardId: 'CARD002' }],
+          cardsCollected: [{ cardId: 'CONVERGENCE_BEAM' }, { cardId: 'SYSTEM_REBOOT' }],
           creditsEarned: 250,
           combatsWon: 2,
           combatsLost: 0,
@@ -887,9 +887,9 @@ export const getMockPropsForModal = (modalName) => {
         isOpen: true,
         collectedLoot: [
           // Action cards with real IDs from cardData.js
-          { type: 'card', id: 'CARD001' },  // Laser Blast
-          { type: 'card', id: 'CARD007' },  // Overcharge (Rare)
-          { type: 'card', id: 'CARD003' },  // Shield Boost
+          { type: 'card', id: 'CONVERGENCE_BEAM' },  // Laser Blast
+          { type: 'card', id: 'EMERGENCY_PATCH' },  // Overcharge (Rare)
+          { type: 'card', id: 'OUT_THINK' },  // Shield Boost
           // Blueprint showing drone card with real drone name
           { type: 'blueprint', id: 'Mammoth', droneName: 'Mammoth' },
           // Resource types

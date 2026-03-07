@@ -85,7 +85,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
         card: {
-          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          id: 'SIDEWINDER_MISSILES', name: 'Sidewinder Missiles', instanceId: 'inst_1',
           targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
         }
       };
@@ -141,7 +141,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
         card: {
-          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          id: 'SIDEWINDER_MISSILES', name: 'Sidewinder Missiles', instanceId: 'inst_1',
           targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
         }
       };
@@ -192,7 +192,7 @@ describe('DamageEffectProcessor stat-based filtering', () => {
         placedSections: { player1: ['bridge'], player2: ['bridge'] },
         callbacks: { logCallback: vi.fn() },
         card: {
-          id: 'CARD013', name: 'Sidewinder Missiles', instanceId: 'inst_1',
+          id: 'SIDEWINDER_MISSILES', name: 'Sidewinder Missiles', instanceId: 'inst_1',
           targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }] }
         }
       };

@@ -1093,7 +1093,7 @@ function ImportDeckModal({ isOpen, onClose, onImport, playerLabel }) {
           value={deckCode}
           onChange={(e) => setDeckCode(e.target.value)}
           className="w-full h-32 p-3 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono text-sm"
-          placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
+          placeholder="cards:CONVERGENCE_BEAM:4,SYSTEM_REBOOT:2|drones:Scout Drone:1,Heavy Fighter:1"
         />
         <div className="flex justify-end gap-4 mt-4">
           <button onClick={onClose} className="dw-btn dw-btn-cancel">

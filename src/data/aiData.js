@@ -20,7 +20,7 @@ const aiPersonalities = [
       'DRONECONTROL_001': 'r'
     },
     decklist: [
-      { id: 'CARD001_ENHANCED', quantity: 40 }
+      { id: 'CONVERGENCE_BEAM_ENHANCED', quantity: 40 }
     ]
   },
   {
@@ -49,28 +49,28 @@ const aiPersonalities = [
       'POWERCELL_001': 'r'
     },
     decklist: [
-      { id: 'CARD011', quantity: 2 },
-      { id: 'CARD010_ENHANCED', quantity: 2 },
-      { id: 'CARD030', quantity: 2 },
-      { id: 'CARD016', quantity: 2 },
-      { id: 'CARD018', quantity: 2 },
-      { id: 'CARD023_ENHANCED', quantity: 2 },
-      { id: 'CARD004_ENHANCED', quantity: 2 },
-      { id: 'CARD002_ENHANCED', quantity: 2 },
-      { id: 'CARD051', quantity: 4 },
-      { id: 'CARD012_ENHANCED', quantity: 2 },
-      { id: 'CARD050', quantity: 4 },
-      { id: 'CARD033_ENHANCED', quantity: 4 },
-      { id: 'CARD_TACTICS_1', quantity: 4 },
-      { id: 'CARD_STATUS_4', quantity: 4 },
-      { id: 'CARD_TACTICS_4', quantity: 4 },
-      { id: 'CARD005', quantity: 4 },
-      { id: 'CARD007_ENHANCED', quantity: 4 },
-      { id: 'CARD028', quantity: 2 },
-      { id: 'CARD024', quantity: 2 },
-      { id: 'CARD029', quantity: 2 },
-      { id: 'DOCTRINE_003', quantity: 2 },
-      { id: 'DOCTRINE_002', quantity: 2 }
+      { id: 'NUKE', quantity: 2 },
+      { id: 'SHRIEKER_MISSILES_ENHANCED', quantity: 2 },
+      { id: 'DEPLOY_JAMMERS', quantity: 2 },
+      { id: 'WEAPON_OVERLOAD', quantity: 2 },
+      { id: 'DESPERATE_MEASURES', quantity: 2 },
+      { id: 'MANEUVER_ENHANCED', quantity: 2 },
+      { id: 'ENERGY_SURGE_ENHANCED', quantity: 2 },
+      { id: 'SYSTEM_REBOOT_ENHANCED', quantity: 2 },
+      { id: 'SUNDERING_BEAM', quantity: 4 },
+      { id: 'PIERCING_SHOT_ENHANCED', quantity: 2 },
+      { id: 'SCAVENGER_SHOT', quantity: 4 },
+      { id: 'FINISHING_VOLLEY_ENHANCED', quantity: 4 },
+      { id: 'TACTICAL_REPOSITIONING', quantity: 4 },
+      { id: 'STASIS_FIELD', quantity: 4 },
+      { id: 'EMP_BURST', quantity: 4 },
+      { id: 'REACTIVATION_PROTOCOL', quantity: 4 },
+      { id: 'EMERGENCY_PATCH_ENHANCED', quantity: 4 },
+      { id: 'COMBAT_ENHANCEMENT', quantity: 2 },
+      { id: 'PIERCING_ROUNDS', quantity: 2 },
+      { id: 'SHIELD_AMPLIFIER', quantity: 2 },
+      { id: 'OVERRUN', quantity: 2 },
+      { id: 'BREACH_THE_LINE', quantity: 2 }
     ]
   },
   {
@@ -95,20 +95,20 @@ const aiPersonalities = [
       'DRONECONTROL_001': 'r'
     },
     decklist: [
-      { id: 'CARD039', quantity: 3 },
-      { id: 'CARD002', quantity: 4 },
-      { id: 'CARD003', quantity: 4 },
-      { id: 'CARD004', quantity: 4 },
-      { id: 'CARD005', quantity: 3 },
-      { id: 'CARD007', quantity: 4 },
-      { id: 'CARD008', quantity: 3 },
-      { id: 'CARD033', quantity: 2 },
-      { id: 'CARD015', quantity: 3 },
-      { id: 'CARD016', quantity: 4 },
-      { id: 'CARD018', quantity: 4 },
-      { id: 'CARD019', quantity: 2 },
-      { id: 'Raise_the_Alarm', quantity: 2 },
-      { id: 'Transmit_Threat', quantity: 4 }
+      { id: 'THERMAL_LANCE', quantity: 3 },
+      { id: 'SYSTEM_REBOOT', quantity: 4 },
+      { id: 'OUT_THINK', quantity: 4 },
+      { id: 'ENERGY_SURGE', quantity: 4 },
+      { id: 'REACTIVATION_PROTOCOL', quantity: 3 },
+      { id: 'EMERGENCY_PATCH', quantity: 4 },
+      { id: 'SHIELD_RECHARGE', quantity: 3 },
+      { id: 'FINISHING_VOLLEY', quantity: 2 },
+      { id: 'STREAMLINE', quantity: 3 },
+      { id: 'WEAPON_OVERLOAD', quantity: 4 },
+      { id: 'DESPERATE_MEASURES', quantity: 4 },
+      { id: 'REPOSITION', quantity: 2 },
+      { id: 'RAISE_THE_ALARM', quantity: 2 },
+      { id: 'TRANSMIT_THREAT', quantity: 4 }
     ]
   },
   {
@@ -133,20 +133,20 @@ const aiPersonalities = [
       'DRONECONTROL_001': 'r'
     },
     decklist: [
-      { id: 'CARD039_ENHANCED', quantity: 4 },
-      { id: 'CARD002', quantity: 4 },
-      { id: 'CARD003', quantity: 3 },
-      { id: 'CARD004', quantity: 3 },
-      { id: 'CARD005', quantity: 4 },
-      { id: 'CARD006', quantity: 2 },
-      { id: 'CARD007', quantity: 3 },
-      { id: 'CARD009', quantity: 4 },
-      { id: 'CARD012', quantity: 3 },
-      { id: 'CARD015', quantity: 4 },
-      { id: 'CARD016', quantity: 3 },
-      { id: 'CARD019', quantity: 3 },
-      { id: 'Raise_the_Alarm', quantity: 2 },
-      { id: 'Transmit_Threat', quantity: 4 }
+      { id: 'THERMAL_LANCE_ENHANCED', quantity: 4 },
+      { id: 'SYSTEM_REBOOT', quantity: 4 },
+      { id: 'OUT_THINK', quantity: 3 },
+      { id: 'ENERGY_SURGE', quantity: 3 },
+      { id: 'REACTIVATION_PROTOCOL', quantity: 4 },
+      { id: 'NANOBOT_REPAIR', quantity: 2 },
+      { id: 'EMERGENCY_PATCH', quantity: 3 },
+      { id: 'TARGET_LOCK', quantity: 4 },
+      { id: 'PIERCING_SHOT', quantity: 3 },
+      { id: 'STREAMLINE', quantity: 4 },
+      { id: 'WEAPON_OVERLOAD', quantity: 3 },
+      { id: 'REPOSITION', quantity: 3 },
+      { id: 'RAISE_THE_ALARM', quantity: 2 },
+      { id: 'TRANSMIT_THREAT', quantity: 4 }
     ]
   },
   {
@@ -171,18 +171,18 @@ const aiPersonalities = [
       'POWERCELL_001': 'r'
     },
     decklist: [
-      { id: 'CARD039_ENHANCED', quantity: 4 },
-      { id: 'CARD002', quantity: 4 },
-      { id: 'CARD003', quantity: 2 },
-      { id: 'CARD004', quantity: 3 },
-      { id: 'CARD005', quantity: 4 },
-      { id: 'CARD006', quantity: 4 },
-      { id: 'CARD007', quantity: 3 },
-      { id: 'CARD008', quantity: 4 },
-      { id: 'CARD053_ENHANCED', quantity: 3 },
-      { id: 'CARD012', quantity: 4 },
-      { id: 'CARD013', quantity: 2 },
-      { id: 'CARD016', quantity: 3 }
+      { id: 'THERMAL_LANCE_ENHANCED', quantity: 4 },
+      { id: 'SYSTEM_REBOOT', quantity: 4 },
+      { id: 'OUT_THINK', quantity: 2 },
+      { id: 'ENERGY_SURGE', quantity: 3 },
+      { id: 'REACTIVATION_PROTOCOL', quantity: 4 },
+      { id: 'NANOBOT_REPAIR', quantity: 4 },
+      { id: 'EMERGENCY_PATCH', quantity: 3 },
+      { id: 'SHIELD_RECHARGE', quantity: 4 },
+      { id: 'PREY_ON_THE_WEAK_ENHANCED', quantity: 3 },
+      { id: 'PIERCING_SHOT', quantity: 4 },
+      { id: 'SIDEWINDER_MISSILES', quantity: 2 },
+      { id: 'WEAPON_OVERLOAD', quantity: 3 }
     ]
   },
   {
@@ -207,16 +207,16 @@ const aiPersonalities = [
       'POWERCELL_001': 'r'
     },
     decklist: [
-      { id: 'CARD039_ENHANCED', quantity: 4 },
-      { id: 'CARD002_ENHANCED', quantity: 3 },
-      { id: 'CARD004_ENHANCED', quantity: 4 },
-      { id: 'CARD006', quantity: 4 },
-      { id: 'CARD007_ENHANCED', quantity: 4 },
-      { id: 'CARD008', quantity: 4 },
-      { id: 'CARD053_ENHANCED', quantity: 3 },
-      { id: 'CARD012_ENHANCED', quantity: 4 },
-      { id: 'CARD013', quantity: 3 },
-      { id: 'CARD016', quantity: 4 }
+      { id: 'THERMAL_LANCE_ENHANCED', quantity: 4 },
+      { id: 'SYSTEM_REBOOT_ENHANCED', quantity: 3 },
+      { id: 'ENERGY_SURGE_ENHANCED', quantity: 4 },
+      { id: 'NANOBOT_REPAIR', quantity: 4 },
+      { id: 'EMERGENCY_PATCH_ENHANCED', quantity: 4 },
+      { id: 'SHIELD_RECHARGE', quantity: 4 },
+      { id: 'PREY_ON_THE_WEAK_ENHANCED', quantity: 3 },
+      { id: 'PIERCING_SHOT_ENHANCED', quantity: 4 },
+      { id: 'SIDEWINDER_MISSILES', quantity: 3 },
+      { id: 'WEAPON_OVERLOAD', quantity: 4 }
     ],
     bossConfig: {
       displayName: 'THE NEMESIS',

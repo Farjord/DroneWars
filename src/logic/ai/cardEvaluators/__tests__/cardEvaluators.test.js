@@ -110,7 +110,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('calculates base damage value correctly', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -129,7 +129,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('adds lethal bonus when damage kills target', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -148,7 +148,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('calculates overflow damage to ship correctly', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -167,7 +167,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('applies marked bonus to increase damage', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -187,7 +187,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('adds piercing bonus for shielded targets', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -206,7 +206,7 @@ describe('evaluateOverflowDamageCard', () => {
 
   it('calculates maximum overflow with marked target on 1-hull drone', () => {
     const card = {
-      id: 'CARD031',
+      id: 'RAILGUN_STRIKE',
       cost: 5,
       effects: [{ type: 'OVERFLOW_DAMAGE', baseDamage: 2, isPiercing: true, markedBonus: 2 }]
     };
@@ -227,7 +227,7 @@ describe('evaluateOverflowDamageCard', () => {
 describe('evaluateDamageCard', () => {
   it('calculates single target damage correctly', () => {
     const card = {
-      id: 'CARD001',
+      id: 'CONVERGENCE_BEAM',
       cost: 2,
       effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2 }]
     };
@@ -245,7 +245,7 @@ describe('evaluateDamageCard', () => {
 
   it('adds lethal bonus when damage is lethal', () => {
     const card = {
-      id: 'CARD001',
+      id: 'CONVERGENCE_BEAM',
       cost: 2,
       effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2 }]
     };
@@ -264,7 +264,7 @@ describe('evaluateDamageCard', () => {
 
   it('logs piercing bypass for shielded targets', () => {
     const card = {
-      id: 'CARD012',
+      id: 'PIERCING_SHOT',
       cost: 4,
       effects: [{ type: 'DAMAGE', scope: 'SINGLE', value: 2, damageType: 'PIERCING' }]
     };
@@ -278,7 +278,7 @@ describe('evaluateDamageCard', () => {
 
   it('calculates filtered damage with multi-hit bonus', () => {
     const card = {
-      id: 'CARD013',
+      id: 'SIDEWINDER_MISSILES',
       cost: 3,
       effects: [{
         type: 'DAMAGE',
@@ -314,7 +314,7 @@ describe('evaluateDamageCard', () => {
 describe('evaluateSplashDamageCard', () => {
   it('scores damage to target and adjacent drones', () => {
     const card = {
-      id: 'CARD032',
+      id: 'BARRAGE',
       cost: 4,
       effects: [{
         type: 'SPLASH_DAMAGE',
@@ -356,7 +356,7 @@ describe('evaluateSplashDamageCard', () => {
 
   it('applies bonus damage when friendly threshold met', () => {
     const card = {
-      id: 'CARD032',
+      id: 'BARRAGE',
       cost: 4,
       effects: [{
         type: 'SPLASH_DAMAGE',
@@ -405,7 +405,7 @@ describe('evaluateSplashDamageCard', () => {
 
   it('adds lethal bonus when damage kills target', () => {
     const card = {
-      id: 'CARD032',
+      id: 'BARRAGE',
       cost: 4,
       effects: [{
         type: 'SPLASH_DAMAGE',
@@ -445,7 +445,7 @@ describe('evaluateSplashDamageCard', () => {
 describe('evaluateDamageScalingCard', () => {
   it('scores damage based on ready friendly drones in lane', () => {
     const card = {
-      id: 'CARD035',
+      id: 'OVERWHELMING_FORCE',
       cost: 2,
       effects: [{
         type: 'DAMAGE_SCALING',
@@ -488,7 +488,7 @@ describe('evaluateDamageScalingCard', () => {
 
   it('returns low score with no ready drones', () => {
     const card = {
-      id: 'CARD035',
+      id: 'OVERWHELMING_FORCE',
       cost: 2,
       effects: [{
         type: 'DAMAGE_SCALING',
@@ -517,7 +517,7 @@ describe('evaluateDamageScalingCard', () => {
 
   it('scores high with many ready drones for lethal', () => {
     const card = {
-      id: 'CARD035',
+      id: 'OVERWHELMING_FORCE',
       cost: 2,
       effects: [{
         type: 'DAMAGE_SCALING',
@@ -558,7 +558,7 @@ describe('evaluateDamageScalingCard', () => {
 describe('evaluateDestroyUpgradeCard', () => {
   it('scores based on upgrade value removed from enemy', () => {
     const card = {
-      id: 'CARD022',
+      id: 'SYSTEM_SABOTAGE',
       cost: 1,
       effects: [{ type: 'DESTROY_UPGRADE' }]
     };
@@ -580,7 +580,7 @@ describe('evaluateDestroyUpgradeCard', () => {
 
   it('scores speed upgrades lower than attack', () => {
     const card = {
-      id: 'CARD022',
+      id: 'SYSTEM_SABOTAGE',
       cost: 1,
       effects: [{ type: 'DESTROY_UPGRADE' }]
     };
@@ -600,7 +600,7 @@ describe('evaluateDestroyUpgradeCard', () => {
 
   it('handles upgrades without mod (keyword grants)', () => {
     const card = {
-      id: 'CARD022',
+      id: 'SYSTEM_SABOTAGE',
       cost: 1,
       effects: [{ type: 'DESTROY_UPGRADE' }]
     };
@@ -622,7 +622,7 @@ describe('evaluateDestroyUpgradeCard', () => {
 describe('evaluateDestroyCard', () => {
   it('scores single target destroy based on unified scoring', () => {
     const card = {
-      id: 'CARD009',
+      id: 'TARGET_LOCK',
       cost: 3,
       effects: [{ type: 'DESTROY', scope: 'SINGLE' }]
     };
@@ -639,7 +639,7 @@ describe('evaluateDestroyCard', () => {
 
   it('calculates lane-wide destroy comparing enemy vs friendly', () => {
     const card = {
-      id: 'CARD011',
+      id: 'NUKE',
       cost: 8,
       effects: [{ type: 'DESTROY', scope: 'LANE' }]
     };
@@ -675,7 +675,7 @@ describe('evaluateDestroyCard', () => {
 describe('evaluateGainEnergyCard', () => {
   it('scores high when enabling expensive cards', () => {
     const card = {
-      id: 'CARD004',
+      id: 'ENERGY_SURGE',
       instanceId: 'inst1',
       cost: 1,
       effects: [{ type: 'GAIN_ENERGY', value: 2 }]
@@ -698,7 +698,7 @@ describe('evaluateGainEnergyCard', () => {
 
   it('returns invalid score when no cards enabled', () => {
     const card = {
-      id: 'CARD004',
+      id: 'ENERGY_SURGE',
       instanceId: 'inst1',
       cost: 1,
       effects: [{ type: 'GAIN_ENERGY', value: 2 }]
@@ -721,7 +721,7 @@ describe('evaluateGainEnergyCard', () => {
 
   it('returns invalid score when enabled cards have no valid targets', () => {
     const card = {
-      id: 'CARD004',
+      id: 'ENERGY_SURGE',
       instanceId: 'inst1',
       cost: 1,
       effects: [{ type: 'GAIN_ENERGY', value: 2 }]
@@ -752,7 +752,7 @@ describe('evaluateGainEnergyCard', () => {
 
   it('scores high when enabling untargeted cards', () => {
     const card = {
-      id: 'CARD004',
+      id: 'ENERGY_SURGE',
       instanceId: 'inst1',
       cost: 1,
       effects: [{ type: 'GAIN_ENERGY', value: 2 }]
@@ -787,7 +787,7 @@ describe('evaluateGainEnergyCard', () => {
 describe('evaluateDrawCard', () => {
   it('scores higher with more energy remaining', () => {
     const card = {
-      id: 'CARD003',
+      id: 'OUT_THINK',
       cost: 1,
       effects: [{ type: 'DRAW', value: 2 }]
     };
@@ -805,7 +805,7 @@ describe('evaluateDrawCard', () => {
 
   it('returns low priority when no energy after play', () => {
     const card = {
-      id: 'CARD003',
+      id: 'OUT_THINK',
       cost: 1,
       effects: [{ type: 'DRAW', value: 2 }]
     };
@@ -824,7 +824,7 @@ describe('evaluateDrawCard', () => {
 describe('evaluateSearchAndDrawCard', () => {
   it('calculates draw and search value correctly', () => {
     const card = {
-      id: 'CARD025',
+      id: 'STRATEGIC_PLANNING',
       cost: 2,
       effects: [{ type: 'SEARCH_AND_DRAW', drawCount: 1, searchCount: 5 }]
     };
@@ -850,7 +850,7 @@ describe('evaluateSearchAndDrawCard', () => {
 describe('evaluateHealShieldsCard', () => {
   it('scores based on shields actually healed', () => {
     const card = {
-      id: 'CARD008',
+      id: 'SHIELD_RECHARGE',
       cost: 2,
       effects: [{ type: 'HEAL_SHIELDS', value: 2 }]
     };
@@ -866,7 +866,7 @@ describe('evaluateHealShieldsCard', () => {
 
   it('caps healing at max shields', () => {
     const card = {
-      id: 'CARD008',
+      id: 'SHIELD_RECHARGE',
       cost: 2,
       effects: [{ type: 'HEAL_SHIELDS', value: 3 }]
     };
@@ -882,7 +882,7 @@ describe('evaluateHealShieldsCard', () => {
 
   it('returns zero when shields already full', () => {
     const card = {
-      id: 'CARD008',
+      id: 'SHIELD_RECHARGE',
       cost: 2,
       effects: [{ type: 'HEAL_SHIELDS', value: 2 }]
     };
@@ -898,7 +898,7 @@ describe('evaluateHealShieldsCard', () => {
 describe('evaluateHealHullCard', () => {
   it('returns fixed section heal value for ship sections', () => {
     const card = {
-      id: 'CARD007',
+      id: 'EMERGENCY_PATCH',
       cost: 2,
       effects: [{ type: 'HEAL_HULL', value: 1 }]
     };
@@ -914,7 +914,7 @@ describe('evaluateHealHullCard', () => {
 
   it('scores drone hull healing with go-again bonus', () => {
     const card = {
-      id: 'CARD006',
+      id: 'NANOBOT_REPAIR',
       cost: 1,
       effects: [{ type: 'HEAL_HULL', value: 3, goAgain: true }]
     };
@@ -935,7 +935,7 @@ describe('evaluateHealHullCard', () => {
 
   it('returns invalid score for drone at full hull', () => {
     const card = {
-      id: 'CARD006',
+      id: 'NANOBOT_REPAIR',
       cost: 1,
       effects: [{ type: 'HEAL_HULL', value: 3, goAgain: true }]
     };
@@ -952,7 +952,7 @@ describe('evaluateHealHullCard', () => {
 describe('evaluateRestoreSectionShieldsCard', () => {
   it('scores based on shields that can be restored', () => {
     const card = {
-      id: 'CARD037',
+      id: 'SHIELD_BOOST',
       cost: 1,
       effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
@@ -975,7 +975,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
 
   it('caps restoration at missing shields', () => {
     const card = {
-      id: 'CARD037',
+      id: 'SHIELD_BOOST',
       cost: 1,
       effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
@@ -997,7 +997,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
 
   it('returns zero for fully shielded section', () => {
     const card = {
-      id: 'CARD037',
+      id: 'SHIELD_BOOST',
       cost: 1,
       effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 2 }]
     };
@@ -1018,7 +1018,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
 
   it('handles enhanced version with higher restore value', () => {
     const card = {
-      id: 'CARD037_ENHANCED',
+      id: 'SHIELD_BOOST_ENHANCED',
       cost: 2,
       effects: [{ type: 'RESTORE_SECTION_SHIELDS', value: 3 }]
     };
@@ -1045,7 +1045,7 @@ describe('evaluateRestoreSectionShieldsCard', () => {
 describe('evaluateRepeatingEffectCard', () => {
   it('scores based on repeat count from damaged sections', () => {
     const card = {
-      id: 'CARD018',
+      id: 'DESPERATE_MEASURES',
       cost: 1,
       condition: 'OWN_DAMAGED_SECTIONS',
       effects: [{ type: 'REPEATING_EFFECT' }]
@@ -1076,7 +1076,7 @@ describe('evaluateRepeatingEffectCard', () => {
 
   it('gives minimum value with no damaged sections', () => {
     const card = {
-      id: 'CARD018',
+      id: 'DESPERATE_MEASURES',
       cost: 1,
       condition: 'OWN_DAMAGED_SECTIONS',
       effects: [{ type: 'REPEATING_EFFECT' }]
@@ -1101,7 +1101,7 @@ describe('evaluateRepeatingEffectCard', () => {
 describe('evaluateModifyStatCard', () => {
   it('scores attack buff on non-exhausted friendly drone', () => {
     const card = {
-      id: 'CARD014',
+      id: 'OVERCHARGE',
       cost: 1,
       effects: [{
         type: 'MODIFY_STAT',
@@ -1123,7 +1123,7 @@ describe('evaluateModifyStatCard', () => {
 
   it('returns invalid score for exhausted target', () => {
     const card = {
-      id: 'CARD014',
+      id: 'OVERCHARGE',
       cost: 1,
       effects: [{
         type: 'MODIFY_STAT',
@@ -1141,7 +1141,7 @@ describe('evaluateModifyStatCard', () => {
 
   it('scores attack debuff on enemy based on threat reduction', () => {
     const card = {
-      id: 'CARD016',
+      id: 'WEAPON_OVERLOAD',
       cost: 2,
       effects: [{
         type: 'MODIFY_STAT',
@@ -1165,7 +1165,7 @@ describe('evaluateModifyStatCard', () => {
 
   it('gives bonus for speed buff that overcomes interceptors', () => {
     const card = {
-      id: 'CARD017',
+      id: 'BOOSTERS',
       cost: 1,
       effects: [{
         type: 'MODIFY_STAT',
@@ -1225,7 +1225,7 @@ describe('evaluateModifyStatCard', () => {
 describe('evaluateSingleMoveCard', () => {
   it('returns invalid score when moveData is missing', () => {
     const card = {
-      id: 'CARD023',
+      id: 'MANEUVER',
       cost: 0,
       effects: [{ type: 'SINGLE_MOVE' }]
     };
@@ -1239,7 +1239,7 @@ describe('evaluateSingleMoveCard', () => {
 
   it('calculates move impact and applies cost', () => {
     const card = {
-      id: 'CARD023',
+      id: 'MANEUVER',
       cost: 0,
       effects: [{ type: 'SINGLE_MOVE' }]
     };
@@ -1266,7 +1266,7 @@ describe('evaluateSingleMoveCard', () => {
 
   it('adds go-again bonus when card has goAgain', () => {
     const card = {
-      id: 'CARD023_ENHANCED',
+      id: 'MANEUVER_ENHANCED',
       cost: 1,
       effects: [{ type: 'SINGLE_MOVE', goAgain: true }]
     };
@@ -1292,7 +1292,7 @@ describe('evaluateSingleMoveCard', () => {
 
   it('adds ON_MOVE ability bonus for drones with triggered abilities', () => {
     const card = {
-      id: 'CARD023',
+      id: 'MANEUVER',
       cost: 0,
       effects: [{ type: 'SINGLE_MOVE' }]
     };
@@ -1320,7 +1320,7 @@ describe('evaluateSingleMoveCard', () => {
 describe('evaluateMultiMoveCard', () => {
   it('scores based on drones available to move', () => {
     const card = {
-      id: 'CARD019',
+      id: 'REPOSITION',
       cost: 4,
       effects: [{
         type: 'MULTI_MOVE',
@@ -1356,7 +1356,7 @@ describe('evaluateMultiMoveCard', () => {
 
   it('returns zero for empty lane', () => {
     const card = {
-      id: 'CARD019',
+      id: 'REPOSITION',
       cost: 4,
       effects: [{ type: 'MULTI_MOVE', count: 3 }]
     };
@@ -1375,7 +1375,7 @@ describe('evaluateMultiMoveCard', () => {
 
   it('caps moves at effect count', () => {
     const card = {
-      id: 'CARD019',
+      id: 'REPOSITION',
       cost: 4,
       effects: [{ type: 'MULTI_MOVE', count: 2 }]  // Only 2 max
     };
@@ -1415,9 +1415,9 @@ describe('Card Evaluator Registry', () => {
   it('evaluateCardPlay adds conditional bonus to base score', async () => {
     const { evaluateCardPlay } = await import('../index.js');
 
-    // CARD053 Executioner: DAMAGE 0, but conditional DESTROY if hull < 2
+    // PREY_ON_THE_WEAK (Executioner): DAMAGE 0, but conditional DESTROY if hull < 2
     const card = {
-      id: 'CARD053',
+      id: 'PREY_ON_THE_WEAK',
       cost: 2,
       effects: [{
         type: 'DAMAGE', value: 0,
@@ -1445,7 +1445,7 @@ describe('Card Evaluator Registry', () => {
 
     // Regular damage card without conditionals
     const card = {
-      id: 'CARD001',
+      id: 'CONVERGENCE_BEAM',
       cost: 2,
       effects: [{ type: 'DAMAGE', value: 2 }]
     };
@@ -1496,7 +1496,7 @@ describe('Card Evaluator Registry', () => {
 describe('evaluateCreateTokensCard', () => {
   it('calculates jammer value with drones on board', () => {
     const card = {
-      id: 'CARD030',
+      id: 'DEPLOY_JAMMERS',
       cost: 5,
       effects: [{ type: 'CREATE_TOKENS' }]
     };
@@ -1529,7 +1529,7 @@ describe('evaluateCreateTokensCard', () => {
 
   it('includes available lanes info in logic', () => {
     const card = {
-      id: 'CARD030',
+      id: 'DEPLOY_JAMMERS',
       cost: 5,
       effects: [{ type: 'CREATE_TOKENS' }]
     };
@@ -1554,7 +1554,7 @@ describe('evaluateCreateTokensCard', () => {
 describe('evaluateModifyDroneBaseCard', () => {
   it('returns invalid score for null target', () => {
     const card = {
-      id: 'CARD028',
+      id: 'COMBAT_ENHANCEMENT',
       cost: 5,
       effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
@@ -1569,7 +1569,7 @@ describe('evaluateModifyDroneBaseCard', () => {
 
   it('returns invalid score for unknown drone type', () => {
     const card = {
-      id: 'CARD028',
+      id: 'COMBAT_ENHANCEMENT',
       cost: 5,
       effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
@@ -1584,7 +1584,7 @@ describe('evaluateModifyDroneBaseCard', () => {
 
   it('calculates attack upgrade score with synergy bonus for fast drones', () => {
     const card = {
-      id: 'CARD028',
+      id: 'COMBAT_ENHANCEMENT',
       cost: 5,
       effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }]
     };
@@ -1609,7 +1609,7 @@ describe('evaluateModifyDroneBaseCard', () => {
 
   it('calculates speed upgrade score', () => {
     const card = {
-      id: 'CARD021',
+      id: 'OVERCLOCKED_THRUSTERS',
       cost: 3,
       effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'speed', value: 1 } }]
     };
@@ -1631,7 +1631,7 @@ describe('evaluateModifyDroneBaseCard', () => {
 
   it('calculates limit upgrade score', () => {
     const card = {
-      id: 'CARD020',
+      id: 'SLIMLINE_BODYWORK',
       cost: 3,
       effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'limit', value: 1 }, goAgain: true }]
     };
@@ -1879,7 +1879,7 @@ describe('evaluateConditionalEffects', () => {
   describe('Cards without conditionals', () => {
     it('returns zero bonus for cards without conditionals', () => {
       const card = {
-        id: 'CARD001',
+        id: 'CONVERGENCE_BEAM',
         cost: 2,
         effects: [{ type: 'DAMAGE', value: 2 }]
         // No conditionals
@@ -1895,7 +1895,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('returns zero bonus for empty conditionals array', () => {
       const card = {
-        id: 'CARD001',
+        id: 'CONVERGENCE_BEAM',
         cost: 2,
         effects: [{ type: 'DAMAGE', value: 2, conditionals: [] }]
       };
@@ -1910,9 +1910,9 @@ describe('evaluateConditionalEffects', () => {
 
   describe('PRE timing conditionals - TARGET_STAT_LT (Executioner pattern)', () => {
     it('adds DESTROY bonus when hull < threshold', () => {
-      // CARD053 Executioner: If hull < 2, DESTROY
+      // PREY_ON_THE_WEAK (Executioner): If hull < 2, DESTROY
       const card = {
-        id: 'CARD053',
+        id: 'PREY_ON_THE_WEAK',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 0,
@@ -1938,7 +1938,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('returns zero when hull >= threshold (condition not met)', () => {
       const card = {
-        id: 'CARD053',
+        id: 'PREY_ON_THE_WEAK',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 0,
@@ -1961,9 +1961,9 @@ describe('evaluateConditionalEffects', () => {
 
   describe('PRE timing conditionals - TARGET_STAT_LTE (Finishing Blow pattern)', () => {
     it('adds BONUS_DAMAGE when hull <= threshold', () => {
-      // CARD051 Finishing Blow: If hull <= 2, +2 damage
+      // SUNDERING_BEAM (Finishing Blow): If hull <= 2, +2 damage
       const card = {
-        id: 'CARD051',
+        id: 'SUNDERING_BEAM',
         cost: 3,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -1987,9 +1987,9 @@ describe('evaluateConditionalEffects', () => {
 
   describe('PRE timing conditionals - TARGET_IS_MARKED (Opportunist Strike pattern)', () => {
     it('adds bonuses when target is marked', () => {
-      // CARD052: If marked, +2 damage
+      // CONDEMNATION_RAY: If marked, +2 damage
       const card = {
-        id: 'CARD052',
+        id: 'CONDEMNATION_RAY',
         cost: 4,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2011,7 +2011,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('returns zero when target is not marked', () => {
       const card = {
-        id: 'CARD052',
+        id: 'CONDEMNATION_RAY',
         cost: 4,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2033,9 +2033,9 @@ describe('evaluateConditionalEffects', () => {
 
   describe('PRE timing conditionals - TARGET_STAT_GTE (Swift Maneuver pattern)', () => {
     it('adds GO_AGAIN bonus when speed >= threshold', () => {
-      // CARD060: If speed >= 5, go again
+      // SWIFT_MANEUVER: If speed >= 5, go again
       const card = {
-        id: 'CARD060',
+        id: 'SWIFT_MANEUVER',
         cost: 0,
         effects: [{
           type: 'SINGLE_MOVE',
@@ -2090,10 +2090,10 @@ describe('evaluateConditionalEffects', () => {
   });
 
   describe('POST timing conditionals - ON_DESTROY', () => {
-    it('adds draw bonus when damage will kill target (CARD050 Scavenger Shot)', () => {
-      // CARD050: Deal 2 damage, if destroyed draw 1
+    it('adds draw bonus when damage will kill target (SCAVENGER_SHOT)', () => {
+      // SCAVENGER_SHOT: Deal 2 damage, if destroyed draw 1
       const card = {
-        id: 'CARD050',
+        id: 'SCAVENGER_SHOT',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2117,7 +2117,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('no bonus when damage will NOT kill target', () => {
       const card = {
-        id: 'CARD050',
+        id: 'SCAVENGER_SHOT',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2140,7 +2140,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('accounts for shields when predicting kill', () => {
       const card = {
-        id: 'CARD050',
+        id: 'SCAVENGER_SHOT',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2163,7 +2163,7 @@ describe('evaluateConditionalEffects', () => {
 
     it('no bonus when shields prevent kill', () => {
       const card = {
-        id: 'CARD050',
+        id: 'SCAVENGER_SHOT',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 2,
@@ -2185,11 +2185,11 @@ describe('evaluateConditionalEffects', () => {
   });
 
   describe('POST timing conditionals - ON_HULL_DAMAGE', () => {
-    it('adds energy bonus when hull damage will be dealt (CARD054 Energy Leech)', () => {
-      // CARD054: Deal 1 damage, if hull damage dealt gain 3 energy
+    it('adds energy bonus when hull damage will be dealt (ENERGY_LEECH)', () => {
+      // ENERGY_LEECH: Deal 1 damage, if hull damage dealt gain 3 energy
       // Target has 0 shields, so 1 damage will deal hull damage
       const card = {
-        id: 'CARD054',
+        id: 'ENERGY_LEECH',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 1,
@@ -2213,7 +2213,7 @@ describe('evaluateConditionalEffects', () => {
     it('no bonus when damage blocked by shields (no hull damage)', () => {
       // Target has 2 shields, dealing 1 damage won't cause hull damage
       const card = {
-        id: 'CARD054',
+        id: 'ENERGY_LEECH',
         cost: 2,
         effects: [{
           type: 'DAMAGE', value: 1,

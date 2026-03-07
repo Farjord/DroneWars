@@ -80,8 +80,8 @@ vi.mock('../../statsCalculator.js', () => ({
 
 vi.mock('../../../data/cardData.js', () => ({
   default: [
-    { id: 'CARD001', name: 'Test Card 1' },
-    { id: 'CARD002', name: 'Test Card 2' }
+    { id: 'CONVERGENCE_BEAM', name: 'Test Card 1' },
+    { id: 'SYSTEM_REBOOT', name: 'Test Card 2' }
   ]
 }));
 
@@ -100,7 +100,7 @@ vi.mock('../../../data/aiData.js', () => ({
       modes: ['extraction'],
       shipId: 'SHIP_003',
       dronePool: ['Dart', 'Talon'],
-      decklist: [{ id: 'CARD001', quantity: 4 }]
+      decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }]
     },
     {
       bossId: 'BOSS_T1_NEMESIS',
@@ -109,7 +109,7 @@ vi.mock('../../../data/aiData.js', () => ({
       difficulty: 'Hard',
       shipId: 'SHIP_001',
       dronePool: ['Mammoth', 'Devastator'],
-      decklist: [{ id: 'CARD001', quantity: 4 }],
+      decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }],
       bossConfig: {
         displayName: 'THE NEMESIS',
         subtitle: 'Commander of the Eremos Blockade',
@@ -147,7 +147,7 @@ describe('initiateBossCombat', () => {
         id: 0,
         status: 'active',
         shipId: 'SHIP_001',
-        decklist: [{ id: 'CARD001', quantity: 4 }],
+        decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }],
         droneSlots: [
           { slotIndex: 0, assignedDrone: 'Dart', slotDamaged: false }
         ]
@@ -230,7 +230,7 @@ describe('initiateBossCombat', () => {
         id: 0,
         status: 'active',
         shipId: 'SHIP_001',
-        decklist: [{ id: 'CARD001', quantity: 4 }],
+        decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }],
         droneSlots: [{ slotIndex: 0, assignedDrone: 'Dart', slotDamaged: false }]
       }],
       singlePlayerProfile: {
@@ -266,7 +266,7 @@ describe('initiateBossCombat', () => {
     gameStateManager.getState.mockReturnValue({
       singlePlayerShipSlots: [
         { id: 0, status: 'active', shipId: 'SHIP_001', decklist: [], droneSlots: [] },
-        { id: 1, status: 'active', shipId: 'SHIP_002', decklist: [{ id: 'CARD002', quantity: 2 }], droneSlots: [] }
+        { id: 1, status: 'active', shipId: 'SHIP_002', decklist: [{ id: 'SYSTEM_REBOOT', quantity: 2 }], droneSlots: [] }
       ],
       singlePlayerProfile: {
         bossProgress: { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 }
@@ -318,7 +318,7 @@ describe('initiateBossCombat - Ship Sections Loading', () => {
         id: 0,
         status: 'active',
         shipId: 'SHIP_001',
-        decklist: [{ id: 'CARD001', quantity: 4 }],
+        decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }],
         droneSlots: [{ slotIndex: 0, assignedDrone: 'Dart', slotDamaged: false }],
         // Custom sectionSlots configuration
         sectionSlots: {
@@ -361,7 +361,7 @@ describe('initiateBossCombat - Ship Sections Loading', () => {
         id: 0,
         status: 'active',
         shipId: 'SHIP_001',
-        decklist: [{ id: 'CARD001', quantity: 4 }],
+        decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }],
         droneSlots: [],
         sectionSlots: {
           l: { componentId: 'POWERCELL_001', damageDealt: 0 },

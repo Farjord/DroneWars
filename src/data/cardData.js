@@ -5,8 +5,8 @@ const fullCardCollection = [
   // --- Ordnance Cards ---
 
   {
-    id: 'CARD_ION01',
-    baseCardId: 'CARD_ION01',
+    id: 'ION_PULSE',
+    baseCardId: 'ION_PULSE',
     name: 'Ion Pulse',
     maxInDeck: 2,
     rarity: 'Common',
@@ -22,8 +22,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_KIN01',
-    baseCardId: 'CARD_KIN01',
+    id: 'KINETIC_SLUG',
+    baseCardId: 'KINETIC_SLUG',
     name: 'Kinetic Slug',
     maxInDeck: 2,
     rarity: 'Common',
@@ -39,8 +39,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_SB01',
-    baseCardId: 'CARD_SB01',
+    id: 'NULLWAVE_CANNON',
+    baseCardId: 'NULLWAVE_CANNON',
     name: 'Nullwave Cannon',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -56,8 +56,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD001',
-    baseCardId: 'CARD001',
+    id: 'CONVERGENCE_BEAM',
+    baseCardId: 'CONVERGENCE_BEAM',
     name: 'Convergence Beam',
     maxInDeck: 2,
     rarity: 'Common',
@@ -73,8 +73,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD001_ENHANCED',
-    baseCardId: 'CARD001',
+    id: 'CONVERGENCE_BEAM_ENHANCED',
+    baseCardId: 'CONVERGENCE_BEAM',
     name: 'Convergence Beam+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -90,8 +90,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD009',
-    baseCardId: 'CARD009',
+    id: 'TARGET_LOCK',
+    baseCardId: 'TARGET_LOCK',
     name: 'Target Lock',
     maxInDeck: 2,
     rarity: 'Common',
@@ -106,8 +106,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD010',
-    baseCardId: 'CARD010',
+    id: 'SHRIEKER_MISSILES',
+    baseCardId: 'SHRIEKER_MISSILES',
     name: 'Shrieker Missiles',
     maxInDeck: 2,
     rarity: 'Common',
@@ -122,8 +122,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD010_ENHANCED',
-    baseCardId: 'CARD010',
+    id: 'SHRIEKER_MISSILES_ENHANCED',
+    baseCardId: 'SHRIEKER_MISSILES',
     name: 'Shrieker Missiles+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -138,8 +138,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD011',
-    baseCardId: 'CARD011',
+    id: 'NUKE',
+    baseCardId: 'NUKE',
     name: 'Nuke',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -155,8 +155,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD012',
-    baseCardId: 'CARD012',
+    id: 'PIERCING_SHOT',
+    baseCardId: 'PIERCING_SHOT',
     name: 'Piercing Shot',
     maxInDeck: 2,
     rarity: 'Common',
@@ -172,8 +172,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD012_ENHANCED',
-    baseCardId: 'CARD012',
+    id: 'PIERCING_SHOT_ENHANCED',
+    baseCardId: 'PIERCING_SHOT',
     name: 'Piercing Shot+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -189,8 +189,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD013',
-    baseCardId: 'CARD013',
+    id: 'SIDEWINDER_MISSILES',
+    baseCardId: 'SIDEWINDER_MISSILES',
     name: 'Sidewinder Missiles',
     maxInDeck: 2,
     rarity: 'Common',
@@ -211,8 +211,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD031',
-    baseCardId: 'CARD031',
+    id: 'RAILGUN_STRIKE',
+    baseCardId: 'RAILGUN_STRIKE',
     name: 'Railgun Strike',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -234,8 +234,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD032',
-    baseCardId: 'CARD032',
+    id: 'BARRAGE',
+    baseCardId: 'BARRAGE',
     name: 'Barrage',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -251,8 +251,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD032_ENHANCED',
-    baseCardId: 'CARD032',
+    id: 'BARRAGE_ENHANCED',
+    baseCardId: 'BARRAGE',
     name: 'Barrage+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -274,8 +274,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD033',
-    baseCardId: 'CARD033',
+    id: 'FINISHING_VOLLEY',
+    baseCardId: 'FINISHING_VOLLEY',
     name: 'Finishing Volley',
     maxInDeck: 2,
     rarity: 'Common',
@@ -291,8 +291,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD033_ENHANCED',
-    baseCardId: 'CARD033',
+    id: 'FINISHING_VOLLEY_ENHANCED',
+    baseCardId: 'FINISHING_VOLLEY',
     name: 'Finishing Volley+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -308,8 +308,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD034',
-    baseCardId: 'CARD034',
+    id: 'STRAFING_RUN',
+    baseCardId: 'STRAFING_RUN',
     name: 'Strafing Run',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -333,8 +333,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD035',
-    baseCardId: 'CARD035',
+    id: 'OVERWHELMING_FORCE',
+    baseCardId: 'OVERWHELMING_FORCE',
     name: 'Overwhelming Force',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -350,8 +350,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD036',
-    baseCardId: 'CARD036',
+    id: 'PURGE_PROTOCOL',
+    baseCardId: 'PURGE_PROTOCOL',
     name: 'Purge Protocol',
     maxInDeck: 1,
     rarity: 'Mythic',
@@ -367,8 +367,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD038',
-    baseCardId: 'CARD038',
+    id: 'PARTICLE_WHIP',
+    baseCardId: 'PARTICLE_WHIP',
     name: 'Particle Whip',
     maxInDeck: 2,
     rarity: 'Common',
@@ -384,8 +384,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD039',
-    baseCardId: 'CARD039',
+    id: 'THERMAL_LANCE',
+    baseCardId: 'THERMAL_LANCE',
     name: 'Thermal Lance',
     maxInDeck: 2,
     rarity: 'Common',
@@ -401,8 +401,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD039_ENHANCED',
-    baseCardId: 'CARD039',
+    id: 'THERMAL_LANCE_ENHANCED',
+    baseCardId: 'THERMAL_LANCE',
     name: 'Thermal Lance+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -418,8 +418,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD050',
-    baseCardId: 'CARD050',
+    id: 'SCAVENGER_SHOT',
+    baseCardId: 'SCAVENGER_SHOT',
     name: 'Scavenger Shot',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -446,8 +446,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD051',
-    baseCardId: 'CARD051',
+    id: 'SUNDERING_BEAM',
+    baseCardId: 'SUNDERING_BEAM',
     name: 'Sundering Beam',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -474,8 +474,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD052',
-    baseCardId: 'CARD052',
+    id: 'CONDEMNATION_RAY',
+    baseCardId: 'CONDEMNATION_RAY',
     name: 'Condemnation Ray',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -508,8 +508,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD053',
-    baseCardId: 'CARD053',
+    id: 'PREY_ON_THE_WEAK',
+    baseCardId: 'PREY_ON_THE_WEAK',
     name: 'Prey on the Weak',
     maxInDeck: 2,
     rarity: 'Common',
@@ -543,8 +543,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD053_ENHANCED',
-    baseCardId: 'CARD053',
+    id: 'PREY_ON_THE_WEAK_ENHANCED',
+    baseCardId: 'PREY_ON_THE_WEAK',
     name: 'Prey on the Weak+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -578,8 +578,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD054',
-    baseCardId: 'CARD054',
+    id: 'ENERGY_LEECH',
+    baseCardId: 'ENERGY_LEECH',
     name: 'Energy Leech',
     maxInDeck: 2,
     rarity: 'Common',
@@ -606,8 +606,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD063',
-    baseCardId: 'CARD063',
+    id: 'PHASE_CHARGED_LASER',
+    baseCardId: 'PHASE_CHARGED_LASER',
     name: 'Phase-Charged Laser',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -633,8 +633,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Deploy_Inhibitor_Mine',
-    baseCardId: 'Deploy_Inhibitor_Mine',
+    id: 'DEPLOY_INHIBITOR_MINE',
+    baseCardId: 'DEPLOY_INHIBITOR_MINE',
     name: 'Deploy Inhibitor Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -655,8 +655,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Deploy_Jitter_Mine',
-    baseCardId: 'Deploy_Jitter_Mine',
+    id: 'DEPLOY_JITTER_MINE',
+    baseCardId: 'DEPLOY_JITTER_MINE',
     name: 'Deploy Jitter Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -677,8 +677,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Deploy_Proximity_Mine',
-    baseCardId: 'Deploy_Proximity_Mine',
+    id: 'DEPLOY_PROXIMITY_MINE',
+    baseCardId: 'DEPLOY_PROXIMITY_MINE',
     name: 'Deploy Proximity Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -699,8 +699,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'DOCTRINE_001',
-    baseCardId: 'DOCTRINE_001',
+    id: 'CROSSFIRE_PATTERN',
+    baseCardId: 'CROSSFIRE_PATTERN',
     name: 'Crossfire Pattern',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -732,8 +732,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'DOCTRINE_002',
-    baseCardId: 'DOCTRINE_002',
+    id: 'BREACH_THE_LINE',
+    baseCardId: 'BREACH_THE_LINE',
     name: 'Breach the Line',
     maxInDeck: 1,
     rarity: 'Common',
@@ -765,8 +765,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'DOCTRINE_003',
-    baseCardId: 'DOCTRINE_003',
+    id: 'OVERRUN',
+    baseCardId: 'OVERRUN',
     name: 'Overrun',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -789,8 +789,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'DOCTRINE_004',
-    baseCardId: 'DOCTRINE_004',
+    id: 'ENCIRCLEMENT',
+    baseCardId: 'ENCIRCLEMENT',
     name: 'Encirclement',
     maxInDeck: 1,
     rarity: 'Mythic',
@@ -822,8 +822,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'LANE_CONTROL_DAMAGE',
-    baseCardId: 'LANE_CONTROL_DAMAGE',
+    id: 'SUPPRESSION_FIRE',
+    baseCardId: 'SUPPRESSION_FIRE',
     name: 'Suppression Fire',
     maxInDeck: 2,
     rarity: 'Common',
@@ -851,8 +851,8 @@ const fullCardCollection = [
   // --- Support Cards ---
 
   {
-    id: 'CARD_STATUS_CLEAR',
-    baseCardId: 'CARD_STATUS_CLEAR',
+    id: 'SYSTEM_RESTORE',
+    baseCardId: 'SYSTEM_RESTORE',
     name: 'System Restore',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -867,8 +867,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD002',
-    baseCardId: 'CARD002',
+    id: 'SYSTEM_REBOOT',
+    baseCardId: 'SYSTEM_REBOOT',
     name: 'System Reboot',
     maxInDeck: 2,
     rarity: 'Common',
@@ -882,8 +882,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD002_ENHANCED',
-    baseCardId: 'CARD002',
+    id: 'SYSTEM_REBOOT_ENHANCED',
+    baseCardId: 'SYSTEM_REBOOT',
     name: 'System Reboot+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -897,8 +897,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD003',
-    baseCardId: 'CARD003',
+    id: 'OUT_THINK',
+    baseCardId: 'OUT_THINK',
     name: 'Out Think',
     maxInDeck: 2,
     rarity: 'Common',
@@ -913,8 +913,8 @@ const fullCardCollection = [
     playCondition: { type: 'LANE_CONTROL_COMPARISON', comparison: 'FEWER_THAN_OPPONENT' },
   },
   {
-    id: 'CARD004',
-    baseCardId: 'CARD004',
+    id: 'ENERGY_SURGE',
+    baseCardId: 'ENERGY_SURGE',
     name: 'Energy Surge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -928,8 +928,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD004_ENHANCED',
-    baseCardId: 'CARD004',
+    id: 'ENERGY_SURGE_ENHANCED',
+    baseCardId: 'ENERGY_SURGE',
     name: 'Energy Surge+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -943,8 +943,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD005',
-    baseCardId: 'CARD005',
+    id: 'REACTIVATION_PROTOCOL',
+    baseCardId: 'REACTIVATION_PROTOCOL',
     name: 'Reactivation Protocol',
     maxInDeck: 2,
     rarity: 'Common',
@@ -969,8 +969,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD005_ENHANCED',
-    baseCardId: 'CARD005',
+    id: 'REACTIVATION_PROTOCOL_ENHANCED',
+    baseCardId: 'REACTIVATION_PROTOCOL',
     name: 'Reactivation Protocol+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -985,8 +985,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD006',
-    baseCardId: 'CARD006',
+    id: 'NANOBOT_REPAIR',
+    baseCardId: 'NANOBOT_REPAIR',
     name: 'Nanobot Repair',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1001,8 +1001,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD007',
-    baseCardId: 'CARD007',
+    id: 'EMERGENCY_PATCH',
+    baseCardId: 'EMERGENCY_PATCH',
     name: 'Emergency Patch',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1017,8 +1017,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD007_ENHANCED',
-    baseCardId: 'CARD007',
+    id: 'EMERGENCY_PATCH_ENHANCED',
+    baseCardId: 'EMERGENCY_PATCH',
     name: 'Emergency Patch+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1033,8 +1033,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD008',
-    baseCardId: 'CARD008',
+    id: 'SHIELD_RECHARGE',
+    baseCardId: 'SHIELD_RECHARGE',
     name: 'Shield Recharge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1049,8 +1049,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD014',
-    baseCardId: 'CARD014',
+    id: 'OVERCHARGE',
+    baseCardId: 'OVERCHARGE',
     name: 'Overcharge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1069,8 +1069,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD015',
-    baseCardId: 'CARD015',
+    id: 'STREAMLINE',
+    baseCardId: 'STREAMLINE',
     name: 'Streamline',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1089,8 +1089,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD017',
-    baseCardId: 'CARD017',
+    id: 'BOOSTERS',
+    baseCardId: 'BOOSTERS',
     name: 'Boosters',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1109,8 +1109,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD018',
-    baseCardId: 'CARD018',
+    id: 'DESPERATE_MEASURES',
+    baseCardId: 'DESPERATE_MEASURES',
     name: 'Desperate Measures',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1133,8 +1133,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD019',
-    baseCardId: 'CARD019',
+    id: 'REPOSITION',
+    baseCardId: 'REPOSITION',
     name: 'Reposition',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1148,8 +1148,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD023',
-    baseCardId: 'CARD023',
+    id: 'MANEUVER',
+    baseCardId: 'MANEUVER',
     name: 'Maneuver',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1162,8 +1162,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD023_ENHANCED',
-    baseCardId: 'CARD023',
+    id: 'MANEUVER_ENHANCED',
+    baseCardId: 'MANEUVER',
     name: 'Maneuver+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1176,8 +1176,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD025',
-    baseCardId: 'CARD025',
+    id: 'STRATEGIC_PLANNING',
+    baseCardId: 'STRATEGIC_PLANNING',
     name: 'Strategic Planning',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1188,8 +1188,8 @@ const fullCardCollection = [
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 5, drawCount: 1, shuffleAfter: true, targeting: { type: 'NONE' } }],
   },
   {
-    id: 'CARD026',
-    baseCardId: 'CARD026',
+    id: 'EQUIPMENT_CACHE',
+    baseCardId: 'EQUIPMENT_CACHE',
     name: 'Equipment Cache',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1200,8 +1200,8 @@ const fullCardCollection = [
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 999, drawCount: 1, shuffleAfter: true, filter: { type: 'Upgrade' }, targeting: { type: 'NONE' } }],
   },
   {
-    id: 'CARD037',
-    baseCardId: 'CARD037',
+    id: 'SHIELD_BOOST',
+    baseCardId: 'SHIELD_BOOST',
     name: 'Shield Boost',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1216,8 +1216,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD037_ENHANCED',
-    baseCardId: 'CARD037',
+    id: 'SHIELD_BOOST_ENHANCED',
+    baseCardId: 'SHIELD_BOOST',
     name: 'Shield Boost+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1232,8 +1232,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD060',
-    baseCardId: 'CARD060',
+    id: 'SWIFT_MANEUVER',
+    baseCardId: 'SWIFT_MANEUVER',
     name: 'Swift Maneuver',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1251,8 +1251,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD061',
-    baseCardId: 'CARD061',
+    id: 'TACTICAL_SHIFT',
+    baseCardId: 'TACTICAL_SHIFT',
     name: 'Tactical Shift',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1270,8 +1270,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD062',
-    baseCardId: 'CARD062',
+    id: 'ASSAULT_REPOSITION',
+    baseCardId: 'ASSAULT_REPOSITION',
     name: 'Assault Reposition',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1289,8 +1289,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'Deploy_Rally_Beacon',
-    baseCardId: 'Deploy_Rally_Beacon',
+    id: 'DEPLOY_RALLY_BEACON',
+    baseCardId: 'DEPLOY_RALLY_BEACON',
     name: 'Deploy Rally Beacon',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1305,8 +1305,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'LANE_CONTROL_DRAW',
-    baseCardId: 'LANE_CONTROL_DRAW',
+    id: 'TACTICAL_ADVANTAGE',
+    baseCardId: 'TACTICAL_ADVANTAGE',
     name: 'Tactical Advantage',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1320,8 +1320,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'LANE_CONTROL_ENERGY',
-    baseCardId: 'LANE_CONTROL_ENERGY',
+    id: 'STRATEGIC_DOMINANCE',
+    baseCardId: 'STRATEGIC_DOMINANCE',
     name: 'Strategic Dominance',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1335,8 +1335,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'LANE_CONTROL_READY',
-    baseCardId: 'LANE_CONTROL_READY',
+    id: 'RALLYING_CRY',
+    baseCardId: 'RALLYING_CRY',
     name: 'Rallying Cry',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1361,9 +1361,9 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Rally',
-    baseCardId: 'Rally',
-    name: 'Rally',
+    id: 'RALLY',
+    baseCardId: 'RALLY',
+    name: 'RALLY',
     maxInDeck: 2,
     rarity: 'Common',
     type: 'Support',
@@ -1378,8 +1378,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Superior_Intel',
-    baseCardId: 'Superior_Intel',
+    id: 'SUPERIOR_INTEL',
+    baseCardId: 'SUPERIOR_INTEL',
     name: 'Superior Intel',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1397,8 +1397,8 @@ const fullCardCollection = [
   // --- Tactic Cards ---
 
   {
-    id: 'CARD_STATUS_1',
-    baseCardId: 'CARD_STATUS_1',
+    id: 'THRUSTER_MALFUNCTION',
+    baseCardId: 'THRUSTER_MALFUNCTION',
     name: 'Thruster Malfunction',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1413,8 +1413,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_STATUS_1_ENHANCED',
-    baseCardId: 'CARD_STATUS_1',
+    id: 'THRUSTER_MALFUNCTION_ENHANCED',
+    baseCardId: 'THRUSTER_MALFUNCTION',
     name: 'Thruster Malfunction+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -1430,8 +1430,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_STATUS_2',
-    baseCardId: 'CARD_STATUS_2',
+    id: 'WEAPON_MALFUNCTION',
+    baseCardId: 'WEAPON_MALFUNCTION',
     name: 'Weapon Malfunction',
     maxInDeck: 4,
     rarity: 'Common',
@@ -1446,8 +1446,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_STATUS_2_ENHANCED',
-    baseCardId: 'CARD_STATUS_2',
+    id: 'WEAPON_MALFUNCTION_ENHANCED',
+    baseCardId: 'WEAPON_MALFUNCTION',
     name: 'Weapon Malfunction+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -1463,8 +1463,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_STATUS_3',
-    baseCardId: 'CARD_STATUS_3',
+    id: 'SENSOR_MALFUNCTION',
+    baseCardId: 'SENSOR_MALFUNCTION',
     name: 'Sensor Malfunction',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1479,8 +1479,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_STATUS_4',
-    baseCardId: 'CARD_STATUS_4',
+    id: 'STASIS_FIELD',
+    baseCardId: 'STASIS_FIELD',
     name: 'Stasis Field',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1495,8 +1495,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_TACTICS_1',
-    baseCardId: 'CARD_TACTICS_1',
+    id: 'TACTICAL_REPOSITIONING',
+    baseCardId: 'TACTICAL_REPOSITIONING',
     name: 'Tactical Repositioning',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1509,8 +1509,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'CARD_TACTICS_2',
-    baseCardId: 'CARD_TACTICS_2',
+    id: 'MEMORY_LEAK',
+    baseCardId: 'MEMORY_LEAK',
     name: 'Memory Leak',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1524,8 +1524,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_TACTICS_3',
-    baseCardId: 'CARD_TACTICS_3',
+    id: 'POWER_DRAIN',
+    baseCardId: 'POWER_DRAIN',
     name: 'Power Drain',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1539,8 +1539,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_TACTICS_4',
-    baseCardId: 'CARD_TACTICS_4',
+    id: 'EMP_BURST',
+    baseCardId: 'EMP_BURST',
     name: 'EMP Burst',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1564,8 +1564,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD_TACTICS_5',
-    baseCardId: 'CARD_TACTICS_5',
+    id: 'TEMPORAL_DAMPENER',
+    baseCardId: 'TEMPORAL_DAMPENER',
     name: 'Temporal Dampener',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1584,8 +1584,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD016',
-    baseCardId: 'CARD016',
+    id: 'WEAPON_OVERLOAD',
+    baseCardId: 'WEAPON_OVERLOAD',
     name: 'Weapon Overload',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1604,8 +1604,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'CARD022',
-    baseCardId: 'CARD022',
+    id: 'SYSTEM_SABOTAGE',
+    baseCardId: 'SYSTEM_SABOTAGE',
     name: 'System Sabotage',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1616,8 +1616,8 @@ const fullCardCollection = [
     effects: [{ type: 'DESTROY_UPGRADE', targeting: { type: 'NONE' } }],
   },
   {
-    id: 'CARD030',
-    baseCardId: 'CARD030',
+    id: 'DEPLOY_JAMMERS',
+    baseCardId: 'DEPLOY_JAMMERS',
     name: 'Deploy Jammers',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1631,8 +1631,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Deploy_Thruster_Inhibitor',
-    baseCardId: 'Deploy_Thruster_Inhibitor',
+    id: 'DEPLOY_THRUSTER_INHIBITOR',
+    baseCardId: 'DEPLOY_THRUSTER_INHIBITOR',
     name: 'Deploy Thruster Inhibitor',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1653,9 +1653,9 @@ const fullCardCollection = [
 
   },
   {
-    id: 'Exhaust',
-    baseCardId: 'Exhaust',
-    name: 'Exhaust',
+    id: 'EXHAUST',
+    baseCardId: 'EXHAUST',
+    name: 'EXHAUST',
     maxInDeck: 2,
     rarity: 'Uncommon',
     type: 'Tactic',
@@ -1670,8 +1670,8 @@ const fullCardCollection = [
 
   },
   {
-    id: 'EXHAUST_TO_DISABLE',
-    baseCardId: 'EXHAUST_TO_DISABLE',
+    id: 'FEINT',
+    baseCardId: 'FEINT',
     name: 'Feint',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1686,8 +1686,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'FORCED_REPOSITION',
-    baseCardId: 'FORCED_REPOSITION',
+    id: 'FORCED_REPOSITIONING',
+    baseCardId: 'FORCED_REPOSITIONING',
     name: 'Forced Repositioning',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1702,8 +1702,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'Mainframe_Breach',
-    baseCardId: 'Mainframe_Breach',
+    id: 'MAINFRAME_BREACH',
+    baseCardId: 'MAINFRAME_BREACH',
     name: 'Mainframe Breach',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1718,8 +1718,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'Raise_the_Alarm',
-    baseCardId: 'Raise_the_Alarm',
+    id: 'RAISE_THE_ALARM',
+    baseCardId: 'RAISE_THE_ALARM',
     name: 'Raise the Alarm',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1751,8 +1751,8 @@ const fullCardCollection = [
     ],
   },
   {
-    id: 'Transmit_Threat',
-    baseCardId: 'Transmit_Threat',
+    id: 'TRANSMIT_THREAT',
+    baseCardId: 'TRANSMIT_THREAT',
     name: 'Transmit Threat',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1770,8 +1770,8 @@ const fullCardCollection = [
   // --- Upgrade Cards ---
 
   {
-    id: 'CARD020',
-    baseCardId: 'CARD020',
+    id: 'SLIMLINE_BODYWORK',
+    baseCardId: 'SLIMLINE_BODYWORK',
     name: 'Slimline Bodywork',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1784,8 +1784,8 @@ const fullCardCollection = [
     maxApplications: 1,
   },
   {
-    id: 'CARD020_ENHANCED',
-    baseCardId: 'CARD020',
+    id: 'SLIMLINE_BODYWORK_ENHANCED',
+    baseCardId: 'SLIMLINE_BODYWORK',
     name: 'Slimline Bodywork+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1798,8 +1798,8 @@ const fullCardCollection = [
     maxApplications: 1,
   },
   {
-    id: 'CARD021',
-    baseCardId: 'CARD021',
+    id: 'OVERCLOCKED_THRUSTERS',
+    baseCardId: 'OVERCLOCKED_THRUSTERS',
     name: 'Overclocked Thrusters',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1812,8 +1812,8 @@ const fullCardCollection = [
     maxApplications: 2,
   },
   {
-    id: 'CARD021_ENHANCED',
-    baseCardId: 'CARD021',
+    id: 'OVERCLOCKED_THRUSTERS_ENHANCED',
+    baseCardId: 'OVERCLOCKED_THRUSTERS',
     name: 'Overclocked Thrusters+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1826,8 +1826,8 @@ const fullCardCollection = [
     maxApplications: 2,
   },
   {
-    id: 'CARD024',
-    baseCardId: 'CARD024',
+    id: 'PIERCING_ROUNDS',
+    baseCardId: 'PIERCING_ROUNDS',
     name: 'Piercing Rounds',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -1840,8 +1840,8 @@ const fullCardCollection = [
     maxApplications: 1,
   },
   {
-    id: 'CARD027',
-    baseCardId: 'CARD027',
+    id: 'EFFICIENCY_MODULE',
+    baseCardId: 'EFFICIENCY_MODULE',
     name: 'Efficiency Module',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1854,8 +1854,8 @@ const fullCardCollection = [
     maxApplications: 1,
   },
   {
-    id: 'CARD028',
-    baseCardId: 'CARD028',
+    id: 'COMBAT_ENHANCEMENT',
+    baseCardId: 'COMBAT_ENHANCEMENT',
     name: 'Combat Enhancement',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1868,8 +1868,8 @@ const fullCardCollection = [
     maxApplications: 2,
   },
   {
-    id: 'CARD028_ENHANCED',
-    baseCardId: 'CARD028',
+    id: 'COMBAT_ENHANCEMENT_ENHANCED',
+    baseCardId: 'COMBAT_ENHANCEMENT',
     name: 'Combat Enhancement+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1882,8 +1882,8 @@ const fullCardCollection = [
     maxApplications: 2,
   },
   {
-    id: 'CARD029',
-    baseCardId: 'CARD029',
+    id: 'SHIELD_AMPLIFIER',
+    baseCardId: 'SHIELD_AMPLIFIER',
     name: 'Shield Amplifier',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1896,8 +1896,8 @@ const fullCardCollection = [
     maxApplications: 2,
   },
   {
-    id: 'CARD029_ENHANCED',
-    baseCardId: 'CARD029',
+    id: 'SHIELD_AMPLIFIER_ENHANCED',
+    baseCardId: 'SHIELD_AMPLIFIER',
     name: 'Shield Amplifier+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1913,8 +1913,8 @@ const fullCardCollection = [
   // --- Tech Removal Cards ---
 
   {
-    id: 'CARD_SYSTEM_PURGE',
-    baseCardId: 'CARD_SYSTEM_PURGE',
+    id: 'SYSTEM_PURGE',
+    baseCardId: 'SYSTEM_PURGE',
     name: 'System Purge',
     maxInDeck: 2,
     rarity: 'Common',

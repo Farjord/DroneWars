@@ -49,8 +49,8 @@ describe('DroneToken action card drop', () => {
   };
 
   const mockActionCard = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',

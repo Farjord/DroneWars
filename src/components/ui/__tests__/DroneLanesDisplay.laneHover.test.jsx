@@ -49,7 +49,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
   // Mock LANE-targeting card (like Shrieker Missiles)
   const mockLaneTargetingCard = {
-    id: 'CARD013',
+    id: 'SIDEWINDER_MISSILES',
     name: 'Shrieker Missiles',
     targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] },
     effect: { type: 'DAMAGE' }
@@ -57,7 +57,7 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
 
   // Mock DRONE-targeting card (like Ion Blast)
   const mockDroneTargetingCard = {
-    id: 'CARD001',
+    id: 'CONVERGENCE_BEAM',
     name: 'Ion Blast',
     targeting: { type: 'DRONE', affinity: 'ENEMY' },
     effect: { type: 'DAMAGE', value: 1 }

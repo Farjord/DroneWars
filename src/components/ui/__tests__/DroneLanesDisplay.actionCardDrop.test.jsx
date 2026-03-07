@@ -21,8 +21,8 @@ vi.mock('../../../hooks/useGameData.js', () => ({
 
 describe('DroneLanesDisplay action card drop', () => {
   const mockLaneTargetCard = {
-    id: 'CARD011',
-    instanceId: 'CARD011-inst-1',
+    id: 'NUKE',
+    instanceId: 'NUKE-inst-1',
     name: 'Nuke',
     cost: 6,
     type: 'Ordnance',
@@ -31,8 +31,8 @@ describe('DroneLanesDisplay action card drop', () => {
   };
 
   const mockDroneTargetCard = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',

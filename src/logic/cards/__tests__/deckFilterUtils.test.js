@@ -28,7 +28,7 @@ import {
 
 const mockCards = [
   {
-    id: 'CARD001',
+    id: 'CONVERGENCE_BEAM',
     name: 'Laser Blast',
     type: 'Ordnance',
     rarity: 'Common',
@@ -39,7 +39,7 @@ const mockCards = [
     aiOnly: false,
   },
   {
-    id: 'CARD002',
+    id: 'SYSTEM_REBOOT',
     name: 'Plasma Bolt',
     type: 'Ordnance',
     rarity: 'Rare',
@@ -50,7 +50,7 @@ const mockCards = [
     aiOnly: false,
   },
   {
-    id: 'CARD003',
+    id: 'OUT_THINK',
     name: 'Shield Boost',
     type: 'Tactic',
     rarity: 'Uncommon',
@@ -60,7 +60,7 @@ const mockCards = [
     aiOnly: false,
   },
   {
-    id: 'CARD004',
+    id: 'ENERGY_SURGE',
     name: 'Draw Power',
     type: 'Support',
     rarity: 'Common',
@@ -70,7 +70,7 @@ const mockCards = [
     aiOnly: false,
   },
   {
-    id: 'CARD005',
+    id: 'REACTIVATION_PROTOCOL',
     name: 'Multi Draw',
     type: 'Support',
     rarity: 'Mythic',
@@ -91,7 +91,7 @@ const mockCards = [
     aiOnly: false,
   },
   {
-    id: 'CARD007',
+    id: 'EMERGENCY_PATCH',
     name: 'AI Exclusive Card',
     type: 'Ordnance',
     rarity: 'Rare',
@@ -102,7 +102,7 @@ const mockCards = [
     aiOnly: true,
   },
   {
-    id: 'CARD008',
+    id: 'SHIELD_RECHARGE',
     name: 'Starter Card',
     type: 'Ordnance',
     rarity: 'Common',
@@ -242,9 +242,9 @@ describe('filterCards', () => {
       const filters = { ...defaultCardFilters, abilities: ['Draw', 'Go Again'] };
       const result = filterCards(mockCards, filters);
 
-      // Only CARD005 has both Draw AND Go Again
+      // Only REACTIVATION_PROTOCOL has both Draw AND Go Again
       expect(result.length).toBe(1);
-      expect(result[0].id).toBe('CARD005');
+      expect(result[0].id).toBe('REACTIVATION_PROTOCOL');
     });
 
     it('should show all cards when no abilities selected', () => {
@@ -258,10 +258,10 @@ describe('filterCards', () => {
       const filters = { ...defaultCardFilters, abilities: ['Draw'] };
       const result = filterCards(mockCards, filters);
 
-      // CARD004 and CARD005 have Draw
+      // ENERGY_SURGE and REACTIVATION_PROTOCOL have Draw
       expect(result.length).toBe(2);
-      expect(result.some(c => c.id === 'CARD004')).toBe(true);
-      expect(result.some(c => c.id === 'CARD005')).toBe(true);
+      expect(result.some(c => c.id === 'ENERGY_SURGE')).toBe(true);
+      expect(result.some(c => c.id === 'REACTIVATION_PROTOCOL')).toBe(true);
     });
   });
 
@@ -362,9 +362,9 @@ describe('filterCards', () => {
       };
       const result = filterCards(mockCards, filters);
 
-      // Only CARD004 (cost 1, has Draw)
+      // Only ENERGY_SURGE (cost 1, has Draw)
       expect(result.length).toBe(1);
-      expect(result[0].id).toBe('CARD004');
+      expect(result[0].id).toBe('ENERGY_SURGE');
     });
   });
 });

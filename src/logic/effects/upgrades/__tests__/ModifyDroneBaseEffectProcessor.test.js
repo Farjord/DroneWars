@@ -55,7 +55,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER', name: 'Shield Amplifier', slots: 1 }
       };
 
       const effect = {
@@ -87,7 +87,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029_ENHANCED', name: 'Shield Amplifier+', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER_ENHANCED', name: 'Shield Amplifier+', slots: 1 }
       };
 
       const effect = {
@@ -109,7 +109,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER', name: 'Shield Amplifier', slots: 1 }
       };
 
       const effect = {
@@ -172,7 +172,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD027', name: 'Weapons Upgrade', slots: 1 }
+        card: { id: 'EFFICIENCY_MODULE', name: 'Weapons Upgrade', slots: 1 }
       };
 
       const effect = {
@@ -202,7 +202,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD027', name: 'Weapons Upgrade', slots: 1 }
+        card: { id: 'EFFICIENCY_MODULE', name: 'Weapons Upgrade', slots: 1 }
       };
 
       const effect = {
@@ -248,7 +248,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER', name: 'Shield Amplifier', slots: 1 }
       };
 
       const effect = {
@@ -304,7 +304,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD027', name: 'Weapons Upgrade', slots: 1 }
+        card: { id: 'EFFICIENCY_MODULE', name: 'Weapons Upgrade', slots: 1 }
       };
 
       const effect = {
@@ -331,7 +331,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER', name: 'Shield Amplifier', slots: 1 }
       };
 
       const effect = {
@@ -355,7 +355,7 @@ describe('ModifyDroneBaseEffectProcessor', () => {
         actingPlayerId: 'player1',
         playerStates: mockPlayerStates,
         target: { name: 'Talon' },
-        card: { id: 'CARD029', name: 'Shield Amplifier', slots: 1 }
+        card: { id: 'SHIELD_AMPLIFIER', name: 'Shield Amplifier', slots: 1 }
       };
 
       const effect = {

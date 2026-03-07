@@ -546,7 +546,7 @@ export function createDefaultTestConfig() {
       laneAssignments: { lane1: [], lane2: [], lane3: [] },
       handCards: [],
       deck: [],
-      deckComposition: {},  // Card selection { "CARD001": 2, "CARD002": 3 }
+      deckComposition: {},  // Card selection { "CONVERGENCE_BEAM": 2, "SYSTEM_REBOOT": 3 }
       energy: 10,
       initialDeploymentBudget: 10,
       deploymentBudget: 10,
@@ -557,7 +557,7 @@ export function createDefaultTestConfig() {
       laneAssignments: { lane1: [], lane2: [], lane3: [] },
       handCards: [],
       deck: [],
-      deckComposition: {},  // Card selection { "CARD001": 2, "CARD002": 3 }
+      deckComposition: {},  // Card selection { "CONVERGENCE_BEAM": 2, "SYSTEM_REBOOT": 3 }
       energy: 10,
       initialDeploymentBudget: 10,
       deploymentBudget: 10,

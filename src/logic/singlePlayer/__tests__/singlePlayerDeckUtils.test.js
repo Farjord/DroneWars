@@ -402,7 +402,7 @@ describe('calculateEffectiveMaxForCard', () => {
   });
 
   describe('base card variant tracking', () => {
-    // Have 2x CARD001 (base), adding CARD001_ENHANCED (variant)
+    // Have 2x CONVERGENCE_BEAM (base), adding CONVERGENCE_BEAM_ENHANCED (variant)
     // Both share baseCardId, maxInDeck=4, own 10 of enhanced
     // Can only add 2 more enhanced because base already has 2
     it('should limit based on base card total across variants', () => {

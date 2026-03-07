@@ -37,8 +37,8 @@ vi.mock('../../../../logic/TargetingRouter.js', () => ({
 
 describe('HandView action card drag-and-drop', () => {
   const mockActionCard1 = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',
@@ -47,8 +47,8 @@ describe('HandView action card drag-and-drop', () => {
   };
 
   const mockActionCard2 = {
-    id: 'CARD002',
-    instanceId: 'CARD002-inst-1',
+    id: 'SYSTEM_REBOOT',
+    instanceId: 'SYSTEM_REBOOT-inst-1',
     name: 'System Reboot',
     cost: 1,
     type: 'Support',
@@ -57,8 +57,8 @@ describe('HandView action card drag-and-drop', () => {
   };
 
   const mockUpgradeCard = {
-    id: 'CARD020',
-    instanceId: 'CARD020-inst-1',
+    id: 'SLIMLINE_BODYWORK',
+    instanceId: 'SLIMLINE_BODYWORK-inst-1',
     name: 'Slimline Bodywork',
     cost: 2,
     type: 'Upgrade',
@@ -113,7 +113,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       // Just mouseDown without movement
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -131,7 +131,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       // mouseDown to start tracking
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -156,7 +156,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       // mouseDown to start tracking
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -176,7 +176,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       // mouseDown then immediate mouseUp (click)
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -198,7 +198,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleActionCardDragStart).not.toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleActionCardDragStart).not.toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleActionCardDragStart).not.toHaveBeenCalled();
@@ -249,7 +249,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleActionCardDragStart).not.toHaveBeenCalled();
@@ -265,7 +265,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleActionCardDragStart).not.toHaveBeenCalled();
@@ -274,7 +274,7 @@ describe('HandView action card drag-and-drop', () => {
     it('should NOT throw if handleActionCardDragStart prop is not provided', () => {
       render(<HandView {...defaultProps} />);
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       expect(() => {
         fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -290,7 +290,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
 
       // mouseDown then move past threshold
       fireEvent.mouseDown(cardWrapper, { clientX: 100, clientY: 200 });
@@ -314,7 +314,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const card = screen.getByTestId('action-card-CARD001');
+      const card = screen.getByTestId('action-card-CONVERGENCE_BEAM');
       expect(card.dataset.dragging).toBe('true');
     });
 
@@ -326,7 +326,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const card = screen.getByTestId('action-card-CARD001');
+      const card = screen.getByTestId('action-card-CONVERGENCE_BEAM');
       expect(card.dataset.dragging).toBe('false');
     });
 
@@ -338,8 +338,8 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const card1 = screen.getByTestId('action-card-CARD001');
-      const card2 = screen.getByTestId('action-card-CARD002');
+      const card1 = screen.getByTestId('action-card-CONVERGENCE_BEAM');
+      const card2 = screen.getByTestId('action-card-SYSTEM_REBOOT');
       expect(card1.dataset.dragging).toBe('false');
       expect(card2.dataset.dragging).toBe('false');
     });
@@ -354,7 +354,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       // Elevated cards should have z-index 800 (CARD_FAN_CONFIG.zIndex.hovered)
       expect(cardWrapper.style.zIndex).toBe('800');
     });
@@ -367,7 +367,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const card2Wrapper = screen.getByTestId('action-card-CARD002').parentElement;
+      const card2Wrapper = screen.getByTestId('action-card-SYSTEM_REBOOT').parentElement;
       // Non-elevated cards should have lower z-index (their index in array)
       expect(parseInt(card2Wrapper.style.zIndex)).toBeLessThan(800);
     });
@@ -380,7 +380,7 @@ describe('HandView action card drag-and-drop', () => {
         />
       );
 
-      const cardWrapper = screen.getByTestId('action-card-CARD001').parentElement;
+      const cardWrapper = screen.getByTestId('action-card-CONVERGENCE_BEAM').parentElement;
       // Elevated cards get translateY(-105px) and scale(1.2) via transform
       expect(cardWrapper.style.transform).toContain('translateY(-105px)');
       expect(cardWrapper.style.transform).toContain('scale(1.2)');

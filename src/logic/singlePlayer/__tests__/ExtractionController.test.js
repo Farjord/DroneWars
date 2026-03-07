@@ -260,9 +260,9 @@ describe('ExtractionController', () => {
       const currentRunState = {
         shipSlotId: 0,
         collectedLoot: [
-          { type: 'card', cardId: 'CARD001' },
-          { type: 'card', cardId: 'CARD002' },
-          { type: 'card', cardId: 'CARD003' } // 3 items - should trigger selection with limit of 2
+          { type: 'card', cardId: 'CONVERGENCE_BEAM' },
+          { type: 'card', cardId: 'SYSTEM_REBOOT' },
+          { type: 'card', cardId: 'OUT_THINK' } // 3 items - should trigger selection with limit of 2
         ],
         creditsEarned: 100,
         currentHull: 20,
@@ -425,13 +425,13 @@ describe('ExtractionController', () => {
       const customDeckRunState = {
         shipSlotId: 1,
         collectedLoot: [
-          { type: 'card', cardId: 'CARD001' },
-          { type: 'card', cardId: 'CARD002' },
-          { type: 'card', cardId: 'CARD003' },
-          { type: 'card', cardId: 'CARD004' },
-          { type: 'card', cardId: 'CARD005' },
-          { type: 'card', cardId: 'CARD006' },
-          { type: 'card', cardId: 'CARD007' } // 7 items exceeds limit of 6
+          { type: 'card', cardId: 'CONVERGENCE_BEAM' },
+          { type: 'card', cardId: 'SYSTEM_REBOOT' },
+          { type: 'card', cardId: 'OUT_THINK' },
+          { type: 'card', cardId: 'ENERGY_SURGE' },
+          { type: 'card', cardId: 'REACTIVATION_PROTOCOL' },
+          { type: 'card', cardId: 'NANOBOT_REPAIR' },
+          { type: 'card', cardId: 'EMERGENCY_PATCH' } // 7 items exceeds limit of 6
         ],
         creditsEarned: 100,
         currentHull: 20,
@@ -454,11 +454,11 @@ describe('ExtractionController', () => {
       const underLimitState = {
         shipSlotId: 1,
         collectedLoot: [
-          { type: 'card', cardId: 'CARD001' },
-          { type: 'card', cardId: 'CARD002' },
-          { type: 'card', cardId: 'CARD003' },
-          { type: 'card', cardId: 'CARD004' },
-          { type: 'card', cardId: 'CARD005' }
+          { type: 'card', cardId: 'CONVERGENCE_BEAM' },
+          { type: 'card', cardId: 'SYSTEM_REBOOT' },
+          { type: 'card', cardId: 'OUT_THINK' },
+          { type: 'card', cardId: 'ENERGY_SURGE' },
+          { type: 'card', cardId: 'REACTIVATION_PROTOCOL' }
         ],
         creditsEarned: 100,
         currentHull: 20,

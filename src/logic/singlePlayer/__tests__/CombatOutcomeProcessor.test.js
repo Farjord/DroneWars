@@ -95,7 +95,7 @@ describe('CombatOutcomeProcessor', () => {
 
       // Combat salvage loot (not PoI loot)
       const combatLoot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Talon', rarity: 'Common' }],
+        cards: [{ cardId: 'CONVERGENCE_BEAM', cardName: 'Talon', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_001', name: 'Salvage Item', creditValue: 50, image: '/Credits/test.png', description: 'Test' },
         aiCores: 0
       }
@@ -229,7 +229,7 @@ describe('CombatOutcomeProcessor', () => {
       // RewardManager now transforms cards at the source
       const combatLoot = {
         cards: [
-          { cardId: 'CARD001', cardName: 'Laser Blast', rarity: 'Common', type: 'Ordnance' },
+          { cardId: 'CONVERGENCE_BEAM', cardName: 'Laser Blast', rarity: 'Common', type: 'Ordnance' },
           { cardId: 'CARD042', cardName: 'Shield Boost', rarity: 'Uncommon', type: 'Support' }
         ],
         salvageItem: null,
@@ -245,7 +245,7 @@ describe('CombatOutcomeProcessor', () => {
       // Verify cards are mapped with correct property names (id -> cardId, name -> cardName)
       expect(setStateCall.collectedLoot[0]).toMatchObject({
         type: 'card',
-        cardId: 'CARD001',      // Should use card.id, not card.cardId
+        cardId: 'CONVERGENCE_BEAM',      // Should use card.id, not card.cardId
         cardName: 'Laser Blast', // Should use card.name, not card.cardName
         rarity: 'Common',
         source: 'combat_salvage'

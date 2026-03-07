@@ -580,8 +580,8 @@ class SinglePlayerCombatInitializer {
     let instanceCounter = 0;
 
     // Handle both formats:
-    // - Array format from ship slot: [{id: 'CARD001', quantity: 4}, ...]
-    // - Object format from default: {'CARD001': 4, ...}
+    // - Array format from ship slot: [{id: 'CONVERGENCE_BEAM', quantity: 4}, ...]
+    // - Object format from default: {'CONVERGENCE_BEAM': 4, ...}
     if (Array.isArray(decklist)) {
       // Array format (ship slot storage)
       decklist.forEach(item => {
@@ -776,18 +776,18 @@ class SinglePlayerCombatInitializer {
    */
   getDefaultDecklist() {
     return {
-      'CARD001': 4,   // Laser Blast
-      'CARD002': 4,   // System Reboot
-      'CARD003': 4,   // Out Think
-      'CARD004': 4,   // Energy Surge
-      'CARD005': 4,   // Adrenaline Rush
-      'CARD006': 2,   // Nanobot Repair
-      'CARD007': 4,   // Emergency Patch
-      'CARD008': 4,   // Shield Recharge
-      'CARD009': 2,   // Target Lock
-      'CARD012': 2,   // Armor-Piercing Shot
-      'CARD015': 2,   // Streamline
-      'CARD016': 4,   // Static Field
+      'CONVERGENCE_BEAM': 4,   // Laser Blast
+      'SYSTEM_REBOOT': 4,   // System Reboot
+      'OUT_THINK': 4,   // Out Think
+      'ENERGY_SURGE': 4,   // Energy Surge
+      'REACTIVATION_PROTOCOL': 4,   // Adrenaline Rush
+      'NANOBOT_REPAIR': 2,   // Nanobot Repair
+      'EMERGENCY_PATCH': 4,   // Emergency Patch
+      'SHIELD_RECHARGE': 4,   // Shield Recharge
+      'TARGET_LOCK': 2,   // Target Lock
+      'PIERCING_SHOT': 2,   // Armor-Piercing Shot
+      'STREAMLINE': 2,   // Streamline
+      'WEAPON_OVERLOAD': 4,   // Static Field
     };
   }
 

@@ -15,8 +15,8 @@ vi.mock('../../../services/assetService', () => ({
 
 describe('ActionCard isDragging visual feedback', () => {
   const mockCard = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',
@@ -88,8 +88,8 @@ describe('ActionCard isDragging visual feedback', () => {
 
 describe('ActionCard onClick guards', () => {
   const mockCard = {
-    id: 'CARD001',
-    instanceId: 'CARD001-inst-1',
+    id: 'CONVERGENCE_BEAM',
+    instanceId: 'CONVERGENCE_BEAM-inst-1',
     name: 'Laser Blast',
     cost: 2,
     type: 'Ordnance',

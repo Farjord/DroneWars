@@ -67,7 +67,7 @@ describe('effectsAdapter — structural validation', () => {
 
 describe('effectsAdapter — simple cards', () => {
   it('Ion Pulse produces single DAMAGE effect with DRONE targeting', () => {
-    const card = findCard('CARD_ION01');
+    const card = findCard('ION_PULSE');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('DAMAGE');
     expect(card.effects[0].value).toBe(3);
@@ -76,21 +76,21 @@ describe('effectsAdapter — simple cards', () => {
   });
 
   it('System Reboot (draw card) produces single effect with NONE targeting', () => {
-    const card = findCard('Superior_Intel');
+    const card = findCard('SUPERIOR_INTEL');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('DRAW');
     expect(card.effects[0].targeting.type).toBe('NONE');
   });
 
   it('Deploy Jammers (no targeting field) produces NONE targeting', () => {
-    const card = findCard('CARD030');
+    const card = findCard('DEPLOY_JAMMERS');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('CREATE_TECH');
     expect(card.effects[0].targeting.type).toBe('NONE');
   });
 
   it('Sidewinder Missiles (LANE targeting with filter) preserves affectedFilter', () => {
-    const card = findCard('CARD013');
+    const card = findCard('SIDEWINDER_MISSILES');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('DAMAGE');
     expect(card.effects[0].targeting.type).toBe('LANE');
@@ -98,7 +98,7 @@ describe('effectsAdapter — simple cards', () => {
   });
 
   it('cards with conditionalEffects attach them as conditionals', () => {
-    const card = findCard('CARD051');
+    const card = findCard('SUNDERING_BEAM');
     expect(card.effects[0].conditionals).toBeDefined();
     expect(card.effects[0].conditionals).toHaveLength(1);
     expect(card.effects[0].conditionals[0].timing).toBe('PRE');
@@ -107,7 +107,7 @@ describe('effectsAdapter — simple cards', () => {
 
 describe('effectsAdapter — movement cards', () => {
   it('Maneuver produces single compound SINGLE_MOVE effect', () => {
-    const card = findCard('CARD023');
+    const card = findCard('MANEUVER');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('SINGLE_MOVE');
     expect(card.effects[0].targeting.type).toBe('DRONE');
@@ -117,7 +117,7 @@ describe('effectsAdapter — movement cards', () => {
   });
 
   it('Swift Maneuver preserves conditionalEffects on the movement effect', () => {
-    const card = findCard('CARD060');
+    const card = findCard('SWIFT_MANEUVER');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('SINGLE_MOVE');
     expect(card.effects[0].conditionals).toBeDefined();
@@ -125,7 +125,7 @@ describe('effectsAdapter — movement cards', () => {
   });
 
   it('Tactical Repositioning (enemy move) produces compound SINGLE_MOVE', () => {
-    const card = findCard('CARD_TACTICS_1');
+    const card = findCard('TACTICAL_REPOSITIONING');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('SINGLE_MOVE');
     expect(card.effects[0].targeting.affinity).toBe('ENEMY');
@@ -135,7 +135,7 @@ describe('effectsAdapter — movement cards', () => {
 
 describe('effectsAdapter — multi-step cards', () => {
   it('Feint produces 2-effect chain with back-references', () => {
-    const card = findCard('EXHAUST_TO_DISABLE');
+    const card = findCard('FEINT');
     expect(card.effects).toHaveLength(2);
 
     expect(card.effects[0].type).toBe('EXHAUST_DRONE');
@@ -148,7 +148,7 @@ describe('effectsAdapter — multi-step cards', () => {
   });
 
   it('Forced Repositioning produces 2-effect SINGLE_MOVE chain', () => {
-    const card = findCard('FORCED_REPOSITION');
+    const card = findCard('FORCED_REPOSITIONING');
     expect(card.effects).toHaveLength(2);
 
     // Effect 0: move friendly drone
@@ -183,14 +183,14 @@ describe('effectsAdapter — multi-step cards', () => {
 
 describe('effectsAdapter — composite and special effects', () => {
   it('Mainframe Breach (COMPOSITE_EFFECT) flattens into separate effects', () => {
-    const card = findCard('Mainframe_Breach');
+    const card = findCard('MAINFRAME_BREACH');
     expect(card.effects).toHaveLength(2);
     expect(card.effects[0].type).toBe('DISCARD');
     expect(card.effects[1].type).toBe('DRAIN_ENERGY');
   });
 
   it('MULTI_MOVE (Reposition) produces single effect with maxTargets', () => {
-    const card = findCard('CARD019');
+    const card = findCard('REPOSITION');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('MULTI_MOVE');
     expect(card.effects[0].targeting.maxTargets).toBe(3);
@@ -199,7 +199,7 @@ describe('effectsAdapter — composite and special effects', () => {
   });
 
   it('REPEATING_EFFECT cards produce single effect entry', () => {
-    const card = findCard('LANE_CONTROL_DRAW');
+    const card = findCard('TACTICAL_ADVANTAGE');
     expect(card.effects).toHaveLength(1);
     expect(card.effects[0].type).toBe('REPEATING_EFFECT');
     expect(card.effects[0].targeting.type).toBe('NONE');

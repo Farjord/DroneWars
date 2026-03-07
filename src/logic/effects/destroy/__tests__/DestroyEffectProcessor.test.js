@@ -78,7 +78,7 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
       },
       callbacks: { logCallback: vi.fn() },
       card: {
-        id: 'CARD036',
+        id: 'PURGE_PROTOCOL',
         name: 'Purge Protocol',
         instanceId: 'inst_purge',
         targeting: {

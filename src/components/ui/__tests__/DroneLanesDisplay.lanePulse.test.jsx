@@ -84,7 +84,7 @@ describe('DroneLanesDisplay lane targeting styles', () => {
 
   // Mock action card for LANE targeting (like Sidewinder Missiles)
   const mockLaneTargetingCard = {
-    id: 'CARD013',
+    id: 'SIDEWINDER_MISSILES',
     name: 'Sidewinder Missiles',
     targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] },
     effect: { type: 'DAMAGE' }

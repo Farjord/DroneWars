@@ -138,8 +138,8 @@ describe('parseJSObjectLiteral', () => {
       const input = `{
         shipId: 'SHIP_001',
         decklist: [
-          { id: 'CARD001', quantity: 4 },
-          { id: 'CARD002', quantity: 2 },
+          { id: 'CONVERGENCE_BEAM', quantity: 4 },
+          { id: 'SYSTEM_REBOOT', quantity: 2 },
         ],
         dronePool: ['Talon', 'Mammoth'],
         shipComponents: {
@@ -154,7 +154,7 @@ describe('parseJSObjectLiteral', () => {
       expect(result.data.dronePool).toHaveLength(2);
       expect(result.data.shipComponents['BRIDGE_001']).toBe('l');
       expect(result.data.decklist).toHaveLength(2);
-      expect(result.data.decklist[0].id).toBe('CARD001');
+      expect(result.data.decklist[0].id).toBe('CONVERGENCE_BEAM');
       expect(result.data.decklist[0].quantity).toBe(4);
     });
 
@@ -166,8 +166,8 @@ describe('parseJSObjectLiteral', () => {
           'Mammoth',     // Heavy drone
         ],
         decklist: [
-          { id: 'CARD001', quantity: 4 },   // Laser Blast
-          { id: 'CARD002', quantity: 2 },   // System Reboot
+          { id: 'CONVERGENCE_BEAM', quantity: 4 },   // Laser Blast
+          { id: 'SYSTEM_REBOOT', quantity: 2 },   // System Reboot
         ],
         shipComponents: {
           'BRIDGE_001': 'l',
@@ -313,17 +313,17 @@ describe('generateJSObjectLiteral', () => {
 describe('convertToAIFormat', () => {
   describe('decklist conversion', () => {
     it('should convert deck object to decklist array', () => {
-      const deck = { 'CARD001': 4, 'CARD002': 2 };
+      const deck = { 'CONVERGENCE_BEAM': 4, 'SYSTEM_REBOOT': 2 };
       const result = convertToAIFormat(deck, {}, {}, { id: 'SHIP_001' }, {});
-      expect(result.decklist).toContainEqual({ id: 'CARD001', quantity: 4 });
-      expect(result.decklist).toContainEqual({ id: 'CARD002', quantity: 2 });
+      expect(result.decklist).toContainEqual({ id: 'CONVERGENCE_BEAM', quantity: 4 });
+      expect(result.decklist).toContainEqual({ id: 'SYSTEM_REBOOT', quantity: 2 });
     });
 
     it('should filter out zero-quantity cards', () => {
-      const deck = { 'CARD001': 4, 'CARD002': 0 };
+      const deck = { 'CONVERGENCE_BEAM': 4, 'SYSTEM_REBOOT': 0 };
       const result = convertToAIFormat(deck, {}, {}, { id: 'SHIP_001' }, {});
       expect(result.decklist).toHaveLength(1);
-      expect(result.decklist[0].id).toBe('CARD001');
+      expect(result.decklist[0].id).toBe('CONVERGENCE_BEAM');
     });
 
     it('should handle empty deck', () => {
@@ -390,23 +390,23 @@ describe('convertFromAIFormat', () => {
     it('should convert decklist array to deck object', () => {
       const aiData = {
         decklist: [
-          { id: 'CARD001', quantity: 4 },
-          { id: 'CARD002', quantity: 2 }
+          { id: 'CONVERGENCE_BEAM', quantity: 4 },
+          { id: 'SYSTEM_REBOOT', quantity: 2 }
         ]
       };
       const result = convertFromAIFormat(aiData);
-      expect(result.deck).toEqual({ 'CARD001': 4, 'CARD002': 2 });
+      expect(result.deck).toEqual({ 'CONVERGENCE_BEAM': 4, 'SYSTEM_REBOOT': 2 });
     });
 
     it('should filter out zero-quantity cards', () => {
       const aiData = {
         decklist: [
-          { id: 'CARD001', quantity: 4 },
-          { id: 'CARD002', quantity: 0 }
+          { id: 'CONVERGENCE_BEAM', quantity: 4 },
+          { id: 'SYSTEM_REBOOT', quantity: 0 }
         ]
       };
       const result = convertFromAIFormat(aiData);
-      expect(result.deck).toEqual({ 'CARD001': 4 });
+      expect(result.deck).toEqual({ 'CONVERGENCE_BEAM': 4 });
     });
 
     it('should handle empty decklist', () => {
@@ -578,8 +578,8 @@ describe('round-trip conversion', () => {
         'DRONECONTROL_001': 'r'
       },
       decklist: [
-        { id: 'CARD001', quantity: 4 },
-        { id: 'CARD002', quantity: 2 }
+        { id: 'CONVERGENCE_BEAM', quantity: 4 },
+        { id: 'SYSTEM_REBOOT', quantity: 2 }
       ]
     };
 
@@ -599,8 +599,8 @@ describe('round-trip conversion', () => {
     // Verify converted data
     expect(exported.shipId).toBe(original.shipId);
     expect(exported.shipComponents).toEqual(original.shipComponents);
-    expect(exported.decklist).toContainEqual({ id: 'CARD001', quantity: 4 });
-    expect(exported.decklist).toContainEqual({ id: 'CARD002', quantity: 2 });
+    expect(exported.decklist).toContainEqual({ id: 'CONVERGENCE_BEAM', quantity: 4 });
+    expect(exported.decklist).toContainEqual({ id: 'SYSTEM_REBOOT', quantity: 2 });
     expect(exported.dronePool).toContain('Talon');
     expect(exported.dronePool.filter(d => d === 'Mammoth')).toHaveLength(2);
   });
@@ -609,7 +609,7 @@ describe('round-trip conversion', () => {
     const original = {
       shipId: 'SHIP_001',
       dronePool: ['Talon'],
-      decklist: [{ id: 'CARD001', quantity: 1 }]
+      decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 1 }]
     };
 
     const { deck, selectedDrones, selectedShipComponents, shipId, preservedFields } =
@@ -625,7 +625,7 @@ describe('round-trip conversion', () => {
 
     expect(exported.shipId).toBe(original.shipId);
     expect(exported.dronePool).toContain('Talon');
-    expect(exported.decklist).toContainEqual({ id: 'CARD001', quantity: 1 });
+    expect(exported.decklist).toContainEqual({ id: 'CONVERGENCE_BEAM', quantity: 1 });
   });
 
   it('should handle full JS round-trip with parse and generate', () => {
@@ -638,7 +638,7 @@ describe('round-trip conversion', () => {
         'DRONECONTROL_001': 'r'
       },
       decklist: [
-        { id: 'CARD001', quantity: 4 },
+        { id: 'CONVERGENCE_BEAM', quantity: 4 },
       ]
     }`;
 
@@ -680,7 +680,7 @@ describe('round-trip conversion', () => {
       shipDeployment: {
         placement: ['bridge', 'powerCell', 'droneControlHub']
       },
-      decklist: [{ id: 'CARD001', quantity: 4 }]
+      decklist: [{ id: 'CONVERGENCE_BEAM', quantity: 4 }]
     };
 
     const { deck, selectedDrones, selectedShipComponents, shipId, preservedFields } =

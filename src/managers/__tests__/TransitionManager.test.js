@@ -999,7 +999,7 @@ describe('TransitionManager', () => {
         poi: { q: 5, r: 5 },
         totalSlots: 5,
         slots: [
-          { revealed: true, type: 'card', content: { cardId: 'CARD001' } },
+          { revealed: true, type: 'card', content: { cardId: 'CONVERGENCE_BEAM' } },
           { revealed: false, type: null, content: null },
           { revealed: false, type: null, content: null }
         ],

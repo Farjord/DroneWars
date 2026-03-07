@@ -674,16 +674,16 @@ describe('RewardManager', () => {
       // Cards from transformCardForLoot have cardId, not id
       const mockRewards = {
         cards: [
-          { cardId: 'CARD001', cardName: 'Test Card', rarity: 'Common' },
-          { cardId: 'CARD002', cardName: 'Another Card', rarity: 'Uncommon' }
+          { cardId: 'CONVERGENCE_BEAM', cardName: 'Test Card', rarity: 'Common' },
+          { cardId: 'SYSTEM_REBOOT', cardName: 'Another Card', rarity: 'Uncommon' }
         ]
       };
 
       rewardManager.finalizeRewards(mockRewards, { source: 'test' });
 
       // Should call addCard with cardId values
-      expect(metaGameStateManager.addCard).toHaveBeenCalledWith('CARD001', 1);
-      expect(metaGameStateManager.addCard).toHaveBeenCalledWith('CARD002', 1);
+      expect(metaGameStateManager.addCard).toHaveBeenCalledWith('CONVERGENCE_BEAM', 1);
+      expect(metaGameStateManager.addCard).toHaveBeenCalledWith('SYSTEM_REBOOT', 1);
       expect(metaGameStateManager.addCard).toHaveBeenCalledTimes(2);
     });
 

@@ -97,14 +97,14 @@ describe('calculateAffectedDroneIds', () => {
   describe('FILTERED scope with stat filter', () => {
     // Shrieker Missiles - DESTROY drones with speed >= 5
     const shriekerMissiles = {
-      id: 'CARD010',
+      id: 'SHRIEKER_MISSILES',
       name: 'Shrieker Missiles',
       effects: [{ type: 'DESTROY', targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }] } }]
     };
 
     // Sidewinder Missiles - DAMAGE drones with speed <= 3
     const sidewinderMissiles = {
-      id: 'CARD013',
+      id: 'SIDEWINDER_MISSILES',
       name: 'Sidewinder Missiles',
       effects: [{ type: 'DAMAGE', value: 2, targeting: { type: 'LANE', affinity: 'ENEMY', affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 3 }] } }]
     };
@@ -338,21 +338,21 @@ describe('calculateAffectedDroneIds', () => {
   describe('LANE scope (no filter) - affects all drones', () => {
     // Nuke - DESTROY all drones in lane
     const nukeCard = {
-      id: 'CARD011',
+      id: 'NUKE',
       name: 'Nuke',
       effects: [{ type: 'DESTROY', scope: 'LANE', targeting: { type: 'LANE', affinity: 'ANY' } }]
     };
 
     // Shield Recharge - HEAL all friendly drones
     const shieldRechargeCard = {
-      id: 'CARD008',
+      id: 'SHIELD_RECHARGE',
       name: 'Shield Recharge',
       effects: [{ type: 'HEAL_SHIELDS', value: 2, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } }]
     };
 
     // Streamline - MODIFY_STAT for all friendly drones
     const streamlineCard = {
-      id: 'CARD015',
+      id: 'STREAMLINE',
       name: 'Streamline',
       effects: [{ type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' }, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } }]
     };
@@ -432,7 +432,7 @@ describe('calculateAffectedDroneIds', () => {
   describe('maxTargets handling', () => {
     // Strafe Run - DAMAGE up to 3 drones with hull >= 1
     const strafeRunCard = {
-      id: 'CARD034',
+      id: 'STRAFING_RUN',
       name: 'Strafe Run',
       effects: [{
         type: 'DAMAGE',

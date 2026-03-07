@@ -126,7 +126,7 @@ export const calculateLaneDestinationPoint = (fromLane, toLane, dronePos, gameAr
  * @returns {{ visible: boolean, start: Object, end: Object } | null}
  */
 export const calculateCostReminderArrow = (cardId, costSelection, toLane, droneRefs, gameAreaElement) => {
-  if (cardId !== 'FORCED_REPOSITION') return null;
+  if (cardId !== 'FORCED_REPOSITIONING') return null;
 
   const costDrone = costSelection?.drone;
   const fromLane = costSelection?.sourceLane;

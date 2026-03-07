@@ -64,7 +64,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_001' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_001' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -93,7 +93,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player2'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_002' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_002' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -122,7 +122,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_003' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_003' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -152,7 +152,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_004' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_004' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -175,7 +175,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player2'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_005' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_005' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -207,7 +207,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'powerCell',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_006' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_006' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -232,7 +232,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'bridge',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_007' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_007' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };
@@ -257,7 +257,7 @@ describe('ShipShieldRestoreProcessor', () => {
           id: 'nonexistent',
           owner: 'player1'
         },
-        card: { id: 'CARD037', name: 'Shield Boost', instanceId: 'inst_008' }
+        card: { id: 'SHIELD_BOOST', name: 'Shield Boost', instanceId: 'inst_008' }
       };
 
       const effect = { type: 'RESTORE_SECTION_SHIELDS', value: 2 };

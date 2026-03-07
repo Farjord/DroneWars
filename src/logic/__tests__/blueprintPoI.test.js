@@ -262,8 +262,8 @@ describe('Blueprint PoI System', () => {
         },
         player2: {
           deck: [
-            { id: 'CARD001', name: 'Test Card 1' },
-            { id: 'CARD002', name: 'Test Card 2' }
+            { id: 'CONVERGENCE_BEAM', name: 'Test Card 1' },
+            { id: 'SYSTEM_REBOOT', name: 'Test Card 2' }
           ]
         },
         singlePlayerEncounter: {

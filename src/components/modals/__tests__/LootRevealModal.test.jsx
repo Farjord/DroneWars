@@ -17,7 +17,7 @@ vi.mock('../../../data/rarityColors.js', () => ({
 
 vi.mock('../../../data/cardData.js', () => ({
   default: [
-    { id: 'CARD001', name: 'Test Card', type: 'Ordnance', rarity: 'Common' }
+    { id: 'CONVERGENCE_BEAM', name: 'Test Card', type: 'Ordnance', rarity: 'Common' }
   ]
 }));
 
@@ -55,7 +55,7 @@ describe('LootRevealModal - Token Display', () => {
   describe('totalRevealableItems count', () => {
     it('includes tokens in the count along with cards and salvageItems', () => {
       const loot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Test Card', rarity: 'Common' }],
+        cards: [{ cardId: 'CONVERGENCE_BEAM', cardName: 'Test Card', rarity: 'Common' }],
         salvageItems: [{ itemId: 's1', name: 'Salvage Item', creditValue: 50 }],
         tokens: [{ tokenType: 'security', amount: 1 }]
       };
@@ -160,7 +160,7 @@ describe('LootRevealModal - Token Display', () => {
 
     it('handleRevealAll includes tokens', () => {
       const loot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Test Card', rarity: 'Common' }],
+        cards: [{ cardId: 'CONVERGENCE_BEAM', cardName: 'Test Card', rarity: 'Common' }],
         salvageItems: [{ itemId: 's1', name: 'Salvage Item', creditValue: 50 }],
         tokens: [{ tokenType: 'security', amount: 1 }]
       };
@@ -193,7 +193,7 @@ describe('LootRevealModal - Token Display', () => {
 
     it('handles empty tokens array gracefully', () => {
       const loot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Test Card', rarity: 'Common' }],
+        cards: [{ cardId: 'CONVERGENCE_BEAM', cardName: 'Test Card', rarity: 'Common' }],
         salvageItems: [],
         tokens: []
       };
@@ -207,7 +207,7 @@ describe('LootRevealModal - Token Display', () => {
 
     it('handles undefined tokens gracefully', () => {
       const loot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Test Card', rarity: 'Common' }],
+        cards: [{ cardId: 'CONVERGENCE_BEAM', cardName: 'Test Card', rarity: 'Common' }],
         salvageItems: []
         // tokens not provided
       };
