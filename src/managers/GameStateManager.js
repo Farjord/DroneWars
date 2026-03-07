@@ -490,7 +490,7 @@ class GameStateManager {
 
     // Generate random game seed for deterministic gameplay
     // Host/Local generates, Guest receives seed from Host's first broadcast
-    // Note: gameServer isn't set yet at startGame time (created after gameMode state update),
+    // GameServer is created by AppRouter when appState transitions to 'inGame'
     // so gameMode param is the correct signal here.
     const isGuestRole = gameMode === 'guest';
     const gameSeed = isGuestRole
@@ -928,7 +928,7 @@ class GameStateManager {
    */
   async processAction(actionType, payload) {
     if (actionType === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[5/12] GSM.processAction routing to ActionProcessor', {
+      debugLog('DEPLOY_TRACE', '[5/10] GSM.processAction routing to ActionProcessor', {
         actionType,
         queueLength: this.actionProcessor?.actionQueue?.length || 0,
       });

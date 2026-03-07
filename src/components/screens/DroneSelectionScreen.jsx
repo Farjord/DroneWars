@@ -153,7 +153,7 @@ function DroneSelectionScreen() {
    * Processes the Continue button click after 5 drones are selected.
    * Uses PhaseManager submission pattern for drone selection.
    */
-  const handleContinueDroneSelection = () => {
+  const handleContinueDroneSelection = async () => {
     // Only handle during drone selection phase
     if (turnPhase !== 'droneSelection') return;
 
@@ -176,11 +176,11 @@ function DroneSelectionScreen() {
 
     // Remote player: Send action to host with immediate UI feedback
     if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMITMENTS', '[REMOTE] Sending drone selection commitment to host:', {
+      debugLog('COMMIT_TRACE', 'Guest sending droneSelection commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
-        selectedDronesCount: payload.actionData.selectedDrones?.length
+        dronesCount: payload.actionData.drones?.length
       });
 
       // Set UI state immediately for visual feedback
@@ -191,26 +191,13 @@ function DroneSelectionScreen() {
     }
 
     // Host/Local mode: Process action locally
-    gameStateManager.actionProcessor.queueAction({
-      type: 'commitment',
-      payload: payload
-    }).then(submissionResult => {
-      if (!submissionResult.success) {
-        debugLog('DRONE_SELECTION', '❌ Drone selection submission failed:', submissionResult.error);
-        return;
-      }
-      debugLog('DRONE_SELECTION', '✅ Drone selection submitted successfully');
-    }).catch(error => {
-      debugLog('DRONE_SELECTION', '❌ Drone selection submission error:', error);
-    });
-
-    debugLog('DRONE_SELECTION', '✅ Drone selection submitted to PhaseManager');
-
-    // PhaseManager will handle:
-    // - GameStateManager updates when both players complete
-    // - Event emission for UI state changes
-    // - Phase transition logic
-    // - AI completion in single-player mode
+    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+    if (!submissionResult.success) {
+      debugLog('DRONE_SELECTION', '❌ Drone selection submission failed:', submissionResult.error);
+      return;
+    }
+    debugLog('COMMIT_TRACE', 'Host/local submitting droneSelection commitment');
+    // CommitmentStrategy handles: state updates, event emission, phase transitions, AI completion
   };
 
   // Reinitialize local state if drone selection data changes (handles late arrival from network)

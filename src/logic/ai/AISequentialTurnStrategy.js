@@ -118,9 +118,11 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
   const { gameEngine } = await import('../gameLogic.js');
   const TargetingRouter = (await import('../TargetingRouter.js')).default;
 
+  const { resolveConditionalTargeting } = await import('../targeting/conditionalTargetingResolver.js');
   const targetingRouter = new TargetingRouter();
   const getValidTargets = (actingPlayerId, source, definition, player1, player2) => {
-    return targetingRouter.routeTargeting({ actingPlayerId, source, definition, player1, player2 });
+    const resolvedDef = resolveConditionalTargeting(definition, actingPlayerId, player1, player2);
+    return targetingRouter.routeTargeting({ actingPlayerId, source, definition: resolvedDef, player1, player2 });
   };
 
   const p2 = gameState.player2;

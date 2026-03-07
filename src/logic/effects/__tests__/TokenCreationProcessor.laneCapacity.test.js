@@ -47,7 +47,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Thruster Inhibitor',
+      tokenName: 'Dart',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };
@@ -68,7 +68,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Thruster Inhibitor',
+      tokenName: 'Dart',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };
@@ -87,7 +87,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Thruster Inhibitor',
+      tokenName: 'Dart',
       targetOwner: 'OPPONENT',
       locations: ['lane1', 'lane2', 'lane3'],
     };
@@ -108,7 +108,7 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Thruster Inhibitor',
+      tokenName: 'Dart',
       targetOwner: 'OPPONENT',
       locations: ['lane1', 'lane2', 'lane3'],
     };
@@ -122,12 +122,12 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
     // Lane is full, AND maxPerLane would also block — capacity check fires first
     mockContext.playerStates.player2.dronesOnBoard.lane1 = [
       ...makeDrones(4),
-      { id: 'jammer_0', name: 'Thruster Inhibitor', hull: 1, isToken: true }, // already has one Jammer
+      { id: 'dart_extra', name: 'Dart', hull: 1, isToken: true }, // already has one Dart token
     ];
 
     const effect = {
       type: 'CREATE_TOKENS',
-      tokenName: 'Thruster Inhibitor',
+      tokenName: 'Dart',
       targetOwner: 'OPPONENT',
       locations: ['lane1'],
     };

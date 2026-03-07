@@ -1639,13 +1639,12 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor token in an enemy lane. (Thruster Inhibitor: 0/1, Speed 1. Enemy drones cannot move out of this lane. Pay 2 Energy: Destroy this token.)',
+    description: 'Create a Thruster Inhibitor in an enemy lane. (Enemy drones cannot move out of this lane. Destroyed at the start of the next round.)',
     effects: [
       {
-        type: 'CREATE_TOKENS',
+        type: 'CREATE_TECH',
         tokenName: 'Thruster Inhibitor',
         targetOwner: 'OPPONENT',
-        ignoresCPULimit: true,
         targeting: { type: 'LANE', affinity: 'ENEMY' },
       },
     ],
@@ -1908,6 +1907,72 @@ const fullCardCollection = [
     effects: [{ type: 'MODIFY_DRONE_BASE', mod: { stat: 'shields', value: 2 }, targeting: { type: 'NONE' } }],
     slots: 1,
     maxApplications: 2,
+  },
+
+  // --- Exposed Condition Cards ---
+
+  {
+    id: 'COMMAND_OVERRIDE',
+    baseCardId: 'COMMAND_OVERRIDE',
+    name: 'Command Override',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/CommandOverride.png',
+    description: 'Opponent discards 1 card at random. Exposed Bridge: discards 3 instead.',
+    effects: [{
+      type: 'DISCARD', count: 1, targetPlayer: 'opponent',
+      targeting: { type: 'NONE' },
+      conditionals: [{
+        id: 'bridge-exposed-bonus', timing: 'PRE',
+        condition: { type: 'SECTION_EXPOSED', section: 'bridge' },
+        grantedEffect: { type: 'OVERRIDE_VALUE', property: 'count', value: 3 }
+      }]
+    }]
+  },
+  {
+    id: 'SIGNAL_HIJACK',
+    baseCardId: 'SIGNAL_HIJACK',
+    name: 'Signal Hijack',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/SignalHijack.png',
+    description: 'Exhaust an enemy drone (class 1 or less). Exposed DCH: class 4 or less.',
+    effects: [{
+      type: 'EXHAUST_DRONE',
+      targeting: {
+        type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE',
+        restrictions: [{ stat: 'class', comparison: 'LTE', value: 1 }]
+      },
+      conditionals: [{
+        id: 'dch-exposed-targeting', timing: 'PRE_TARGETING',
+        condition: { type: 'SECTION_EXPOSED', section: 'droneControlHub' },
+        targetingOverride: { restrictions: [{ stat: 'class', comparison: 'LTE', value: 4 }] }
+      }]
+    }]
+  },
+  {
+    id: 'ENERGY_SIPHON',
+    baseCardId: 'ENERGY_SIPHON',
+    name: 'Energy Siphon',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/EnergySiphon.png',
+    description: 'Steal 1 energy from opponent. Exposed Power Cell: steal 3 instead.',
+    effects: [{
+      type: 'STEAL_ENERGY', amount: 1, targetPlayer: 'opponent',
+      targeting: { type: 'NONE' },
+      conditionals: [{
+        id: 'powercell-exposed-bonus', timing: 'PRE',
+        condition: { type: 'SECTION_EXPOSED', section: 'powerCell' },
+        grantedEffect: { type: 'OVERRIDE_VALUE', property: 'amount', value: 3 }
+      }]
+    }]
   },
 
   // --- Tech Removal Cards ---

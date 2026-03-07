@@ -42,6 +42,9 @@ class ConditionEvaluator {
       // Lane comparison conditions (POST timing, for movement)
       OPPONENT_HAS_MORE_IN_LANE: this.evaluateOpponentHasMoreInLane.bind(this),
 
+      // Ship section conditions
+      SECTION_EXPOSED: this.evaluateSectionExposed.bind(this),
+
       // Turn-based conditions
       NOT_FIRST_ACTION: this.evaluateNotFirstAction.bind(this)
     };
@@ -356,6 +359,30 @@ class ConditionEvaluator {
     const oppCount = countDrones(oppDrones);
 
     return oppCount > myCount;
+  }
+
+  // ========================================
+  // SHIP SECTION CONDITION HANDLERS
+  // ========================================
+
+  /**
+   * Check if opponent's named ship section has 0 allocated shields
+   * "Exposed" = unshielded section on the opponent's ship
+   *
+   * @param {Object} condition - { type: 'SECTION_EXPOSED', section: 'bridge'|'droneControlHub'|'powerCell' }
+   * @param {Object} context - Must include actingPlayerId and playerStates
+   */
+  evaluateSectionExposed(condition, context) {
+    const { actingPlayerId, playerStates } = context;
+
+    if (!playerStates || !condition.section) return false;
+
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const section = playerStates[opponentId]?.shipSections?.[condition.section];
+
+    if (!section) return false;
+
+    return section.allocatedShields === 0;
   }
 
   // ========================================

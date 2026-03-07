@@ -15,21 +15,22 @@ class LocalTransport extends Transport {
 
   async sendAction(type, payload) {
     if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[3/12] LocalTransport.sendAction calling GameEngine', {
+      debugLog('DEPLOY_TRACE', '[3/10] LocalTransport.sendAction calling GameEngine', {
         type,
         playerId: this.playerId,
       });
     }
     const { state, animations, result } = await this.gameEngine.processAction(type, payload);
     const redactedState = StateRedactor.redactForPlayer(state, this.playerId);
-    if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[9/12] LocalTransport state redacted', {
-        playerId: this.playerId,
-      });
-    }
 
     if (this._responseCallback) {
-      await this._responseCallback({ state: redactedState, animations, result });
+      // Strip animations — host/local mode already plays them via ActionProcessor.
+      // Sending empty animations prevents GameClient from double-animating.
+      await this._responseCallback({
+        state: redactedState,
+        animations: { actionAnimations: [], systemAnimations: [] },
+        result,
+      });
     }
 
     return result;

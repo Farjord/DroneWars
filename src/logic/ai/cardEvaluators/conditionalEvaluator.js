@@ -27,7 +27,15 @@ export function evaluateConditionalEffects(card, target, context) {
   for (const conditional of card.effects[0].conditionals) {
     let conditionMet = false;
 
-    if (conditional.timing === 'PRE') {
+    if (conditional.timing === 'PRE_TARGETING') {
+      // PRE_TARGETING conditionals widen target selection — score as a flat bonus
+      conditionMet = evaluateCondition(conditional.condition, target, context);
+      if (conditionMet) {
+        bonusScore += 15;
+        logic.push('✅ Exposed targeting: +15 (wider target selection)');
+      }
+      continue;
+    } else if (conditional.timing === 'PRE') {
       // PRE conditionals are evaluated based on target state
       conditionMet = evaluateCondition(conditional.condition, target, context);
     } else if (conditional.timing === 'POST') {
@@ -89,11 +97,20 @@ function evaluateCondition(condition, target, context) {
       // Check if opponent has more drones in lane (Tactical Shift)
       return evaluateOpponentHasMore(target, context);
 
-    case 'NOT_FIRST_ACTION':
+    case 'NOT_FIRST_ACTION': {
       // Check if this is not the first action of the turn
       // actionsTakenThisTurn comes from gameDataService.getState()
       const actionsTaken = context?.gameDataService?.getState?.()?.actionsTakenThisTurn ?? 0;
       return actionsTaken >= 1;
+    }
+
+    case 'SECTION_EXPOSED': {
+      // Check if opponent's named ship section has 0 allocated shields
+      const opponentState = context?.player1;
+      if (!opponentState?.shipSections || !condition.section) return false;
+      const section = opponentState.shipSections[condition.section];
+      return section ? section.allocatedShields === 0 : false;
+    }
 
     default:
       // Unknown condition type - don't trigger
@@ -210,6 +227,9 @@ function scoreGrantedEffect(effect, target, context) {
     case 'MODIFY_STAT':
       return scoreModifyStat(effect);
 
+    case 'OVERRIDE_VALUE':
+      return scoreOverrideValue(effect);
+
     default:
       debugLog('AI_DECISIONS', `[AI] Unknown granted effect type: ${type}`);
       return { score: 0, logic: [] };
@@ -276,6 +296,18 @@ function scoreGainEnergy(value) {
   return {
     score,
     logic: [`✅ Conditional Energy: +${score} (+${value} energy)`]
+  };
+}
+
+/**
+ * Score OVERRIDE_VALUE effect
+ * The value increase is the bonus (e.g., count 1->3 = bonus of 2 units)
+ */
+function scoreOverrideValue(effect) {
+  const bonus = (effect.value || 0) * 10;
+  return {
+    score: bonus,
+    logic: [`✅ Conditional Override (${effect.property}→${effect.value}): +${bonus}`]
   };
 }
 

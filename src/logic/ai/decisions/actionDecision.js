@@ -14,8 +14,9 @@ import {
   countDroneTypeInLane,
 } from '../helpers/index.js';
 
-import { DRONE_PACING, THRUSTER_INHIBITOR } from '../aiConstants.js';
+import { DRONE_PACING } from '../aiConstants.js';
 import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
+import { hasMovementInhibitorInLane } from '../../../utils/gameUtils.js';
 
 import { evaluateCardPlay } from '../cardEvaluators/index.js';
 import { evaluateDroneAttack, evaluateShipAttack } from '../attackEvaluators/index.js';
@@ -118,16 +119,6 @@ export const evaluateActiveAbility = (ability, target, currentEnergy) => {
       if (ability.targeting?.location === 'ANY_LANE' || ability.targeting?.location === 'OTHER_LANES') {
         score += 20;
       }
-      break;
-    }
-
-    case 'DESTROY_TOKEN_SELF': {
-      // Purge ability: self-destruct a Thruster Inhibitor token
-      // Value depends on how many friendly drones are locked down in the lane
-      const lane = target.lane;
-      // Score is calculated in the adjustment pass with full context
-      // Provide a base value here
-      score = THRUSTER_INHIBITOR.PURGE_BASE_VALUE;
       break;
     }
 
@@ -290,11 +281,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       const fromLaneIndex = parseInt(drone.lane.slice(-1));
 
       // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-      const dronesInFromLane = player2.dronesOnBoard[drone.lane] || [];
-      const hasMovementInhibitor = dronesInFromLane.some(d =>
-        d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-      );
-      if (hasMovementInhibitor) continue; // Skip all moves from inhibited lanes
+      if (hasMovementInhibitorInLane(player2, drone.lane)) continue; // Skip all moves from inhibited lanes
 
       [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
         if (toLaneIndex >= 1 && toLaneIndex <= 3) {

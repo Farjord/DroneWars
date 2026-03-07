@@ -7,6 +7,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import { MOVE_EVALUATION, DEFENSE_URGENCY } from './aiConstants.js';
 import { calculateLaneScore } from './scoring/laneScoring.js';
 import { calculateDamagePercentage, calculateDefenseUrgency } from './helpers/hullIntegrityHelpers.js';
+import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
 /**
  * Evaluate a drone move action
@@ -41,11 +42,7 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   }
 
   // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-  const aiDronesInFromLane = player2.dronesOnBoard[fromLane] || [];
-  const hasMovementInhibitor = aiDronesInFromLane.some(d =>
-    d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-  );
-  if (hasMovementInhibitor) {
+  if (hasMovementInhibitorInLane(player2, fromLane)) {
     return { score: -Infinity, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
   }
 

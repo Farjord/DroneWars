@@ -30,6 +30,7 @@ import MarkingEffectProcessor from './effects/MarkingEffectProcessor.js';
 import IncreaseThreatEffectProcessor from './effects/IncreaseThreatEffectProcessor.js';
 import DiscardEffectProcessor from './effects/cards/DiscardEffectProcessor.js';
 import DrainEnergyEffectProcessor from './effects/energy/DrainEnergyEffectProcessor.js';
+import StealEnergyEffectProcessor from './effects/energy/StealEnergyEffectProcessor.js';
 import ExhaustDroneEffectProcessor from './effects/state/ExhaustDroneEffectProcessor.js';
 import StatusEffectProcessor from './effects/state/StatusEffectProcessor.js';
 import ConditionalSectionDamageProcessor from './effects/ConditionalSectionDamageProcessor.js';
@@ -93,6 +94,7 @@ class EffectRouter {
       // Phase 10: New tactics card effects
       DISCARD: new DiscardEffectProcessor(),
       DRAIN_ENERGY: new DrainEnergyEffectProcessor(),
+      STEAL_ENERGY: new StealEnergyEffectProcessor(),
       EXHAUST_DRONE: new ExhaustDroneEffectProcessor(),
       // Status effects - restriction/control effects
       APPLY_CANNOT_MOVE: new StatusEffectProcessor(),

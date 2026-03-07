@@ -719,51 +719,7 @@ const fullDroneCollection = [
   },
   // Rally Beacon, Thruster Inhibitor, Proximity Mine, Inhibitor Mine, Jitter Mine
   // moved to techData.js (Tech Slots feature)
-  // Thruster Inhibitor remains a non-Tech token (has ACTIVE ability: Purge)
-  {
-    name: 'Thruster Inhibitor',
-    class: 0,
-    limit: 999,
-    rebuildRate: 1.0,
-    rarity: 'Uncommon',
-    attack: 0,
-    hull: 1,
-    shields: 0,
-    speed: 1,
-    image: '/DroneWars/img/ThrusterInhibitor.png',
-    selectable: false,
-    maxPerLane: 1,
-    isToken: true,
-    abilities: [
-      {
-        name: 'Thruster Lock',
-        description: 'Enemy drones in this lane cannot move out.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INHIBIT_MOVEMENT' }
-      },
-      {
-        name: 'Purge',
-        description: 'Pay 2 Energy: Destroy this token.',
-        type: 'ACTIVE',
-        targeting: { type: 'SELF' },
-        effect: { type: 'DESTROY_TOKEN_SELF' },
-        cost: { energy: 2, exhausts: false }
-      },
-      {
-        name: 'Inert',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
-      },
-      {
-        name: 'Passive',
-        description: '',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
-      }
-    ],
-    upgradeSlots: 0
-  },
+  // Thruster Inhibitor moved to techData.js (Tech Slots feature)
   { name: 'Behemoth', class: 4, limit: 1, rebuildRate: 0, rarity: 'Common', attack: 3, hull: 6, shields: 2, speed: 2, image: '/DroneWars/img/Behemoth.png', abilities: [], upgradeSlots: 4 },
   {
     name: 'Odin',

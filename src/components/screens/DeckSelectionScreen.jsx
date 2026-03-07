@@ -123,7 +123,7 @@ function DeckSelectionScreen() {
 
     // Remote player: Send action to host with immediate UI feedback
     if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMITMENTS', '[REMOTE] Sending deck selection commitment to host:', {
+      debugLog('COMMIT_TRACE', 'Guest sending deckSelection commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -145,7 +145,7 @@ function DeckSelectionScreen() {
       return;
     }
 
-    debugLog('DECK_SELECTION', '✅ VS deck selection submitted to PhaseManager');
+    debugLog('COMMIT_TRACE', 'Host/local submitting deckSelection commitment');
 
     addLogEntry({
       player: 'SYSTEM',
@@ -261,7 +261,7 @@ function DeckSelectionScreen() {
 
     // Remote player: Send action to host with immediate UI feedback
     if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMITMENTS', '[REMOTE] Sending custom deck commitment to host:', {
+      debugLog('COMMIT_TRACE', 'Guest sending deckSelection commitment to host (custom)', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -286,7 +286,7 @@ function DeckSelectionScreen() {
       return;
     }
 
-    debugLog('DECK_SELECTION', '✅ Custom deck submitted to PhaseManager');
+    debugLog('COMMIT_TRACE', 'Host/local submitting deckSelection commitment (custom)');
 
     addLogEntry({
       player: 'SYSTEM',

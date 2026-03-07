@@ -11,6 +11,7 @@ import { gameEngine } from '../gameLogic.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
 /**
  * Process attack action
@@ -242,11 +243,7 @@ export async function processMove(payload, ctx) {
   }
 
   // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-  const dronesInFromLane = playerState.dronesOnBoard[fromLane] || [];
-  const hasMovementInhibitor = dronesInFromLane.some(d =>
-    d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-  );
-  if (hasMovementInhibitor) {
+  if (hasMovementInhibitorInLane(playerState, fromLane)) {
     return {
       success: false,
       error: `${drone.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,

@@ -23,11 +23,6 @@ class HostGameServer {
     const response = await this.gameEngine.processAction(type, payload);
 
     // Broadcast state + animations to P2P guests
-    const _dbg = this.gameEngine.getState();
-    debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-1] HostGameServer broadcast after action', {
-      utc: new Date().toISOString(), actionType: type,
-      turnPhase: _dbg?.turnPhase, round: _dbg?.roundNumber,
-    });
     this.broadcastService.broadcastIfNeeded(`HostGameServer:${type}`);
 
     return response;

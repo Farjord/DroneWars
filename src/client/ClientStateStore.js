@@ -39,9 +39,6 @@ class ClientStateStore {
    * @param {Object} state - Complete game state from engine response
    */
   applyUpdate(state) {
-    debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-5] Guest received broadcast', {
-      utc: new Date().toISOString(), turnPhase: state?.turnPhase, round: state?.roundNumber,
-    });
     this._appliedState = state;
     this._notify({ type: 'ENGINE_UPDATE' });
   }

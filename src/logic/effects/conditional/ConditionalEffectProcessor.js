@@ -93,6 +93,13 @@ class ConditionalEffectProcessor extends BaseEffectProcessor {
           modifiedEffect.value += grantedEffect.value;
           debugLog('EFFECT_PROCESSING', `[ConditionalEffectProcessor] Applied BONUS_DAMAGE: +${grantedEffect.value} (new total: ${modifiedEffect.value})`);
         }
+      } else if (grantedEffect.type === 'OVERRIDE_VALUE') {
+        // OVERRIDE_VALUE replaces a named property on the primary effect
+        if (modifiedEffect && grantedEffect.property) {
+          const oldValue = modifiedEffect[grantedEffect.property];
+          modifiedEffect[grantedEffect.property] = grantedEffect.value;
+          debugLog('EFFECT_PROCESSING', `[ConditionalEffectProcessor] Applied OVERRIDE_VALUE: ${grantedEffect.property} ${oldValue} -> ${grantedEffect.value}`);
+        }
       } else {
         // Other granted effects are queued as additional effects
         allAdditionalEffects.push({

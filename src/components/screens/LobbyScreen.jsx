@@ -40,6 +40,20 @@ function LobbyScreen() {
     }
   }, [isMultiplayer]);
 
+  // Guest: listen for host's game_started signal to transition to in-game
+  useEffect(() => {
+    if (!isMultiplayer || p2pManager.isHost) return;
+
+    const unsubscribe = p2pManager.subscribe((event) => {
+      if (event.type === 'game_started') {
+        debugLog('MP_GAME_TRACE', 'Guest received game_started, transitioning to in-game');
+        handleMultiplayerGameStart();
+      }
+    });
+
+    return unsubscribe;
+  }, [isMultiplayer]);
+
   const handleBackToMenu = () => {
     debugLog('PHASE_TRANSITIONS', '🔙 Returning to main menu');
     gameStateManager.setState({ appState: 'menu', gameMode: 'local' });
@@ -122,8 +136,25 @@ function LobbyScreen() {
       { name: isHost ? 'Guest Player' : 'Host Player' }
     );
 
-    // Host broadcasts initial game state to guest
+    if (!isHost) {
+      const guestState = gameStateManager.getState();
+      debugLog('MP_GAME_TRACE', '[3/5] Guest startGame complete — GSM snapshot', {
+        appState: guestState.appState,
+        turnPhase: guestState.turnPhase,
+        gameMode: guestState.gameMode,
+        localPlayerId: guestState.localPlayerId,
+        hasPlayer1: !!guestState.player1,
+        hasPlayer2: !!guestState.player2,
+        p1DeckCount: guestState.player1?.deck?.length || 0,
+        p2DeckCount: guestState.player2?.deck?.length || 0,
+        placedSections: guestState.placedSections?.length || 0,
+        opponentPlacedSections: guestState.opponentPlacedSections?.length || 0,
+      });
+    }
+
+    // Signal guest to transition to in-game, then broadcast initial state
     if (isHost && p2pManager.isConnected) {
+      p2pManager.sendGameStarted();
       debugLog('MP_GAME_TRACE', '[4/5] Host broadcasting initial state', { initialBroadcast: true });
       const initialState = gameStateManager.getState();
       const redactedState = StateRedactor.redactForPlayer(initialState, 'player2');

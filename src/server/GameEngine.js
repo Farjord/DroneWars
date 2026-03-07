@@ -19,9 +19,10 @@ class GameEngine {
    */
   async processAction(type, payload) {
     if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[4/12] GameEngine.processAction delegating to GSM', { type });
+      debugLog('DEPLOY_TRACE', '[4/10] GameEngine.processAction delegating to GSM', { type });
     }
     const result = await this.gameStateManager.processAction(type, payload);
+    await this.gameFlowManager.waitForPendingActionCompletion();
     const state = this.gameStateManager.getState();
 
     // Extract collected animations from ActionProcessor result (Phase 2 contract)
@@ -29,7 +30,7 @@ class GameEngine {
 
     const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
     if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[8/12] GameEngine returns {state, animations}', {
+      debugLog('DEPLOY_TRACE', '[9/10] GameEngine returns {state, animations}', {
         animCount,
         turnPhase: state.turnPhase,
       });

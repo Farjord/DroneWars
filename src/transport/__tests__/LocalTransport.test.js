@@ -50,14 +50,14 @@ describe('LocalTransport', () => {
       expect(response.state.player2.handCount).toBe(1);
     });
 
-    it('passes animations and result through unchanged', async () => {
+    it('strips animations (host plays them via ActionProcessor) and passes result through', async () => {
       const callback = vi.fn();
       transport.onResponse(callback);
 
       await transport.sendAction('move', {});
 
       const response = callback.mock.calls[0][0];
-      expect(response.animations).toBe(mockAnimations);
+      expect(response.animations).toEqual({ actionAnimations: [], systemAnimations: [] });
       expect(response.result).toEqual({ success: true });
     });
 

@@ -38,7 +38,7 @@ const useActionRouting = ({
 
   // --- Deployment Execution ---
   const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
-    debugLog('DEPLOY_TRACE', '[1/12] executeDeployment called', {
+    debugLog('DEPLOY_TRACE', '[1/10] executeDeployment called', {
       droneName: droneToDeployed?.name,
       lane,
       playerId: getLocalPlayerId(),

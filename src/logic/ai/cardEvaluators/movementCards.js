@@ -8,6 +8,7 @@ import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
 import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
+import { hasMovementInhibitorInLane } from '../../../utils/gameUtils.js';
 
 /**
  * Evaluate a SINGLE_MOVE card
@@ -86,11 +87,7 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
     // FRIENDLY DRONE MOVEMENT (existing logic)
 
     // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-    const aiDronesInFromLane = player2.dronesOnBoard[fromLane] || [];
-    const hasMovementInhibitor = aiDronesInFromLane.some(d =>
-      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-    );
-    if (hasMovementInhibitor) {
+    if (hasMovementInhibitorInLane(player2, fromLane)) {
       return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
     }
 
@@ -185,10 +182,7 @@ export const evaluateMultiMoveCard = (card, target, context) => {
   const dronesInLane = player2.dronesOnBoard[sourceLaneId] || [];
 
   // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-  const hasMovementInhibitor = dronesInLane.some(d =>
-    d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-  );
-  if (hasMovementInhibitor) {
+  if (hasMovementInhibitorInLane(player2, sourceLaneId)) {
     return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
   }
 

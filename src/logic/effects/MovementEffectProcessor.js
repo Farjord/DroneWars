@@ -13,6 +13,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './movement/animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 
 
@@ -307,12 +308,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-    // The inhibiting drone lives on the same player's board as the drones it locks down
-    const dronesInFromLane = droneOwnerState.dronesOnBoard[fromLane] || [];
-    const hasMovementInhibitor = dronesInFromLane.some(d =>
-      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-    );
-    if (hasMovementInhibitor && !isMovingEnemyDrone) {
+    // The inhibiting entity lives on the same player's board as the drones it locks down
+    if (hasMovementInhibitorInLane(droneOwnerState, fromLane) && !isMovingEnemyDrone) {
       return {
         newPlayerStates: newPlayerStates,
         error: `${droneToMove.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
@@ -487,11 +484,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-    const dronesInFromLane = actingPlayerState.dronesOnBoard[fromLane] || [];
-    const hasMovementInhibitor = dronesInFromLane.some(d =>
-      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-    );
-    if (hasMovementInhibitor) {
+    if (hasMovementInhibitorInLane(actingPlayerState, fromLane)) {
       return {
         newPlayerStates: newPlayerStates,
         error: `Drones cannot move out of ${fromLane} - Thruster Inhibitor is active.`,

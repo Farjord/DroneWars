@@ -5,9 +5,6 @@
 // Extracted from gameLogic.js Phase 9.10
 
 import EffectRouter from '../EffectRouter.js';
-import { updateAuras } from '../utils/auraManager.js';
-import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
-import { onDroneRecalled } from '../utils/droneStateUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -76,8 +73,6 @@ class AbilityResolver {
       }
     } else if (effect.type === 'DAMAGE') {
       outcome = `Dealt ${effect.value} damage to ${targetName}.`;
-    } else if (effect.type === 'DESTROY_TOKEN_SELF') {
-      outcome = `${userDrone.name} was purged.`;
     }
 
     // Log the ability
@@ -126,11 +121,6 @@ class AbilityResolver {
           break;
         }
       }
-    }
-
-    // Handle DESTROY_TOKEN_SELF directly (self-destruction doesn't go through EffectRouter)
-    if (effect.type === 'DESTROY_TOKEN_SELF') {
-      return this.resolveDestroyTokenSelf(userDrone, actingPlayerId, newPlayerStates, placedSections);
     }
 
     // Apply effects using modular handler
@@ -341,52 +331,6 @@ class AbilityResolver {
         debugLog('SHIP_ABILITY', `Unknown ship ability effect type: ${effect.type}`);
         return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
-  }
-
-  /**
-   * Resolve DESTROY_TOKEN_SELF ability
-   * Removes the token from the board and generates destruction animation.
-   *
-   * @param {Object} userDrone - The token drone destroying itself
-   * @param {string} actingPlayerId - Owner of the token
-   * @param {Object} newPlayerStates - Already cloned player states
-   * @param {Object} placedSections - Placed ship sections
-   * @returns {Object} { newPlayerStates, shouldEndTurn, animationEvents }
-   */
-  resolveDestroyTokenSelf(userDrone, actingPlayerId, newPlayerStates, placedSections) {
-    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-    const animationEvents = [];
-
-    // Find which lane the token is in
-    const lane = getLaneOfDrone(userDrone.id, newPlayerStates[actingPlayerId]);
-    if (lane) {
-      // Remove the token from the board
-      newPlayerStates[actingPlayerId].dronesOnBoard[lane] =
-        newPlayerStates[actingPlayerId].dronesOnBoard[lane].filter(d => d.id !== userDrone.id);
-
-      // Update deployed drone count
-      Object.assign(newPlayerStates[actingPlayerId], onDroneRecalled(newPlayerStates[actingPlayerId], userDrone));
-
-      // Update auras
-      newPlayerStates[actingPlayerId].dronesOnBoard = updateAuras(
-        newPlayerStates[actingPlayerId], newPlayerStates[opponentId], placedSections
-      );
-
-      // Generate destruction animation
-      animationEvents.push({
-        type: 'DRONE_DESTROYED',
-        targetId: userDrone.id,
-        targetPlayer: actingPlayerId,
-        laneId: lane,
-        timestamp: Date.now()
-      });
-    }
-
-    return {
-      newPlayerStates,
-      shouldEndTurn: true,
-      animationEvents
-    };
   }
 
 }

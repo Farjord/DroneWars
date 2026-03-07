@@ -15,12 +15,6 @@ vi.mock('../../../triggers/TriggerProcessor.js', () => ({
   })
 }));
 
-vi.mock('../../../statsCalculator.js', () => ({
-  calculateEffectiveShipStats: vi.fn().mockReturnValue({
-    totals: { maxEnergy: 20 }
-  })
-}));
-
 import GainEnergyEffectProcessor from '../GainEnergyEffectProcessor.js';
 
 describe('GainEnergyEffectProcessor — trigger event propagation', () => {

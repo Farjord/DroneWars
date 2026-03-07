@@ -507,11 +507,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         // Ship section damage
         newPlayerStates[defendingPlayerId].shipSections[finalTarget.name].hull -= hullDamage;
         newPlayerStates[defendingPlayerId].shipSections[finalTarget.name].allocatedShields -= shieldDamage;
-        const defenderSections = defendingPlayerId === 'player1' ? placedSections.player1 : placedSections.player2;
-        const newEffectiveStats = calculateEffectiveShipStats(newPlayerStates[defendingPlayerId], defenderSections).totals;
-        if (newPlayerStates[defendingPlayerId].energy > newEffectiveStats.maxEnergy) {
-            newPlayerStates[defendingPlayerId].energy = newEffectiveStats.maxEnergy;
-        }
     }
 
     // Handle attacker exhaustion and after-attack abilities (like DESTROY_SELF)

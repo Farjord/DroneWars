@@ -310,19 +310,20 @@ const evaluateThrusterInhibitorCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check lane capacity limit
-  if ((player1.dronesOnBoard[targetLane]?.length || 0) >= MAX_DRONES_PER_LANE) {
-    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  // Check tech slot capacity limit
+  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
   // Check if lane already has a Thruster Inhibitor (maxPerLane: 1)
-  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
-  const hasInhibitor = dronesInLane.some(d => d.isToken && d.name === 'Thruster Inhibitor');
+  const techsInLane = player1.techSlots?.[targetLane] || [];
+  const hasInhibitor = techsInLane.some(d => d.name === 'Thruster Inhibitor');
   if (hasInhibitor) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Thruster Inhibitor'] };
   }
 
   // Count non-token enemy drones that would be locked down
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
   const enemyDrones = dronesInLane.filter(d => !d.isToken);
   if (enemyDrones.length === 0) {
     return { score: INVALID_SCORE, logic: ['❌ No enemy drones in target lane to lock down'] };

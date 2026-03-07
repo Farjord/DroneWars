@@ -26,6 +26,7 @@ describe('GameEngine', () => {
     mockGFM = {
       startGame: vi.fn(),
       endGame: vi.fn(),
+      waitForPendingActionCompletion: vi.fn().mockResolvedValue(undefined),
     };
     engine = new GameEngine(mockGSM, mockAP, mockGFM);
   });

@@ -23,7 +23,8 @@ class P2PManager {
       ping: null,
       phaseCompleted: null,
       syncRequest: null,  // For resync requests (guest → host)
-      actionAck: null     // For action acknowledgements (host → guest)
+      actionAck: null,    // For action acknowledgements (host → guest)
+      gameStarted: null   // For game start signal (host → guest)
     };
 
     // Track connected peers
@@ -94,6 +95,17 @@ class P2PManager {
         isFullSync: data.isFullSync || false
       });
 
+      const triggerAnims = (data.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      if (triggerAnims.length > 0) {
+        debugLog('TRIGGER_SYNC_TRACE', '[4/8] GUEST: Trigger received from network', {
+          utc: new Date().toISOString(),
+          triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+          triggerCount: triggerAnims.length,
+          networkLatencyMs: networkLatency,
+          sequenceId: data.sequenceId,
+        });
+      }
+
       this.emit('state_update_received', {
         state: data.state,
         actionAnimations: data.actionAnimations || [],
@@ -159,6 +171,15 @@ class P2PManager {
         success: data.success
       });
       this.emit('action_ack_received', data);
+    });
+
+    // GAME_START action (host → guest) signals guest to transition to in-game
+    const [sendGameStarted, receiveGameStarted] = this.room.makeAction('GAME_START');
+    this.actions.gameStarted = { send: sendGameStarted, receive: receiveGameStarted };
+
+    receiveGameStarted((data, peerId) => {
+      debugLog('MP_GAME_TRACE', 'Guest received game_started signal from host');
+      this.emit('game_started', data);
     });
   }
 
@@ -367,6 +388,16 @@ class P2PManager {
         sequenceId: this.broadcastSequence,
         animCount: actionAnimations.length + systemAnimations.length
       });
+
+      const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+      if (triggerAnims.length > 0) {
+        debugLog('TRIGGER_SYNC_TRACE', '[3/8] HOST: Trigger sent over network', {
+          utc: new Date().toISOString(),
+          triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+          sequenceId: this.broadcastSequence,
+          networkSendTimestamp: networkSendTime,
+        });
+      }
     } catch (error) {
       debugLog('MP_SYNC_TRACE', 'broadcastState failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
@@ -450,6 +481,25 @@ class P2PManager {
   }
 
   /**
+   * Signal guest that the game has started (host → guest)
+   */
+  sendGameStarted() {
+    if (!this.isHost) {
+      debugLog('MP_GAME_TRACE', 'Guard: only host can send game_started', { guard: true });
+      return;
+    }
+
+    if (!this._requireConnection('Cannot send game_started')) return;
+
+    try {
+      this.actions.gameStarted.send({ timestamp: Date.now() }, this.currentPeerId);
+      debugLog('MP_GAME_TRACE', 'Host sent game_started to guest');
+    } catch (error) {
+      debugLog('MP_GAME_TRACE', 'sendGameStarted failed', { error: true, message: error.message });
+    }
+  }
+
+  /**
    * Send full sync response to guest (host only)
    * @param {Object} state - Complete game state
    * @param {number} sequenceId - Current sequence number
@@ -511,7 +561,8 @@ class P2PManager {
       ping: null,
       phaseCompleted: null,
       syncRequest: null,
-      actionAck: null
+      actionAck: null,
+      gameStarted: null
     };
 
     this.peers.clear();

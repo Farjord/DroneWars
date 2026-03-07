@@ -147,7 +147,7 @@ export async function processCommitment(payload, ctx) {
     } else {
       phaseManager.notifyGuestAction('commit', { phase });
     }
-    debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase}`);
+    debugLog('COMMIT_TRACE', `[2b/6] PhaseManager notified`, { playerId, phase });
   }
   debugLog('COMMITMENTS', `📊 Commitment state after update:`, {
     phase,
@@ -439,6 +439,22 @@ export function applyPhaseCommitments(phase, ctx) {
 
     default:
       debugLog('COMMITMENTS', `No commitment application logic for phase: ${phase}`);
+  }
+
+  if (stateUpdates.player2) {
+    debugLog('COMMIT_TRACE', '[4b/6] Post-commit player2 snapshot', {
+      phase,
+      p2DeckCount: stateUpdates.player2.deck?.length || 0,
+      p2ShipComponents: Object.keys(stateUpdates.player2.selectedShipComponents || {}),
+      p2DronePool: stateUpdates.player2.activeDronePool?.length || 0,
+    });
+  }
+  if (stateUpdates.placedSections || stateUpdates.opponentPlacedSections) {
+    debugLog('COMMIT_TRACE', '[4b/6] Post-commit placement snapshot', {
+      phase,
+      placedSections: stateUpdates.placedSections?.length || 0,
+      opponentPlacedSections: stateUpdates.opponentPlacedSections?.length || 0,
+    });
   }
 
   return stateUpdates;

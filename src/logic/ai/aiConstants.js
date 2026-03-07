@@ -476,15 +476,6 @@ export const THRUSTER_INHIBITOR = {
   BASE_VALUE: 25,
   LOCKED_DRONE_VALUE: 12,
   HIGH_CLASS_BONUS: 8,
-
-  // Purge ability evaluation
-  PURGE_BASE_VALUE: 15,
-  LOCKED_DRONE_MOVE_VALUE: 10,
-
-  // Adjustment pass - attack priority
-  ATTACK_PRIORITY: 40,
-  EFFICIENCY_BONUS: 25,
-  EFFICIENCY_ATTACK_THRESHOLD: 2,
 };
 
 // ========================================

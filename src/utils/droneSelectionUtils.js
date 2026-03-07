@@ -6,6 +6,7 @@
 
 import { debugLog } from './debugLogger.js';
 import SeededRandom from './seededRandom.js';
+import fullDroneCollection from '../data/droneData.js';
 
 /**
  * Initialize drone selection data for the beginning of a game
@@ -122,4 +123,14 @@ export const validateDroneSelectionData = (droneSelectionData) => {
     typeof drone.name === 'string' &&
     drone.name.length > 0
   );
+};
+
+/**
+ * Extract drone objects from a list of drone names using the full drone collection
+ * @param {Array} droneNames - Array of drone names
+ * @returns {Array} Array of matching drone objects
+ */
+export const extractDronesFromDeck = (droneNames) => {
+  if (!droneNames || !Array.isArray(droneNames)) return [];
+  return droneNames.map(name => fullDroneCollection.find(d => d.name === name)).filter(Boolean);
 };

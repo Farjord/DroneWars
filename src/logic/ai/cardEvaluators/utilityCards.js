@@ -154,6 +154,44 @@ export const evaluateDrainEnergyCard = (card, target, context) => {
 };
 
 /**
+ * Evaluate a STEAL_ENERGY card (Energy Siphon)
+ * Strategy: Combines drain + gain value. Higher when opponent has more energy.
+ * @param {Object} card - The card being played
+ * @param {Object} target - The target of the card (usually null)
+ * @param {Object} context - Evaluation context with player states
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateStealEnergyCard = (card, target, context) => {
+  const { player1, player2 } = context;
+  const logic = [];
+
+  const stealAmount = card.effects[0].amount;
+  const actualSteal = Math.min(stealAmount, player1.energy);
+
+  if (actualSteal === 0) {
+    return { score: INVALID_SCORE, logic: ['❌ Opponent has no energy to steal'] };
+  }
+
+  // Drain value (denying opponent) + gain value (tempo for self)
+  let baseValue = actualSteal * CARD_EVALUATION.ENERGY_DENY_MULTIPLIER;
+  logic.push(`✅ Energy Steal: +${baseValue} (${actualSteal} energy stolen)`);
+
+  // Self-gain bonus: more valuable when we're low on energy
+  if (player2.energy <= 2) {
+    const lowEnergyBonus = 15;
+    baseValue += lowEnergyBonus;
+    logic.push(`✅ Low Self Energy: +${lowEnergyBonus} (need energy)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  const score = baseValue - costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
  * Evaluate a DISCARD card (Mental Disruption)
  * Strategy: Higher value when opponent has more cards and energy
  * @param {Object} card - The card being played

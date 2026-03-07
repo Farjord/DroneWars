@@ -33,6 +33,10 @@ import SoundManager from './managers/SoundManager.js';
 import DEV_CONFIG from './config/devConfig.js';
 import { useSoundSetup } from './hooks/useSoundSetup.js';
 import { useMusicSetup } from './hooks/useMusicSetup.js';
+import GameServerFactory from './server/GameServerFactory.js';
+import clientStateStore from './client/clientStateStore.singleton.js';
+import p2pManager from './network/P2PManager.js';
+import StateRedactor from './server/StateRedactor.js';
 import { debugLog } from './utils/debugLogger.js';
 
 /**
@@ -62,6 +66,77 @@ function AppRouter() {
       hasGFM: !!gameFlowManagerRef.current,
     });
   }
+
+  // Create GameServer when entering inGame (before App.jsx mounts)
+  const gameServerRef = useRef(null);
+
+  // Reset when leaving game (handles re-entry)
+  if (gameState.appState !== 'inGame' && gameServerRef.current) {
+    gameServerRef.current = null;
+  }
+
+  // Create GameServer synchronously (ref guards against StrictMode double-creation)
+  if (!gameServerRef.current && gameState.appState === 'inGame') {
+    debugLog('MP_GAME_TRACE', 'AppRouter: Creating GameServer', {
+      gameMode: gameState.gameMode,
+    });
+    gameServerRef.current = GameServerFactory.create(gameState.gameMode, {
+      gameStateManager,
+      actionProcessor: gameStateManager.actionProcessor,
+      gameFlowManager: gameStateManager.gameFlowManager,
+      clientStateStore,
+      p2pManager,
+      phaseAnimationQueue: phaseAnimationQueueRef.current,
+    });
+    debugLog('INIT_TRACE', '[5/8] GameServerFactory.create()', {
+      gameMode: gameState.gameMode,
+      serverCreated: !!gameServerRef.current,
+    });
+    debugLog('STATE_CHECKPOINT', 'AppRouter: GSM state at GameServer creation', {
+      gameMode: gameState.gameMode,
+      turnPhase: gameStateManager.getState().turnPhase,
+      localPlayerId: gameStateManager.getState().localPlayerId,
+      hasAppliedState: !!clientStateStore._appliedState,
+      gsmPlayer1Deck: gameStateManager.getState().player1?.deck?.length || 0,
+      gsmPlayer2Deck: gameStateManager.getState().player2?.deck?.length || 0,
+      cssPlayer1Deck: clientStateStore.getState().player1?.deck?.length || 0,
+      cssPlayer2Deck: clientStateStore.getState().player2?.deck?.length || 0,
+    });
+  }
+
+  // Wire GameServer to managers (side effects belong in useEffect, not render)
+  useEffect(() => {
+    const server = gameServerRef.current;
+    if (!server || gameStateManager.gameServer === server) return;
+
+    gameStateManager.setGameServer(server);
+    gameStateManager.actionProcessor.setGameServer(server);
+    gameStateManager.actionProcessor.broadcastService.setGameServer(server);
+
+    debugLog('MP_GAME_TRACE', 'AppRouter: GameServer wired to managers');
+  }, [gameState.appState]);
+
+  // Handle guest full sync requests (must be active during ALL inGame phases)
+  useEffect(() => {
+    if (gameState.appState !== 'inGame' || gameState.gameMode !== 'host') return;
+
+    debugLog('MP_SYNC_TRACE', 'AppRouter: Sync request handler MOUNTED', {
+      appState: gameState.appState,
+      gameMode: gameState.gameMode,
+    });
+
+    const handleSyncRequest = (event) => {
+      if (event.type === 'sync_requested') {
+        debugLog('MP_SYNC_TRACE', 'AppRouter: Host responding to guest sync request');
+        const currentState = gameStateManager.getState();
+        const redactedState = StateRedactor.redactForPlayer(currentState, 'player2');
+        p2pManager.sendFullSyncResponse(redactedState, p2pManager.broadcastSequence);
+      }
+    };
+
+    const unsubscribe = p2pManager.subscribe(handleSyncRequest);
+    return () => unsubscribe();
+  }, [gameState.appState, gameState.gameMode]);
 
   // Initialize sound system (autoplay unlock + event bridge)
   useSoundSetup(gameStateManager, phaseAnimationQueueRef.current);

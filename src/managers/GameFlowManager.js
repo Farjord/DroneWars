@@ -246,7 +246,7 @@ class GameFlowManager {
           if (event.actionType === 'snaredConsumption' || event.actionType === 'suppressedConsumption') {
             debugLog('CONSUMPTION_DEBUG', '🟢 [4] GameFlowManager: Received action_completed', { actionType: event.actionType, shouldEndTurn: event.result?.shouldEndTurn });
           }
-          this.handleActionCompletion(event).catch(err => {
+          this._pendingActionCompletion = this.handleActionCompletion(event).catch(err => {
             debugLog('CONSUMPTION_DEBUG', '🔴 handleActionCompletion FAILED', { error: err.message, stack: err.stack });
           });
         }
@@ -343,17 +343,9 @@ class GameFlowManager {
         }
 
         // Trigger phase transition synchronously BEFORE broadcasting
-        debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-2] About to start round transition', {
-          utc: new Date().toISOString(), turnPhase: updatedState.turnPhase, round: updatedState.roundNumber,
-        });
         await this.onSequentialPhaseComplete(updatedState.turnPhase, {
           reason: 'both_passed',
           passInfo: updatedState.passInfo
-        });
-
-        const _postState = this.gameStateManager.getState();
-        debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-3] Round transition COMPLETE', {
-          utc: new Date().toISOString(), turnPhase: _postState.turnPhase, round: _postState.roundNumber,
         });
 
         // Broadcast state AFTER phase transition completes
@@ -1052,6 +1044,13 @@ class GameFlowManager {
     return null;
   }
 
+  async waitForPendingActionCompletion() {
+    if (this._pendingActionCompletion) {
+      await this._pendingActionCompletion;
+      this._pendingActionCompletion = null;
+    }
+  }
+
   // Start animation playback if queue has pending items and isn't already playing.
   // Returns true if playback was started.
   _tryStartPlayback(source) {
@@ -1325,12 +1324,6 @@ class GameFlowManager {
     // Auto-complete commitments for players who don't need to act (single-player mandatory phases)
     if (this.isSimultaneousPhase(newPhase)) {
       await this.autoCompleteUnnecessaryCommitments(newPhase);
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-DIAG-4] Landed on simultaneous phase', {
-        utc: new Date().toISOString(), phase: newPhase,
-        queueLength: this.phaseAnimationQueue?.getQueueLength() || 0,
-        isPlaying: this.phaseAnimationQueue?.isPlaying() || false,
-        isRoundTransition: this._isRoundTransition,
-      });
     }
 
     // Start animation playback for sequential phase transitions

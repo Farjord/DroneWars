@@ -14,6 +14,7 @@
 
 import fullDroneCollection from '../../data/droneData.js';
 import TargetingRouter from '../TargetingRouter.js';
+import { resolveConditionalTargeting } from './conditionalTargetingResolver.js';
 
 // Initialize TargetingRouter for ability/card targeting
 const targetingRouter = new TargetingRouter();
@@ -94,10 +95,11 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, selectedC
             const localPlayer = localPlayerId === 'player1' ? player1 : player2;
             validCardTargets = calculateUpgradeTargets(selectedCard, localPlayer);
         } else {
+            const resolvedCard = resolveConditionalTargeting(selectedCard, localPlayerId, player1, player2);
             validCardTargets = targetingRouter.routeTargeting({
                 actingPlayerId: localPlayerId,
                 source: null,
-                definition: selectedCard,
+                definition: resolvedCard,
                 player1,
                 player2,
                 getEffectiveStats: getEffectiveStatsFn

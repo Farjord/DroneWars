@@ -104,6 +104,32 @@ const fullTechCollection = [
       }
     ]
   },
+  {
+    name: 'Thruster Inhibitor',
+    hull: 1,
+    image: '/DroneWars/img/ThrusterInhibitor.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    isTech: true,
+    abilities: [
+      {
+        name: 'Thruster Lock',
+        description: 'Enemy drones in this lane cannot move out.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INHIBIT_MOVEMENT' }
+      },
+      {
+        name: 'Auto-Destruct',
+        description: 'Destroyed at the start of the next round.',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_START',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effects: []
+      }
+    ]
+  },
 ];
 
 export default fullTechCollection;

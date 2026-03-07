@@ -28,6 +28,17 @@ class P2PTransport extends Transport {
         this._ackCallback?.(event.data);
       }
     });
+
+    // If already connected (guest created after host broadcast), request full sync
+    debugLog('MP_SYNC_TRACE', 'P2PTransport constructor', {
+      isConnected: this.p2pManager.isConnected,
+      willRequestSync: this.p2pManager.isConnected,
+      subscriberCount: this.p2pManager.listeners?.size || 'unknown',
+    });
+    if (this.p2pManager.isConnected) {
+      debugLog('MP_SYNC_TRACE', 'P2PTransport created while connected, requesting sync');
+      this._onResyncNeeded();
+    }
   }
 
   async sendAction(type, payload) {
@@ -52,7 +63,15 @@ class P2PTransport extends Transport {
   async _processMessage(message) {
     if (message.type === 'state_update_received' && this._responseCallback) {
       const { state, actionAnimations, systemAnimations } = message.data;
-      this._responseCallback({
+      const triggerAnims = (actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      if (triggerAnims.length > 0) {
+        debugLog('TRIGGER_SYNC_TRACE', '[6/8] GUEST: Trigger dispatching to GameClient', {
+          utc: new Date().toISOString(),
+          triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+          triggerCount: triggerAnims.length,
+        });
+      }
+      await this._responseCallback({
         state,
         animations: {
           actionAnimations: actionAnimations || [],

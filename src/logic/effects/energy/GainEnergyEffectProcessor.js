@@ -1,20 +1,18 @@
 // ========================================
 // GAIN ENERGY EFFECT PROCESSOR
 // ========================================
-// Handles ENERGY effect type - gaining energy up to ship's max energy
-// Respects maximum energy cap from ship sections
+// Handles ENERGY effect type - gaining energy
+// Energy can exceed maxEnergy mid-round; maxEnergy is only the reset target at round start
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import TriggerProcessor from '../../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../../triggers/triggerConstants.js';
-import { calculateEffectiveShipStats } from '../../statsCalculator.js';
 
 /**
  * GainEnergyEffectProcessor - Handles energy gain
  * Behavior:
  * - Adds N energy to acting player (where N = effect.value)
- * - Caps energy at player's maximum energy from ship sections
- * - Cannot exceed max energy limit
+ * - No in-round cap: energy can exceed maxEnergy via gain/steal effects
  */
 class GainEnergyEffectProcessor extends BaseEffectProcessor {
   /**
@@ -25,7 +23,7 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
    * @param {Object} context - Effect execution context
    * @param {string} context.actingPlayerId - Player gaining energy
    * @param {Object} context.playerStates - Current player states
-   * @param {Object} context.placedSections - Placed ship sections (required for max energy calculation)
+   * @param {Object} context.placedSections - Placed ship sections
    * @returns {Object} Result with updated player states
    */
   process(effect, context) {
@@ -37,21 +35,10 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
     const newPlayerStates = this.clonePlayerStates(playerStates);
     const actingPlayerState = this.getActingPlayerState(newPlayerStates, actingPlayerId);
 
-    // Get player's placed sections for energy cap calculation
-    const sections = actingPlayerId === 'player1'
-      ? placedSections.player1
-      : placedSections.player2;
-
-    // Calculate effective ship stats to get maximum energy
-    const effectiveStats = calculateEffectiveShipStats(actingPlayerState, sections).totals;
-
     const oldEnergy = actingPlayerState.energy;
 
-    // Add energy, capping at maximum
-    const newEnergy = Math.min(
-      effectiveStats.maxEnergy,
-      actingPlayerState.energy + effect.value
-    );
+    // Add energy (no in-round cap — energy can exceed maxEnergy)
+    const newEnergy = actingPlayerState.energy + effect.value;
 
     actingPlayerState.energy = newEnergy;
 

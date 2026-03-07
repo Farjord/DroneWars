@@ -40,7 +40,6 @@ import useClickHandlers from './hooks/useClickHandlers.js';
 import useGameLifecycle from './hooks/useGameLifecycle.js';
 import useResolvers from './hooks/useResolvers.js';
 import useActionRouting from './hooks/useActionRouting.js';
-import GameServerFactory from './server/GameServerFactory.js';
 import clientStateStore from './client/clientStateStore.singleton.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
@@ -456,28 +455,13 @@ const App = ({ phaseAnimationQueue }) => {
   // Event handlers coordinate between UI actions and manager layer.
 
   // --- 6.0 ACTION ROUTING HOOK ---
+  // GameServer is created by AppRouter when appState transitions to 'inGame'
   const gameServer = useMemo(() => {
-    const server = GameServerFactory.create(gameState.gameMode, {
-      gameStateManager,
-      actionProcessor: gameStateManager.actionProcessor,
-      gameFlowManager: gameStateManager.gameFlowManager,
-      clientStateStore,
-      p2pManager,
-      phaseAnimationQueue,
-    });
-    debugLog('INIT_TRACE', '[5/8] GameServerFactory.create()', {
-      gameMode: gameState.gameMode,
-      playerId: gameStateManager.getLocalPlayerId(),
-    });
+    const server = gameStateManager.gameServer;
     gameServerRef.current = server;
-    if (server) {
-      gameStateManager.setGameServer(server);
-      gameStateManager.actionProcessor.setGameServer(server);
-      gameStateManager.actionProcessor.broadcastService.setGameServer(server);
-    }
-    debugLog('INIT_TRACE', '[6/8] GameClient wired to managers', {
+    debugLog('INIT_TRACE', '[6/8] App.jsx reading GameServer', {
       hasGameServer: !!server,
-      hasClientStateStore: !!clientStateStore,
+      gameMode: gameState.gameMode,
     });
     return server;
   }, [gameState.gameMode, gameStateManager]);

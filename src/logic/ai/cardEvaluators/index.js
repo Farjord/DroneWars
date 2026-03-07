@@ -4,7 +4,7 @@
 // Central registry for card effect evaluators
 
 import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, evaluateSplashDamageCard, evaluateDamageScalingCard, evaluateDestroyUpgradeCard, evaluateConditionalSectionDamageCard } from './damageCards.js';
-import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard, evaluateDrainEnergyCard, evaluateDiscardCard } from './utilityCards.js';
+import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard, evaluateDrainEnergyCard, evaluateStealEnergyCard, evaluateDiscardCard } from './utilityCards.js';
 import { evaluateReadyDroneCard, evaluateCreateTokensCard, evaluateExhaustDroneCard } from './droneCards.js';
 import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from './healCards.js';
 import { evaluateModifyStatCard, evaluateRepeatingEffectCard } from './statCards.js';
@@ -55,6 +55,7 @@ export const cardEvaluatorRegistry = {
   // New tactics card evaluators
   EXHAUST_DRONE: evaluateExhaustDroneCard,
   DRAIN_ENERGY: evaluateDrainEnergyCard,
+  STEAL_ENERGY: evaluateStealEnergyCard,
   DISCARD: evaluateDiscardCard,
   // Status effect evaluators
   APPLY_CANNOT_MOVE: evaluateApplyCannotMoveCard,

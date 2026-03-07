@@ -73,7 +73,7 @@ class BroadcastService {
       placedSections: redactedState.placedSections?.length || 0,
       opponentPlacedSections: redactedState.opponentPlacedSections?.length || 0,
     });
-    if (trigger === 'round_initialization' || trigger === 'phase_transition_both_passed') {
+    if (trigger === 'round_initialization' || trigger === 'round_transition_both_passed') {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-11] Network broadcast of round-transition state', {
         utc: new Date().toISOString(), role: 'HOST',
         trigger, animCount: actionAnimations.length + systemAnimations.length,

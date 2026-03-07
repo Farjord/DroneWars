@@ -4,7 +4,7 @@
 // Complete ship placement phase implementation extracted from App.jsx
 // Handles ship section placement with state management and phase completion tracking
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
@@ -35,6 +35,19 @@ function ShipPlacementScreen() {
   const { turnPhase, unplacedSections } = gameState;
   const localPlayerState = getLocalPlayerState();
   const initialPlacedSections = getLocalPlacedSections();
+
+  // Diagnostic: log what the placement screen sees (once per phase)
+  const lastLoggedPhaseRef = useRef(null);
+  if (turnPhase !== lastLoggedPhaseRef.current) {
+    lastLoggedPhaseRef.current = turnPhase;
+    debugLog('MP_GAME_TRACE', 'ShipPlacementScreen render state', {
+      localPlayerId: getLocalPlayerId(),
+      shipSections: localPlayerState?.shipSections?.length || 0,
+      selectedShipComponents: Object.keys(localPlayerState?.selectedShipComponents || {}),
+      localPlacedSections: initialPlacedSections?.filter(s => s !== null).length || 0,
+      gameMode: gameState.gameMode,
+    });
+  }
 
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
@@ -197,7 +210,7 @@ function ShipPlacementScreen() {
 
     // Remote player: Send action to host with immediate UI feedback
     if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMITMENTS', '[REMOTE] Sending ship placement commitment to host:', {
+      debugLog('COMMIT_TRACE', 'Guest sending placement commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),

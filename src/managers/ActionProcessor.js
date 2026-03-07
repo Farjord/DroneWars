@@ -288,6 +288,17 @@ class ActionProcessor {
           filteredOut: (animations?.length || 0) - broadcastAnims.length,
           names: broadcastAnims.map(a => a.animationName),
         });
+        const triggerAnims = broadcastAnims.filter(a => a.animationName === 'TRIGGER_FIRED');
+        if (triggerAnims.length > 0) {
+          const triggerSyncId = Date.now();
+          triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
+          debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast', {
+            utc: new Date().toISOString(),
+            triggerSyncId,
+            triggerCount: triggerAnims.length,
+            triggerNames: triggerAnims.map(a => a.payload?.abilityName || a.payload?.type),
+          });
+        }
         ap.broadcastService.captureAnimations(animations, { excludeStateSnapshot: true });
       },
 
@@ -308,7 +319,7 @@ class ActionProcessor {
       clearPhaseCommitments: (phase) => ap.clearPhaseCommitments(phase),
 
       // Mode-agnostic queries
-      isPlayerAI: (playerId) => ap.gameServer?.isPlayerAI(playerId) ?? (playerId === 'player2'),
+      isPlayerAI: (playerId) => ap.gameServer?.isPlayerAI(playerId) ?? false,
       getAnimationSource: () => ap.getAnimationSource(),
 
       // Late-bound references
@@ -547,7 +558,7 @@ setAnimationManager(animationManager) {
       const statusType = STATUS_CONSUMPTION_TYPES[type];
 
       if (type === 'deployment') {
-        debugLog('DEPLOY_TRACE', '[6/12] ActionProcessor strategy dispatch', {
+        debugLog('DEPLOY_TRACE', '[6/10] ActionProcessor strategy dispatch', {
           type,
           methodName: methodName || statusType || 'unknown',
         });
@@ -722,11 +733,28 @@ setAnimationManager(animationManager) {
       names: animations.map(a => a.animationName),
     });
 
+    // Stamp triggerSyncId for TRIGGER_SYNC_TRACE correlation (bypass path)
+    const triggerAnims = animations.filter(a => a.animationName === 'TRIGGER_FIRED');
+    if (triggerAnims.length > 0) {
+      const triggerSyncId = Date.now();
+      triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
+      debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast (bypass path)', {
+        utc: new Date().toISOString(),
+        triggerSyncId,
+        triggerCount: triggerAnims.length,
+        triggerNames: triggerAnims.map(a => a.payload?.abilityName || a.payload?.type),
+      });
+    }
+
     // Log animations for GameEngine response (never cleared by broadcasts)
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
 
     // Capture for guest broadcasting (BroadcastService has internal host guard)
     this.broadcastService.captureAnimations(animations, { isSystem: isSystemAnimation });
+
+    // Broadcast immediately so guest receives animations before host blocks on playback
+    // (mirrors _executeAnimationPhase pattern where broadcastIfNeeded precedes await)
+    this.broadcastService.broadcastIfNeeded('bypass_animation');
 
     if (this.animationManager) {
       const source = this.getAnimationSource();

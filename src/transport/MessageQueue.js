@@ -75,6 +75,14 @@ export default class MessageQueue {
     while (this.messageQueue.length > 0) {
       const message = this.messageQueue.shift();
       debugLog('MESSAGE_QUEUE', `Processing message: type=${message.type}, seq=${message.data?.sequenceId}`);
+      const triggerAnims = (message.data?.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      if (triggerAnims.length > 0) {
+        debugLog('TRIGGER_SYNC_TRACE', '[5/8] GUEST: Trigger dequeued for processing', {
+          utc: new Date().toISOString(),
+          triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+          queueDepth: this.messageQueue.length,
+        });
+      }
       await this.processMessageCallback(message);
     }
 

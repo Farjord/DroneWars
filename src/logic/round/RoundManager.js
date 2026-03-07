@@ -191,6 +191,28 @@ class RoundManager {
     // This ensures AI threat effects process before player benefits
     for (const playerId of ['player2', 'player1']) {
       for (const lane of ['lane1', 'lane2', 'lane3']) {
+        // Process tech slots BEFORE drones (so e.g. TI auto-destructs before drone readying)
+        const techs = currentStates[playerId].techSlots?.[lane] || [];
+        for (const tech of techs) {
+          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+            lane,
+            triggeringDrone: tech,
+            triggeringPlayerId: playerId,
+            actingPlayerId: playerId,
+            playerStates: currentStates,
+            placedSections,
+            logCallback
+          });
+
+          if (result.triggered) {
+            currentStates = result.newPlayerStates;
+
+            if (result.animationEvents.length > 0) {
+              allAnimationEvents.push(...result.animationEvents);
+            }
+          }
+        }
+
         const drones = currentStates[playerId].dronesOnBoard?.[lane] || [];
 
         for (const drone of drones) {

@@ -5,7 +5,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
-import StateRedactor from '../server/StateRedactor.js';
 
 const useMultiplayerSync = ({
   gameState,
@@ -63,23 +62,6 @@ const useMultiplayerSync = ({
       }
     };
   }, [isMultiplayer, getLocalPlayerId, waitingForPlayerPhase, gameStateManager]);
-
-  // --- P2P data subscription ---
-  // Handles incoming P2P messages: PHASE_COMPLETED logging and sync_requested responses
-  useEffect(() => {
-    if (!isMultiplayer()) return;
-
-    const handleP2PData = (event) => {
-      if (event.type === 'sync_requested' && gameStateManager.getLocalPlayerId() === 'player1') {
-        debugLog('MP_GAME_TRACE', '[5/5] Full sync request/response', { syncResponse: true });
-        const redactedState = StateRedactor.redactForPlayer(gameStateManager.getState(), 'player2');
-        p2pManager.sendFullSyncResponse(redactedState, p2pManager.broadcastSequence);
-      }
-    };
-
-    const unsubscribe = p2pManager.subscribe(handleP2PData);
-    return unsubscribe;
-  }, [isMultiplayer, p2pManager, gameStateManager]);
 
   // --- Guest phase transition detection ---
   // Guest watches turnPhase changes and synthesizes phaseTransition events locally
