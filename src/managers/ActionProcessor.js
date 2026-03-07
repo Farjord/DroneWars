@@ -126,12 +126,11 @@ class ActionProcessor {
   /**
    * Get singleton instance of ActionProcessor
    * @param {Object} gameStateManager - GameStateManager instance
-   * @param {Object} phaseAnimationQueue - PhaseAnimationQueue instance (optional)
    * @returns {ActionProcessor} Single shared instance
    */
-  static getInstance(gameStateManager, phaseAnimationQueue = null) {
+  static getInstance(gameStateManager) {
     if (!ActionProcessor.instance) {
-      ActionProcessor.instance = new ActionProcessor(gameStateManager, phaseAnimationQueue);
+      ActionProcessor.instance = new ActionProcessor(gameStateManager);
     }
     return ActionProcessor.instance;
   }
@@ -144,7 +143,7 @@ class ActionProcessor {
     debugLog('STATE_SYNC', '⚙️ ActionProcessor singleton reset');
   }
 
-  constructor(gameStateManager, phaseAnimationQueue = null) {
+  constructor(gameStateManager) {
     // Enforce singleton pattern
     if (ActionProcessor.instance) {
       debugLog('STATE_SYNC', 'ActionProcessor already exists. Use getInstance() instead of new ActionProcessor()');
@@ -154,7 +153,7 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
-    this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
+    this.phaseAnimationQueue = null; // Set externally by AppRouter; client-only concern
 
     // BroadcastService owns all broadcast state (animations, pending states, host guard)
     // p2pManager is set later via setP2PManager(), so broadcastService starts with null
@@ -324,7 +323,6 @@ class ActionProcessor {
       // Late-bound references
       getAiPhaseProcessor: () => ap.aiPhaseProcessor,
       getPhaseManager: () => ap.phaseManager,
-      getPhaseAnimationQueue: () => ap.phaseAnimationQueue,
       getGameDataService: () => ap.gameDataService,
     };
     return this._actionContext;

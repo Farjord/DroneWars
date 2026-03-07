@@ -92,7 +92,7 @@ class GameStateManager {
 
     // Initialize action processor using singleton pattern
     // PhaseAnimationQueue will be injected later in AppRouter
-    this.actionProcessor = ActionProcessor.getInstance(this, null);
+    this.actionProcessor = ActionProcessor.getInstance(this);
 
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
