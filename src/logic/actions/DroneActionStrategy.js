@@ -268,26 +268,14 @@ export async function processPlayerPass(payload, ctx) {
     outcome: `Passed during ${turnPhase} phase.`
   }, 'playerPass');
 
-  // Queue pass notification in PhaseAnimationQueue
-  const phaseAnimationQueue = ctx.getPhaseAnimationQueue();
-  if (phaseAnimationQueue) {
-    const localPlayerId = ctx.getLocalPlayerId();
-    const isLocalPlayer = playerId === localPlayerId;
-    const passText = isLocalPlayer ? 'YOU PASSED' : 'OPPONENT PASSED';
+  // Emit pass notification as system animation (client personalizes "YOU"/"OPPONENT")
+  await ctx.executeAndCaptureAnimations([{
+    animationName: 'PASS_ANNOUNCEMENT',
+    timing: 'independent',
+    payload: { passedPlayerId: playerId },
+  }], true); // isSystem = true
 
-    phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'AP:playerPass:2716');
-
-    debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Queued pass notification in PhaseAnimationQueue:', {
-      playerId,
-      isLocalPlayer,
-      passText
-    });
-
-    if (!phaseAnimationQueue.isPlaying()) {
-      phaseAnimationQueue.startPlayback('AP:after_pass:2728');
-      debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Started playback for pass notification');
-    }
-  }
+  debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] PASS_ANNOUNCEMENT emitted', { playerId });
 
   // Calculate pass info updates
   const opponentPassKey = `${opponentPlayerId}Passed`;

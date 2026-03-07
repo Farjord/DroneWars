@@ -83,35 +83,10 @@ export async function processPhaseTransition(payload, ctx) {
     return { success: true, message: 'Already in phase' };
   }
 
-  // Guest announcement-only pseudo-phase
+  // Guest announcement-only pseudo-phase: skip state changes, early return.
+  // Phase announcements now arrive via server-emitted PHASE_ANNOUNCEMENT system animations.
   if (guestAnnouncementOnly) {
-    const phaseTextMap = {
-      roundAnnouncement: 'ROUND',
-      roundInitialization: 'UPKEEP',
-      mandatoryDiscard: 'MANDATORY DISCARD PHASE',
-      optionalDiscard: 'OPTIONAL DISCARD PHASE',
-      allocateShields: 'ALLOCATE SHIELDS',
-      mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
-      deployment: 'DEPLOYMENT PHASE',
-      deploymentComplete: 'DEPLOYMENT COMPLETE',
-      action: 'ACTION PHASE',
-      actionComplete: 'ACTION PHASE COMPLETE'
-    };
-
-    const phaseAnimationQueue = ctx.getPhaseAnimationQueue();
-    if (phaseTextMap[newPhase] && phaseAnimationQueue) {
-      const phaseText = phaseTextMap[newPhase];
-      const subtitle = newPhase === 'roundInitialization'
-        ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
-        : newPhase === 'actionComplete'
-        ? 'Transitioning to Next Round'
-        : null;
-
-      phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:guest_pseudo:1789');
-      debugLog('PHASE_MANAGER', `✅ [GUEST] Announcement queued for pseudo-phase: ${newPhase}`);
-    }
-
-    return { success: true, message: 'Guest announcement queued' };
+    return { success: true, message: 'Guest announcement-only (no-op)' };
   }
 
   debugLog('PHASE_TRANSITIONS', `[PLACEMENT DATA DEBUG] BEFORE transition to ${newPhase}:`, {
@@ -159,7 +134,7 @@ export async function processPhaseTransition(payload, ctx) {
     });
   }
 
-  // Show phase announcement for round phases
+  // Emit phase announcement as a system animation (delivered to all clients)
   const phaseTextMap = {
     roundAnnouncement: 'ROUND',
     roundInitialization: 'UPKEEP',
@@ -181,16 +156,16 @@ export async function processPhaseTransition(payload, ctx) {
       ? 'Transitioning to Next Round'
       : null;
 
-    const phaseAnimationQueue = ctx.getPhaseAnimationQueue();
-    if (phaseAnimationQueue) {
-      phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:host_transition:1892');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-08b] Announcement queued for cascade phase', {
-        utc: new Date().toISOString(), role: 'HOST',
-        phase: newPhase, phaseText,
-      });
-    } else {
-      debugLog('PHASE_TRANSITIONS', `❌ [PHASE ANNOUNCEMENT] Queue not available for: ${newPhase}`);
-    }
+    await ctx.executeAndCaptureAnimations([{
+      animationName: 'PHASE_ANNOUNCEMENT',
+      timing: 'independent',
+      payload: { phase: newPhase, text: phaseText, subtitle },
+    }], true); // isSystem = true
+
+    debugLog('ROUND_TRANSITION_TRACE', '[RT-08b] PHASE_ANNOUNCEMENT emitted', {
+      utc: new Date().toISOString(),
+      phase: newPhase, phaseText,
+    });
   }
 
   const finalState = ctx.getState();

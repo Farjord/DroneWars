@@ -7,24 +7,6 @@ import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
-const PHASE_SUBTITLE_MAP = {
-  roundInitialization: 'Drawing Cards, Gaining Energy, Resetting Drones...',
-  actionComplete: 'Transitioning to Next Round',
-};
-
-const PHASE_TEXT_MAP = {
-  roundAnnouncement: 'ROUND',
-  roundInitialization: 'UPKEEP',
-  mandatoryDiscard: 'MANDATORY DISCARD PHASE',
-  optionalDiscard: 'OPTIONAL DISCARD PHASE',
-  allocateShields: 'ALLOCATE SHIELDS',
-  mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
-  deployment: 'DEPLOYMENT PHASE',
-  deploymentComplete: 'DEPLOYMENT COMPLETE',
-  action: 'ACTION PHASE',
-  actionComplete: 'ACTION PHASE COMPLETE',
-};
-
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, isMultiplayer = false, phaseAnimationQueue = null, animationManager = null }) {
     super();
@@ -39,7 +21,6 @@ class GameClient extends GameServer {
     this.pendingHostState = null;
     this.pendingFinalHostState = null;
     this._localGameMode = null; // Cached on first response to avoid per-response store reads
-    this._lastPassInfo = null; // Tracks passInfo across broadcasts for mid-phase pass detection
 
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
@@ -50,19 +31,6 @@ class GameClient extends GameServer {
   // --- GameServer interface ---
 
   async submitAction(type, payload) {
-    // Local "YOU PASSED" for Guest (mirrors DroneActionStrategy on Host)
-    if (type === 'playerPass' && this._isMultiplayer && this.phaseAnimationQueue) {
-      const startedPlayback = !this.phaseAnimationQueue.isPlaying();
-      this.phaseAnimationQueue.queueAnimation('playerPass', 'YOU PASSED', null, 'GC:local_you_passed');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-PASS-2] Guest queued local YOU PASSED', {
-        utc: new Date().toISOString(), role: 'GUEST',
-        startedPlayback,
-      });
-      if (startedPlayback) {
-        this.phaseAnimationQueue.startPlayback('GC:after_local_pass');
-      }
-    }
-
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[2/10] GameClient.submitAction routing to transport', {
         type,
@@ -102,25 +70,17 @@ class GameClient extends GameServer {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnimations = this._collectAnimations(animations);
-    if (allAnimations.length > 0) {
+
+    // Extract phase/pass announcements — route to PhaseAnimationQueue, not AnimationManager
+    const { visualAnimations, hadAnnouncements } = this._extractAndQueueAnnouncements(allAnimations);
+
+    if (visualAnimations.length > 0) {
       debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
         previousPhase,
         newPhase,
-        animCount: allAnimations.length,
-        hasTeleportIn: allAnimations.some(a => a.animationName === 'TELEPORT_IN'),
+        animCount: visualAnimations.length,
+        hasTeleportIn: visualAnimations.some(a => a.animationName === 'TELEPORT_IN'),
       });
-    }
-
-    // Queue phase announcements for multiplayer transitions
-    if (this._isMultiplayer) {
-      if (previousPhase === 'action' && newPhase !== 'action') {
-        debugLog('ROUND_TRANSITION_TRACE', '[RT-14] Guest received broadcast with phase change from action', {
-          utc: new Date().toISOString(), role: 'GUEST',
-          previousPhase, newPhase,
-        });
-      }
-      this._queuePassAnnouncements(state);
-      this._queuePhaseAnnouncements(previousPhase, newPhase);
     }
 
     // Preserve local gameMode (cached on first response to avoid per-response spread overhead)
@@ -129,38 +89,38 @@ class GameClient extends GameServer {
     }
     state = { ...state, gameMode: this._localGameMode, localPlayerId: this.playerId };
 
-    const triggerAnims = allAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+    const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
     if (triggerAnims.length > 0) {
-      debugLog('TRIGGER_SYNC_TRACE', '[7/8] GUEST: Trigger received by GameClient', {
+      debugLog('TRIGGER_SYNC_TRACE', '[7/8] Trigger received by GameClient', {
         utc: new Date().toISOString(),
         triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
         triggerCount: triggerAnims.length,
-        totalAnimCount: allAnimations.length,
+        totalAnimCount: visualAnimations.length,
         willAnimate: !!this.animationManager,
       });
     }
 
-    if (allAnimations.length > 0) {
+    if (visualAnimations.length > 0) {
       debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
-        animCount: allAnimations.length,
-        animNames: allAnimations.map(a => a.animationName),
+        animCount: visualAnimations.length,
+        animNames: visualAnimations.map(a => a.animationName),
         hasAnimationManager: !!this.animationManager,
-        willPlayAnimations: !!this.animationManager && allAnimations.length > 0,
+        willPlayAnimations: !!this.animationManager && visualAnimations.length > 0,
       });
     }
 
-    if (!this.animationManager || allAnimations.length === 0) {
+    if (!this.animationManager || visualAnimations.length === 0) {
       this._applyState(state);
       return;
     }
 
     // TELEPORT_IN handling
-    const hasTeleportIn = allAnimations.some(anim => anim.animationName === 'TELEPORT_IN');
+    const hasTeleportIn = visualAnimations.some(anim => anim.animationName === 'TELEPORT_IN');
 
     if (hasTeleportIn) {
       const modifiedPlayers = addTeleportingFlags(
         { player1: state.player1, player2: state.player2 },
-        allAnimations
+        visualAnimations
       );
       this.pendingHostState = { ...state, ...modifiedPlayers };
       this.pendingFinalHostState = state;
@@ -170,7 +130,7 @@ class GameClient extends GameServer {
     }
 
     try {
-      await this.animationManager.executeWithStateUpdate(allAnimations, this);
+      await this.animationManager.executeWithStateUpdate(visualAnimations, this);
     } finally {
       this.pendingHostState = null;
       this.pendingFinalHostState = null;
@@ -192,8 +152,6 @@ class GameClient extends GameServer {
 
   revealTeleportedDrones() {
     if (!this.pendingFinalHostState) return;
-    // Merge only lane data (removes isTeleporting flags) into current state,
-    // preserving currentPlayer/turnPhase from any newer broadcasts
     const current = this.getState();
     const revealed = {
       ...current,
@@ -222,68 +180,48 @@ class GameClient extends GameServer {
     return [...(animations.actionAnimations || []), ...(animations.systemAnimations || [])];
   }
 
-  // --- Pass announcement detection (mid-phase, from state broadcasts) ---
+  /**
+   * Extract PHASE_ANNOUNCEMENT and PASS_ANNOUNCEMENT from animations,
+   * queue them into PhaseAnimationQueue, and return the remaining visual animations.
+   */
+  _extractAndQueueAnnouncements(allAnimations) {
+    const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT']);
+    const visualAnimations = [];
+    let hadAnnouncements = false;
 
-  _queuePassAnnouncements(incomingState) {
-    if (!this.phaseAnimationQueue) return;
-    const prevPassInfo = this._lastPassInfo;
-    const newPassInfo = incomingState?.passInfo;
-    this._lastPassInfo = newPassInfo ? { ...newPassInfo } : null;
-    if (!newPassInfo || !prevPassInfo) return;
-
-    const opponentPassKey = this.playerId === 'player1' ? 'player2Passed' : 'player1Passed';
-    if (newPassInfo[opponentPassKey] && !prevPassInfo[opponentPassKey]) {
-      this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GC:broadcast_opponent_passed');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-PASS-1] Guest detected opponent pass from broadcast', {
-        utc: new Date().toISOString(), role: 'GUEST',
-        opponentPassKey,
-      });
+    for (const anim of allAnimations) {
+      if (announcementTypes.has(anim.animationName)) {
+        hadAnnouncements = true;
+        this._handleAnnouncementAnimation(anim);
+      } else {
+        visualAnimations.push(anim);
+      }
     }
+
+    // Trigger playback if we queued announcements
+    if (hadAnnouncements && this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
+      this.phaseAnimationQueue.startPlayback('GC:after_announcements');
+    }
+
+    return { visualAnimations, hadAnnouncements };
   }
 
-  // --- Phase announcement queueing ---
+  _handleAnnouncementAnimation(anim) {
+    if (!this.phaseAnimationQueue) return;
 
-  _queuePhaseAnnouncements(guestPhase, hostPhase) {
-    if (!this.phaseAnimationQueue || guestPhase === hostPhase) return;
-
-    // PATTERN 1: action → non-action (round transition)
-    if (guestPhase === 'action' && hostPhase !== 'action' && PHASE_TEXT_MAP[hostPhase]) {
-      const currentState = this.getState();
-      const localPassKey = `${this.playerId}Passed`;
-
-      if (currentState.passInfo?.[localPassKey] && currentState.passInfo.firstPasser === this.playerId) {
-        this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GC:pattern1_pass');
-      }
-
-      this.phaseAnimationQueue.queueAnimation('actionComplete', 'ACTION PHASE COMPLETE', 'Transitioning to Next Round', 'GC:pattern1_actionComplete');
-      this.phaseAnimationQueue.queueAnimation('roundAnnouncement', 'ROUND', null, 'GC:pattern1_round');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-15] Guest queued round-transition announcements', {
-        utc: new Date().toISOString(), role: 'GUEST',
-        hostPhase, queueLength: this.phaseAnimationQueue.getQueueLength(),
+    if (anim.animationName === 'PHASE_ANNOUNCEMENT') {
+      const { phase, text, subtitle } = anim.payload;
+      this.phaseAnimationQueue.queueAnimation(phase, text, subtitle, 'GC:server_phase');
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Phase announcement received from server', {
+        utc: new Date().toISOString(), phase, text,
       });
-    }
-
-    // PATTERN 2: placement → roundInitialization (Round 1)
-    else if (guestPhase === 'placement' && hostPhase === 'roundInitialization') {
-      this.phaseAnimationQueue.queueAnimation('roundAnnouncement', 'ROUND', null, 'GC:pattern2_round');
-    }
-
-    // PATTERN 2.5: deployment → action
-    else if (guestPhase === 'deployment' && hostPhase === 'action') {
-      const currentState = this.getState();
-      const localPassKey = `${this.playerId}Passed`;
-
-      if (currentState.passInfo?.[localPassKey] && currentState.passInfo.firstPasser === this.playerId) {
-        this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GC:pattern2.5_pass');
-      }
-
-      this.phaseAnimationQueue.queueAnimation('deploymentComplete', 'DEPLOYMENT COMPLETE', null, 'GC:pattern2.5_deploy');
-    }
-
-    // PATTERN 3: Generic phase announcement for target phase
-    if (PHASE_TEXT_MAP[hostPhase]) {
-      const subtitle = PHASE_SUBTITLE_MAP[hostPhase] ?? null;
-      this.phaseAnimationQueue.queueAnimation(hostPhase, PHASE_TEXT_MAP[hostPhase], subtitle, 'GC:pattern3_generic');
+    } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
+      const { passedPlayerId } = anim.payload;
+      const passText = passedPlayerId === this.playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
+      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'GC:server_pass');
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Pass announcement received from server', {
+        utc: new Date().toISOString(), passedPlayerId, passText,
+      });
     }
   }
 
@@ -304,20 +242,11 @@ class GameClient extends GameServer {
   // --- Queue drain handler (M2: phase animation playback trigger) ---
 
   _onQueueDrained() {
-    if (!this._isMultiplayer || !this.phaseAnimationQueue) return;
+    if (!this.phaseAnimationQueue) return;
     if (this.phaseAnimationQueue.isPlaying()) return;
 
     const queueLength = this.phaseAnimationQueue.getQueueLength();
     if (queueLength > 0) {
-      const hasTrackedAnnouncement = this.phaseAnimationQueue.queue?.some(a =>
-        a.phaseName === 'roundAnnouncement' || a.phaseName === 'playerPass'
-      );
-      if (hasTrackedAnnouncement) {
-        debugLog('ROUND_TRANSITION_TRACE', '[RT-16] Guest scheduling playback after message queue drain', {
-          utc: new Date().toISOString(), role: 'GUEST',
-          queueLength,
-        });
-      }
       debugLog('TIMING', '[GameClient] Scheduling animation playback after queue drain (50ms delay)');
       setTimeout(() => {
         this.phaseAnimationQueue.startPlayback('GameClient:after_drain');

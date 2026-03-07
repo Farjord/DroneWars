@@ -11,7 +11,7 @@ const GameServerFactory = {
     if (gameMode === 'local') {
       const gameEngine = new GameEngine(gameStateManager, actionProcessor, gameFlowManager);
       const transport = new LocalTransport(gameEngine, { playerId: 'player1' });
-      return new GameClient(transport, { clientStateStore, playerId: 'player1' });
+      return new GameClient(transport, { clientStateStore, playerId: 'player1', phaseAnimationQueue });
     }
 
     if (gameMode === 'host') {
