@@ -136,6 +136,20 @@ export class SeededRandom {
     return new SeededRandom(gameSeed + playerOffset);
   }
 
+  /**
+   * Create SeededRandom for target selection (RANDOM, HIGHEST, LOWEST methods)
+   * Uses base game seed + unique offset + round for deterministic targeting
+   *
+   * @param {Object} gameState - Current game state (needs gameSeed, roundNumber)
+   * @param {number} [discriminator=0] - Unique per-invocation value (e.g., instanceId hash, drone count)
+   * @returns {SeededRandom} New seeded RNG instance
+   */
+  static forTargetSelection(gameState, discriminator = 0) {
+    const gameSeed = gameState.gameSeed ?? 12345;
+    const roundOffset = (gameState.roundNumber || 1) * 100;
+    return new SeededRandom(gameSeed + 9000 + roundOffset + discriminator);
+  }
+
   static forCardShuffle(gameState, playerId) {
     const gameSeed = gameState.gameSeed ?? 12345; // Fallback for tests
     const playerState = gameState[playerId];

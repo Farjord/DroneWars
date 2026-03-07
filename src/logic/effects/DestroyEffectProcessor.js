@@ -14,6 +14,8 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import { buildDefaultDestroyAnimation } from './destroy/animations/DefaultDestroyAnimation.js';
 import { buildNukeAnimation } from './destroy/animations/NukeAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { selectTargets } from '../targeting/TargetSelector.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
 
 /**
  * Processor for DESTROY effect type
@@ -69,9 +71,10 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
     // Route based on effect scope and targeting configuration
     const affectedFilter = effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter;
-    if (affectedFilter && target?.id?.startsWith('lane')) {
-      // Filtered lane destroy: Destroy drones in a lane matching targeting.affectedFilter
-      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections);
+    const targetSelection = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
+    if ((affectedFilter || targetSelection) && target?.id?.startsWith('lane')) {
+      // Filtered lane destroy: Destroy drones in a lane matching targeting criteria
+      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
 
@@ -144,7 +147,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections) {
+  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context = {}) {
     const laneId = target.id;
     const affinity = effect?.targeting?.affinity || card?.targeting?.affinity || effect.affinity;
     const targetPlayer = affinity === 'ENEMY'
@@ -154,74 +157,76 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
-    // Read filter from targeting.affectedFilter
+    // Read filter from targeting.affectedFilter (may be absent if only targetSelection)
     const filterSource = (effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter)?.[0];
-    const { stat, comparison, value } = filterSource;
 
     debugLog('EFFECT_PROCESSING', `[DESTROY] Filtered destroy - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`, {
-      filter: `${stat} ${comparison} ${value}`,
+      filter: filterSource ? `${filterSource.stat} ${filterSource.comparison} ${filterSource.value}` : 'none',
       dronesInLane: dronesInLane.length
     });
 
+    // Phase 1: Collect drones matching filter criteria
+    let candidateDrones = [...dronesInLane];
+    if (filterSource) {
+      const { stat, comparison, value } = filterSource;
+      candidateDrones = dronesInLane.filter(droneInLane => {
+        const effectiveStats = calculateEffectiveStats(
+          droneInLane, laneId, targetPlayerState, actingPlayerState, placedSections || {}
+        );
+        const effectiveStatValue = effectiveStats[stat] !== undefined ? effectiveStats[stat] : droneInLane[stat];
+
+        let meetsCondition = false;
+        switch (comparison) {
+          case 'GTE': meetsCondition = effectiveStatValue >= value; break;
+          case 'LTE': meetsCondition = effectiveStatValue <= value; break;
+          case 'EQ': meetsCondition = effectiveStatValue === value; break;
+          case 'GT': meetsCondition = effectiveStatValue > value; break;
+          case 'LT': meetsCondition = effectiveStatValue < value; break;
+        }
+
+        debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} ${stat}=${effectiveStatValue} (base: ${droneInLane[stat]}) ${comparison} ${value} = ${meetsCondition}`);
+        return meetsCondition;
+      });
+    }
+
+    // Phase 2: Apply targetSelection (RANDOM, HIGHEST, LOWEST)
+    const tsConfig = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
+    if (tsConfig) {
+      const discriminator = card?.instanceId || candidateDrones.length;
+      const rng = SeededRandom.forTargetSelection(
+        { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
+        typeof discriminator === 'string' ? discriminator.length : discriminator
+      );
+      candidateDrones = selectTargets(candidateDrones, tsConfig, rng, (drone) => {
+        if (!tsConfig.stat) return 0;
+        const effectiveStats = calculateEffectiveStats(drone, laneId, targetPlayerState, actingPlayerState, placedSections || {});
+        return effectiveStats[tsConfig.stat] ?? drone[tsConfig.stat];
+      });
+    }
+
+    // Phase 3: Destroy selected drones
     const destroyedDrones = [];
     const animationEvents = [];
+    const selectedIds = new Set(candidateDrones.map(d => d.id));
 
-    // Destroy all drones that match the filter criteria (reverse iteration for safe removal)
     for (let i = dronesInLane.length - 1; i >= 0; i--) {
       const droneInLane = dronesInLane[i];
-      let meetsCondition = false;
+      if (!selectedIds.has(droneInLane.id)) continue;
 
-      // Calculate effective stats to include upgrades, auras, and ability modifiers
-      const effectiveStats = calculateEffectiveStats(
-        droneInLane,
-        laneId,
-        targetPlayerState,
-        actingPlayerState,
-        placedSections || {}
-      );
-      const effectiveStatValue = effectiveStats[stat] !== undefined ? effectiveStats[stat] : droneInLane[stat];
+      destroyedDrones.push(droneInLane);
+      debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} marked for destruction`);
 
-      // Check if drone meets filter condition using effective stats
-      switch (comparison) {
-        case 'GTE':
-          meetsCondition = effectiveStatValue >= value;
-          break;
-        case 'LTE':
-          meetsCondition = effectiveStatValue <= value;
-          break;
-        case 'EQ':
-          meetsCondition = effectiveStatValue === value;
-          break;
-        case 'GT':
-          meetsCondition = effectiveStatValue > value;
-          break;
-        case 'LT':
-          meetsCondition = effectiveStatValue < value;
-          break;
-      }
+      animationEvents.push({
+        type: 'DRONE_DESTROYED',
+        targetId: droneInLane.id,
+        targetPlayer: targetPlayer,
+        targetLane: laneId,
+        targetType: 'drone',
+        timestamp: Date.now()
+      });
 
-      debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} ${stat}=${effectiveStatValue} (base: ${droneInLane[stat]}) ${comparison} ${value} = ${meetsCondition}`);
-
-      if (meetsCondition) {
-        destroyedDrones.push(droneInLane);
-        debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} marked for destruction`);
-
-        // Add destruction animation event
-        animationEvents.push({
-          type: 'DRONE_DESTROYED',
-          targetId: droneInLane.id,
-          targetPlayer: targetPlayer,
-          targetLane: laneId,
-          targetType: 'drone',
-          timestamp: Date.now()
-        });
-
-        // Update deployment counts and availability
-        this.applyDestroyCleanup(targetPlayerState, droneInLane);
-
-        // Remove drone from lane
-        dronesInLane.splice(i, 1);
-      }
+      this.applyDestroyCleanup(targetPlayerState, droneInLane);
+      dronesInLane.splice(i, 1);
     }
 
     debugLog('EFFECT_PROCESSING', `[DESTROY] Destroyed ${destroyedDrones.length} drones via filter`);

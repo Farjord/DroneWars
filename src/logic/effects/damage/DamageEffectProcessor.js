@@ -24,6 +24,8 @@ import { buildRailgunAnimation } from './animations/RailgunAnimation.js';
 import { buildOverflowAnimation } from './animations/OverflowAnimation.js';
 import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
+import { selectTargets } from '../../targeting/TargetSelector.js';
+import { SeededRandom } from '../../../utils/seededRandom.js';
 
 /**
  * Processor for all damage effect types
@@ -90,10 +92,11 @@ class DamageEffectProcessor extends BaseEffectProcessor {
   processDamage(effect, context) {
     const { actingPlayerId, playerStates, placedSections, target, callbacks, card } = context;
 
-    // Handle filtered lane damage (targeting.affectedFilter)
+    // Handle filtered lane damage (targeting.affectedFilter or targetSelection)
     const affectedFilter = card?.targeting?.affectedFilter;
-    if (affectedFilter && target?.id?.startsWith('lane')) {
-      return this.processFilteredDamage(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    if ((affectedFilter || targetSelection) && target?.id?.startsWith('lane')) {
+      return this.processFilteredDamage(effect, context);
     }
 
     // Handle single target damage
@@ -105,7 +108,8 @@ class DamageEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processFilteredDamage(effect, laneTarget, actingPlayerId, playerStates, placedSections, callbacks, card) {
+  processFilteredDamage(effect, context) {
+    const { actingPlayerId, playerStates, placedSections, callbacks, card, target: laneTarget } = context;
     const newPlayerStates = this.clonePlayerStates(playerStates);
 
     const laneId = laneTarget.id;
@@ -175,6 +179,22 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     // Apply maxTargets cap (e.g., Strafing Run: first 3 drones)
     if (maxTargets && affectedDrones.length > maxTargets) {
       affectedDrones = affectedDrones.slice(0, maxTargets);
+    }
+
+    // Apply targetSelection (RANDOM, HIGHEST, LOWEST)
+    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    if (targetSelection) {
+      const discriminator = card?.instanceId || affectedDrones.length;
+      const rng = SeededRandom.forTargetSelection(
+        { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
+        typeof discriminator === 'string' ? discriminator.length : discriminator
+      );
+      const actingPlayer = newPlayerStates[actingPlayerId];
+      affectedDrones = selectTargets(affectedDrones, targetSelection, rng, (drone) => {
+        if (!targetSelection.stat) return 0;
+        const effectiveStats = calculateEffectiveStats(drone, laneId, targetPlayerState, actingPlayer, placedSections || {});
+        return effectiveStats[targetSelection.stat] ?? drone[targetSelection.stat];
+      });
     }
 
     // Track damage results for animation

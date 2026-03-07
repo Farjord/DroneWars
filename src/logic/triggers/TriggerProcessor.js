@@ -13,6 +13,8 @@ import EffectRouter from '../EffectRouter.js';
 import fullDroneCollection from '../../data/droneData.js';
 import fullTechCollection from '../../data/techData.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
+import { selectTargets } from '../targeting/TargetSelector.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
 
 // Combined collection for ability lookups — Tech definitions live in techData.js
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
@@ -66,7 +68,9 @@ class TriggerProcessor {
       card = null,
       scalingAmount = null,
       pairSet = new Set(),
-      chainDepth = 0
+      chainDepth = 0,
+      gameSeed,
+      roundNumber
     } = context;
 
     if (chainDepth >= MAX_CHAIN_DEPTH) {
@@ -120,7 +124,7 @@ class TriggerProcessor {
       const result = this.executeTriggerEffects(
         ability, reactorDrone, reactorPlayerId, reactorLane,
         triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, placedSections,
-        logCallback, pairSet, chainDepth, scalingAmount
+        logCallback, pairSet, chainDepth, scalingAmount, gameSeed, roundNumber
       );
 
       if (result.triggered) {
@@ -292,7 +296,7 @@ class TriggerProcessor {
   executeTriggerEffects(
     ability, reactorDrone, reactorPlayerId, reactorLane,
     triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, placedSections,
-    logCallback, pairSet, chainDepth, scalingAmount = null
+    logCallback, pairSet, chainDepth, scalingAmount = null, gameSeed, roundNumber
   ) {
     let currentStates = playerStates;
     const animationEvents = [];
@@ -420,53 +424,61 @@ class TriggerProcessor {
         // Preprocess scope: 'SELF' → target the reactor drone
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
-        const effectContext = {
-          actingPlayerId: reactorPlayerId,
-          playerStates: currentStates,
-          placedSections,
-          sourceDroneName: reactorDrone.name,
-          sourceDroneId: reactorDrone.id,
-          lane: reactorLane,
-          target: this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates),
-          callbacks: { logCallback },
-          pairSet,
-          chainDepth: chainDepth + 1,
-          triggeringDrone: reactorDrone
-        };
+        // Build target(s) — may return array when targetSelection is present
+        const targets = this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates, gameSeed);
+        const targetArray = Array.isArray(targets) ? targets : [targets];
 
-        const result = this.effectRouter.routeEffect(processedEffect, effectContext);
+        for (const singleTarget of targetArray) {
+          const effectContext = {
+            actingPlayerId: reactorPlayerId,
+            playerStates: currentStates,
+            placedSections,
+            sourceDroneName: reactorDrone.name,
+            sourceDroneId: reactorDrone.id,
+            lane: reactorLane,
+            target: singleTarget,
+            callbacks: { logCallback },
+            pairSet,
+            chainDepth: chainDepth + 1,
+            triggeringDrone: reactorDrone,
+            gameSeed,
+            roundNumber
+          };
 
-        if (result?.newPlayerStates) {
-          currentStates = result.newPlayerStates;
-        }
+          const result = this.effectRouter.routeEffect(processedEffect, effectContext);
 
-        if (result?.animationEvents?.length > 0) {
-          animationEvents.push(...result.animationEvents);
-          directAnimations.push(...result.animationEvents);
-        }
-
-        // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
-        if (result?.triggerAnimationEvents?.length > 0) {
-          if (!preCascadePlayerStates && result.preTriggerState) {
-            preCascadePlayerStates = result.preTriggerState;
+          if (result?.newPlayerStates) {
+            currentStates = result.newPlayerStates;
           }
-          if (!stateAfterDirectEffects && result.preTriggerState) {
-            stateAfterDirectEffects = result.preTriggerState;
-          }
-          animationEvents.push(
-            { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
-            ...result.triggerAnimationEvents
-          );
-          if (result.triggerSteps?.length > 0) {
-            cascadeSteps.push(...result.triggerSteps);
-          }
-        }
 
-        debugLog('TRIGGERS', `Effect routed: ${processedEffect.type}`, {
-          animEvents: result?.animationEvents?.length || 0,
-          triggerAnimEvents: result?.triggerAnimationEvents?.length || 0,
-          cascadeTypes: result?.triggerAnimationEvents?.map(e => e.type) || []
-        });
+          if (result?.animationEvents?.length > 0) {
+            animationEvents.push(...result.animationEvents);
+            directAnimations.push(...result.animationEvents);
+          }
+
+          // Propagate cascading trigger events (e.g., DRAW -> ON_CARD_DRAWN -> Odin)
+          if (result?.triggerAnimationEvents?.length > 0) {
+            if (!preCascadePlayerStates && result.preTriggerState) {
+              preCascadePlayerStates = result.preTriggerState;
+            }
+            if (!stateAfterDirectEffects && result.preTriggerState) {
+              stateAfterDirectEffects = result.preTriggerState;
+            }
+            animationEvents.push(
+              { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+              ...result.triggerAnimationEvents
+            );
+            if (result.triggerSteps?.length > 0) {
+              cascadeSteps.push(...result.triggerSteps);
+            }
+          }
+
+          debugLog('TRIGGERS', `Effect routed: ${processedEffect.type}`, {
+            animEvents: result?.animationEvents?.length || 0,
+            triggerAnimEvents: result?.triggerAnimationEvents?.length || 0,
+            cascadeTypes: result?.triggerAnimationEvents?.map(e => e.type) || []
+          });
+        }
 
         if (processedEffect.type === 'MODIFY_STAT') {
           statModsApplied = true;
@@ -833,7 +845,7 @@ class TriggerProcessor {
   /**
    * Build target object for EffectRouter context.
    */
-  _buildTarget(effect, reactorDrone, reactorPlayerId, reactorLane, playerStates) {
+  _buildTarget(effect, reactorDrone, reactorPlayerId, reactorLane, playerStates, gameSeed) {
     if (effect._targetDroneId) {
       return {
         type: 'DRONE',
@@ -846,6 +858,26 @@ class TriggerProcessor {
       };
     }
 
+    // targetSelection: resolve drone pool from scope + affinity, then select
+    if (effect.targetSelection) {
+      const pool = this._resolveDronePool(effect, reactorPlayerId, reactorLane, playerStates);
+      const rng = SeededRandom.forTargetSelection(
+        { gameSeed: gameSeed ?? 12345 },
+        reactorDrone.id?.length || pool.length
+      );
+      const selected = selectTargets(pool, effect.targetSelection, rng);
+      // Return array of target objects
+      return selected.map(drone => ({
+        type: 'DRONE',
+        id: drone.id,
+        droneId: drone.id,
+        name: drone.name,
+        lane: this._findDroneLane(drone.id, drone._owner, playerStates),
+        owner: drone._owner,
+        playerId: drone._owner
+      }));
+    }
+
     // Default: target the reactor drone itself
     return {
       type: 'DRONE',
@@ -856,6 +888,52 @@ class TriggerProcessor {
       owner: reactorPlayerId,
       playerId: reactorPlayerId
     };
+  }
+
+  /**
+   * Resolve a drone pool from effect scope + affinity for targetSelection.
+   * Tags each drone with _owner for target building.
+   *
+   * @private
+   */
+  _resolveDronePool(effect, reactorPlayerId, reactorLane, playerStates) {
+    const opponentId = reactorPlayerId === 'player1' ? 'player2' : 'player1';
+    const affinity = effect.affinity;
+    const targetPlayerId = affinity === 'ENEMY' ? opponentId : reactorPlayerId;
+    const scope = effect.scope;
+
+    let drones = [];
+    if (scope === 'SAME_LANE') {
+      drones = [...(playerStates[targetPlayerId]?.dronesOnBoard?.[reactorLane] || [])];
+    } else if (scope === 'ANY_LANE') {
+      for (const lane of ['lane1', 'lane2', 'lane3']) {
+        drones.push(...(playerStates[targetPlayerId]?.dronesOnBoard?.[lane] || []));
+      }
+    } else {
+      // Default to same lane
+      drones = [...(playerStates[targetPlayerId]?.dronesOnBoard?.[reactorLane] || [])];
+    }
+
+    // Apply filter (e.g., 'NOT_MARKED')
+    if (effect.filter === 'NOT_MARKED') {
+      drones = drones.filter(d => !d.isMarked);
+    }
+
+    // Tag with owner for target building
+    return drones.map(d => ({ ...d, _owner: targetPlayerId }));
+  }
+
+  /**
+   * Find which lane a drone is in.
+   * @private
+   */
+  _findDroneLane(droneId, playerId, playerStates) {
+    const board = playerStates[playerId]?.dronesOnBoard;
+    if (!board) return null;
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      if (board[lane]?.some(d => d.id === droneId)) return lane;
+    }
+    return null;
   }
 
   /**
