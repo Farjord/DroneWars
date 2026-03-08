@@ -24,7 +24,8 @@ import { buildRailgunAnimation } from './animations/RailgunAnimation.js';
 import { buildOverflowAnimation } from './animations/OverflowAnimation.js';
 import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
-import { applyTargetSelection } from '../../targeting/TargetSelector.js';
+import { applyTargetSelection, hashString } from '../../targeting/TargetSelector.js';
+import { SeededRandom } from '../../../utils/seededRandom.js';
 
 /**
  * Processor for all damage effect types
@@ -183,6 +184,9 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     // Apply targetSelection (RANDOM, HIGHEST, LOWEST)
     const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
     if (targetSelection) {
+      if (targetSelection.method === 'RANDOM') {
+        return this.processRandomDamage(effect, context, affectedDrones, dronesInLane, laneId, targetPlayerId, targetPlayerState, newPlayerStates);
+      }
       const actingPlayer = newPlayerStates[actingPlayerId];
       affectedDrones = applyTargetSelection(affectedDrones, targetSelection, context, laneId, targetPlayerState, actingPlayer, placedSections, card);
     }
@@ -248,6 +252,69 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     }
 
     // Build animations using animation builder
+    const animationEvents = buildFilteredDamageAnimation({
+      affectedDrones: damageResults,
+      card,
+      targetPlayer: targetPlayerId,
+      targetLane: laneId
+    });
+
+    return this.createResult(newPlayerStates, animationEvents);
+  }
+
+  /**
+   * Process sequential RANDOM damage: pick one target, apply damage, remove dead, repeat
+   *
+   * @private
+   */
+  processRandomDamage(effect, context, candidateDrones, dronesInLane, laneId, targetPlayerId, targetPlayerState, newPlayerStates) {
+    const { card } = context;
+    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    const discriminator = card?.instanceId || candidateDrones.length;
+    const rng = SeededRandom.forTargetSelection(
+      { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
+      typeof discriminator === 'string' ? hashString(discriminator) : discriminator
+    );
+
+    const pool = [...candidateDrones];
+    const damageResults = [];
+
+    for (let i = 0; i < targetSelection.count; i++) {
+      if (pool.length === 0) break;
+
+      const selected = rng.select(pool);
+      pool.splice(pool.indexOf(selected), 1);
+
+      const droneIndex = dronesInLane.findIndex(d => d.id === selected.id);
+      if (droneIndex === -1) continue;
+
+      const drone = dronesInLane[droneIndex];
+
+      let damageValue = effect.value;
+      if (effect.markedBonus && drone.isMarked) {
+        damageValue += effect.markedBonus;
+      }
+
+      const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
+      const damageResult = calculateDamageByType(damageValue, drone.currentShields, drone.hull, damageType);
+
+      drone.currentShields -= damageResult.shieldDamage;
+      drone.hull -= damageResult.hullDamage;
+
+      const destroyed = drone.hull <= 0;
+
+      damageResults.push({ drone, shieldDamage: damageResult.shieldDamage, hullDamage: damageResult.hullDamage, destroyed });
+
+      if (destroyed) {
+        const updates = gameEngine.onDroneDestroyed(targetPlayerState, drone);
+        targetPlayerState.deployedDroneCounts = {
+          ...(targetPlayerState.deployedDroneCounts || {}),
+          ...updates.deployedDroneCounts
+        };
+        dronesInLane.splice(droneIndex, 1);
+      }
+    }
+
     const animationEvents = buildFilteredDamageAnimation({
       affectedDrones: damageResults,
       card,

@@ -1289,6 +1289,20 @@ const fullCardCollection = [
     ],
   },
   {
+    id: 'SCRAMBLE_DART',
+    baseCardId: 'SCRAMBLE_DART',
+    name: 'Scramble Dart',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Support',
+    cost: 1,
+    image: '/DroneWars/cards/Dart.png',
+    description: 'Create a Dart token in a friendly lane. (Dart Token: 1 ATK, 1 Hull, 1 Shield. Does not count towards lane control.)',
+    effects: [
+      { type: 'CREATE_TOKENS', tokenName: 'Dart', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+    ],
+  },
+  {
     id: 'DEPLOY_RALLY_BEACON',
     baseCardId: 'DEPLOY_RALLY_BEACON',
     name: 'Deploy Rally Beacon',
@@ -1622,9 +1636,9 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Common',
     type: 'Tactic',
-    cost: 2,
+    cost: 3,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in one of your lanes. (Jammer: Opponent card effects targeting drones in this lane can only target this Jammer.)',
+    description: 'Create a Jammer in one of your lanes. (Jammer: Opponent card effects cannot target drones in this lane. Removed at the start of the next round.)',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -1637,9 +1651,9 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Uncommon',
     type: 'Tactic',
-    cost: 3,
+    cost: 2,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor in an enemy lane. (Enemy drones cannot move out of this lane. Destroyed at the start of the next round.)',
+    description: 'Create a Thruster Inhibitor in an enemy lane. (Enemy drones cannot move out of this lane. Removed at the start of the next round.)',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1989,6 +2003,66 @@ const fullCardCollection = [
     description: 'Destroy target tech.',
     effects: [
       { type: 'DESTROY_TECH', targeting: { type: 'TECH', affinity: 'ANY', location: 'ANY_LANE' } },
+    ],
+  },
+
+  // --- targetSelection Cards ---
+
+  {
+    id: 'SCATTER_SHOT',
+    baseCardId: 'SCATTER_SHOT',
+    name: 'Scatter Shot',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 3,
+    image: '/DroneWars/cards/SidewinderMissiles.png',
+    description: 'Deal 2 damage to 2 random enemy drones in a selected lane.',
+    effects: [
+      { type: 'DAMAGE', value: 2,
+        targeting: {
+          type: 'LANE', affinity: 'ENEMY',
+          targetSelection: { method: 'RANDOM', count: 2 }
+        },
+      },
+    ],
+  },
+  {
+    id: 'HEADHUNTER_VOLLEY',
+    baseCardId: 'HEADHUNTER_VOLLEY',
+    name: 'Headhunter Volley',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 5,
+    image: '/DroneWars/cards/TargetLock.png',
+    description: 'Destroy the enemy drone with the highest attack in a selected lane.',
+    effects: [
+      { type: 'DESTROY',
+        targeting: {
+          type: 'LANE', affinity: 'ENEMY',
+          targetSelection: { method: 'HIGHEST', stat: 'attack', count: 1 }
+        },
+      },
+    ],
+  },
+  {
+    id: 'CULL_THE_WEAK',
+    baseCardId: 'CULL_THE_WEAK',
+    name: 'Cull the Weak',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 4,
+    image: '/DroneWars/cards/ShriekerMissiles.png',
+    description: 'Deal 3 damage to the 2 enemy drones with the lowest hull in a selected lane.',
+    effects: [
+      { type: 'DAMAGE', value: 3,
+        targeting: {
+          type: 'LANE', affinity: 'ENEMY',
+          targetSelection: { method: 'LOWEST', stat: 'hull', count: 2 }
+        },
+      },
     ],
   },
 ];

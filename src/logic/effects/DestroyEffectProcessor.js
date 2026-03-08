@@ -14,7 +14,8 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import { buildDefaultDestroyAnimation } from './destroy/animations/DefaultDestroyAnimation.js';
 import { buildNukeAnimation } from './destroy/animations/NukeAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { applyTargetSelection } from '../targeting/TargetSelector.js';
+import { applyTargetSelection, hashString } from '../targeting/TargetSelector.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
 
 /**
  * Processor for DESTROY effect type
@@ -191,6 +192,9 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     // Phase 2: Apply targetSelection (RANDOM, HIGHEST, LOWEST)
     const tsConfig = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if (tsConfig) {
+      if (tsConfig.method === 'RANDOM') {
+        return this.processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card);
+      }
       candidateDrones = applyTargetSelection(candidateDrones, tsConfig, context, laneId, targetPlayerState, actingPlayerState, placedSections, card);
     }
 
@@ -220,6 +224,50 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     }
 
     debugLog('EFFECT_PROCESSING', `[DESTROY] Destroyed ${destroyedDrones.length} drones via filter`);
+
+    return { destroyedDrones, animationEvents };
+  }
+
+  /**
+   * Process sequential RANDOM destroy: pick one, destroy, remove from pool, repeat
+   *
+   * @private
+   */
+  processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card) {
+    const discriminator = card?.instanceId || candidateDrones.length;
+    const rng = SeededRandom.forTargetSelection(
+      { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
+      typeof discriminator === 'string' ? hashString(discriminator) : discriminator
+    );
+
+    const pool = [...candidateDrones];
+    const destroyedDrones = [];
+    const animationEvents = [];
+
+    for (let i = 0; i < tsConfig.count; i++) {
+      if (pool.length === 0) break;
+
+      const selected = rng.select(pool);
+      pool.splice(pool.indexOf(selected), 1);
+
+      const droneIndex = dronesInLane.findIndex(d => d.id === selected.id);
+      if (droneIndex === -1) continue;
+
+      const drone = dronesInLane[droneIndex];
+      destroyedDrones.push(drone);
+
+      animationEvents.push({
+        type: 'DRONE_DESTROYED',
+        targetId: drone.id,
+        targetPlayer,
+        targetLane: laneId,
+        targetType: 'drone',
+        timestamp: Date.now()
+      });
+
+      this.applyDestroyCleanup(targetPlayerState, drone);
+      dronesInLane.splice(droneIndex, 1);
+    }
 
     return { destroyedDrones, animationEvents };
   }
