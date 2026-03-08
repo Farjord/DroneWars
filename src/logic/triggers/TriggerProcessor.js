@@ -182,9 +182,9 @@ class TriggerProcessor {
           goAgain = true;
         }
 
-        // Increment per-round usage counter
+        // Increment per-round usage counter (per-ability)
         if (ability.usesPerRound != null) {
-          currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates);
+          currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates, ability.name);
         }
       }
     }
@@ -227,6 +227,12 @@ class TriggerProcessor {
       if (baseDrone?.abilities) {
         for (const ability of baseDrone.abilities) {
           if (ability.type === 'TRIGGERED' && ability.trigger === triggerType) {
+            // Per-round usage limit guard (per-ability)
+            if (ability.usesPerRound != null) {
+              const uses = triggeringDrone.triggerUsesMap?.[ability.name] || 0;
+              if (uses >= ability.usesPerRound) continue;
+            }
+
             matches.push({
               drone: triggeringDrone,
               ability,
@@ -603,14 +609,21 @@ class TriggerProcessor {
   }
 
   /**
-   * Increment triggerUsesThisRound on a drone entity (in dronesOnBoard or techSlots).
+   * Increment per-ability usage counter on a drone entity (in dronesOnBoard or techSlots).
+   * Stores uses in triggerUsesMap[abilityName] for independent per-ability tracking.
    * Returns a new playerStates with the updated counter (immutable).
    */
-  _incrementTriggerUses(droneId, playerId, lane, playerStates) {
+  _incrementTriggerUses(droneId, playerId, lane, playerStates, abilityName) {
     const playerState = playerStates[playerId];
     const incrementOn = (entity) =>
       entity.id === droneId
-        ? { ...entity, triggerUsesThisRound: (entity.triggerUsesThisRound || 0) + 1 }
+        ? {
+            ...entity,
+            triggerUsesMap: {
+              ...(entity.triggerUsesMap || {}),
+              [abilityName]: ((entity.triggerUsesMap || {})[abilityName] || 0) + 1
+            }
+          }
         : entity;
 
     const drones = playerState.dronesOnBoard?.[lane] || [];
@@ -671,9 +684,9 @@ class TriggerProcessor {
           continue;
         }
 
-        // Per-round usage limit guard
+        // Per-round usage limit guard (per-ability)
         if (ability.usesPerRound != null) {
-          const uses = drone.triggerUsesThisRound || 0;
+          const uses = drone.triggerUsesMap?.[ability.name] || 0;
           if (uses >= ability.usesPerRound) continue;
         }
 
@@ -704,9 +717,9 @@ class TriggerProcessor {
           continue;
         }
 
-        // Per-round usage limit guard
+        // Per-round usage limit guard (per-ability)
         if (ability.usesPerRound != null) {
-          const uses = drone.triggerUsesThisRound || 0;
+          const uses = drone.triggerUsesMap?.[ability.name] || 0;
           if (uses >= ability.usesPerRound) continue;
         }
 
@@ -745,9 +758,9 @@ class TriggerProcessor {
             continue;
           }
 
-          // Per-round usage limit guard
+          // Per-round usage limit guard (per-ability)
           if (ability.usesPerRound != null) {
-            const uses = drone.triggerUsesThisRound || 0;
+            const uses = drone.triggerUsesMap?.[ability.name] || 0;
             if (uses >= ability.usesPerRound) continue;
           }
 

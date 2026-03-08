@@ -243,6 +243,38 @@ vi.mock('../../../data/droneData.js', () => ({
         usesPerRound: 1,
         effects: [{ type: 'GO_AGAIN' }]
       }]
+    },
+    {
+      name: 'TestDualAbilityDrone',
+      attack: 2, hull: 3, shields: 1, speed: 2,
+      abilities: [
+        {
+          name: 'Ability A',
+          type: 'TRIGGERED',
+          trigger: 'ON_MOVE',
+          usesPerRound: 1,
+          effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        },
+        {
+          name: 'Ability B',
+          type: 'TRIGGERED',
+          trigger: 'ON_MOVE',
+          usesPerRound: 1,
+          effects: [{ type: 'MODIFY_STAT', mod: { stat: 'shields', value: 1, type: 'permanent' } }]
+        }
+      ]
+    },
+    {
+      name: 'TestUsageLimitLaneDrone',
+      attack: 2, hull: 3, shields: 1, speed: 2,
+      abilities: [{
+        name: 'Limited Lane Buff',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        usesPerRound: 1,
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
     }
   ]
 }));
@@ -2134,7 +2166,7 @@ describe('TriggerProcessor', () => {
 
   describe('Per-round trigger usage limits', () => {
     it('should fire tech with usesPerRound on first trigger', () => {
-      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesMap: {} };
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
 
       basePlayerStates.player1.techSlots = { lane1: [techDrone], lane2: [], lane3: [] };
@@ -2155,7 +2187,7 @@ describe('TriggerProcessor', () => {
     });
 
     it('should block tech with usesPerRound on second same-round trigger', () => {
-      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesMap: {} };
       const triggeringDrone1 = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
       const triggeringDrone2 = { id: 'drone2', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
 
@@ -2224,8 +2256,8 @@ describe('TriggerProcessor', () => {
       expect(result2.goAgain).toBe(true);
     });
 
-    it('should increment triggerUsesThisRound on the live entity after firing', () => {
-      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesThisRound: 0 };
+    it('should increment triggerUsesMap on the live entity after firing', () => {
+      const techDrone = { id: 'tech1', name: 'TestUsageLimitTech', triggerUsesMap: {} };
       const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
 
       basePlayerStates.player1.techSlots = { lane1: [techDrone], lane2: [], lane3: [] };
@@ -2242,7 +2274,100 @@ describe('TriggerProcessor', () => {
       });
 
       const updatedTech = result.newPlayerStates.player1.techSlots.lane1.find(t => t.id === 'tech1');
-      expect(updatedTech.triggerUsesThisRound).toBe(1);
+      expect(updatedTech.triggerUsesMap).toEqual({ 'Limited Rally': 1 });
+    });
+  });
+
+  // ========================================
+  // PER-ABILITY USAGE TRACKING (triggerUsesMap)
+  // ========================================
+
+  describe('Per-ability usage tracking (triggerUsesMap)', () => {
+    it('stores uses per ability name in triggerUsesMap', () => {
+      // Fire trigger for a lane drone with usesPerRound ability
+      const limitedDrone = { id: 'limited1', name: 'TestUsageLimitLaneDrone', triggerUsesMap: {} };
+      const triggeringDrone = { id: 'drone1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1 };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [limitedDrone, triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      const updatedDrone = result.newPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'limited1');
+      expect(updatedDrone.triggerUsesMap).toEqual({ 'Limited Lane Buff': 1 });
+    });
+
+    it('tracks independent uses for dual-ability drones', () => {
+      // Set up TestDualAbilityDrone with Ability A already used
+      const dualDrone = {
+        id: 'dual1',
+        name: 'TestDualAbilityDrone',
+        attack: 2, hull: 3, shields: 1, speed: 2,
+        triggerUsesMap: { 'Ability A': 1 }
+      };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [dualDrone];
+
+      // Fire ON_MOVE trigger — Ability A should be blocked, Ability B should fire
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: dualDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      // Ability B should have fired (shields mod), not Ability A (attack mod)
+      expect(result.statModsApplied).toBe(true);
+
+      // Check that triggerUsesMap now has Ability A: 1 (unchanged) and Ability B: 1 (incremented)
+      const updatedDrone = result.newPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === 'dual1');
+      expect(updatedDrone.triggerUsesMap['Ability A']).toBe(1);
+      expect(updatedDrone.triggerUsesMap['Ability B']).toBe(1);
+    });
+
+    it('does not affect abilities without usesPerRound', () => {
+      // TestSelfTriggerDrone has no usesPerRound — should fire unlimited times
+      const unlimitedDrone = { id: 'unlimited1', name: 'TestSelfTriggerDrone', attack: 2, hull: 3, shields: 1, speed: 2 };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [unlimitedDrone];
+
+      // First fire
+      const result1 = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: unlimitedDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result1.triggered).toBe(true);
+
+      // Second fire — should still work since no usesPerRound
+      const result2 = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: { ...unlimitedDrone },
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: result1.newPlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result2.triggered).toBe(true);
     });
   });
 });

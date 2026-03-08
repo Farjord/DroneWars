@@ -61,6 +61,8 @@ class RoundManager {
           // Reset RAPID/ASSAULT ability usage flags for new round
           rapidUsed: false,
           assaultUsed: false,
+          // Reset per-ability trigger usage tracking for new round
+          triggerUsesMap: {},
           // Reset ability activation counts for new round
           abilityActivations: [],
           // Preserve one-shot status flags across rounds (consumed on use, not on round transition)
@@ -90,6 +92,7 @@ class RoundManager {
         newTechSlots[lane] = playerState.techSlots[lane].map(tech => ({
           ...tech,
           triggerUsesThisRound: 0,
+          triggerUsesMap: {},
         }));
       }
     }

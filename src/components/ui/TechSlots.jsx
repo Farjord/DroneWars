@@ -126,7 +126,7 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
           const techDef = fullTechCollection.find(t => t.name === tech.name);
           const ability = techDef?.abilities?.[0];
           const isExhausted = ability?.usesPerRound != null &&
-            (tech.triggerUsesThisRound || 0) >= ability.usesPerRound;
+            (tech.triggerUsesMap?.[ability.name] ?? tech.triggerUsesThisRound ?? 0) >= ability.usesPerRound;
 
           return (
             <TechSlotItem

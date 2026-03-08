@@ -309,6 +309,8 @@ class DeploymentProcessor {
       // Initialize RAPID/ASSAULT ability usage flags
       rapidUsed: false,
       assaultUsed: false,
+      // Initialize per-ability trigger usage tracking
+      triggerUsesMap: {},
       // Initialize ability activation tracking for per-round limits
       abilityActivations: [],
     };

@@ -133,6 +133,8 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     // Assert: rapidUsed should be reset to false
     const readiedDrone = result.dronesOnBoard.lane1[0]
     expect(readiedDrone.rapidUsed).toBe(false)
+    // triggerUsesMap should also be reset
+    expect(readiedDrone.triggerUsesMap).toEqual({})
   })
 
   it('should reset assaultUsed to false at round start', () => {
@@ -155,6 +157,8 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     // Assert: assaultUsed should be reset to false
     const readiedDrone = result.dronesOnBoard.lane1[0]
     expect(readiedDrone.assaultUsed).toBe(false)
+    // triggerUsesMap should also be reset
+    expect(readiedDrone.triggerUsesMap).toEqual({})
   })
 
   it('should reset both rapidUsed and assaultUsed for drones with both abilities', () => {

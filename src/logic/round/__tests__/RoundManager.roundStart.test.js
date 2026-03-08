@@ -308,6 +308,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const result = RoundManager.readyDronesAndRestoreShields(playerState, opponentState, {});
 
       expect(result.techSlots.lane1[0].triggerUsesThisRound).toBe(0);
+      expect(result.techSlots.lane1[0].triggerUsesMap).toEqual({});
     });
 
     it('should not crash on tech without triggerUsesThisRound', () => {
@@ -324,6 +325,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const result = RoundManager.readyDronesAndRestoreShields(playerState, opponentState, {});
 
       expect(result.techSlots.lane1[0].triggerUsesThisRound).toBe(0);
+      expect(result.techSlots.lane1[0].triggerUsesMap).toEqual({});
     });
   });
 });

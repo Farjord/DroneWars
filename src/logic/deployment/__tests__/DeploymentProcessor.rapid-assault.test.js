@@ -180,5 +180,7 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
     const deployedDrone = result.newPlayerState.dronesOnBoard.lane1[0];
     expect(deployedDrone.rapidUsed).toBe(false);
     expect(deployedDrone.assaultUsed).toBe(false);
+    // triggerUsesMap should be initialized empty
+    expect(deployedDrone.triggerUsesMap).toEqual({});
   });
 });
