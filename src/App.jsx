@@ -71,6 +71,9 @@ import TargetingArrowLayer from './components/ui/TargetingArrowLayer.jsx';
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
 
+// Module-level dedup key for DEPLOY_TRACE render logging
+let _lastDroneLogKey = '';
+
 const App = ({ phaseAnimationQueue }) => {
   // ========================================
   // SECTION 3: HOOKS & STATE
@@ -333,6 +336,24 @@ const App = ({ phaseAnimationQueue }) => {
   const opponentPlayerState = getOpponentPlayerState();
   const localPlacedSections = getLocalPlacedSections();
   const opponentPlacedSections = getOpponentPlacedSections();
+
+  if (gameState.turnPhase === 'deployment' || gameState.turnPhase === 'action') {
+    const l1 = (localPlayerState?.dronesOnBoard?.lane1 || []).length;
+    const l2 = (localPlayerState?.dronesOnBoard?.lane2 || []).length;
+    const l3 = (localPlayerState?.dronesOnBoard?.lane3 || []).length;
+    const o1 = (opponentPlayerState?.dronesOnBoard?.lane1 || []).length;
+    const o2 = (opponentPlayerState?.dronesOnBoard?.lane2 || []).length;
+    const o3 = (opponentPlayerState?.dronesOnBoard?.lane3 || []).length;
+    const key = `${l1},${l2},${l3}|${o1},${o2},${o3}`;
+    if (key !== _lastDroneLogKey) {
+      _lastDroneLogKey = key;
+      debugLog('DEPLOY_TRACE', 'App.jsx render: drone snapshot', {
+        local: { lane1: l1, lane2: l2, lane3: l3, total: l1+l2+l3 },
+        opponent: { lane1: o1, lane2: o2, lane3: o3, total: o1+o2+o3 },
+        phase: gameState.turnPhase,
+      });
+    }
+  }
 
   // Ship section placement data
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];

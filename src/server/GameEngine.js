@@ -73,6 +73,11 @@ class GameEngine {
     const promises = [];
     for (const [playerId, callback] of this._clients) {
       const redactedState = StateRedactor.redactForPlayer(state, playerId);
+      const p1Total = ['lane1','lane2','lane3'].reduce((s, l) => s + (redactedState.player1?.dronesOnBoard?.[l] || []).length, 0);
+      const p2Total = ['lane1','lane2','lane3'].reduce((s, l) => s + (redactedState.player2?.dronesOnBoard?.[l] || []).length, 0);
+      debugLog('DEPLOY_TRACE', '_emitToClients drone snapshot', {
+        playerId, p1Total, p2Total, phase: redactedState.turnPhase,
+      });
       promises.push(
         Promise.resolve(callback({ state: redactedState, animations }))
           .catch(err => debugLog('STATE_SYNC', `Client ${playerId} delivery failed`, { error: err.message }))

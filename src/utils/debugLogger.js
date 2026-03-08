@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
+    AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
     MULTIPLAYER: false,          // DEPRECATED — replaced by MP_*_TRACE categories
     P2P_CONNECTION: false,      // DEPRECATED — replaced by MP_JOIN_TRACE
     ANIMATIONS: false,           // Animation system
@@ -79,26 +79,26 @@ const DEBUG_CONFIG = {
     EFFECT_CHAIN_DEBUG: false,   // Temporary: effect chain auto-commit investigation
 
     // Card Play Pipeline
-    CARD_PLAY_TRACE: true,       // End-to-end card play milestone trace (10 numbered steps)
+    CARD_PLAY_TRACE: false,       // End-to-end card play milestone trace (10 numbered steps)
 
     // Client-Server Architecture Traces
-    INIT_TRACE: true,             // End-to-end game initialization trace (8 numbered steps)
+    INIT_TRACE: false,             // End-to-end game initialization trace (8 numbered steps)
     DEPLOY_TRACE: true,           // End-to-end drone deployment trace (10 numbered steps)
-    ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
+    ANIM_TRACE: false,             // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
-    MP_JOIN_TRACE: true,         // Connection lifecycle trace (7 numbered steps)
-    MP_SYNC_TRACE: true,         // State broadcast cycle trace (11 numbered steps)
-    MP_GAME_TRACE: true,         // Game start trace (5 numbered steps)
-    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, server→client)
-    MESSAGE_QUEUE: true,         // Message queue ordering and resync (6 calls in MessageQueue.js)
+    MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)
+    MP_SYNC_TRACE: false,         // State broadcast cycle trace (11 numbered steps)
+    MP_GAME_TRACE: false,         // Game start trace (5 numbered steps)
+    TRIGGER_SYNC_TRACE: false,    // Trigger animation sync trace (8 numbered steps, server→client)
+    MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
-    ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
-    PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
-    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
-    COMMIT_TRACE: true,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
-    STATE_CHECKPOINT: true,       // Master game state snapshots at key moments
+    ROUND_TRACE: false,            // Round initialization substep trace (7 numbered steps)
+    PHASE_TRACE: false,            // Phase lifecycle trace (8 numbered steps)
+    ROUND_TRANSITION_TRACE: false,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
+    COMMIT_TRACE: false,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
+    STATE_CHECKPOINT: false,       // Master game state snapshots at key moments
 
     // Effect System - Modular Processor Logging
     EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
