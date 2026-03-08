@@ -256,7 +256,7 @@ class AnimationManager {
     if (triggerAnims.length > 0) {
       const source = executor.getAnimationSource?.() || 'unknown';
       const role = source;
-      debugLog('TRIGGER_SYNC_TRACE', `[8/8] ${role}: Trigger animation execution starting`, {
+      debugLog('TRIGGER_SYNC_TRACE', `[7/7] ${role}: Trigger animation execution starting`, {
         utc: new Date().toISOString(),
         triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
         triggerCount: triggerAnims.length,
@@ -280,7 +280,7 @@ class AnimationManager {
     // Split animations by timing requirements
     const { preState, postState, independent } = this.splitByTiming(animations);
 
-    debugLog('ANIM_TRACE', '[4/7] AnimationManager.executeWithStateUpdate timing split', {
+    debugLog('ANIM_TRACE', '[3/6] AnimationManager.executeWithStateUpdate timing split', {
       source: executor.getAnimationSource?.() || 'unknown',
       preStateCount: preState.length,
       postStateCount: postState.length,
@@ -319,7 +319,7 @@ class AnimationManager {
 
     debugLog('ANIMATIONS', '📝 [ORCHESTRATE] Applying state update via executor...');
     executor.applyPendingStateUpdate();
-    debugLog('ANIM_TRACE', '[5/7] State update applied mid-animation', {
+    debugLog('ANIM_TRACE', '[4/6] State update applied mid-animation', {
       source: executor.getAnimationSource?.() || 'unknown',
     });
     debugLog('ANIMATIONS', '✅ [ORCHESTRATE] State update complete');
@@ -377,7 +377,7 @@ class AnimationManager {
       }, teleportStart);
     }
 
-    debugLog('ANIM_TRACE', '[6/7] Animation execution complete', {
+    debugLog('ANIM_TRACE', '[5/6] Animation execution complete', {
       source: executor.getAnimationSource?.() || 'unknown',
       totalAnimations: animations.length,
       durationMs: Date.now() - executionStart,

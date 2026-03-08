@@ -257,7 +257,7 @@ class ActionProcessor {
           };
         });
         if (mapped.length > 0) {
-          debugLog('ANIM_TRACE', '[1/7] mapAnimationEvents: raw events transformed', {
+          debugLog('ANIM_TRACE', '[1/6] mapAnimationEvents: raw events transformed', {
             inputCount: events?.length || 0,
             outputCount: mapped.length,
             types: [...new Set(mapped.map(a => a.animationName))],
@@ -266,13 +266,13 @@ class ActionProcessor {
         }
         return mapped;
       },
-      captureAnimationsForBroadcast: (animations) => {
+      captureAnimations: (animations) => {
         // Log for GameEngine response (filter STATE_SNAPSHOT internal events)
         const broadcastAnims = animations?.filter(a => a.animationName !== 'STATE_SNAPSHOT') || [];
         if (animations?.length) {
           ap._actionAnimationLog.actionAnimations.push(...broadcastAnims);
         }
-        debugLog('ANIM_TRACE', '[2/7] captureAnimationsForBroadcast', {
+        debugLog('ANIM_TRACE', '[2/6] captureAnimations', {
           totalCount: animations?.length || 0,
           broadcastCount: broadcastAnims.length,
           filteredOut: (animations?.length || 0) - broadcastAnims.length,
@@ -282,7 +282,7 @@ class ActionProcessor {
         if (triggerAnims.length > 0) {
           const triggerSyncId = Date.now();
           triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-          debugLog('TRIGGER_SYNC_TRACE', '[1/8] SERVER: Trigger captured for broadcast', {
+          debugLog('TRIGGER_SYNC_TRACE', '[1/7] SERVER: Trigger captured for delivery', {
             utc: new Date().toISOString(),
             triggerSyncId,
             triggerCount: triggerAnims.length,
@@ -705,7 +705,7 @@ setAnimationManager(animationManager) {
   async executeAndCaptureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) return;
 
-    debugLog('ANIM_TRACE', '[1b/7] executeAndCaptureAnimations', {
+    debugLog('ANIM_TRACE', '[1b/6] executeAndCaptureAnimations', {
       count: animations.length,
       isSystem: isSystemAnimation,
       names: animations.map(a => a.animationName),
@@ -716,7 +716,7 @@ setAnimationManager(animationManager) {
     if (triggerAnims.length > 0) {
       const triggerSyncId = Date.now();
       triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-      debugLog('TRIGGER_SYNC_TRACE', '[1/8] SERVER: Trigger captured for broadcast', {
+      debugLog('TRIGGER_SYNC_TRACE', '[1/7] SERVER: Trigger captured for delivery', {
         utc: new Date().toISOString(),
         triggerSyncId,
         triggerCount: triggerAnims.length,

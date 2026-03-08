@@ -46,58 +46,58 @@ Verifies the full deployment path from UI click through game logic to state appl
 | [9/10] | LocalTransport callback | Response flowing back to client (LocalTransport only) |
 | [10/10] | GameClient._applyState | Final state applied to UI store |
 
-**Note:** Steps [3/10] and [9/10] are LocalTransport-specific. For guest player actions, the transport leg uses MP_SYNC_TRACE ([8/11] through [10/11]).
+**Note:** Steps [3/10] and [9/10] are LocalTransport-specific. For client player actions, the transport leg uses MP_SYNC_TRACE ([7/10] through [9/10]).
 
 **Enable:** `DEPLOY_TRACE: true`
 **Expected:** Steps [1/10] through [10/10] in order on drone deploy (single-player/host).
 
 ---
 
-## ANIM_TRACE (7 steps + bypass) — Animation Pipeline
+## ANIM_TRACE (6 steps + bypass) — Animation Pipeline
 
 Verifies the animation pipeline from game logic events through to execution.
 
 | Step | Location | What it proves |
 |-|-|-|
-| [1/7] | ActionProcessor.mapAnimationEvents | Raw events from game logic: count + types |
-| [1b/7] | ActionProcessor.executeAndCaptureAnimations | Bypass path entry (GO_AGAIN, CARD_REVEAL, etc.) |
-| [2/7] | ActionProcessor.captureAnimationsForBroadcast | What gets stored for response/broadcast |
-| [3/7] | ActionProcessor._executeAnimationPhase | Animation phase entry: teleport prep, broadcast |
-| [4/7] | AnimationManager.executeWithStateUpdate | Pre/post/independent breakdown + source |
-| [5/7] | AnimationManager (after applyPendingStateUpdate) | State committed mid-animation |
-| [6/7] | AnimationManager (end of executeWithStateUpdate) | Execution complete with duration |
-| [7a/7] | GameClient._onResponse | Client received engine response: animation count, phase |
-| [7/7] | GameClient._onResponse | Client animation dispatch: count, names, willPlay |
+| [1/6] | ActionProcessor.mapAnimationEvents | Raw events from game logic: count + types |
+| [1b/6] | ActionProcessor.executeAndCaptureAnimations | Bypass path entry (GO_AGAIN, CARD_REVEAL, etc.) |
+| [2/6] | ActionProcessor.captureAnimations | What gets stored for response |
+| [3/6] | AnimationManager.executeWithStateUpdate | Pre/post/independent breakdown + source |
+| [4/6] | AnimationManager (after applyPendingStateUpdate) | State committed mid-animation |
+| [5/6] | AnimationManager (end of executeWithStateUpdate) | Execution complete with duration |
+| [6a/6] | GameClient._onResponse | Client received engine response: animation count, phase |
+| [6/6] | GameClient._onResponse | Client animation dispatch: count, names, willPlay |
 
-Steps [1-3] are server-side (collect animations during processing). Steps [4-6] are server-side (play during ActionProcessor execution). Steps [7a]+[7] are client entry (play via GameClient._onResponse).
+Steps [1-2] are server-side (collect animations during processing). Steps [3-5] are client-side (AnimationManager). Steps [6a]+[6] are client entry (GameClient).
 
 **Enable:** `ANIM_TRACE: true`
 
-### Step [1b/7] — Bypass Path
+### Step [1b/6] — Bypass Path
 
-Some animations skip the full `_executeAnimationPhase` pipeline and go through `executeAndCaptureAnimations` directly. These include:
+Some animations go through `executeAndCaptureAnimations` directly. These include:
 - `GO_AGAIN_NOTIFICATION` — played after goAgain card plays
 - `CARD_REVEAL` — played after SearchAndDraw completion
 
-Step [1b/7] logs: `{ count, isSystem, names }` to track these bypass animations.
+Step [1b/6] logs: `{ count, isSystem, names }` to track these bypass animations.
 
 ### Expected Output by Action Type
 
 **Player deploy drone:**
-- Steps [1/7] through [6/7] fire during ActionProcessor._executeAnimationPhase
-- Steps [7a/7] and [7/7] fire in GameClient._onResponse
+- Steps [1/6] and [2/6] fire during ActionProcessor processing
+- Steps [3/6] through [5/6] fire in AnimationManager
+- Steps [6a/6] and [6/6] fire in GameClient._onResponse
 
 **AI deploy drone:**
-- Steps [1/7] through [6/7] only (no GameClient path for AI actions processed server-side)
+- Steps [1/6] and [2/6] only (no GameClient path for AI actions processed server-side)
 
 **Card play with goAgain:**
-- Steps [1/7] through [6/7] for the card effect animations
-- Step [1b/7] for the GO_AGAIN_NOTIFICATION bypass
-- Steps [7a/7] and [7/7] on response
+- Steps [1/6] and [2/6] for the card effect animations
+- Step [1b/6] for the GO_AGAIN_NOTIFICATION bypass
+- Steps [6a/6] and [6/6] on response
 
 ### Deduplication Notes
 
-- **STATE_SNAPSHOT filtering:** `captureAnimationsForBroadcast` filters out STATE_SNAPSHOT events (step [2/7] shows filteredOut count)
+- **STATE_SNAPSHOT filtering:** `captureAnimations` filters out STATE_SNAPSHOT events (step [2/6] shows filteredOut count)
 - **No action animation dedup:** There is no deduplication of action animations between the processing path and the response path
 
 ---
@@ -309,7 +309,7 @@ Traces the full multiplayer connection path from UI click through to peer connec
 Errors log with the category but no step number, and include `{ error: true, message }`:
 - `hostGame failed` — Trystero room creation error
 - `joinGame failed` — room join or timeout error
-- `[4/7] Guest timeout` — includes `{ timeout: true, elapsedMs }` when 30s timeout fires
+- `[4/7] Client timeout` — includes `{ timeout: true, elapsedMs }` when 30s timeout fires
 
 ### Guard Warnings
 
@@ -317,53 +317,52 @@ Errors log with the category but no step number, and include `{ error: true, mes
 
 ---
 
-## MP_SYNC_TRACE (11 steps) — State Broadcast Cycle
+## MP_SYNC_TRACE (10 steps) — State Delivery Cycle
 
-Traces the server→client state broadcast and client→server action sending cycle.
+Traces the server→client state delivery and client→server action sending cycle.
 
 | Step | Location | What it proves |
 |-|-|-|
-| [1/11] | HostGameServer.processAction | Server processed action, will broadcast (removed — too noisy) |
-| [2/11] | BroadcastService.broadcastIfNeeded | Broadcast decision: stateSource, trigger, animCount |
-| [3/11] | P2PManager.broadcastState | Serialized + sent via Trystero (sequenceId) |
-| [4/11] | P2PManager.receiveStateUpdate | Client received STATE_UPDATE |
-| [5/11] | P2PTransport (MessageQueue.enqueue) | Message enqueued for ordered processing (MESSAGE_QUEUE category) |
-| [6/11] | GameStateManager.syncFromServer | Client applying server state (fieldCount, phase) |
-| [7/11] | GameClient._onActionAck | Client received ack (success/rejection) |
-| [8/11] | P2PManager.sendActionToHost | Client sent action to server |
-| [9/11] | P2PManager.receiveGuestAction | Server received remote action |
-| [10/11] | HostGameServer.handleGuestAction | Server processing remote action |
-| [11/11] | P2PManager.sendActionAck | Server sent ack to client |
+| [1/10] | HostGameServer.processAction | Server processed action, will deliver (removed — too noisy) |
+| [2/10] | P2PManager.broadcastState | Serialized + sent via Trystero (sequenceId) |
+| [3/10] | P2PManager.receiveStateUpdate | Client received STATE_UPDATE |
+| [4/10] | P2PTransport (MessageQueue.enqueue) | Message enqueued for ordered processing (MESSAGE_QUEUE category) |
+| [5/10] | GameStateManager.syncFromServer | Client syncing server state (fieldCount, phase) |
+| [6/10] | GameClient._onActionAck | Client received action ack (success/rejection) |
+| [7/10] | P2PManager.sendActionToHost | Client sent action to server |
+| [8/10] | P2PManager.receiveGuestAction | Server received client action |
+| [9/10] | HostGameServer.handleGuestAction | Server processing remote action |
+| [10/10] | P2PManager.sendActionAck | Server sent action ack to client |
 
 **Enable:** `MP_SYNC_TRACE: true`
 
-### Server → Client Flow (state broadcast)
+### Server → Client Flow (state delivery)
 
 ```
-[2/11] BroadcastService decision → [3/11] P2PManager sends → [4/11] Client receives → [6/11] Client applies
+[2/10] P2PManager sends → [3/10] Client receives → [5/10] Client applies
 ```
 
 ### Client → Server Flow (remote action)
 
 ```
-[8/11] Client sends action → [9/11] Server receives → [10/11] Server processes → [11/11] Server sends ack → [7/11] Client receives ack
+[7/10] Client sends action → [8/10] Server receives → [9/10] Server processes → [10/10] Server sends ack → [6/10] Client receives ack
 ```
 
 ### Resync Variant
 
 Resync messages log with `{ resync: true }` and no step number:
-- `Guest requesting full sync` — P2PManager.requestFullSync
+- `Client requesting full sync` — P2PManager.requestFullSync
 - `P2PTransport requesting full sync` — P2PTransport._onResyncNeeded
 - `P2PTransport resync response received` — P2PTransport._onResyncResponse
-- `Host received sync request` — P2PManager.receiveSyncRequest
-- `Host sent full sync response` — P2PManager.sendFullSyncResponse
+- `Server received sync request` — P2PManager.receiveSyncRequest
+- `Server sent full sync response` — P2PManager.sendFullSyncResponse
 
 ### Guard Warnings
 
 Guard messages log with `{ guard: true }` and no step number:
-- `only host can broadcast state`
-- `host should not send actions to itself`
-- `only host can send action acks` / `sync response`
+- `only server can broadcast state`
+- `server should not send actions to itself`
+- `only server can send action acks` / `sync response`
 - `Guard: ... — no connection` — _requireConnection failed
 
 ---
@@ -374,14 +373,14 @@ Traces the "Start Game" flow from button click through to initial state sync.
 
 | Step | Location | What it proves |
 |-|-|-|
-| [1/5] | MultiplayerLobby.handleStartGame | Host clicked "Start Game" |
+| [1/5] | MultiplayerLobby.handleStartGame | Server clicked "Start Game" |
 | [2/5] | LobbyScreen.handleMultiplayerGameStart | Mode determined, startGame called |
 | [3/5] | LobbyScreen (useEffect) | P2P integration wired to GSM |
-| [4/5] | LobbyScreen (initial broadcast) | Host broadcasted initial state |
+| [4/5] | LobbyScreen (initial broadcast) | Server sent initial state |
 | [5/5] | useMultiplayerSync (sync_requested handler) | Full sync request/response |
 
 **Enable:** `MP_GAME_TRACE: true`
-**Expected:** Steps [1/5] through [4/5] fire in order on host when starting a multiplayer game. [5/5] fires on demand when guest requests resync.
+**Expected:** Steps [1/5] through [4/5] fire in order on server when starting a multiplayer game. [5/5] fires on demand when client requests resync.
 
 ---
 
@@ -394,59 +393,57 @@ Structured logging in MessageQueue.js (6 calls). Tracks duplicate detection, out
 
 ---
 
-## TRIGGER_SYNC_TRACE (8 steps) — Trigger Animation Sync
+## TRIGGER_SYNC_TRACE (7 steps) — Trigger Animation Sync
 
 Traces the trigger animation pipeline from server capture through network transit to client playback.
 Used to diagnose client-side trigger animation delays in multiplayer.
 
 **Gated:** Only fires when `TRIGGER_FIRED` animations are present in the payload.
-**Correlation:** All steps share a `triggerSyncId` (stamped in step [1/8]) for cross-device log matching.
+**Correlation:** All steps share a `triggerSyncId` (stamped in step [1/7]) for cross-device log matching.
 All steps include `utc: new Date().toISOString()` for absolute timestamp comparison.
 
 | Step | Role | Location | What it measures |
 |-|-|-|-|
-| [1/8] | SERVER | ActionProcessor.captureAnimationsForBroadcast / executeAndCaptureAnimations | Trigger captured into broadcast buffer (fires in both main and bypass paths) |
-| [2/8] | SERVER | BroadcastService.broadcastIfNeeded | Trigger included in broadcast payload |
-| [3/8] | SERVER | P2PManager.broadcastState | Network send (UTC + sequenceId) |
-| [4/8] | CLIENT | P2PManager.receiveStateUpdate | Network receive + latency measurement |
-| [5/8] | CLIENT | MessageQueue.processQueue | Message dequeued (queue wait time) |
-| [6/8] | CLIENT | P2PTransport._processMessage | Dispatching to GameClient |
-| [7/8] | CLIENT | GameClient._onResponse | Animations collected, about to execute |
-| [8/8] | — | AnimationManager.executeWithStateUpdate / executeAnimations | Animation execution begins (role via getAnimationSource(): always 'SERVER') |
+| [1/7] | SERVER | ActionProcessor.captureAnimations / executeAndCaptureAnimations | Trigger captured for delivery (fires in both main and bypass paths) |
+| [2/7] | SERVER | P2PManager.broadcastState | Network send (UTC + sequenceId) |
+| [3/7] | CLIENT | P2PManager.receiveStateUpdate | Network receive + latency measurement |
+| [4/7] | CLIENT | MessageQueue.processQueue | Message dequeued (queue wait time) |
+| [5/7] | CLIENT | P2PTransport._processMessage | Dispatching to GameClient |
+| [6/7] | CLIENT | GameClient._onResponse | Animations collected, about to execute |
+| [7/7] | — | AnimationManager.executeWithStateUpdate / executeAnimations | Animation execution begins (role via getAnimationSource(): always 'SERVER') |
 
 ### Delay Diagnosis via Intervals
 
 | Interval | Reveals |
 |-|-|
-| [1]->[2] | BroadcastService overhead (~0ms expected) |
-| [2]->[3] | State redaction + P2P prep (~0ms expected) |
-| [3]->[4] | Network latency (WebRTC transit) |
-| [4]->[5] | MessageQueue wait (blocked by prior message?) |
-| [5]->[6] | Queue->transport overhead (~0ms expected) |
-| [6]->[7] | Transport->client overhead (~0ms expected) |
-| SERVER[8] vs CLIENT[8] | Total end-to-end sync gap |
+| [1]->[2] | State redaction + P2P prep (~0ms expected) |
+| [2]->[3] | Network latency (WebRTC transit) |
+| [3]->[4] | MessageQueue wait (blocked by prior message?) |
+| [4]->[5] | Queue->transport overhead (~0ms expected) |
+| [5]->[6] | Transport->client overhead (~0ms expected) |
+| SERVER[7] vs CLIENT[7] | Total end-to-end sync gap |
 
 ### Resolved: Callback Now Properly Awaited
 
-`P2PTransport._processMessage` now calls `await this._responseCallback(...)`, ensuring `GameClient._onResponse` (which awaits `AnimationManager.executeWithStateUpdate`) completes before the MessageQueue dequeues the next message. This prevents state regression when a second broadcast arrives during animation playback.
+`P2PTransport._processMessage` now calls `await this._responseCallback(...)`, ensuring `GameClient._onResponse` (which awaits `AnimationManager.executeWithStateUpdate`) completes before the MessageQueue dequeues the next message. This prevents state regression when a second state update arrives during animation playback.
 
 ### Expected Console Output
 
-**Server console (host browser):** Steps [1/8], [2/8], [3/8], [8/8]
-**Client console (guest browser):** Steps [4/8], [5/8], [6/8], [7/8], [8/8]
+**Server console:** Steps [1/7], [2/7], [7/7]
+**Client console:** Steps [3/7], [4/7], [5/7], [6/7], [7/7]
 
 **Enable:** `TRIGGER_SYNC_TRACE: true`
 
 ---
 
-## ROUND_TRANSITION_TRACE (20 steps) — Round Boundary Flow
+## ROUND_TRANSITION_TRACE (19 steps) — Round Boundary Flow
 
 Traces the complete round transition: action phase end → round initialization → phase cascade → announcement playback.
 Every step includes `utc: new Date().toISOString()` and `role: 'SERVER'|'CLIENT'` for cross-window latency diagnosis.
 
 **Gating:** Server steps gated by `_isRoundTransition` flag (set at RT-01 when bothPassed in action phase, cleared at RT-13). Client steps gated by queue containing `roundAnnouncement`. PhaseAnimationQueue steps gated by `_inRoundTransitionPlayback` flag.
 
-### Server Flow (RT-01 through RT-13)
+### Server Flow (RT-01 through RT-13, excluding RT-11)
 
 | Step | Location | What it proves |
 |-|-|-|
@@ -460,8 +457,7 @@ Every step includes `utc: new Date().toISOString()` and `role: 'SERVER'|'CLIENT'
 | [RT-08] | GFM.transitionToPhase | Each phase transition during cascade (from→to, isAutomatic) |
 | [RT-08b] | PhaseTransitionStrategy.processPhaseTransition | Announcement queued for each cascade phase |
 | [RT-09] | GFM.processRoundInitialization entry | Round initialization processor starting |
-| [RT-10] | GFM.processRoundInitialization | Round init complete, state broadcast to client |
-| [RT-11] | BroadcastService.broadcastIfNeeded | Network broadcast of round-transition state (trigger, animCount) |
+| [RT-10] | GFM.processRoundInitialization | Round init complete |
 | [RT-12] | GFM.transitionToPhase (phase landed) | Final non-automatic phase landed (e.g., deployment) |
 | [RT-13] | GFM.transitionToPhase (_tryStartPlayback) | Animation playback triggered, server flow complete |
 
@@ -479,15 +475,15 @@ Every step includes `utc: new Date().toISOString()` and `role: 'SERVER'|'CLIENT'
 
 ### Expected Console Output
 
-**Server window (host/single-player):**
+**Server window (single-player/server):**
 ```
 [RT-01] → [RT-02] → [RT-03] → [RT-04] → [RT-05] → [RT-06] → [RT-07]
-→ [RT-08] (×N per phase) → [RT-08b] (×N) → [RT-09] → [RT-10] → [RT-11]
+→ [RT-08] (×N per phase) → [RT-08b] (×N) → [RT-09] → [RT-10]
 → [RT-08] (more phases) → [RT-12] → [RT-13]
 → [RT-17] → [RT-18]/[RT-19] (per announcement) → [RT-20]
 ```
 
-**Client window (guest browser):**
+**Client window (client browser):**
 ```
 [RT-GC] (per announcement received)
 → [RT-17] → [RT-18]/[RT-19] (per announcement) → [RT-20]
@@ -499,8 +495,7 @@ Every step includes `utc: new Date().toISOString()` and `role: 'SERVER'|'CLIENT'
 |-|-|
 | SERVER [RT-01]→[RT-05] | Round increment overhead |
 | SERVER [RT-05]→[RT-10] | Round initialization duration |
-| SERVER [RT-10]→[RT-11] | Broadcast prep time |
-| SERVER [RT-11]→CLIENT [RT-GC] | Network latency (WebRTC) |
+| SERVER [RT-10]→CLIENT [RT-GC] | State delivery + network latency |
 | [RT-17]→[RT-20] | Total announcement playback (N × 1800ms) |
 | SERVER [RT-20] vs CLIENT [RT-20] | Server/client playback sync gap |
 
@@ -510,4 +505,4 @@ Every step includes `utc: new Date().toISOString()` and `role: 'SERVER'|'CLIENT'
 
 ### Listener Count Growth
 
-ANIM_TRACE [4/7] reports `listenerCount` from GameStateManager. This count grows during gameplay (e.g., 6→20 during deployment phase) because each deployed drone adds state subscriptions. This is expected behavior, not a leak. The count should stabilize after deployment and decrease if drones are destroyed.
+ANIM_TRACE [3/6] reports `listenerCount` from GameStateManager. This count grows during gameplay (e.g., 6→20 during deployment phase) because each deployed drone adds state subscriptions. This is expected behavior, not a leak. The count should stabilize after deployment and decrease if drones are destroyed.

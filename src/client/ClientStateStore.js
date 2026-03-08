@@ -1,6 +1,6 @@
 // ClientStateStore — Read-only state container for UI consumption.
 // Wraps GameStateManager for backward compatibility, adding applyUpdate()
-// for engine/guest response paths. UI subscribes here instead of GSM directly.
+// for engine response paths. UI subscribes here instead of GSM directly.
 
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -17,7 +17,7 @@ class ClientStateStore {
         debugLog('MP_SYNC_TRACE', 'ClientStateStore: GSM event — MERGING into appliedState', {
           eventType: event.type, updateKeys,
         });
-        // Merge local changes into applied state (preserves host broadcast data for guest)
+        // Merge local changes into applied state (preserves server state for client)
         this._appliedState = { ...this._appliedState, ...event.payload.updates };
       } else {
         this._appliedState = null;
@@ -34,7 +34,7 @@ class ClientStateStore {
   }
 
   /**
-   * Apply an authoritative state update from the engine or host.
+   * Apply an authoritative state update from the engine.
    * Notifies subscribers with an ENGINE_UPDATE event.
    * @param {Object} state - Complete game state from engine response
    */

@@ -82,14 +82,14 @@ class P2PManager {
       const receiveTime = Date.now();
       const networkLatency = receiveTime - data.timestamp;
 
-      timingLog('[NETWORK] Guest received', {
+      timingLog('[NETWORK] Client received', {
         phase: data.state?.turnPhase,
         animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
         latency: `${networkLatency.toFixed(0)}ms`,
         isFullSync: data.isFullSync || false
       });
 
-      debugLog('MP_SYNC_TRACE', '[4/11] Guest received STATE_UPDATE', {
+      debugLog('MP_SYNC_TRACE', '[3/10] Client received STATE_UPDATE', {
         sequenceId: data.sequenceId,
         animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
         isFullSync: data.isFullSync || false
@@ -97,7 +97,7 @@ class P2PManager {
 
       const triggerAnims = (data.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
       if (triggerAnims.length > 0) {
-        debugLog('TRIGGER_SYNC_TRACE', '[4/8] CLIENT: Trigger received from network', {
+        debugLog('TRIGGER_SYNC_TRACE', '[3/7] CLIENT: Trigger received from network', {
           utc: new Date().toISOString(),
           triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
           triggerCount: triggerAnims.length,
@@ -120,7 +120,7 @@ class P2PManager {
     this.actions.guestAction = { send: sendGuestAction, receive: receiveGuestAction };
 
     receiveGuestAction(async (data, peerId) => {
-      debugLog('MP_SYNC_TRACE', '[9/11] Host received guest action', { actionType: data.action?.type });
+      debugLog('MP_SYNC_TRACE', '[8/10] Server received client action', { actionType: data.action?.type });
       if (this.hostGameServer) {
         await this.hostGameServer.handleGuestAction(data.action);
       }
@@ -153,7 +153,7 @@ class P2PManager {
     this.actions.syncRequest = { send: sendSyncRequest, receive: receiveSyncRequest };
 
     receiveSyncRequest((data, peerId) => {
-      debugLog('MP_SYNC_TRACE', 'Host received sync request', { resync: true });
+      debugLog('MP_SYNC_TRACE', 'Server received sync request', { resync: true });
 
       // Only host responds to sync requests
       if (this.isHost) {
@@ -166,7 +166,7 @@ class P2PManager {
     this.actions.actionAck = { send: sendActionAck, receive: receiveActionAck };
 
     receiveActionAck((data, peerId) => {
-      debugLog('MP_SYNC_TRACE', '[7/11] Guest received action ack', {
+      debugLog('MP_SYNC_TRACE', '[6/10] Client received action ack', {
         actionType: data.actionType,
         success: data.success
       });
@@ -178,7 +178,7 @@ class P2PManager {
     this.actions.gameStarted = { send: sendGameStarted, receive: receiveGameStarted };
 
     receiveGameStarted((data, peerId) => {
-      debugLog('MP_GAME_TRACE', 'Guest received game_started signal from host');
+      debugLog('MP_GAME_TRACE', 'Client received game_started signal');
       this.emit('game_started', data);
     });
   }
@@ -231,7 +231,7 @@ class P2PManager {
       this.emit('multiplayer_mode_change', { mode: 'host', isHost: true });
       this.emit('room_created', { roomCode: this.roomCode });
 
-      debugLog('MP_JOIN_TRACE', '[5/7] Host events emitted', { role: 'host', roomCode: this.roomCode });
+      debugLog('MP_JOIN_TRACE', '[5/7] Server events emitted', { role: 'host', roomCode: this.roomCode });
 
       return this.roomCode;
 
@@ -278,7 +278,7 @@ class P2PManager {
             roomCode: this.roomCode
           });
 
-          debugLog('MP_JOIN_TRACE', '[5/7] Guest events emitted', { role: 'guest', roomCode });
+          debugLog('MP_JOIN_TRACE', '[5/7] Client events emitted', { role: 'guest', roomCode });
 
           resolve();
         });
@@ -296,7 +296,7 @@ class P2PManager {
         // Timeout after 30 seconds
         setTimeout(() => {
           if (!this.isConnected) {
-            debugLog('MP_JOIN_TRACE', '[4/7] Guest timeout', { timeout: true, elapsedMs: Date.now() - startTime });
+            debugLog('MP_JOIN_TRACE', '[4/7] Client timeout', { timeout: true, elapsedMs: Date.now() - startTime });
             // Clean up zombie room to prevent leaked action handlers on retry
             if (this.room) {
               this.room.leave();
@@ -377,21 +377,21 @@ class P2PManager {
         timestamp: networkSendTime
       };
 
-      timingLog('[NETWORK] Host sending', {
+      timingLog('[NETWORK] Server sending', {
         phase: state.turnPhase,
         animCount: actionAnimations.length + systemAnimations.length
       });
 
       this.actions.stateUpdate.send(stateData, this.currentPeerId);
 
-      debugLog('MP_SYNC_TRACE', '[3/11] Host broadcasted state', {
+      debugLog('MP_SYNC_TRACE', '[2/10] Server sent state update', {
         sequenceId: this.broadcastSequence,
         animCount: actionAnimations.length + systemAnimations.length
       });
 
       const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
       if (triggerAnims.length > 0) {
-        debugLog('TRIGGER_SYNC_TRACE', '[3/8] SERVER: Trigger sent over network', {
+        debugLog('TRIGGER_SYNC_TRACE', '[2/7] SERVER: Trigger sent over network', {
           utc: new Date().toISOString(),
           triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
           sequenceId: this.broadcastSequence,
@@ -424,7 +424,7 @@ class P2PManager {
       };
 
       this.actions.guestAction.send(actionData, this.currentPeerId);
-      debugLog('MP_SYNC_TRACE', '[8/11] Guest sent action to host', { actionType });
+      debugLog('MP_SYNC_TRACE', '[7/10] Client sent action to server', { actionType });
     } catch (error) {
       debugLog('MP_SYNC_TRACE', 'sendActionToHost failed', { error: true, actionType, message: error.message });
       this.emit('send_error', { error: error.message });
@@ -450,7 +450,7 @@ class P2PManager {
       };
 
       this.actions.syncRequest.send(requestData, this.currentPeerId);
-      debugLog('MP_SYNC_TRACE', 'Guest requesting full sync', { resync: true, requesting: true });
+      debugLog('MP_SYNC_TRACE', 'Client requesting full sync', { resync: true, requesting: true });
     } catch (error) {
       debugLog('MP_SYNC_TRACE', 'requestFullSync failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });
@@ -471,7 +471,7 @@ class P2PManager {
 
     try {
       this.actions.actionAck.send(ackData, this.currentPeerId);
-      debugLog('MP_SYNC_TRACE', '[11/11] Host sent action ack', {
+      debugLog('MP_SYNC_TRACE', '[10/10] Server sent action ack', {
         actionType: ackData.actionType,
         success: ackData.success
       });
@@ -493,7 +493,7 @@ class P2PManager {
 
     try {
       this.actions.gameStarted.send({ timestamp: Date.now() }, this.currentPeerId);
-      debugLog('MP_GAME_TRACE', 'Host sent game_started to guest');
+      debugLog('MP_GAME_TRACE', 'Server sent game_started to client');
     } catch (error) {
       debugLog('MP_GAME_TRACE', 'sendGameStarted failed', { error: true, message: error.message });
     }
@@ -526,7 +526,7 @@ class P2PManager {
       };
 
       this.actions.stateUpdate.send(stateData, this.currentPeerId);
-      debugLog('MP_SYNC_TRACE', 'Host sent full sync response', { resync: true, sequenceId: this.broadcastSequence });
+      debugLog('MP_SYNC_TRACE', 'Server sent full sync response', { resync: true, sequenceId: this.broadcastSequence });
     } catch (error) {
       debugLog('MP_SYNC_TRACE', 'sendFullSyncResponse failed', { error: true, message: error.message });
       this.emit('send_error', { error: error.message });

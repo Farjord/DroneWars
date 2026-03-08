@@ -39,7 +39,7 @@ class HostGameServer {
    * Processes via GameEngine (which delivers to all clients), sends ack to guest.
    */
   async handleGuestAction(action) {
-    debugLog('MP_SYNC_TRACE', '[10/11] Server processing remote action', { actionType: action?.type });
+    debugLog('MP_SYNC_TRACE', '[9/10] Server processing remote action', { actionType: action?.type });
 
     try {
       const response = await this.gameEngine.processAction(action.type, action.payload);

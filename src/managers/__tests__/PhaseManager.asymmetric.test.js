@@ -4,7 +4,7 @@ import {
   createLocalModeGameStateManager,
   createHostModeGameStateManager,
   createGuestModeGameStateManager,
-  createMockHostBroadcast,
+  createMockServerUpdate,
   ASYMMETRIC_SCENARIOS,
   getExpectedBehavior
 } from '../../test/helpers/phaseTestHelpers.js';
@@ -404,7 +404,7 @@ describe('Asymmetric Phase Tests', () => {
       // Verify expected behavior
       const expected = getExpectedBehavior('NEITHER', 'host');
       expect(expected.phaseSkipped).toBe(true);
-      expect(expected.broadcastSkip).toBe(true);
+      expect(expected.deliverySkip).toBe(true);
     });
   });
 
@@ -475,7 +475,7 @@ describe('Asymmetric Phase Tests', () => {
 
       // Guest receives broadcast indicating phase complete
       // Host would have processed auto-approves and moved on
-      const completionBroadcast = createMockHostBroadcast({
+      const completionBroadcast = createMockServerUpdate({
         phase: 'optionalDiscard', // Next phase
         phaseComplete: true
       });

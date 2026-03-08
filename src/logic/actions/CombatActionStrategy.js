@@ -137,7 +137,7 @@ export async function processAttack(payload, ctx) {
   });
 
   // Capture animations for broadcasting (host only)
-  ctx.captureAnimationsForBroadcast(animations);
+  ctx.captureAnimations(animations);
 
   // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
   if (currentState.interceptionPending) {
@@ -458,7 +458,7 @@ export async function processAbility(payload, ctx) {
   const animations = ctx.mapAnimationEvents(result.animationEvents);
 
   // Capture animations for broadcasting (host only)
-  ctx.captureAnimationsForBroadcast(animations);
+  ctx.captureAnimations(animations);
 
   // Check for win conditions after ability
   ctx.checkWinCondition();

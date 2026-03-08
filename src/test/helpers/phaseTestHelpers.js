@@ -472,7 +472,7 @@ export const createMockNetworkHandler = () => {
       receivedMessages.push({ action, timestamp: Date.now() });
       return action;
     }),
-    // Simulate sending a broadcast to guest
+    // Simulate sending state to client
     sendToGuest: vi.fn((message) => {
       sentMessages.push({ message, timestamp: Date.now() });
     }),
@@ -490,7 +490,7 @@ export const createMockNetworkHandler = () => {
  * MULTIPLAYER GUEST MODE FIXTURES (local view as P2)
  * Test ID prefix: G (e.g., MD-G1, DP-G2)
  *
- * Key behavior: Guest receives host broadcasts, does NOT call PhaseManager methods
+ * Key behavior: Client receives server state updates, does NOT call PhaseManager methods
  * Guest actions are sent to host, not processed locally
  */
 
@@ -525,11 +525,11 @@ export const createGuestModeGameStateManager = (options = {}) => {
 };
 
 /**
- * Creates a mock host broadcast for guest to receive
- * @param {object} options - Broadcast configuration
- * @returns {object} Mock broadcast message
+ * Creates a mock server update for client to receive
+ * @param {object} options - Update configuration
+ * @returns {object} Mock update message
  */
-export const createMockHostBroadcast = ({
+export const createMockServerUpdate = ({
   phase,
   phaseComplete = false,
   firstPasser = null,
@@ -612,22 +612,22 @@ export const getExpectedBehavior = (scenario, mode) => {
     BOTH_NEED: {
       local: { p1Acts: true, p2Acts: true, aiAutoCommits: true },
       host: { p1Acts: true, p2Acts: true, networkRequired: true },
-      guest: { receiveBroadcast: true, guestCommits: true }
+      guest: { receivesUpdate: true, guestCommits: true }
     },
     ONLY_P1: {
       local: { p1Acts: true, p2Acts: false, aiAutoApproves: true },
       host: { p1Acts: true, p2Acts: false, guestAutoApproves: true },
-      guest: { receiveBroadcast: true, guestAutoApproves: true }
+      guest: { receivesUpdate: true, guestAutoApproves: true }
     },
     ONLY_P2: {
       local: { p1Acts: false, p2Acts: true, humanAutoApproves: true, aiActs: true },
       host: { p1Acts: false, p2Acts: true, hostAutoApproves: true, networkRequired: true },
-      guest: { receiveBroadcast: true, guestCommits: true }
+      guest: { receivesUpdate: true, guestCommits: true }
     },
     NEITHER: {
       local: { phaseSkipped: true },
-      host: { phaseSkipped: true, broadcastSkip: true },
-      guest: { receiveBroadcast: true, phaseSkipped: true }
+      host: { phaseSkipped: true, deliverySkip: true },
+      guest: { receivesUpdate: true, phaseSkipped: true }
     }
   };
 

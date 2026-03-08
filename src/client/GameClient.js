@@ -76,7 +76,7 @@ class GameClient extends GameServer {
     const { visualAnimations, hadAnnouncements } = this._extractAndQueueAnnouncements(allAnimations);
 
     if (visualAnimations.length > 0) {
-      debugLog('ANIM_TRACE', '[7a/7] GameClient._onResponse entry', {
+      debugLog('ANIM_TRACE', '[6a/6] GameClient._onResponse entry', {
         previousPhase,
         newPhase,
         animCount: visualAnimations.length,
@@ -93,7 +93,7 @@ class GameClient extends GameServer {
 
     const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
     if (triggerAnims.length > 0) {
-      debugLog('TRIGGER_SYNC_TRACE', '[7/8] Trigger received by GameClient', {
+      debugLog('TRIGGER_SYNC_TRACE', '[6/7] Trigger received by GameClient', {
         utc: new Date().toISOString(),
         triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
         triggerCount: triggerAnims.length,
@@ -104,7 +104,7 @@ class GameClient extends GameServer {
     }
 
     if (visualAnimations.length > 0) {
-      debugLog('ANIM_TRACE', '[7/7] GameClient._onResponse received', {
+      debugLog('ANIM_TRACE', '[6/6] GameClient._onResponse received', {
         animCount: visualAnimations.length,
         animNames: visualAnimations.map(a => a.animationName),
         hasAnimationManager: !!this.animationManager,
@@ -172,7 +172,7 @@ class GameClient extends GameServer {
       turnPhase: state.turnPhase, currentPlayer: state.currentPlayer,
       gameMode: state.gameMode, playerId: this.playerId,
     });
-    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server-broadcast data
+    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server state
     if (state.gameMode === 'guest') {
       this.clientStateStore.gameStateManager.syncFromServer(state);
     }
@@ -233,11 +233,11 @@ class GameClient extends GameServer {
 
   _onActionAck({ actionType, success, error, authoritativeState }) {
     if (success) {
-      debugLog('MP_SYNC_TRACE', '[7/11] GameClient action acknowledged', { actionType, success: true });
+      debugLog('MP_SYNC_TRACE', '[6/10] Client received action ack', { actionType, success: true });
       return;
     }
 
-    debugLog('MP_SYNC_TRACE', '[7/11] GameClient action rejected', { actionType, success: false, error });
+    debugLog('MP_SYNC_TRACE', '[6/10] Client received action ack', { actionType, success: false, error });
     if (authoritativeState) {
       this._applyState({ ...authoritativeState, gameMode: this._localGameMode || this.getState().gameMode });
     }

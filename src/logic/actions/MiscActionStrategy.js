@@ -46,7 +46,7 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
         }
       }];
 
-      ctx.captureAnimationsForBroadcast(animation);
+      ctx.captureAnimations(animation);
 
       return {
         success: true,

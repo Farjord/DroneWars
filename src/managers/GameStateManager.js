@@ -163,7 +163,7 @@ class GameStateManager {
   }
 
   syncFromServer(serverState) {
-    debugLog('MP_SYNC_TRACE', '[6/11] Guest syncing server state', { fieldCount: Object.keys(serverState).length, phase: serverState.turnPhase });
+    debugLog('MP_SYNC_TRACE', '[5/10] Client syncing server state', { fieldCount: Object.keys(serverState).length, phase: serverState.turnPhase });
 
     // Preserve local gameMode and localPlayerId — server broadcasts may carry the host's
     // values which would break client-side routing (App.jsx gameMode useMemo, etc.).

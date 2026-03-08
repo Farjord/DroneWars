@@ -303,7 +303,7 @@ function ShipPlacementScreen() {
 
   // UI STATE MACHINE: Show appropriate screen based on guest submission state
 
-  // State 1: SUBMITTING - Guest sent action, waiting for host confirmation
+  // State 1: SUBMITTING - Client sent action, waiting for server confirmation
   if (isSubmitting && !localPlayerCompleted) {
     return <SubmittingOverlay />;
   }

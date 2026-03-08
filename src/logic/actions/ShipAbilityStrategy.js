@@ -73,7 +73,7 @@ export async function processShipAbility(payload, ctx) {
   );
 
   const animations = ctx.mapAnimationEvents(result.animationEvents);
-  ctx.captureAnimationsForBroadcast(animations);
+  ctx.captureAnimations(animations);
 
   return {
     ...result,

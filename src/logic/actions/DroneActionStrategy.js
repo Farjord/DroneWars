@@ -58,7 +58,7 @@ export async function processDeployment(payload, ctx) {
 
   if (result.success) {
     const animations = ctx.mapAnimationEvents(result.animationEvents);
-    ctx.captureAnimationsForBroadcast(animations);
+    ctx.captureAnimations(animations);
 
     debugLog('DEPLOY_TRACE', '[8/10] Deployment animation + state commit complete', {
       droneName: droneData?.name,
