@@ -17,6 +17,8 @@ import { selectTargets, hashString } from '../targeting/TargetSelector.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
+import { applyCounterDamage } from '../combat/counterDamage.js';
+import { calculateEffectiveStats } from '../statsCalculator.js';
 
 // Combined collection for ability lookups — Tech definitions live in techData.js
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
@@ -72,7 +74,11 @@ class TriggerProcessor {
       pairSet = new Set(),
       chainDepth = 0,
       gameSeed,
-      roundNumber
+      roundNumber,
+      preSnapshotStats = null,
+      skipLivenessCheck = false,
+      counterTargetDrone = null,
+      counterTargetPlayerId = null
     } = context;
 
     if (chainDepth >= MAX_CHAIN_DEPTH) {
@@ -87,6 +93,7 @@ class TriggerProcessor {
     let anyStatMods = false;
     let goAgain = false;
     let doesNotExhaust = false;
+    let attackerDestroyedByCounter = false;
 
     const filterContext = { lane, playerStates: currentStates, actingPlayerId };
     const matchingTriggers = this.findMatchingTriggers(
@@ -103,7 +110,8 @@ class TriggerProcessor {
       const { drone: reactorDrone, ability, playerId: reactorPlayerId, lane: reactorLane } = match;
 
       // Drone liveness check — verify reactor still exists on the board
-      if (!this._isDroneAlive(reactorDrone.id, reactorPlayerId, reactorLane, currentStates)) {
+      // Skip for ON_INTERCEPT: interceptor may have been destroyed but should still trigger
+      if (!skipLivenessCheck && !this._isDroneAlive(reactorDrone.id, reactorPlayerId, reactorLane, currentStates)) {
         debugLog('TRIGGERS', `Skipping dead reactor: ${reactorDrone.name} (${reactorDrone.id})`);
         continue;
       }
@@ -128,7 +136,8 @@ class TriggerProcessor {
       const result = this.executeTriggerEffects(
         ability, reactorDrone, reactorPlayerId, reactorLane,
         triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, placedSections,
-        logCallback, pairSet, chainDepth, scalingAmount, gameSeed, roundNumber
+        logCallback, pairSet, chainDepth, scalingAmount, gameSeed, roundNumber,
+        preSnapshotStats, counterTargetDrone, counterTargetPlayerId
       );
 
       if (result.triggered) {
@@ -189,6 +198,10 @@ class TriggerProcessor {
           doesNotExhaust = true;
         }
 
+        if (result.attackerDestroyedByCounter) {
+          attackerDestroyedByCounter = true;
+        }
+
         // Increment per-round usage counter (per-ability)
         if (ability.usesPerRound != null) {
           currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates, ability.name);
@@ -209,7 +222,8 @@ class TriggerProcessor {
       triggerSteps,
       statModsApplied: anyStatMods,
       goAgain,
-      doesNotExhaust
+      doesNotExhaust,
+      attackerDestroyedByCounter
     };
   }
 
@@ -320,7 +334,8 @@ class TriggerProcessor {
   executeTriggerEffects(
     ability, reactorDrone, reactorPlayerId, reactorLane,
     triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, placedSections,
-    logCallback, pairSet, chainDepth, scalingAmount = null, gameSeed, roundNumber
+    logCallback, pairSet, chainDepth, scalingAmount = null, gameSeed, roundNumber,
+    preSnapshotStats = null, counterTargetDrone = null, counterTargetPlayerId = null
   ) {
     let currentStates = playerStates;
     const animationEvents = [];
@@ -330,6 +345,7 @@ class TriggerProcessor {
     let statModsApplied = false;
     let goAgain = false;
     let doesNotExhaust = false;
+    let attackerDestroyedByCounter = false;
     let preCascadePlayerStates = null;
 
     // Normalize effects: support both effect{} and effects[]
@@ -452,6 +468,39 @@ class TriggerProcessor {
           continue;
         }
 
+        // COUNTER_DAMAGE: deal reactor's attack damage to the counter target (attacker)
+        if (effect.type === 'COUNTER_DAMAGE') {
+          if (counterTargetDrone && counterTargetPlayerId) {
+            // Use pre-snapshot stats if provided (for DOGFIGHT where interceptor may be dead)
+            const sourceStats = preSnapshotStats || calculateEffectiveStats(
+              reactorDrone,
+              reactorLane,
+              currentStates[reactorPlayerId],
+              currentStates[counterTargetPlayerId],
+              placedSections
+            );
+            const counterResult = applyCounterDamage(
+              reactorDrone,
+              sourceStats,
+              reactorPlayerId,
+              reactorLane,
+              counterTargetDrone,
+              counterTargetPlayerId,
+              currentStates,
+              placedSections,
+              effect.damageType || 'RETALIATE'
+            );
+            if (counterResult.animationEvents?.length > 0) {
+              animationEvents.push(...counterResult.animationEvents);
+              directAnimations.push(...counterResult.animationEvents);
+            }
+            if (counterResult.attackerDestroyed) {
+              attackerDestroyedByCounter = true;
+            }
+          }
+          continue;
+        }
+
         // Preprocess scope: 'SELF' → target the reactor drone
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
@@ -535,6 +584,7 @@ class TriggerProcessor {
       statModsApplied,
       goAgain,
       doesNotExhaust,
+      attackerDestroyedByCounter,
       directAnimations,
       cascadeSteps,
       stateAfterDirectEffects: stateAfterDirectEffects || JSON.parse(JSON.stringify(currentStates))
@@ -614,6 +664,9 @@ class TriggerProcessor {
           break;
         case 'DOES_NOT_EXHAUST':
           parts.push('does not exhaust');
+          break;
+        case 'COUNTER_DAMAGE':
+          parts.push(`counter damage (${effect.damageType || 'RETALIATE'})`);
           break;
         default:
           parts.push(effect.type);

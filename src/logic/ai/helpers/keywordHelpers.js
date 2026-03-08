@@ -23,13 +23,16 @@ const hasKeyword = (drone, keyword) => {
 };
 
 /**
- * Check if a drone has the DOGFIGHT keyword
+ * Check if a drone has the DOGFIGHT ability (ON_INTERCEPT trigger)
  * DOGFIGHT drones deal damage to attackers when intercepting
  * @param {Object} drone - The drone to check
- * @returns {boolean} True if drone has DOGFIGHT keyword
+ * @returns {boolean} True if drone has DOGFIGHT ability
  */
 export const hasDogfightKeyword = (drone) => {
-  return hasKeyword(drone, 'DOGFIGHT');
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+  return baseDrone?.abilities?.some(ability =>
+    ability.type === 'TRIGGERED' && ability.trigger === 'ON_INTERCEPT'
+  ) || false;
 };
 
 /**

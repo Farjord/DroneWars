@@ -173,7 +173,7 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   // RETALIATE penalty - target will deal damage back if it survives
   const baseTarget = fullDroneCollection.find(d => d.name === target.name);
   const hasRetaliate = baseTarget?.abilities?.some(a =>
-    a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RETALIATE'
+    a.type === 'TRIGGERED' && a.trigger === 'ON_ATTACKED'
   );
 
   if (hasRetaliate) {

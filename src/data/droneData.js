@@ -441,8 +441,9 @@ const fullDroneCollection = [
     abilities: [{
       name: 'Dogfight',
       description: 'When this drone intercepts, deals its attack damage to the attacker.',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'DOGFIGHT' }
+      type: 'TRIGGERED',
+      trigger: 'ON_INTERCEPT',
+      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT' }]
     }],
     upgradeSlots: 2
   },
@@ -460,8 +461,9 @@ const fullDroneCollection = [
     abilities: [{
       name: 'Retaliate',
       description: 'When this drone is attacked and survives, deals its attack damage to the attacker.',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'RETALIATE' }
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACKED',
+      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE' }]
     }],
     upgradeSlots: 2
   },
@@ -480,14 +482,16 @@ const fullDroneCollection = [
       {
         name: 'Dogfight',
         description: 'On intercept - deal damage to attacker.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'DOGFIGHT' }
+        type: 'TRIGGERED',
+        trigger: 'ON_INTERCEPT',
+        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT' }]
       },
       {
         name: 'Retaliate',
         description: 'On defence - deal damage to the attacker.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'RETALIATE' }
+        type: 'TRIGGERED',
+        trigger: 'ON_ATTACKED',
+        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE' }]
       }
     ],
     upgradeSlots: 1

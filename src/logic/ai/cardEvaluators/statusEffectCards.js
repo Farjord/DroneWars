@@ -230,7 +230,12 @@ export const evaluateApplyCannotInterceptCard = (card, target, context) => {
     logic.push(`⭐ ALWAYS_INTERCEPTS: +30`);
   }
 
-  if (keywords.has('DOGFIGHT')) {
+  // Check for DOGFIGHT ability (ON_INTERCEPT trigger) from base drone definition
+  const baseDrone = fullDroneCollection.find(d => d.name === target.name);
+  const hasDogfight = baseDrone?.abilities?.some(a =>
+    a.type === 'TRIGGERED' && a.trigger === 'ON_INTERCEPT'
+  );
+  if (hasDogfight) {
     totalScore += 20;
     logic.push(`⭐ DOGFIGHT: +20 (dangerous interceptor)`);
   }

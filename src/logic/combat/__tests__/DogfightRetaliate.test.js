@@ -1,16 +1,91 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { applyCounterDamage } from '../counterDamage.js'
+import { calculateEffectiveStats } from '../../statsCalculator.js'
 
-vi.mock('../../triggers/TriggerProcessor.js', () => ({
-  default: class MockTriggerProcessor {
-    constructor() {
-      this.fireTrigger = vi.fn().mockReturnValue({
-        triggered: false, newPlayerStates: null, animationEvents: [], statModsApplied: false
-      });
+vi.mock('../../triggers/TriggerProcessor.js', () => {
+  return {
+    default: class MockTriggerProcessor {
+      constructor() {
+        this.fireTrigger = vi.fn().mockImplementation((triggerType, context) => {
+          const noOpResult = {
+            triggered: false,
+            newPlayerStates: context.playerStates,
+            animationEvents: [],
+            statModsApplied: false,
+            attackerDestroyedByCounter: false
+          };
+
+          // Handle ON_INTERCEPT and ON_ATTACKED via real counter-damage logic
+          if (triggerType === 'ON_INTERCEPT' || triggerType === 'ON_ATTACKED') {
+            const {
+              triggeringDrone,
+              triggeringPlayerId,
+              playerStates,
+              placedSections,
+              preSnapshotStats = null,
+              counterTargetDrone,
+              counterTargetPlayerId,
+              lane
+            } = context;
+
+            if (!counterTargetDrone || !counterTargetPlayerId) return noOpResult;
+
+            // Look up base drone abilities to check for matching trigger
+            const { default: fullDroneCollection } = require('../../../data/droneData.js');
+            const baseDrone = fullDroneCollection.find(d => d.name === triggeringDrone.name);
+            const matchingAbility = baseDrone?.abilities?.find(a =>
+              a.type === 'TRIGGERED' && a.trigger === triggerType
+            );
+            if (!matchingAbility) return noOpResult;
+
+            // Calculate effective stats for reactor (source of counter damage)
+            const { calculateEffectiveStats: calcStats } = require('../../statsCalculator.js');
+            const sourceStats = preSnapshotStats || calcStats(
+              triggeringDrone,
+              lane,
+              playerStates[triggeringPlayerId],
+              playerStates[counterTargetPlayerId],
+              placedSections
+            );
+
+            const effect = matchingAbility.effects?.[0];
+            if (!effect || effect.type !== 'COUNTER_DAMAGE') return noOpResult;
+
+            const { applyCounterDamage: applyCounter } = require('../counterDamage.js');
+            const counterResult = applyCounter(
+              triggeringDrone,
+              sourceStats,
+              triggeringPlayerId,
+              lane,
+              counterTargetDrone,
+              counterTargetPlayerId,
+              playerStates,
+              placedSections,
+              effect.damageType || 'RETALIATE'
+            );
+
+            return {
+              triggered: true,
+              newPlayerStates: playerStates,
+              animationEvents: counterResult.animationEvents || [],
+              statModsApplied: false,
+              attackerDestroyedByCounter: counterResult.attackerDestroyed || false
+            };
+          }
+
+          return noOpResult;
+        });
+      }
     }
-  }
-}));
+  };
+});
 vi.mock('../../triggers/triggerConstants.js', () => ({
-  TRIGGER_TYPES: { ON_LANE_ATTACK: 'ON_LANE_ATTACK' }
+  TRIGGER_TYPES: {
+    ON_LANE_ATTACK: 'ON_LANE_ATTACK',
+    ON_ATTACK: 'ON_ATTACK',
+    ON_INTERCEPT: 'ON_INTERCEPT',
+    ON_ATTACKED: 'ON_ATTACKED'
+  }
 }));
 
 import { resolveAttack } from '../AttackProcessor.js'
@@ -659,9 +734,9 @@ describe('Retaliate Ability', () => {
       expect(hasRetaliateEvent).toBe(false)
     })
 
-    it('does NOT trigger if drone is interceptor (not direct target)', () => {
-      // EXPLANATION: Retaliate only triggers when the drone is the direct target.
-      // Interceptors are not "targeted" - they choose to intercept.
+    it('DOES trigger if drone is interceptor that survives (ON_ATTACKED fires on interceptors)', () => {
+      // EXPLANATION: Retaliate (ON_ATTACKED) fires on any drone that was attacked and survived,
+      // including interceptors. An interceptor that survives the attack retaliates.
 
       const attacker = {
         id: 'drone1',
@@ -684,7 +759,7 @@ describe('Retaliate Ability', () => {
 
       const interceptor = {
         id: 'drone3',
-        name: 'Thornback', // Has RETALIATE, but is intercepting
+        name: 'Thornback', // Has RETALIATE (ON_ATTACKED), intercepting
         currentShields: 1,
         hull: 3,
         isExhausted: false,
@@ -712,15 +787,15 @@ describe('Retaliate Ability', () => {
       )
 
       // Thornback survives the interception (3 attack vs 1 shields + 3 hull = 4 HP)
-      // But should NOT retaliate because it was an interceptor, not the target
+      // Thornback retaliates: 2 attack vs Talon (1 shields + 2 hull = 3 HP)
+      // Talon should have 0 shields and 1 hull remaining
       const updatedAttacker = result.newPlayerStates.player1.dronesOnBoard.lane1.find(
         d => d.id === 'drone1'
       )
 
       expect(updatedAttacker).toBeDefined()
-      // Attacker should still have full health (no retaliate damage)
-      expect(updatedAttacker.currentShields).toBe(1)
-      expect(updatedAttacker.hull).toBe(2)
+      expect(updatedAttacker.currentShields).toBe(0)
+      expect(updatedAttacker.hull).toBe(1)
     })
 
     it('can destroy the attacker with retaliate damage', () => {

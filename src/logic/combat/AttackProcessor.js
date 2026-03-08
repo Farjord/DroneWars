@@ -18,120 +18,8 @@ import { createDestructionAnimation } from './animations/DroneDestroyedAnimation
 import { createHullDamageAnimation } from './animations/HullDamageAnimation.js';
 import { createSectionDamagedAnimation } from './animations/SectionDamagedAnimation.js';
 import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js';
-import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimation.js';
-import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
-
-
-/**
- * Apply counter damage (dogfight or retaliate) from one drone to another
- *
- * @param {Object} source - The drone dealing the counter damage
- * @param {Object} sourceEffectiveStats - The effective stats of the source drone
- * @param {string} sourcePlayerId - The player who owns the source drone
- * @param {string} sourceLane - The lane the source drone is in
- * @param {Object} target - The drone receiving the counter damage
- * @param {string} targetPlayerId - The player who owns the target drone
- * @param {Object} playerStates - Current player states (will be modified)
- * @param {Object} placedSections - Placed ship sections
- * @param {string} damageType - 'DOGFIGHT' or 'RETALIATE'
- * @returns {Object} { animationEvents, attackerDestroyed }
- */
-const applyCounterDamage = (
-  source,
-  sourceEffectiveStats,
-  sourcePlayerId,
-  sourceLane,
-  target,
-  targetPlayerId,
-  playerStates,
-  placedSections,
-  damageType
-) => {
-  const animationEvents = [];
-  let attackerDestroyed = false;
-
-  const damage = sourceEffectiveStats.attack || 0;
-  if (damage <= 0) {
-    return { animationEvents, attackerDestroyed };
-  }
-
-  const isPiercing = sourceEffectiveStats.keywords && sourceEffectiveStats.keywords.has('PIERCING');
-
-  // Find the target drone in state
-  for (const laneKey in playerStates[targetPlayerId].dronesOnBoard) {
-    const targetIndex = playerStates[targetPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === target.id);
-    if (targetIndex !== -1) {
-      const targetDrone = playerStates[targetPlayerId].dronesOnBoard[laneKey][targetIndex];
-
-      // Calculate damage distribution
-      let shieldDamage = 0;
-      let hullDamage = 0;
-      let remainingDamage = damage;
-
-      if (!isPiercing) {
-        shieldDamage = Math.min(remainingDamage, targetDrone.currentShields || 0);
-        remainingDamage -= shieldDamage;
-      }
-      hullDamage = Math.min(remainingDamage, targetDrone.hull);
-
-      const wasDestroyed = (targetDrone.hull - hullDamage) <= 0;
-
-      // Generate appropriate animation event
-      if (damageType === 'DOGFIGHT') {
-        animationEvents.push(createDogfightDamageAnimation(
-          source,
-          sourcePlayerId,
-          sourceLane,
-          target,
-          targetPlayerId,
-          laneKey,
-          damage,
-          shieldDamage,
-          hullDamage
-        ));
-      } else {
-        animationEvents.push(createRetaliationDamageAnimation(
-          source,
-          sourcePlayerId,
-          sourceLane,
-          target,
-          targetPlayerId,
-          laneKey,
-          damage,
-          shieldDamage,
-          hullDamage
-        ));
-      }
-
-      if (wasDestroyed) {
-        // Remove destroyed drone
-        attackerDestroyed = true;
-        animationEvents.push(createDestructionAnimation(target, targetPlayerId, laneKey, 'drone'));
-        const destroyedDrone = playerStates[targetPlayerId].dronesOnBoard[laneKey][targetIndex];
-        playerStates[targetPlayerId].dronesOnBoard[laneKey] =
-          playerStates[targetPlayerId].dronesOnBoard[laneKey].filter(d => d.id !== target.id);
-        Object.assign(playerStates[targetPlayerId], onDroneDestroyed(playerStates[targetPlayerId], destroyedDrone));
-
-        // Update auras after drone destruction
-        const opponentPlayerId = targetPlayerId === 'player1' ? 'player2' : 'player1';
-        playerStates[targetPlayerId].dronesOnBoard = updateAuras(
-          playerStates[targetPlayerId],
-          playerStates[opponentPlayerId],
-          placedSections
-        );
-      } else {
-        // Apply damage
-        playerStates[targetPlayerId].dronesOnBoard[laneKey][targetIndex].hull -= hullDamage;
-        playerStates[targetPlayerId].dronesOnBoard[laneKey][targetIndex].currentShields -= shieldDamage;
-      }
-      break;
-    }
-  }
-
-  return { animationEvents, attackerDestroyed };
-};
 
 /**
  * Resolve a combat attack
@@ -563,94 +451,96 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Track if attacker was destroyed by counter abilities
     let attackerDestroyedByCounter = false;
 
-    // DOGFIGHT: If interceptor has DOGFIGHT keyword, deal damage back to attacker
+    // ON_INTERCEPT: Fire trigger on interceptor (handles Dogfight counter-damage via trigger system)
     // Uses pre-calculated effectiveInterceptor stats (before interceptor was potentially destroyed)
+    // Must fire even if interceptor was destroyed — pass preSnapshotStats and skipLivenessCheck
     if (interceptor && effectiveInterceptor && attacker && attacker.id && !isAbilityOrCard) {
-        if (effectiveInterceptor.keywords && effectiveInterceptor.keywords.has('DOGFIGHT')) {
-            const dogfightResult = applyCounterDamage(
-                interceptor,
-                effectiveInterceptor,
-                defendingPlayerId,
-                interceptorLane,
-                attacker,
-                attackingPlayerId,
-                newPlayerStates,
-                placedSections,
-                'DOGFIGHT'
-            );
-            animationEvents.push(...dogfightResult.animationEvents);
-            if (dogfightResult.attackerDestroyed) {
-                attackerDestroyedByCounter = true;
+        const interceptTriggerProcessor = new TriggerProcessor();
+        const interceptResult = interceptTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_INTERCEPT, {
+            lane: interceptorLane,
+            triggeringDrone: interceptor,
+            triggeringPlayerId: defendingPlayerId,
+            actingPlayerId: attackingPlayerId,
+            playerStates: newPlayerStates,
+            placedSections,
+            logCallback,
+            preSnapshotStats: effectiveInterceptor,
+            skipLivenessCheck: true,
+            counterTargetDrone: attacker,
+            counterTargetPlayerId: attackingPlayerId
+        });
+        if (interceptResult.triggered) {
+            newPlayerStates[attackingPlayerId] = interceptResult.newPlayerStates[attackingPlayerId];
+            newPlayerStates[defendingPlayerId] = interceptResult.newPlayerStates[defendingPlayerId];
+            if (interceptResult.animationEvents?.length > 0) {
+                animationEvents.push(...interceptResult.animationEvents);
             }
+        }
+        if (interceptResult.attackerDestroyedByCounter) {
+            attackerDestroyedByCounter = true;
         }
     }
 
-    // RETALIATE: If target has RETALIATE keyword, survives, and was attacked by a drone (not intercepted)
-    // Only triggers if the target was the ACTUAL target (not an interceptor)
-    if (finalTargetType === 'drone' && !wasDestroyed && !interceptor && attacker && attacker.id && !isAbilityOrCard && !attackerDestroyedByCounter) {
-        // Get the target's effective stats from updated state
-        const targetLane = getLaneOfDrone(finalTarget.id, newPlayerStates[defendingPlayerId]);
-        if (targetLane) {
-            const updatedTarget = newPlayerStates[defendingPlayerId].dronesOnBoard[targetLane].find(d => d.id === finalTarget.id);
-            if (updatedTarget) {
-                const targetEffectiveStats = calculateEffectiveStats(
-                    updatedTarget,
-                    targetLane,
-                    newPlayerStates[defendingPlayerId],
-                    newPlayerStates[attackingPlayerId],
-                    placedSections
-                );
-                if (targetEffectiveStats.keywords && targetEffectiveStats.keywords.has('RETALIATE')) {
-                    const retaliateResult = applyCounterDamage(
-                        updatedTarget,
-                        targetEffectiveStats,
-                        defendingPlayerId,
-                        targetLane,
-                        attacker,
-                        attackingPlayerId,
-                        newPlayerStates,
+    // ON_ATTACKED: Fire trigger on surviving targets (handles Retaliate counter-damage via trigger system)
+    // Only fires from drone attacks (not cards), and only if the target survived
+    // Does not fire if attacker was already destroyed by counter damage
+    if (!isAbilityOrCard && attacker && attacker.id && !attackerDestroyedByCounter) {
+        const attackedTriggerProcessor = new TriggerProcessor();
+
+        // Target retaliation (non-intercepted attacks)
+        if (finalTargetType === 'drone' && !wasDestroyed && !interceptor) {
+            const targetLane = getLaneOfDrone(finalTarget.id, newPlayerStates[defendingPlayerId]);
+            if (targetLane) {
+                const updatedTarget = newPlayerStates[defendingPlayerId].dronesOnBoard[targetLane]?.find(d => d.id === finalTarget.id);
+                if (updatedTarget) {
+                    const targetResult = attackedTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
+                        lane: targetLane,
+                        triggeringDrone: updatedTarget,
+                        triggeringPlayerId: defendingPlayerId,
+                        actingPlayerId: attackingPlayerId,
+                        playerStates: newPlayerStates,
                         placedSections,
-                        'RETALIATE'
-                    );
-                    animationEvents.push(...retaliateResult.animationEvents);
+                        logCallback,
+                        counterTargetDrone: attacker,
+                        counterTargetPlayerId: attackingPlayerId
+                    });
+                    if (targetResult.triggered) {
+                        newPlayerStates[attackingPlayerId] = targetResult.newPlayerStates[attackingPlayerId];
+                        newPlayerStates[defendingPlayerId] = targetResult.newPlayerStates[defendingPlayerId];
+                        if (targetResult.animationEvents?.length > 0) {
+                            animationEvents.push(...targetResult.animationEvents);
+                        }
+                    }
+                    if (targetResult.attackerDestroyedByCounter) {
+                        attackerDestroyedByCounter = true;
+                    }
                 }
             }
         }
-    }
 
-    // RETALIATE for interceptor: ONLY triggers if interceptor has BOTH DOGFIGHT and RETALIATE
-    // An interceptor is not the "target" of an attack - it chose to intercept.
-    // However, if it has both abilities and survives, both should trigger.
-    if (interceptor && !wasDestroyed && effectiveInterceptor && attacker && attacker.id && !isAbilityOrCard && !attackerDestroyedByCounter) {
-        const hasDogfight = effectiveInterceptor.keywords && effectiveInterceptor.keywords.has('DOGFIGHT');
-        const hasRetaliate = effectiveInterceptor.keywords && effectiveInterceptor.keywords.has('RETALIATE');
-
-        // Only trigger RETALIATE if the interceptor also has DOGFIGHT
-        if (hasDogfight && hasRetaliate) {
-            // Check if interceptor still exists (might have been destroyed by the attack)
-            const interceptorPlayerId = defendingPlayerId;
-            const interceptorInState = newPlayerStates[interceptorPlayerId].dronesOnBoard[interceptorLane]?.find(d => d.id === interceptor.id);
+        // Interceptor retaliation — if interceptor survived, fire ON_ATTACKED on it
+        // (Scorpion has both ON_INTERCEPT and ON_ATTACKED — the trigger system handles them independently)
+        if (interceptor && !attackerDestroyedByCounter) {
+            const interceptorInState = newPlayerStates[defendingPlayerId].dronesOnBoard[interceptorLane]?.find(d => d.id === interceptor.id);
             if (interceptorInState) {
-                // Get updated effective stats
-                const updatedInterceptorStats = calculateEffectiveStats(
-                    interceptorInState,
-                    interceptorLane,
-                    newPlayerStates[interceptorPlayerId],
-                    newPlayerStates[attackingPlayerId],
-                    placedSections
-                );
-                const retaliateResult = applyCounterDamage(
-                    interceptorInState,
-                    updatedInterceptorStats,
-                    interceptorPlayerId,
-                    interceptorLane,
-                    attacker,
-                    attackingPlayerId,
-                    newPlayerStates,
+                const interceptorAttackedResult = attackedTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
+                    lane: interceptorLane,
+                    triggeringDrone: interceptorInState,
+                    triggeringPlayerId: defendingPlayerId,
+                    actingPlayerId: attackingPlayerId,
+                    playerStates: newPlayerStates,
                     placedSections,
-                    'RETALIATE'
-                );
-                animationEvents.push(...retaliateResult.animationEvents);
+                    logCallback,
+                    counterTargetDrone: attacker,
+                    counterTargetPlayerId: attackingPlayerId
+                });
+                if (interceptorAttackedResult.triggered) {
+                    newPlayerStates[attackingPlayerId] = interceptorAttackedResult.newPlayerStates[attackingPlayerId];
+                    newPlayerStates[defendingPlayerId] = interceptorAttackedResult.newPlayerStates[defendingPlayerId];
+                    if (interceptorAttackedResult.animationEvents?.length > 0) {
+                        animationEvents.push(...interceptorAttackedResult.animationEvents);
+                    }
+                }
             }
         }
     }
