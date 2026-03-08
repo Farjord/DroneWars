@@ -281,7 +281,7 @@ function GameHeader({
     discardLimit: localPlayerEffectiveStats?.totals?.discardLimit ?? 0,
     isMyTurn: isMyTurn(),
     isMultiplayer: isMultiplayer(),
-    deploymentBudget: playerDeploymentValue,
+    remainingDroneSlots: localPlayerEffectiveStats.totals.cpuLimit - totalLocalPlayerDrones,
   });
   const contextStyle = CONTEXT_COLORS[contextual.color];
 

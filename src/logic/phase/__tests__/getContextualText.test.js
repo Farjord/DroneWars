@@ -23,7 +23,7 @@ const baseParams = {
   discardLimit: 0,
   isMyTurn: false,
   isMultiplayer: false,
-  deploymentBudget: 0,
+  remainingDroneSlots: 0,
 };
 
 const call = (overrides) => getContextualText({ ...baseParams, ...overrides });
@@ -73,7 +73,7 @@ describe('getContextualText', () => {
         effectChainState: { complete: true, prompt: 'Should not show' },
         turnPhase: 'deployment',
         isMyTurn: true,
-        deploymentBudget: 2,
+        remainingDroneSlots: 2,
       });
       expect(result.text).not.toContain('Should not show');
     });
@@ -186,11 +186,11 @@ describe('getContextualText', () => {
   // ── Deployment — "(X Remaining)" ──
 
   describe('deployment', () => {
-    it('shows deployment budget remaining when my turn', () => {
+    it('shows remaining drone slots when my turn', () => {
       const result = call({
         turnPhase: 'deployment',
         isMyTurn: true,
-        deploymentBudget: 4,
+        remainingDroneSlots: 4,
       });
       expect(result).toEqual({ text: 'Deploy Drones (4 Remaining)', color: 'cyan' });
     });

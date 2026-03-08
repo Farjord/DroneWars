@@ -83,7 +83,7 @@ export const isSequentialPhase = (phase) => SEQUENTIAL_PHASES.includes(phase);
  * @param {number} params.discardLimit
  * @param {boolean} params.isMyTurn
  * @param {boolean} params.isMultiplayer
- * @param {number} params.deploymentBudget
+ * @param {number} params.remainingDroneSlots
  * @returns {{ text: string, color: string }}
  */
 export const getContextualText = ({
@@ -102,7 +102,7 @@ export const getContextualText = ({
   discardLimit,
   isMyTurn,
   isMultiplayer,
-  deploymentBudget,
+  remainingDroneSlots,
 }) => {
   // Priority 1-4: Effect chain states
   if (effectChainState && !effectChainState.complete) {
@@ -152,7 +152,7 @@ export const getContextualText = ({
   }
   // Priority 12-13: My turn during deployment/action
   if (turnPhase === 'deployment' && isMyTurn) {
-    return { text: `Deploy Drones (${deploymentBudget} Remaining)`, color: 'cyan' };
+    return { text: `Deploy Drones (${remainingDroneSlots} Remaining)`, color: 'cyan' };
   }
   if (turnPhase === 'action' && isMyTurn) {
     return { text: 'Play an Action', color: 'cyan' };
