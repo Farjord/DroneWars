@@ -2016,7 +2016,7 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Ordnance',
     cost: 3,
-    image: '/DroneWars/cards/SidewinderMissiles.png',
+    image: '/DroneWars/cards/ScatterShot.png',
     description: 'Deal 2 damage to 2 random enemy drones in a selected lane.',
     effects: [
       { type: 'DAMAGE', value: 2,
@@ -2035,7 +2035,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 5,
-    image: '/DroneWars/cards/TargetLock.png',
+    image: '/DroneWars/cards/HeadhunterVolley.png',
     description: 'Destroy the enemy drone with the highest attack in a selected lane.',
     effects: [
       { type: 'DESTROY',
@@ -2054,13 +2054,13 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Ordnance',
     cost: 4,
-    image: '/DroneWars/cards/ShriekerMissiles.png',
-    description: 'Deal 3 damage to the 2 enemy drones with the lowest hull in a selected lane.',
+    image: '/DroneWars/cards/CullTheWeak.png',
+    description: 'Deal 3 damage to the 2 enemy drones with the lowest class in a selected lane.',
     effects: [
       { type: 'DAMAGE', value: 3,
         targeting: {
           type: 'LANE', affinity: 'ENEMY',
-          targetSelection: { method: 'LOWEST', stat: 'hull', count: 2 }
+          targetSelection: { method: 'LOWEST', stat: 'class', count: 2 }
         },
       },
     ],
