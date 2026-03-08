@@ -217,14 +217,6 @@ class GameClient extends GameServer {
       this.phaseAnimationQueue.startPlayback('GC:after_announcements');
     }
 
-    // Phase 1: Diagnostic — trace when response has animations but no announcements
-    if (!hadAnnouncements && allAnimations.length > 0) {
-      debugLog('ANNOUNCE_TRACE', '[GC] Response had animations but no announcements', {
-        animNames: allAnimations.map(a => a.animationName),
-        phase: this.getState().turnPhase,
-      });
-    }
-
     return { visualAnimations, hadAnnouncements };
   }
 
@@ -240,13 +232,6 @@ class GameClient extends GameServer {
     } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
       const { passedPlayerId } = anim.payload;
       const passText = passedPlayerId === this.playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
-      debugLog('ANNOUNCE_TRACE', '[GC] PASS_ANNOUNCEMENT arriving at GC (late path)', {
-        passedPlayerId,
-        passText,
-        currentPAQLength: this.phaseAnimationQueue?.getQueueLength() ?? -1,
-        isPlaying: this.phaseAnimationQueue?.isPlaying() ?? false,
-        currentlyPlaying: this.phaseAnimationQueue?.getCurrentAnimation?.()?.phaseName || null,
-      });
       this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'GC:server_pass');
       debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Pass announcement received from server', {
         utc: new Date().toISOString(), passedPlayerId, passText, playerId: this.playerId,

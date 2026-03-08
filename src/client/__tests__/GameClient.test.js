@@ -295,12 +295,12 @@ describe('GameClient', () => {
       expect(client.getAnimationSource()).toBe('SERVER');
     });
 
-    it('revealTeleportedDrones merges only lane data from pendingFinalServerState onto current state', () => {
+    it('revealTeleportedDrones merges dronesOnBoard from pendingFinalServerState onto current state', () => {
       const currentState = makeState({ currentPlayer: 'player2', turnPhase: 'deployment' });
       const finalState = makeState({
         currentPlayer: 'player1', turnPhase: 'action',
-        player1: { hand: [], dronesOnBoard: {}, hp: 20, lanes: { 1: [{ id: 'd1' }] } },
-        player2: { hand: [], dronesOnBoard: {}, hp: 20, lanes: { 2: [{ id: 'd2' }] } },
+        player1: { hand: [], dronesOnBoard: { lane1: [{ id: 'd1' }] }, hp: 20 },
+        player2: { hand: [], dronesOnBoard: { lane2: [{ id: 'd2' }] }, hp: 20 },
       });
       mockStore.getState.mockReturnValue(currentState);
       client.pendingFinalServerState = finalState;
@@ -308,8 +308,8 @@ describe('GameClient', () => {
       client.revealTeleportedDrones();
 
       const applied = mockStore.applyUpdate.mock.calls[0][0];
-      expect(applied.player1.lanes).toEqual({ 1: [{ id: 'd1' }] });
-      expect(applied.player2.lanes).toEqual({ 2: [{ id: 'd2' }] });
+      expect(applied.player1.dronesOnBoard).toEqual({ lane1: [{ id: 'd1' }] });
+      expect(applied.player2.dronesOnBoard).toEqual({ lane2: [{ id: 'd2' }] });
       expect(applied.currentPlayer).toBe('player2');
       expect(applied.turnPhase).toBe('deployment');
     });
@@ -409,6 +409,28 @@ describe('GameClient', () => {
 
       expect(mockPAQ.queueAnimation).toHaveBeenCalled();
       expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
+    });
+
+    it('skips re-queuing animations already direct-queued by ActionProcessor (_apDirectQueued)', async () => {
+      const phaseAnim = {
+        animationName: 'PHASE_ANNOUNCEMENT',
+        timing: 'independent',
+        payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
+        _apDirectQueued: true,
+      };
+      const passAnim = {
+        animationName: 'PASS_ANNOUNCEMENT',
+        timing: 'independent',
+        payload: { passedPlayerId: 'player1' },
+        _apDirectQueued: true,
+      };
+
+      await client._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [], systemAnimations: [phaseAnim, passAnim] },
+      });
+
+      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
     });
 
     it('does nothing when phaseAnimationQueue is null', async () => {
