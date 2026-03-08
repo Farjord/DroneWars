@@ -8,7 +8,6 @@ vi.mock('../../utils/debugLogger.js', () => ({
 describe('HostGameServer', () => {
   let hostServer;
   let mockEngine;
-  let mockBroadcast;
   let mockP2P;
 
   const mockState = {
@@ -28,15 +27,35 @@ describe('HostGameServer', () => {
     mockEngine = {
       processAction: vi.fn().mockResolvedValue(mockResponse),
       getState: vi.fn().mockReturnValue(mockState),
-      getPlayerView: vi.fn().mockReturnValue({ ...mockState, player2: { handCount: 1, hp: 20 } }),
-    };
-    mockBroadcast = {
-      broadcastIfNeeded: vi.fn(),
+      registerClient: vi.fn(),
+      unregisterClient: vi.fn(),
     };
     mockP2P = {
       sendActionAck: vi.fn(),
+      isConnected: true,
+      broadcastState: vi.fn(),
     };
-    hostServer = new HostGameServer(mockEngine, mockBroadcast, { p2pManager: mockP2P });
+    hostServer = new HostGameServer(mockEngine, { p2pManager: mockP2P });
+  });
+
+  // --- Constructor ---
+
+  describe('constructor', () => {
+    it('registers P2P client in GameEngine when p2pManager provided', () => {
+      expect(mockEngine.registerClient).toHaveBeenCalledWith('player2', expect.any(Function));
+    });
+
+    it('does not register client when p2pManager is null', () => {
+      const engine = { registerClient: vi.fn() };
+      new HostGameServer(engine);
+      expect(engine.registerClient).not.toHaveBeenCalled();
+    });
+
+    it('uses custom guestPlayerId for client registration', () => {
+      const engine = { registerClient: vi.fn() };
+      new HostGameServer(engine, { p2pManager: mockP2P, guestPlayerId: 'player1' });
+      expect(engine.registerClient).toHaveBeenCalledWith('player1', expect.any(Function));
+    });
   });
 
   // --- processAction ---
@@ -51,25 +70,6 @@ describe('HostGameServer', () => {
       const result = await hostServer.processAction('attack', { droneId: 'd1' });
       expect(result).toBe(mockResponse);
     });
-
-    it('broadcasts after processing', async () => {
-      await hostServer.processAction('move', { droneId: 'd1', lane: 2 });
-      expect(mockBroadcast.broadcastIfNeeded).toHaveBeenCalledWith('HostGameServer:move');
-    });
-
-    it('broadcasts after engine completes, not before', async () => {
-      const order = [];
-      mockEngine.processAction.mockImplementation(async () => {
-        order.push('engine');
-        return mockResponse;
-      });
-      mockBroadcast.broadcastIfNeeded.mockImplementation(() => {
-        order.push('broadcast');
-      });
-
-      await hostServer.processAction('attack', {});
-      expect(order).toEqual(['engine', 'broadcast']);
-    });
   });
 
   // --- handleGuestAction ---
@@ -78,11 +78,6 @@ describe('HostGameServer', () => {
     it('processes guest action via gameEngine', async () => {
       await hostServer.handleGuestAction({ type: 'attack', payload: { droneId: 'd2' } });
       expect(mockEngine.processAction).toHaveBeenCalledWith('attack', { droneId: 'd2' });
-    });
-
-    it('broadcasts after processing guest action', async () => {
-      await hostServer.handleGuestAction({ type: 'pass', payload: {} });
-      expect(mockBroadcast.broadcastIfNeeded).toHaveBeenCalledWith('HostGameServer:guest_pass');
     });
 
     it('sends success ack to guest via p2pManager', async () => {
@@ -127,13 +122,13 @@ describe('HostGameServer', () => {
     });
 
     it('does not send ack when p2pManager is null', async () => {
-      const noP2P = new HostGameServer(mockEngine, mockBroadcast);
+      const noP2P = new HostGameServer(mockEngine);
       await noP2P.handleGuestAction({ type: 'attack', payload: {} });
       // No error thrown, no ack sent
     });
 
     it('uses parameterized guestPlayerId for error ack redaction', async () => {
-      const customHost = new HostGameServer(mockEngine, mockBroadcast, {
+      const customHost = new HostGameServer(mockEngine, {
         p2pManager: mockP2P,
         guestPlayerId: 'player1',
       });
@@ -149,12 +144,27 @@ describe('HostGameServer', () => {
     });
 
     it('does not send ack on error when p2pManager is null', async () => {
-      const noP2P = new HostGameServer(mockEngine, mockBroadcast);
+      const noP2P = new HostGameServer(mockEngine);
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
       // Should not throw — error is caught and swallowed
       await noP2P.handleGuestAction({ type: 'attack', payload: {} });
       // No error from missing p2pManager
+    });
+  });
+
+  // --- Client registration delegation ---
+
+  describe('client registration', () => {
+    it('registerClient delegates to gameEngine', () => {
+      const cb = vi.fn();
+      hostServer.registerClient('player1', cb);
+      expect(mockEngine.registerClient).toHaveBeenCalledWith('player1', cb);
+    });
+
+    it('unregisterClient delegates to gameEngine', () => {
+      hostServer.unregisterClient('player1');
+      expect(mockEngine.unregisterClient).toHaveBeenCalledWith('player1');
     });
   });
 

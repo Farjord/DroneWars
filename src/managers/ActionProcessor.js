@@ -6,7 +6,6 @@ import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 
-import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import {
   processAttack as _processAttack,
   processMove as _processMove,
@@ -65,7 +64,6 @@ import {
   processDebugAddCardsToHand as _processDebugAddCardsToHand,
   processForceWin as _processForceWin
 } from '../logic/actions/MiscActionStrategy.js';
-import BroadcastService from '../services/BroadcastService.js';
 
 // --- Helpers ---
 function _countDrones(playerState) {
@@ -155,10 +153,6 @@ class ActionProcessor {
     this.animationManager = null;
     this.phaseAnimationQueue = null; // Set externally by AppRouter; client-only concern
 
-    // BroadcastService owns all broadcast state (animations, pending states, host guard)
-    // p2pManager is set later via setP2PManager(), so broadcastService starts with null
-    this.broadcastService = new BroadcastService({ gameStateManager, p2pManager: null });
-
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
       return this.gameDataService.getEffectiveStats(drone, lane);
@@ -166,7 +160,6 @@ class ActionProcessor {
 
     this.actionQueue = [];
     this.isProcessing = false;
-    this.p2pManager = null;
     this.phaseManager = null; // Reference to PhaseManager for authoritative phase transitions
     this.aiPhaseProcessor = null; // Reference to AIPhaseProcessor for AI interception decisions
     this.actionLocks = {
@@ -196,7 +189,6 @@ class ActionProcessor {
     this.lastActionType = null;
 
     // Accumulates all animations executed during a single processAction call.
-    // Unlike BroadcastService pending arrays, this is NOT cleared by intermediate broadcasts.
     // Used by GameEngine to return animations alongside state in the response.
     this._actionAnimationLog = { actionAnimations: [], systemAnimations: [] };
 
@@ -230,7 +222,6 @@ class ActionProcessor {
 
       // Animation (late-bound via getters since set after construction)
       getAnimationManager: () => ap.animationManager,
-      executeAnimationPhase: (anims, states) => ap._executeAnimationPhase(anims, states),
       executeActionSteps: (steps) => ap.animationManager.executeActionSteps(steps, ap),
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
@@ -276,7 +267,7 @@ class ActionProcessor {
         return mapped;
       },
       captureAnimationsForBroadcast: (animations) => {
-        // Log for GameEngine response (filter STATE_SNAPSHOT same as BroadcastService)
+        // Log for GameEngine response (filter STATE_SNAPSHOT internal events)
         const broadcastAnims = animations?.filter(a => a.animationName !== 'STATE_SNAPSHOT') || [];
         if (animations?.length) {
           ap._actionAnimationLog.actionAnimations.push(...broadcastAnims);
@@ -298,7 +289,6 @@ class ActionProcessor {
             triggerNames: triggerAnims.map(a => a.payload?.abilityName || a.payload?.type),
           });
         }
-        ap.broadcastService.captureAnimations(animations, { excludeStateSnapshot: true });
       },
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
@@ -309,7 +299,6 @@ class ActionProcessor {
       processDeployment: (payload) => ap.processDeployment(payload),
       processCommitment: (payload) => ap.processCommitment(payload),
       processDestroyDrone: (payload) => ap.processDestroyDrone(payload),
-      broadcastService: ap.broadcastService,
 
       // Win condition
       checkWinCondition: () => ap.checkWinCondition(),
@@ -359,14 +348,6 @@ class ActionProcessor {
     });
   }
 
-  /**
-   * Set P2P manager for multiplayer support
-   * @param {Object} p2pManager - P2P manager instance
-   */
-  setP2PManager(p2pManager) {
-    this.p2pManager = p2pManager;
-    this.broadcastService.p2pManager = p2pManager;
-  }
 
   /**
    * Set PhaseManager reference for authoritative phase transitions
@@ -745,91 +726,6 @@ setAnimationManager(animationManager) {
 
     // Log animations for GameEngine response (never cleared by broadcasts)
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
-
-    // Capture for client broadcasting (BroadcastService has internal authority guard)
-    this.broadcastService.captureAnimations(animations, { isSystem: isSystemAnimation });
-
-    // Broadcast so client receives animations
-    this.broadcastService.broadcastIfNeeded('bypass_animation');
-  }
-
-  getAndClearPendingActionAnimations() {
-    return this.broadcastService.getAndClearPendingActionAnimations();
-  }
-
-  getAndClearPendingSystemAnimations() {
-    return this.broadcastService.getAndClearPendingSystemAnimations();
-  }
-
-  /**
-   * Prepare states for TELEPORT_IN animation timing
-   * Creates invisible state (with isTeleporting flags) and final visible state
-   * @param {Array} animations - Animations to check for TELEPORT_IN
-   * @param {Object} newPlayerStates - New player states from game logic (player1/player2 only)
-   * @returns {Object} { pendingStateUpdate, pendingFinalState }
-   */
-  prepareTeleportStates(animations, newPlayerStates) {
-    // Guard against incomplete result structure from async operations
-    if (!newPlayerStates || !newPlayerStates.player1 || !newPlayerStates.player2) {
-      debugLog('ANIMATIONS', 'prepareTeleportStates: Incomplete newPlayerStates, skipping teleport preparation');
-      return { pendingStateUpdate: null, pendingFinalState: null };
-    }
-
-    // Get current game state to preserve all properties
-    const currentState = this.gameStateManager.getState();
-
-    // Create complete state by merging player states with current game state
-    // This ensures ALL properties are included (turnPhase, currentPlayer, roundNumber, appState, etc.)
-    const completeNewState = {
-      ...currentState,           // All game-level properties
-      player1: newPlayerStates.player1,
-      player2: newPlayerStates.player2
-    };
-
-    const hasTeleportIn = animations.some(a => a.animationName === 'TELEPORT_IN' && a.timing === 'post-state');
-
-    if (!hasTeleportIn) {
-      // No TELEPORT_IN animations - return complete state
-      return {
-        pendingStateUpdate: completeNewState,
-        pendingFinalState: null
-      };
-    }
-
-    debugLog('ANIMATIONS', '🌀 [TELEPORT PREP] Detected TELEPORT_IN animations, preparing invisible drone state');
-
-    // Create modified state with isTeleporting flags for affected drones
-    const stateWithInvisibleDrones = addTeleportingFlags(completeNewState, animations);
-
-    return {
-      pendingStateUpdate: stateWithInvisibleDrones,  // Invisible drones (with isTeleporting)
-      pendingFinalState: completeNewState            // Visible drones (without isTeleporting)
-    };
-  }
-
-  /**
-   * Execute a single animation phase: prepare teleport states, broadcast to guest, execute, clean up.
-   * Extracts the repeated boilerplate from processAttack, processAbility, processDeployment,
-   * processCardPlay, and processShipAbility.
-   * @param {Array} animations - Animation events to execute
-   * @param {Object} newPlayerStates - { player1, player2 } from game logic result
-   */
-  async _executeAnimationPhase(animations, newPlayerStates) {
-    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-      animations,
-      newPlayerStates
-    );
-
-    this.broadcastService.setPendingStates(pendingStateUpdate, pendingFinalState);
-
-    debugLog('ANIM_TRACE', '[3/7] _executeAnimationPhase entry', {
-      animCount: animations?.length || 0,
-      hasTeleport: animations?.some(a => a.animationName === 'TELEPORT_IN') || false,
-      animNames: animations?.map(a => a.animationName) || [],
-    });
-
-    this.broadcastService.broadcastIfNeeded('animation_phase');
-    this.broadcastService.clearPendingStates();
   }
 
   /**
@@ -900,9 +796,6 @@ setAnimationManager(animationManager) {
 
     // Clear event listeners to prevent stale subscriptions
     this.listeners = [];
-
-    // Clear broadcast state (animations and pending states)
-    this.broadcastService.reset();
   }
 
   /**

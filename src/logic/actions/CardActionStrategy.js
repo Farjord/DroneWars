@@ -124,7 +124,6 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     // New path: card animations + structured trigger steps
     animations = ctx.mapAnimationEvents(result.cardOnlyAnimationEvents);
     ctx.captureAnimationsForBroadcast(animations);
-    await ctx.executeAnimationPhase(animations, result.stateBeforeTriggers);
 
     // Play trigger steps through the structured action steps path
     await ctx.executeActionSteps(result.actionSteps);
@@ -144,7 +143,6 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     // Old path: flat animation array with STATE_SNAPSHOT/TRIGGER_CHAIN_PAUSE
     animations = ctx.mapAnimationEvents(result.animationEvents);
     ctx.captureAnimationsForBroadcast(animations);
-    await ctx.executeAnimationPhase(animations, result.newPlayerStates);
   }
 
   ctx.checkWinCondition();

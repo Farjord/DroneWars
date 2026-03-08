@@ -16,7 +16,7 @@ const GameServerFactory = {
 
     if (gameMode === 'host') {
       const gameEngine = new GameEngine(gameStateManager, actionProcessor, gameFlowManager);
-      const hostServer = new HostGameServer(gameEngine, actionProcessor.broadcastService, { p2pManager });
+      const hostServer = new HostGameServer(gameEngine, { p2pManager });
       p2pManager.hostGameServer = hostServer;
       const transport = new LocalTransport(hostServer, { playerId: 'player1' });
       return new GameClient(transport, {

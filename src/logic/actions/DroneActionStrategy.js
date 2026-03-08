@@ -60,13 +60,6 @@ export async function processDeployment(payload, ctx) {
     const animations = ctx.mapAnimationEvents(result.animationEvents);
     ctx.captureAnimationsForBroadcast(animations);
 
-    const newPlayerStates = {
-      player1: playerId === 'player1' ? result.newPlayerState : (result.opponentState || currentState.player1),
-      player2: playerId === 'player2' ? result.newPlayerState : (result.opponentState || currentState.player2)
-    };
-
-    await ctx.executeAnimationPhase(animations, newPlayerStates);
-
     debugLog('DEPLOY_TRACE', '[8/10] Deployment animation + state commit complete', {
       droneName: droneData?.name,
       lane: laneId,

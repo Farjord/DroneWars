@@ -142,8 +142,6 @@ class GameStateManager {
   setupP2PIntegration(p2pManager) {
     if (this._p2pIntegrationSetup) return;
 
-    this.actionProcessor.setP2PManager(p2pManager);
-
     p2pManager.subscribe((event) => {
       switch (event.type) {
         case 'multiplayer_mode_change':

@@ -64,15 +64,21 @@ class GameEngine {
   }
 
   /**
-   * Push state+animations to all registered clients.
+   * Push state+animations to all registered clients in parallel.
    * Each client receives state redacted for their player perspective.
-   * Awaits each callback so LocalTransport can block until animations finish.
+   * Promise.all preserves back-pressure (waits for slowest callback).
+   * Error isolation prevents one client failure from blocking others.
    */
   async _emitToClients(state, animations) {
+    const promises = [];
     for (const [playerId, callback] of this._clients) {
       const redactedState = StateRedactor.redactForPlayer(state, playerId);
-      await callback({ state: redactedState, animations });
+      promises.push(
+        Promise.resolve(callback({ state: redactedState, animations }))
+          .catch(err => debugLog('STATE_SYNC', `Client ${playerId} delivery failed`, { error: err.message }))
+      );
     }
+    await Promise.all(promises);
   }
 
   getState() {

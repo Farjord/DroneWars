@@ -180,7 +180,6 @@ export const assertFirstPasser = (phaseManager, expectedPlayerId) => {
  */
 export const createMockActionProcessor = () => {
   return {
-    broadcastService: { broadcastIfNeeded: vi.fn() },
     queueAction: vi.fn(),
     processPlayerPass: vi.fn(),
     processCommitment: vi.fn()
@@ -313,12 +312,8 @@ export const createIntegrationGameStateManager = (initialState = null) => {
  */
 export const createIntegrationActionProcessor = () => {
   const phaseTransitions = [];
-  const broadcasts = [];
 
   return {
-    broadcastService: { broadcastIfNeeded: vi.fn(() => {
-      broadcasts.push({ timestamp: Date.now() });
-    }) },
     processPhaseTransition: vi.fn(async (data) => {
       phaseTransitions.push(data);
       return { success: true };
@@ -332,10 +327,8 @@ export const createIntegrationActionProcessor = () => {
     subscribe: vi.fn(() => () => {}),
     // Test helpers
     getPhaseTransitions: () => phaseTransitions,
-    getBroadcasts: () => broadcasts,
     clearHistory: () => {
       phaseTransitions.length = 0;
-      broadcasts.length = 0;
     }
   };
 };

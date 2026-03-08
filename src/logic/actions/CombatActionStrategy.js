@@ -139,44 +139,6 @@ export async function processAttack(payload, ctx) {
   // Capture animations for broadcasting (host only)
   ctx.captureAnimationsForBroadcast(animations);
 
-  const mineCount = result.mineAnimationEventCount || 0;
-
-  // Two-phase execution: mine animations play and update state first,
-  // then attack animations play with the remaining state update.
-  // This ensures the mine token disappears before the attack animation starts.
-  if (mineCount > 0 && animations.length > mineCount) {
-    const mineAnimations = animations.slice(0, mineCount);
-    const attackAnimations = animations.slice(mineCount);
-
-    // Phase 1: Mine destruction - build intermediate state with mines removed but no attack damage
-    const freshState = ctx.getState();
-    const intermediatePlayerStates = {
-      player1: JSON.parse(JSON.stringify(freshState.player1)),
-      player2: JSON.parse(JSON.stringify(freshState.player2))
-    };
-
-    // Remove destroyed mines from intermediate state using mine animation event data
-    for (const mineAnim of mineAnimations) {
-      const { targetId, targetPlayer, targetLane } = mineAnim.payload;
-      if (targetId && targetPlayer && targetLane) {
-        const laneDrones = intermediatePlayerStates[targetPlayer]?.dronesOnBoard?.[targetLane];
-        if (laneDrones) {
-          intermediatePlayerStates[targetPlayer].dronesOnBoard[targetLane] =
-            laneDrones.filter(d => d.id !== targetId);
-        }
-      }
-    }
-
-    // Phase 1: Execute mine animations with intermediate state (mine removal only)
-    await ctx.executeAnimationPhase(mineAnimations, intermediatePlayerStates);
-
-    // Phase 2: Execute attack animations with full final state (includes attack damage)
-    await ctx.executeAnimationPhase(attackAnimations, result.newPlayerStates);
-  } else {
-    // Single-phase execution: no mine animations or only mine animations (no attack after)
-    await ctx.executeAnimationPhase(animations, result.newPlayerStates);
-  }
-
   // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
   if (currentState.interceptionPending) {
     debugLog('COMBAT', '🛡️ [INTERCEPTION] Clearing interceptionPending after attack completed');
@@ -497,8 +459,6 @@ export async function processAbility(payload, ctx) {
 
   // Capture animations for broadcasting (host only)
   ctx.captureAnimationsForBroadcast(animations);
-
-  await ctx.executeAnimationPhase(animations, result.newPlayerStates);
 
   // Check for win conditions after ability
   ctx.checkWinCondition();

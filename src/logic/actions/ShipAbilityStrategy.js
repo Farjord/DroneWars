@@ -74,7 +74,6 @@ export async function processShipAbility(payload, ctx) {
 
   const animations = ctx.mapAnimationEvents(result.animationEvents);
   ctx.captureAnimationsForBroadcast(animations);
-  await ctx.executeAnimationPhase(animations, result.newPlayerStates);
 
   return {
     ...result,

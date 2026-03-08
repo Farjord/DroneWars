@@ -338,9 +338,6 @@ class GameFlowManager {
           passInfo: updatedState.passInfo
         });
 
-        // Broadcast state AFTER phase transition completes
-        const broadcastTrigger = this._isRoundTransition ? 'round_transition_both_passed' : 'phase_transition_both_passed';
-        this.actionProcessor.broadcastService.broadcastIfNeeded(broadcastTrigger);
         return;
       } else {
         // Single player passed - start PhaseAnimationQueue playback for pass notification
@@ -594,13 +591,6 @@ class GameFlowManager {
       }
     }
 
-    // CRITICAL BROADCAST: For placement phase, broadcast immediately after commitment application
-    // This allows guest to receive "both complete" signal and start optimistic cascade
-    // BEFORE host enters blocking automatic phase processing
-    if (phase === 'placement') {
-      this.actionProcessor.broadcastService.broadcastIfNeeded('placement_commitments_applied');
-    }
-
     // Queue ROUND announcement if transitioning from placement to first round phase (Round 1)
     // This ensures ROUND shows immediately before round phases begin
     if (phase === 'placement') {
@@ -631,9 +621,6 @@ class GameFlowManager {
         });
         await this.transitionToPhase(nextPhase);
 
-        // Broadcast state to guest AFTER phase transition completes
-        this.actionProcessor.broadcastService.broadcastIfNeeded('simultaneous_to_sequential');
-
         // Start animation playback for host after transitioning to sequential phase
         // This ensures queued phase announcements (like DEPLOYMENT) play for the host
         // (Non-authority gets playback via cascade finally block, but authority needs it here)
@@ -656,9 +643,6 @@ class GameFlowManager {
           from: phase, to: nextPhase, transitionType: 'sim→sim',
         });
         await this.transitionToPhase(nextPhase);
-
-        // Broadcast state to guest AFTER phase transition completes
-        this.actionProcessor.broadcastService.broadcastIfNeeded('simultaneous_to_simultaneous');
 
         // Start animation playback after transitioning to another simultaneous phase
         // This ensures queued phase announcements play before players can interact
@@ -716,8 +700,9 @@ class GameFlowManager {
         commitments: phaseCommitments
       });
 
-      // Call the completion handler directly
-      this.onSimultaneousPhaseComplete(currentPhase, phaseCommitments);
+      // Store promise so GameEngine.waitForPendingActionCompletion() awaits it
+      // before _emitToClients fires — ensures full phase cascade completes first
+      this._pendingActionCompletion = this.onSimultaneousPhaseComplete(currentPhase, phaseCommitments);
     }
   }
 
@@ -942,11 +927,8 @@ class GameFlowManager {
         previousPhase: previousPhase
       });
 
-      // Broadcast state to guest ONCE after all updates complete
-      this.actionProcessor.broadcastService.broadcastIfNeeded('round_initialization');
-
       if (this._isRoundTransition) {
-        debugLog('ROUND_TRANSITION_TRACE', '[RT-10] Round init complete — state broadcast to guest', {
+        debugLog('ROUND_TRANSITION_TRACE', '[RT-10] Round init complete', {
           utc: new Date().toISOString(), role: 'SERVER',
           roundNumber: currentRoundNumber,
         });

@@ -8,7 +8,7 @@ vi.mock('../../utils/debugLogger.js', () => ({
 
 describe('GameServerFactory', () => {
   const mockGSM = { processAction: () => {}, getState: () => {}, getLocalPlayerId: () => 'player1', subscribe: () => () => {} };
-  const mockAP = { queueAction: () => {}, broadcastService: { broadcastIfNeeded: () => {} } };
+  const mockAP = { queueAction: () => {} };
   const mockGFM = {};
   function makeMockClientStateStore(gameMode = 'local') {
     return {

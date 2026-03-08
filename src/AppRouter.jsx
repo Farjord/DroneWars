@@ -111,7 +111,6 @@ function AppRouter() {
 
     gameStateManager.setGameServer(server);
     gameStateManager.actionProcessor.setGameServer(server);
-    gameStateManager.actionProcessor.broadcastService.setGameServer(server);
 
     debugLog('MP_GAME_TRACE', 'AppRouter: GameServer wired to managers');
   }, [gameState.appState]);

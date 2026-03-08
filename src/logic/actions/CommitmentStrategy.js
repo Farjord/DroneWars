@@ -156,8 +156,6 @@ export async function processCommitment(payload, ctx) {
     bothComplete
   });
 
-  ctx.broadcastService.broadcastIfNeeded('commitment');
-
   // Auto-complete AI commitment immediately when opponent is AI
   if (!bothComplete && ctx.isPlayerAI('player2') && playerId === 'player1') {
     debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment immediately');

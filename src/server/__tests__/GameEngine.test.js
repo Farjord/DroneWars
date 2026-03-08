@@ -21,7 +21,6 @@ describe('GameEngine', () => {
     };
     mockAP = {
       queueAction: vi.fn().mockResolvedValue({ success: true }),
-      broadcastService: { getAndClearPendingActionAnimations: vi.fn().mockReturnValue([]), getAndClearPendingSystemAnimations: vi.fn().mockReturnValue([]) },
     };
     mockGFM = {
       startGame: vi.fn(),
