@@ -76,6 +76,8 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 77 | TriggerProcessor.js | Duplicated cascade propagation block in `executeTriggerEffects` (lines ~397-411 and ~460-474) — identical preCascadePlayerStates/stateAfterDirectEffects/TRIGGER_CHAIN_PAUSE/triggerSteps logic. Extract shared `_propagateCascade` helper. | Target selection review | 2026-03-07 | Low |
 | 78 | DamageEffectProcessor.js | Does not update `droneAvailability` on drone destruction (inconsistent with `DestroyEffectProcessor.applyDestroyCleanup` which does). Both paths call `gameEngine.onDroneDestroyed` but only DestroyEffectProcessor applies `droneAvailability` from the result. | Target selection review | 2026-03-07 | Medium |
 | 79 | TargetSelector.js, DamageEffectProcessor.js, DestroyEffectProcessor.js | `gameSeed ?? 12345` fallback silently masks missing seed propagation — if `context.gameSeed` is undefined in production, both players could diverge. Add a debug warning when fallback fires. | targetSelection code review | 2026-03-08 | Low |
+| 80 | counterDamage.js | Counter-damage uses manual shield/hull calculation instead of shared `calculateDamageByType`. Safe now (Viper/Thornback/Scorpion have no special damageType) but would miss ION/KINETIC/SHIELD_BREAKER if a future drone combined counter-damage with a special damage type. Migrate to use shared helper. | Trigger migration review | 2026-03-08 | Low |
+| 81 | RoundManager.js, TechSlots.jsx | Residual `triggerUsesThisRound` flat counter still set/read for backward compat with tech entities. Now that `triggerUsesMap` is the canonical source, remove the old flat counter and its fallback chain. | Trigger migration review | 2026-03-08 | Low |
 
 ## Audit Findings (2026-02-23)
 

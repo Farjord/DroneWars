@@ -92,7 +92,7 @@ export const effectDescriptions = {
   'REPEATING_EFFECT': 'Executes a set of effects multiple times based on a condition. For example, "Draw 1 card and gain 1 energy" repeated once for each damaged ship section.',
 
   // === KEYWORDS ===
-  'GRANT_KEYWORD': 'Gives a special keyword ability to a drone. Keywords provide special combat behaviors like PIERCING (ignore shields), GUARDIAN (protects ship section), or DOGFIGHT (deal damage when intercepting).',
+  'GRANT_KEYWORD': 'Gives a special keyword ability to a drone. Keywords provide special combat behaviors like PIERCING (ignore shields) or GUARDIAN (protects ship section).',
 
   // === SHIELD MANAGEMENT ===
   'REALLOCATE_SHIELDS': 'Allows moving shield tokens between drones in a lane or removing them entirely. Used during the shield allocation phase.',

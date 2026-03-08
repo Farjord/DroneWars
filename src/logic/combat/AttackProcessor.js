@@ -397,14 +397,15 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         newPlayerStates[defendingPlayerId].shipSections[finalTarget.name].allocatedShields -= shieldDamage;
     }
 
+    // Shared trigger processor for all post-attack triggers (ON_ATTACK, ON_INTERCEPT, ON_ATTACKED)
+    const triggerProcessor = new TriggerProcessor();
+
     // Handle attacker exhaustion and after-attack abilities (like DESTROY_SELF)
     if (!isAbilityOrCard && attacker && attacker.id) {
         let droneWasOnBoard = false;
         for (const laneKey in newPlayerStates[attackingPlayerId].dronesOnBoard) {
             const attackerIndex = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === attacker.id);
             if (attackerIndex !== -1) {
-                const attackerDrone = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex];
-
                 // Exhaust attacker by default — trigger system may un-exhaust via DOES_NOT_EXHAUST
                 newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].isExhausted = true;
 
@@ -414,8 +415,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }
 
         if (droneWasOnBoard) {
-            const afterAttackProcessor = new TriggerProcessor();
-            const afterAttackResult = afterAttackProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
+            const afterAttackResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACK, {
                 lane: attackerLane,
                 triggeringDrone: attacker,
                 triggeringPlayerId: attackingPlayerId,
@@ -455,8 +455,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Uses pre-calculated effectiveInterceptor stats (before interceptor was potentially destroyed)
     // Must fire even if interceptor was destroyed — pass preSnapshotStats and skipLivenessCheck
     if (interceptor && effectiveInterceptor && attacker && attacker.id && !isAbilityOrCard) {
-        const interceptTriggerProcessor = new TriggerProcessor();
-        const interceptResult = interceptTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_INTERCEPT, {
+        const interceptResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_INTERCEPT, {
             lane: interceptorLane,
             triggeringDrone: interceptor,
             triggeringPlayerId: defendingPlayerId,
@@ -485,15 +484,13 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Only fires from drone attacks (not cards), and only if the target survived
     // Does not fire if attacker was already destroyed by counter damage
     if (!isAbilityOrCard && attacker && attacker.id && !attackerDestroyedByCounter) {
-        const attackedTriggerProcessor = new TriggerProcessor();
-
         // Target retaliation (non-intercepted attacks)
         if (finalTargetType === 'drone' && !wasDestroyed && !interceptor) {
             const targetLane = getLaneOfDrone(finalTarget.id, newPlayerStates[defendingPlayerId]);
             if (targetLane) {
                 const updatedTarget = newPlayerStates[defendingPlayerId].dronesOnBoard[targetLane]?.find(d => d.id === finalTarget.id);
                 if (updatedTarget) {
-                    const targetResult = attackedTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
+                    const targetResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
                         lane: targetLane,
                         triggeringDrone: updatedTarget,
                         triggeringPlayerId: defendingPlayerId,
@@ -523,7 +520,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         if (interceptor && !attackerDestroyedByCounter) {
             const interceptorInState = newPlayerStates[defendingPlayerId].dronesOnBoard[interceptorLane]?.find(d => d.id === interceptor.id);
             if (interceptorInState) {
-                const interceptorAttackedResult = attackedTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
+                const interceptorAttackedResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ATTACKED, {
                     lane: interceptorLane,
                     triggeringDrone: interceptorInState,
                     triggeringPlayerId: defendingPlayerId,
