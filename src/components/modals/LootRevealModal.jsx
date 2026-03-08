@@ -274,14 +274,14 @@ function LootRevealModal({ loot, onCollect, show }) {
         <div className="dw-modal-actions">
           {!allRevealed && (
             <button
-              className="dw-btn dw-btn-secondary"
+              className="dw-btn-hud dw-btn-hud-ghost"
               onClick={handleRevealAll}
             >
               Reveal All ({totalRevealableItems - revealedCards.size} remaining)
             </button>
           )}
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={handleContinue}
             disabled={!allRevealed}
             style={{ opacity: allRevealed ? 1 : 0.5 }}

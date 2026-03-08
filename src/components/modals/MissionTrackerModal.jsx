@@ -183,7 +183,7 @@ function MissionTrackerModal({ onClose, onRewardClaimed }) {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-secondary" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>
@@ -300,7 +300,7 @@ function MissionCard({ mission, onClaim }) {
         {/* Claim button */}
         {mission.isClaimable && (
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             style={{ padding: '6px 16px', fontSize: '12px' }}
             onClick={() => onClaim(mission.id)}
           >

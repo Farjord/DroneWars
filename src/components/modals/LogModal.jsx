@@ -105,11 +105,11 @@ function LogModal({
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={downloadLogAsCSV}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >

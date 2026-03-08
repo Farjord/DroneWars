@@ -936,7 +936,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
         onClick={(e) => e.stopPropagation()}
       >
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -946,7 +946,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           <Plus size={18} />
         </button>
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -956,7 +956,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           <Minus size={18} />
         </button>
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();

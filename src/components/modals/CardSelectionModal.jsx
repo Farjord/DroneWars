@@ -126,7 +126,7 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
         {/* Actions */}
         <div className="dw-modal-actions">
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={handleConfirm}
             disabled={!canConfirm}
             style={{ opacity: canConfirm ? 1 : 0.5, cursor: canConfirm ? 'pointer' : 'not-allowed' }}

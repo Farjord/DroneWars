@@ -40,7 +40,7 @@ const GamePhaseModal = ({ title, text, onClose, children, maxWidthClass }) => (
       {/* Actions - only show close button if onClose is provided */}
       {onClose && (
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-confirm" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={onClose}>
             OK
           </button>
         </div>

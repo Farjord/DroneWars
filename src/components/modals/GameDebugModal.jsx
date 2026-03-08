@@ -272,15 +272,15 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-secondary" onClick={exportAIDecisions}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={exportAIDecisions}>
             <FileDown size={16} style={{ marginRight: '6px' }} />
             Export AI Decisions (CSV)
           </button>
-          <button className="dw-btn dw-btn-primary" onClick={downloadGameState}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={downloadGameState}>
             <Download size={16} style={{ marginRight: '6px' }} />
             Download State
           </button>
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

@@ -64,7 +64,7 @@ const DeckLoadModal = ({ onImportDeck, onClose }) => {
           </div>
         </div>
         <div className="dw-modal-actions">
-          <button onClick={onClose} className="dw-btn dw-btn-cancel">
+          <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost">
             Cancel
           </button>
         </div>

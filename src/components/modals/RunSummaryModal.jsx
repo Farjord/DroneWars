@@ -318,7 +318,7 @@ function RunSummaryModal({ summary, onClose }) {
         {/* Actions */}
         <div className="dw-modal-actions">
           <button
-            className={success ? 'dw-btn dw-btn-success dw-btn--full' : 'dw-btn dw-btn-danger dw-btn--full'}
+            className={success ? 'dw-btn-hud dw-btn-hud-green dw-btn--full' : 'dw-btn-hud dw-btn--full'}
             onClick={onClose}
           >
             CONTINUE

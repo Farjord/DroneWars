@@ -124,7 +124,7 @@ function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
         {isRevealed && (
           <div className="dw-modal-footer">
             <button
-              className="dw-btn-success"
+              className="dw-btn-hud dw-btn-hud-green"
               onClick={handleAccept}
               disabled={isAnimating}
               style={{ minWidth: '200px' }}

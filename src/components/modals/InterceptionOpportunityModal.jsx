@@ -197,10 +197,10 @@ const InterceptionOpportunityModal = ({
             transition: 'opacity 0.2s ease'
           }}
         >
-          <button className="dw-btn dw-btn-secondary" onClick={onViewBattlefield}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onViewBattlefield}>
             View Battlefield
           </button>
-          <button className="dw-btn dw-btn-cancel" onClick={onDecline}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onDecline}>
             Decline Interception
           </button>
         </div>

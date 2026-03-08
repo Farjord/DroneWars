@@ -157,13 +157,13 @@ const ReplicatorFilterModal = ({ isOpen, onClose, filters, onFiltersChange }) =>
         {/* Actions */}
         <div className="dw-modal-actions">
           <button
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
             onClick={handleReset}
           >
             Reset All
           </button>
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={onClose}
           >
             Done

@@ -128,7 +128,7 @@ function QuickDeploySelectionModal({ validQuickDeployments = [], onSelect, onBac
         <div className="dw-modal-actions">
           <button
             onClick={onBack}
-            className="dw-btn dw-btn-secondary dw-btn--full"
+            className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
           >
             <ArrowLeft size={16} style={{ marginRight: '6px' }} />
             Back

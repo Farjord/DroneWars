@@ -129,7 +129,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
 
               {confirmMode !== 'recover' ? (
                 <button
-                  className="dw-btn dw-btn-success dw-btn--full"
+                  className="dw-btn-hud dw-btn-hud-green dw-btn--full"
                   onClick={() => setConfirmMode('recover')}
                   disabled={!canAfford}
                 >
@@ -139,10 +139,10 @@ function MIARecoveryModal({ shipSlot, onClose }) {
                 <div className="dw-modal-confirm-inline">
                   <p>Confirm recovery for {salvageCost} credits?</p>
                   <div className="dw-modal-confirm-buttons">
-                    <button className="dw-btn dw-btn-success" onClick={handleRecover}>
+                    <button className="dw-btn-hud dw-btn-hud-green" onClick={handleRecover}>
                       Confirm
                     </button>
-                    <button className="dw-btn dw-btn-secondary" onClick={() => setConfirmMode(null)}>
+                    <button className="dw-btn-hud dw-btn-hud-ghost" onClick={() => setConfirmMode(null)}>
                       Cancel
                     </button>
                   </div>
@@ -190,7 +190,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
 
               {confirmMode !== 'scrap' ? (
                 <button
-                  className="dw-btn dw-btn-danger dw-btn--full"
+                  className="dw-btn-hud dw-btn--full"
                   onClick={() => setConfirmMode('scrap')}
                   disabled={shipSlot.isImmutable}
                 >
@@ -200,10 +200,10 @@ function MIARecoveryModal({ shipSlot, onClose }) {
                 <div className="dw-modal-confirm-inline dw-modal-confirm-inline--danger">
                   <p>This will permanently delete the deck!</p>
                   <div className="dw-modal-confirm-buttons">
-                    <button className="dw-btn dw-btn-danger" onClick={handleScrap}>
+                    <button className="dw-btn-hud" onClick={handleScrap}>
                       Confirm Scrap
                     </button>
-                    <button className="dw-btn dw-btn-secondary" onClick={() => setConfirmMode(null)}>
+                    <button className="dw-btn-hud dw-btn-hud-ghost" onClick={() => setConfirmMode(null)}>
                       Cancel
                     </button>
                   </div>
@@ -222,7 +222,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
 
         {/* Close Button */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

@@ -180,7 +180,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
               {evadeItemCount > 0 && onEvade && (
                 <button
                   onClick={onEvade}
-                  className="dw-btn dw-btn-secondary"
+                  className="dw-btn-hud dw-btn-hud-ghost"
                   style={{ flex: '1 1 auto', minWidth: '120px', backgroundColor: 'rgba(6, 182, 212, 0.2)', borderColor: '#06b6d4' }}
                 >
                   <Radio size={16} style={{ marginRight: '6px', color: '#06b6d4' }} />
@@ -190,7 +190,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
               {/* Escape button - always available for combat */}
               <button
                 onClick={onEscape}
-                className="dw-btn dw-btn-secondary"
+                className="dw-btn-hud dw-btn-hud-ghost"
                 style={{ flex: '1 1 auto', minWidth: '120px' }}
               >
                 <LogOut size={16} style={{ marginRight: '6px' }} />
@@ -201,7 +201,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
                 <>
                   <button
                     onClick={onProceed}
-                    className="dw-btn dw-btn-secondary"
+                    className="dw-btn-hud dw-btn-hud-ghost"
                     style={{ flex: '1 1 auto', minWidth: '120px' }}
                   >
                     <Shield size={16} style={{ marginRight: '6px' }} />
@@ -209,7 +209,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
                   </button>
                   <button
                     onClick={onQuickDeploy}
-                    className="dw-btn dw-btn-danger"
+                    className="dw-btn-hud"
                     style={{ flex: '1 1 auto', minWidth: '120px' }}
                   >
                     <Zap size={16} style={{ marginRight: '6px' }} />
@@ -220,7 +220,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
                 /* No quick deployments - single engage button */
                 <button
                   onClick={onProceed}
-                  className="dw-btn dw-btn-danger"
+                  className="dw-btn-hud"
                   style={{ flex: '1 1 auto', minWidth: '120px' }}
                 >
                   Engage Hostiles
@@ -231,7 +231,7 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
             /* Loot encounter - single salvage button */
             <button
               onClick={onProceed}
-              className="dw-btn dw-btn-confirm dw-btn--full"
+              className="dw-btn-hud dw-btn-hud-cyan dw-btn--full"
             >
               Salvage Location
             </button>

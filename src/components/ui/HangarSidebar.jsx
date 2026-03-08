@@ -43,14 +43,14 @@ const HangarSidebar = ({
       <div className="flex gap-2" style={{ marginBottom: '0.5rem' }}>
         <button
           onClick={() => onModeToggle('options')}
-          className={`dw-btn ${sidebarMode === 'options' ? 'dw-btn-confirm' : 'dw-btn-secondary'}`}
+          className={`dw-btn-hud ${sidebarMode === 'options' ? 'dw-btn-hud-cyan' : 'dw-btn-hud-ghost'}`}
           style={{ flex: 1 }}
         >
           OPTIONS
         </button>
         <button
           onClick={() => onModeToggle('ships')}
-          className={`dw-btn ${sidebarMode === 'ships' ? 'dw-btn-confirm' : 'dw-btn-secondary'}`}
+          className={`dw-btn-hud ${sidebarMode === 'ships' ? 'dw-btn-hud-cyan' : 'dw-btn-hud-ghost'}`}
           style={{ flex: 1 }}
         >
           SHIPS
@@ -111,13 +111,13 @@ const HangarSidebar = ({
             </div>
             <button
               onClick={() => onActionClick('saveLoad')}
-              className="dw-btn dw-btn-secondary dw-btn--full"
+              className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
             >
               SAVE / LOAD
             </button>
             <button
               onClick={() => onActionClick('exit')}
-              className="dw-btn dw-btn-danger dw-btn--full"
+              className="dw-btn-hud dw-btn--full"
               style={{ marginTop: 'auto' }}
             >
               EXIT
@@ -192,7 +192,7 @@ const HangarSidebar = ({
 
                       {isNextToUnlock ? (
                         <button
-                          className={`dw-btn dw-btn-confirm dw-btn--sm dw-btn--full ${!canAfford ? 'dw-btn--disabled' : ''}`}
+                          className={`dw-btn-hud dw-btn-hud-cyan dw-btn--sm dw-btn--full ${!canAfford ? 'dw-btn--disabled' : ''}`}
                           onClick={onUnlockSlot}
                           disabled={!canAfford}
                         >
@@ -292,7 +292,7 @@ const HangarSidebar = ({
 
             <button
               onClick={onQuickDeploy}
-              className="dw-btn dw-btn-secondary dw-btn--full"
+              className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
               style={{ marginTop: '0.5rem' }}
             >
               QUICK DEPLOYMENTS

@@ -725,7 +725,7 @@ describe('HexInfoPanel', () => {
     })
 
     it('Add Waypoint button uses confirm (cyan) style', () => {
-      // EXPLANATION: Add Waypoint should use dw-btn-confirm for cyan styling
+      // EXPLANATION: Add Waypoint should use dw-btn-hud-cyan for cyan styling
 
       const props = createDefaultProps()
       props.inspectedHex = { q: 2, r: 2, type: 'empty' }
@@ -733,11 +733,11 @@ describe('HexInfoPanel', () => {
       render(<HexInfoPanel {...props} />)
 
       const addBtn = screen.getByText('Add Waypoint')
-      expect(addBtn).toHaveClass('dw-btn-confirm')
+      expect(addBtn).toHaveClass('dw-btn-hud-cyan')
     })
 
-    it('Back button uses secondary (hollow) style', () => {
-      // EXPLANATION: Back should use dw-btn-secondary for hollow styling
+    it('Back button uses secondary (ghost) style', () => {
+      // EXPLANATION: Back should use dw-btn-hud-ghost for ghost styling
 
       const props = createDefaultProps()
       props.inspectedHex = { q: 2, r: 2, type: 'empty' }
@@ -746,7 +746,7 @@ describe('HexInfoPanel', () => {
       render(<HexInfoPanel {...props} />)
 
       const backBtn = screen.getByText('Back')
-      expect(backBtn).toHaveClass('dw-btn-secondary')
+      expect(backBtn).toHaveClass('dw-btn-hud-ghost')
     })
 
     it('actions area uses row layout for side-by-side buttons', () => {

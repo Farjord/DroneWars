@@ -97,7 +97,7 @@ const BossEncounterModal = ({ bossId, selectedSlotId, onChallenge, onClose }) =>
             </p>
           </div>
           <div className="dw-modal-actions">
-            <button onClick={onClose} className="dw-btn dw-btn-cancel dw-btn--full">
+            <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost dw-btn--full">
               Back
             </button>
           </div>
@@ -224,12 +224,12 @@ const BossEncounterModal = ({ bossId, selectedSlotId, onChallenge, onClose }) =>
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onClose} className="dw-btn dw-btn-cancel">
+          <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost">
             Back
           </button>
           <button
             onClick={handleChallengeClick}
-            className="dw-btn dw-btn-danger"
+            className="dw-btn-hud"
             disabled={allActiveSlots.length === 0 || isCurrentSlotInvalid}
           >
             Challenge Boss

@@ -162,13 +162,10 @@ function ExtractionConfirmModal({
               </div>
               <button
                 onClick={onExtractWithItem}
-                className="dw-btn"
+                className="dw-btn-hud dw-btn-hud-cyan"
                 style={{
                   padding: '6px 12px',
-                  fontSize: '12px',
-                  background: 'rgba(6, 182, 212, 0.2)',
-                  borderColor: '#06b6d4',
-                  color: '#06b6d4'
+                  fontSize: '12px'
                 }}
               >
                 Use Override
@@ -183,10 +180,10 @@ function ExtractionConfirmModal({
 
       {/* Actions */}
       <div className="dw-modal-actions">
-        <button className="dw-btn-secondary" onClick={onCancel}>
+        <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
           Cancel
         </button>
-        <button className="dw-btn-confirm" onClick={handleExtract}>
+        <button className="dw-btn-hud dw-btn-hud-cyan" onClick={handleExtract}>
           <IconExtract size={18} />
           Extract
         </button>
@@ -291,18 +288,18 @@ function ExtractionConfirmModal({
         {validQuickDeployments.length > 0 ? (
           // Has quick deployments - show split buttons
           <>
-            <button className="dw-btn-secondary" onClick={onEngageCombat}>
+            <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onEngageCombat}>
               <Shield size={18} />
               Standard Deploy
             </button>
-            <button className="dw-btn-danger" onClick={onQuickDeploy}>
+            <button className="dw-btn-hud" onClick={onQuickDeploy}>
               <Zap size={18} />
               Quick Deploy
             </button>
           </>
         ) : (
           // No quick deployments - single engage button
-          <button className="dw-btn-danger" onClick={onEngageCombat}>
+          <button className="dw-btn-hud" onClick={onEngageCombat}>
             <Target size={18} />
             Engage Enemy
           </button>

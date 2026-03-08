@@ -75,7 +75,7 @@ const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId, game
             <p className="dw-modal-header-subtitle">{decisionLog.length} actions evaluated</p>
           </div>
           <button
-            className="dw-btn dw-btn-secondary"
+            className="dw-btn-hud dw-btn-hud-ghost"
             onClick={handleExportDecision}
             style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
             title="Export this decision to CSV"
@@ -128,7 +128,7 @@ const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId, game
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

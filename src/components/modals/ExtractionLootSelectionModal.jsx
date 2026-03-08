@@ -336,13 +336,13 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
         {/* Actions */}
         <div className="dw-modal-actions">
           <button
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
             onClick={handleDiscardAll}
           >
             Discard All
           </button>
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={handleConfirm}
             disabled={!canConfirm}
           >

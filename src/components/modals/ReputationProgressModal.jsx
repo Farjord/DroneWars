@@ -269,7 +269,7 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
           {unclaimedRewards.length > 0 && (
             <button
               onClick={onClaimRewards}
-              className="dw-btn dw-btn-primary"
+              className="dw-btn-hud dw-btn-hud-cyan"
               style={{
                 background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                 borderColor: '#a855f7',
@@ -281,7 +281,7 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
           )}
           <button
             onClick={onClose}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             Close
           </button>

@@ -377,7 +377,7 @@ function ShipPlacementScreen() {
       {/* Exit Button - Top Left */}
       <button
         onClick={() => setShowExitConfirm(true)}
-        className="absolute top-4 left-4 z-20 dw-btn dw-btn-cancel px-4 py-2"
+        className="absolute top-4 left-4 z-20 dw-btn-hud dw-btn-hud-ghost px-4 py-2"
       >
         ✕ Exit
       </button>
@@ -441,7 +441,7 @@ function ShipPlacementScreen() {
             debugLog('PLACEMENT', `🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
             handleConfirmPlacement();
           }}
-          className="dw-btn dw-btn-confirm text-lg mb-6"
+          className="dw-btn-hud dw-btn-hud-cyan text-lg mb-6"
         >
           Confirm Layout
         </button>

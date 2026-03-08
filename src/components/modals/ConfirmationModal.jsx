@@ -41,13 +41,13 @@ const ConfirmationModal = ({ confirmationModal, show }) => {
         <div className="dw-modal-actions">
           <button
             onClick={confirmationModal.onCancel}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             Cancel
           </button>
           <button
             onClick={confirmationModal.onConfirm}
-            className="dw-btn dw-btn-danger"
+            className="dw-btn-hud"
           >
             Confirm
           </button>

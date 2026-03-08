@@ -194,7 +194,7 @@ function BlueprintEncounterModal({
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onDecline} className="dw-btn dw-btn-cancel">
+          <button onClick={onDecline} className="dw-btn-hud dw-btn-hud-ghost">
             DECLINE
           </button>
 
@@ -202,17 +202,17 @@ function BlueprintEncounterModal({
           {validQuickDeployments.length > 0 ? (
             // Has quick deployments - show both options
             <>
-              <button onClick={onAccept} className="dw-btn dw-btn-secondary">
+              <button onClick={onAccept} className="dw-btn-hud dw-btn-hud-ghost">
                 STANDARD DEPLOY
               </button>
-              <button onClick={onQuickDeploy} className="dw-btn dw-btn-danger">
+              <button onClick={onQuickDeploy} className="dw-btn-hud">
                 <Zap size={16} style={{ marginRight: '6px' }} />
                 QUICK DEPLOY
               </button>
             </>
           ) : (
             // No quick deployments - single engage button
-            <button onClick={onAccept} className="dw-btn dw-btn-danger">
+            <button onClick={onAccept} className="dw-btn-hud">
               ENGAGE
             </button>
           )}

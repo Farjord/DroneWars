@@ -172,7 +172,7 @@ const DroneSelectionModal = ({
         <div className="flex justify-center gap-4 flex-shrink-0">
           <button
             onClick={onClose}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
             style={{
               padding: '12px 32px',
               fontSize: '1.1rem',
@@ -184,7 +184,7 @@ const DroneSelectionModal = ({
           <button
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className={`dw-btn dw-btn-confirm ${!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`dw-btn-hud dw-btn-hud-cyan ${!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}`}
             style={{
               padding: '12px 32px',
               fontSize: '1.1rem',

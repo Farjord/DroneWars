@@ -500,7 +500,7 @@ const QuickDeployEditorScreen = () => {
       }}>
         {/* Left: Back button */}
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           style={{ padding: '8px 12px' }}
           onClick={handleCancel}
         >
@@ -541,7 +541,7 @@ const QuickDeployEditorScreen = () => {
             <span className="dw-stat-box-value" style={{ color: '#06b6d4' }}>{placements.length}</span>
           </div>
           <button
-            className={`dw-btn dw-btn-confirm ${!canSave ? 'opacity-50' : ''}`}
+            className={`dw-btn-hud dw-btn-hud-cyan ${!canSave ? 'opacity-50' : ''}`}
             style={{ padding: '8px 16px' }}
             onClick={handleSave}
             disabled={!canSave}

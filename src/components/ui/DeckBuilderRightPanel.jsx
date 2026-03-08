@@ -80,7 +80,7 @@ const DeckBuilderRightPanel = ({
         <button
           onClick={readOnly ? undefined : (rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null))}
           disabled={readOnly}
-          className={`dw-btn dw-btn-secondary ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`dw-btn-hud dw-btn-hud-ghost ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           Reset
         </button>
@@ -396,9 +396,9 @@ const DeckBuilderRightPanel = ({
             // Extraction mode: can save incomplete, but with warning
             <button
               onClick={isDeckValid && isDronesValid && shipComponentsValid ? handleSaveWithToast : () => { onSaveInvalid(); setShowSaveToast(true); setTimeout(() => setShowSaveToast(false), 1500); }}
-              className={`w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale ${
+              className={`w-full p-4 mt-4 text-lg font-bold font-orbitron ${
                 isDeckValid && isDronesValid && shipComponentsValid
-                  ? 'dw-btn dw-btn-confirm'
+                  ? 'dw-btn-hud dw-btn-hud-cyan'
                   : 'bg-yellow-600 hover:bg-yellow-500 text-black'
               }`}
               title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
@@ -412,7 +412,7 @@ const DeckBuilderRightPanel = ({
             <button
               onClick={handleSaveWithToast}
               disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
-              className="dw-btn dw-btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale disabled:opacity-50"
+              className="dw-btn-hud dw-btn-hud-cyan w-full p-4 mt-4 text-lg font-bold font-orbitron disabled:opacity-50"
               title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
             >
               Confirm Deck, Drones & Ship

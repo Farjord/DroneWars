@@ -199,7 +199,7 @@ const QuickDeployManager = ({ onClose }) => {
                     marginTop: '12px'
                   }}>
                     <button
-                      className="dw-btn dw-btn-secondary"
+                      className="dw-btn-hud dw-btn-hud-ghost"
                       style={{ flex: 1, padding: '6px', fontSize: '12px' }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -210,7 +210,7 @@ const QuickDeployManager = ({ onClose }) => {
                       Edit
                     </button>
                     <button
-                      className="dw-btn dw-btn-danger"
+                      className="dw-btn-hud"
                       style={{ padding: '6px 10px', fontSize: '12px' }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -280,7 +280,7 @@ const QuickDeployManager = ({ onClose }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>
@@ -308,13 +308,13 @@ const QuickDeployManager = ({ onClose }) => {
               </div>
               <div className="dw-modal-actions">
                 <button
-                  className="dw-btn dw-btn-cancel"
+                  className="dw-btn-hud dw-btn-hud-ghost"
                   onClick={() => setDeleteConfirm(null)}
                 >
                   Cancel
                 </button>
                 <button
-                  className="dw-btn dw-btn-danger"
+                  className="dw-btn-hud"
                   onClick={() => handleDelete(deleteConfirm)}
                 >
                   Delete

@@ -338,21 +338,21 @@ const HangarHexMap = ({
         zIndex: 10
       }}>
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onClick={() => setZoom(z => Math.min(3, z + 0.2))}
           style={{ padding: '8px 12px' }}
         >
           <Plus size={18} />
         </button>
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onClick={() => setZoom(z => Math.max(1, z - 0.2))}
           style={{ padding: '8px 12px' }}
         >
           <Minus size={18} />
         </button>
         <button
-          className="dw-btn dw-btn-secondary"
+          className="dw-btn-hud dw-btn-hud-ghost"
           onClick={handleResetView}
           style={{ padding: '8px 12px' }}
         >

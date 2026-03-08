@@ -169,21 +169,21 @@ const HangarModals = ({
             <div className="dw-modal-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
               <button
                 onClick={() => onNewDeckOption('empty')}
-                className="dw-btn dw-btn-confirm dw-btn--full"
+                className="dw-btn-hud dw-btn-hud-cyan dw-btn--full"
               >
                 Start Empty
               </button>
               {singlePlayerShipSlots[0]?.status === 'active' && (
                 <button
                   onClick={() => onNewDeckOption('copyFromSlot0')}
-                  className="dw-btn dw-btn-secondary dw-btn--full"
+                  className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
                 >
                   Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'}
                 </button>
               )}
               <button
                 onClick={closeAllModals}
-                className="dw-btn dw-btn-cancel dw-btn--full"
+                className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
               >
                 Cancel
               </button>
@@ -226,8 +226,8 @@ const HangarModals = ({
               </ul>
             </div>
             <div className="dw-modal-actions">
-              <button onClick={onCancelCopyStarter} className="dw-btn dw-btn-cancel">Cancel</button>
-              <button onClick={onConfirmCopyStarter} className="dw-btn dw-btn-confirm">Confirm</button>
+              <button onClick={onCancelCopyStarter} className="dw-btn-hud dw-btn-hud-ghost">Cancel</button>
+              <button onClick={onConfirmCopyStarter} className="dw-btn-hud dw-btn-hud-cyan">Confirm</button>
             </div>
           </div>
         </div>
@@ -251,8 +251,8 @@ const HangarModals = ({
               </p>
             </div>
             <div className="dw-modal-actions">
-              <button onClick={onCancelEmptyDeck} className="dw-btn dw-btn-cancel">Cancel</button>
-              <button onClick={onConfirmEmptyDeck} className="dw-btn dw-btn-confirm">Confirm</button>
+              <button onClick={onCancelEmptyDeck} className="dw-btn-hud dw-btn-hud-ghost">Cancel</button>
+              <button onClick={onConfirmEmptyDeck} className="dw-btn-hud dw-btn-hud-cyan">Confirm</button>
             </div>
           </div>
         </div>

@@ -134,7 +134,7 @@ const RepairSectionCard = ({
           <div className="repair-section-card__buttons" style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
             {/* Repair +1 HP Button */}
             <button
-              className={`dw-btn dw-btn--sm ${canAffordOne ? 'dw-btn-primary' : 'dw-btn-secondary'}`}
+              className={`dw-btn--sm ${canAffordOne ? 'dw-btn-hud dw-btn-hud-cyan' : 'dw-btn-hud dw-btn-hud-ghost'}`}
               onClick={() => canAffordOne && onRepairOne && onRepairOne()}
               disabled={!canAffordOne}
               aria-label="Repair 1 HP"
@@ -145,7 +145,7 @@ const RepairSectionCard = ({
 
             {/* Repair All Button */}
             <button
-              className={`dw-btn dw-btn--sm ${canAfford ? 'dw-btn-primary' : 'dw-btn-secondary'}`}
+              className={`dw-btn--sm ${canAfford ? 'dw-btn-hud dw-btn-hud-cyan' : 'dw-btn-hud dw-btn-hud-ghost'}`}
               onClick={handleRepairClick}
               disabled={!canAfford}
               aria-label="Repair All"

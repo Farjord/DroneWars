@@ -223,7 +223,7 @@ function EremosEntryScreen() {
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
             <button
               onClick={handleBack}
-              className="dw-btn dw-btn-secondary"
+              className="dw-btn-hud dw-btn-hud-ghost"
               style={{
                 fontSize: '1rem',
                 padding: '12px 24px'

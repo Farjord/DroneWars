@@ -454,7 +454,7 @@ const RepairBayScreen = () => {
         >
           {/* Toggle section header - matches Hangar */}
           <div className="flex gap-2" style={{ marginBottom: '0.5rem' }}>
-            <button className="dw-btn dw-btn-confirm" style={{ flex: 1 }}>
+            <button className="dw-btn-hud dw-btn-hud-cyan" style={{ flex: 1 }}>
               SHIPS
             </button>
           </div>
@@ -539,7 +539,7 @@ const RepairBayScreen = () => {
 
                       {isNextToUnlock ? (
                         <button
-                          className={`dw-btn dw-btn-confirm dw-btn--sm dw-btn--full ${!canAffordUnlock ? 'dw-btn--disabled' : ''}`}
+                          className={`dw-btn-hud dw-btn-hud-cyan dw-btn--sm dw-btn--full ${!canAffordUnlock ? 'dw-btn--disabled' : ''}`}
                           onClick={handleUnlockSlot}
                           disabled={!canAffordUnlock}
                         >
@@ -639,7 +639,7 @@ const RepairBayScreen = () => {
           {/* Exit button - matches Hangar exactly */}
           <button
             onClick={handleBack}
-            className="dw-btn dw-btn-danger dw-btn--full"
+            className="dw-btn-hud dw-btn--full"
             style={{ marginTop: 'auto' }}
           >
             EXIT

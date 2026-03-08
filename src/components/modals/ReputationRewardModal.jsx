@@ -234,7 +234,7 @@ function ReputationRewardModal({ onClose }) {
         <div className="dw-modal-actions">
           <button
             onClick={onClose}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             Close
           </button>

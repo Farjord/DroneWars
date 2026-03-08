@@ -323,84 +323,6 @@
    BUTTONS
    ======================================== */
 
-/* Base button styles - applies to .dw-btn and all variants */
-.dw-btn,
-.dw-btn-cancel,
-.dw-btn-confirm,
-.dw-btn-danger,
-.dw-btn-success,
-.dw-btn-warning,
-.dw-btn-secondary {
-  font-family: 'Exo', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
-  min-width: 120px;
-  text-align: center;
-  /* Flex layout for icon + text alignment */
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  /* Prevent text wrapping */
-  white-space: nowrap;
-}
-
-.dw-btn:disabled,
-.dw-btn-cancel:disabled,
-.dw-btn-confirm:disabled,
-.dw-btn-danger:disabled,
-.dw-btn-success:disabled,
-.dw-btn-warning:disabled,
-.dw-btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Cancel Button - Transparent with cyan border */
-.dw-btn-cancel {
-  background: transparent;
-  border: 1px solid var(--modal-action-border);
-  color: var(--modal-action-light);
-}
-
-.dw-btn-cancel:hover:not(:disabled) {
-  background: var(--modal-action-bg);
-  border-color: var(--modal-action-light);
-  color: var(--modal-action);
-}
-
-/* Confirm Button - Cyan gradient */
-.dw-btn-confirm {
-  background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%);
-  border: 1px solid var(--modal-action-light);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--modal-action-glow);
-}
-
-.dw-btn-confirm:hover:not(:disabled) {
-  background: linear-gradient(180deg, #06b6d4 0%, #0891b2 100%);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
-}
-
-/* Danger Button - Red gradient */
-.dw-btn-danger {
-  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-  border: 1px solid var(--modal-danger-light);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--modal-danger-glow);
-}
-
-.dw-btn-danger:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-}
-
 /* HUD Button - Angled sci-fi style with skewed shape */
 .dw-btn-hud {
   position: relative;
@@ -409,6 +331,19 @@
   color: #fff;
   z-index: 1;
   padding: 10px 32px;
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 120px;
+  transition: all 0.2s ease;
 }
 
 .dw-btn-hud::before {
@@ -466,48 +401,46 @@
   box-shadow: 0 0 14px 2px rgba(234, 179, 8, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* Spacing between adjacent HUD buttons */
-.dw-btn-hud + .dw-btn-hud {
-  margin-left: 10px;
+/* HUD Button - Ghost variant (cancel/secondary actions) */
+.dw-btn-hud-ghost::before {
+  border-color: rgba(148, 163, 184, 0.5);
+  background: linear-gradient(90deg, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.4) 50%, rgba(51, 65, 85, 0.6) 100%);
+  background-size: 200% 100%;
+  background-position: 0% 0%;
+  box-shadow: 0 0 8px 1px rgba(148, 163, 184, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-/* Success Button - Green gradient */
-.dw-btn-success {
-  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
-  border: 1px solid var(--modal-success-light);
-  color: #fff;
-  box-shadow: 0 2px 8px var(--modal-success-glow);
+.dw-btn-hud-ghost:hover:not(:disabled)::before {
+  background-position: 100% 0%;
+  border-color: rgba(148, 163, 184, 0.7);
+  box-shadow: 0 0 12px 2px rgba(148, 163, 184, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.dw-btn-success:hover:not(:disabled) {
-  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+/* HUD Button - Green variant (success actions) */
+.dw-btn-hud-green::before {
+  border-color: rgba(34, 197, 94, 0.85);
+  background: linear-gradient(90deg, #16a34a 0%, #052e16 50%, #16a34a 100%);
+  background-size: 200% 100%;
+  background-position: 0% 0%;
+  box-shadow: 0 0 10px 1px rgba(34, 197, 94, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Warning Button - Yellow/Amber gradient */
-.dw-btn-warning {
-  background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
-  border: 1px solid #fde047;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.3);
+.dw-btn-hud-green:hover:not(:disabled)::before {
+  background-position: 100% 0%;
+  border-color: rgba(74, 222, 128, 0.9);
+  box-shadow: 0 0 14px 2px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.dw-btn-warning:hover:not(:disabled) {
-  background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
-  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+/* HUD Button - Disabled states */
+.dw-btn-hud:disabled,
+.dw-btn-hud.dw-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Secondary Button - Same as cancel (transparent with cyan border) */
-.dw-btn-secondary {
-  background: transparent;
-  border: 1px solid var(--modal-action-border);
-  color: var(--modal-action-light);
-}
-
-.dw-btn-secondary:hover:not(:disabled) {
-  background: var(--modal-action-bg);
-  border-color: var(--modal-action-light);
-  color: var(--modal-action);
+/* HUD Button - Full width */
+.dw-btn-hud.dw-btn--full {
+  width: 100%;
 }
 
 /* Full width button */
@@ -531,12 +464,6 @@
 .dw-btn--disabled:hover {
   transform: none;
   box-shadow: none;
-}
-
-/* No scale on hover (for full-width buttons in containers) */
-.dw-btn-no-scale:hover:not(:disabled) {
-  transform: none !important;
-  filter: brightness(1.15);
 }
 
 /* ========================================
@@ -667,13 +594,7 @@
     flex-direction: column-reverse;
   }
 
-  .dw-btn,
-  .dw-btn-cancel,
-  .dw-btn-confirm,
-  .dw-btn-danger,
-  .dw-btn-success,
-  .dw-btn-warning,
-  .dw-btn-secondary {
+  .dw-btn-hud {
     width: 100%;
     min-width: 0;
   }

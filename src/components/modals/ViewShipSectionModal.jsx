@@ -128,7 +128,7 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-confirm dw-btn--full" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-cyan dw-btn--full" onClick={onClose}>
             Close
           </button>
         </div>

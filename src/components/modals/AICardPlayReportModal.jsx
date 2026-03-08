@@ -56,7 +56,7 @@ const AICardPlayReportModal = ({ report, onClose }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-confirm" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={onClose}>
             Continue
           </button>
         </div>

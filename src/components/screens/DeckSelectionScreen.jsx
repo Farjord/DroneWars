@@ -497,7 +497,7 @@ function DeckSelectionScreen() {
                       e.stopPropagation();
                       handleViewDeck(deck);
                     }}
-                    className="dw-btn dw-btn-secondary"
+                    className="dw-btn-hud dw-btn-hud-ghost"
                     style={{ fontSize: '0.8rem', padding: '4px 10px' }}
                   >
                     View Deck
@@ -545,14 +545,14 @@ function DeckSelectionScreen() {
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
           <button
             onClick={() => setShowExitConfirm(true)}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             EXIT
           </button>
           <button
             onClick={handleConfirmSelectedDeck}
             disabled={!selectedDeck}
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
           >
             CONFIRM DECK
           </button>

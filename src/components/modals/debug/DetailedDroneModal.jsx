@@ -104,7 +104,7 @@ const DetailedDroneModal = ({ isOpen, drone, droneAvailability, onClose }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

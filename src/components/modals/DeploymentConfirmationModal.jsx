@@ -51,10 +51,10 @@ const DeploymentConfirmationModal = ({ deploymentConfirmation, show, onCancel, o
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={onConfirm}>
             Deploy
           </button>
         </div>

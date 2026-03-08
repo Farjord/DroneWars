@@ -61,10 +61,10 @@ function AbandonRunModal({ show, onCancel, onConfirm, lootCount = 0, creditsEarn
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button className="dw-btn dw-btn-danger" onClick={onConfirm}>
+          <button className="dw-btn-hud" onClick={onConfirm}>
             Abandon
           </button>
         </div>

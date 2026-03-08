@@ -74,11 +74,11 @@ const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
             Cancel
           </button>
           <button
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             onClick={() => onConfirm(card, selectedTarget)}
             disabled={!selectedTarget}
             style={{ opacity: selectedTarget ? 1 : 0.5, cursor: selectedTarget ? 'pointer' : 'not-allowed' }}

@@ -367,7 +367,7 @@ const ExtractionDeckBuilder = () => {
           <p className="text-red-400 mb-4">No slot selected</p>
           <button
             onClick={navigateBack}
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
           >
             Return to Hangar
           </button>

@@ -28,14 +28,14 @@ function InitPhaseButtons({
         <>
           <button
             onClick={handleResetShields}
-            className="dw-btn dw-btn-warning dw-btn--sm"
+            className="dw-btn-hud dw-btn-hud-yellow dw-btn--sm"
           >
             Reset
           </button>
 
           <button
             onClick={handleConfirmShields}
-            className="dw-btn dw-btn-confirm dw-btn--sm"
+            className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
           >
             Confirm
           </button>
@@ -46,7 +46,7 @@ function InitPhaseButtons({
       {turnPhase === 'optionalDiscard' && (
         <button
           onClick={handleRoundStartDraw}
-          className="dw-btn dw-btn-confirm dw-btn--sm"
+          className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
         >
           Confirm
         </button>
@@ -57,7 +57,7 @@ function InitPhaseButtons({
         <button
           onClick={handleMandatoryDiscardContinue}
           disabled={excessCards > 0}
-          className="dw-btn dw-btn-confirm dw-btn--sm"
+          className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
         >
           Continue
         </button>
@@ -68,7 +68,7 @@ function InitPhaseButtons({
         <button
           onClick={handleMandatoryDroneRemovalContinue}
           disabled={excessDrones > 0}
-          className="dw-btn dw-btn-confirm dw-btn--sm"
+          className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
         >
           Continue
         </button>

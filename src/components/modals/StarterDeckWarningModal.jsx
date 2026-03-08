@@ -70,21 +70,21 @@ function StarterDeckWarningModal({ onCancel, onDeployAnyway, onSwitchDeck, custo
         <div className="dw-modal-actions">
           <button
             onClick={onCancel}
-            className="dw-btn dw-btn-cancel"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             Cancel
           </button>
           {customDeckCount > 0 && onSwitchDeck && (
             <button
               onClick={onSwitchDeck}
-              className="dw-btn dw-btn-secondary"
+              className="dw-btn-hud dw-btn-hud-ghost"
             >
               Switch Deck
             </button>
           )}
           <button
             onClick={onDeployAnyway}
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
           >
             Deploy Anyway
           </button>

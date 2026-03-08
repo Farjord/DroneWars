@@ -348,7 +348,7 @@ const RunInventoryModal = ({ currentRunState, onClose }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onClose} className="dw-btn dw-btn-confirm dw-btn--full">
+          <button onClick={onClose} className="dw-btn-hud dw-btn-hud-cyan dw-btn--full">
             Return to Map
           </button>
         </div>

@@ -153,7 +153,7 @@ const DeckBuilderLeftPanel = ({
           )}
           <button
             onClick={leftPanelView === 'cards' ? resetFilters : resetDroneFilters}
-            className="dw-btn dw-btn-secondary"
+            className="dw-btn-hud dw-btn-hud-ghost"
           >
             Reset Filters
           </button>

@@ -71,13 +71,13 @@ const DeckExportModal = ({ deck, selectedDrones, selectedShipComponents, activeS
         </div>
 
         <div className="dw-modal-actions">
-          <button onClick={onClose} className="dw-btn dw-btn-cancel">
+          <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost">
             Close
           </button>
-          <button onClick={handleDownload} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={handleDownload} className="dw-btn-hud dw-btn-hud-cyan" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Download size={16} /> Download File
           </button>
-          <button onClick={copyToClipboard} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={copyToClipboard} className="dw-btn-hud dw-btn-hud-cyan" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Copy size={16} /> Copy
           </button>
         </div>

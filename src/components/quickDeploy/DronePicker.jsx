@@ -142,7 +142,7 @@ const DronePicker = ({ availableDrones, excludedDrones, onSelect, onClose }) => 
             </p>
           </div>
           <button
-            className="dw-btn dw-btn-secondary"
+            className="dw-btn-hud dw-btn-hud-ghost"
             style={{ padding: '8px' }}
             onClick={onClose}
           >
@@ -212,7 +212,7 @@ const DronePicker = ({ availableDrones, excludedDrones, onSelect, onClose }) => 
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Cancel
           </button>
         </div>

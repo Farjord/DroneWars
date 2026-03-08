@@ -102,11 +102,11 @@ function TutorialModalBase({
         {/* Actions */}
         <div className="dw-modal-actions">
           {showSkipAll && onSkipAll && (
-            <button className="dw-btn dw-btn-secondary" onClick={onSkipAll}>
+            <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onSkipAll}>
               Skip All Tutorials
             </button>
           )}
-          <button className="dw-btn dw-btn-confirm" onClick={onDismiss}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={onDismiss}>
             Got it
           </button>
         </div>

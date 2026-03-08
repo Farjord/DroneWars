@@ -83,13 +83,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onCancel} className="dw-btn dw-btn-cancel">
+          <button onClick={onCancel} className="dw-btn-hud dw-btn-hud-ghost">
             Cancel
           </button>
           <button
             onClick={() => onConfirm(card, selectedUpgrade)}
             disabled={!selectedUpgrade}
-            className="dw-btn dw-btn-danger"
+            className="dw-btn-hud"
           >
             Destroy Upgrade
           </button>

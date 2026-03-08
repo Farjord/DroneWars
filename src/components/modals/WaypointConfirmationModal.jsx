@@ -117,12 +117,12 @@ function WaypointConfirmationModal({
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onCancel} className="dw-btn dw-btn-cancel">
+          <button onClick={onCancel} className="dw-btn-hud dw-btn-hud-ghost">
             Cancel
           </button>
           <button
             onClick={() => onConfirm(targetHex, path)}
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             disabled={!valid}
           >
             Move

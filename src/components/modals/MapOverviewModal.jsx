@@ -114,7 +114,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             </p>
           </div>
           <div className="dw-modal-actions">
-            <button onClick={onClose} className="dw-btn dw-btn-cancel dw-btn--full">
+            <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost dw-btn--full">
               Close
             </button>
           </div>
@@ -286,7 +286,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
         <div className="dw-modal-header">
           <button
             onClick={handlePrev}
-            className="dw-btn dw-btn-secondary"
+            className="dw-btn-hud dw-btn-hud-ghost"
             disabled={activeSectors.length <= 1}
             style={{ marginRight: '12px' }}
           >
@@ -327,7 +327,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
           <button
             onClick={handleNext}
-            className="dw-btn dw-btn-secondary"
+            className="dw-btn-hud dw-btn-hud-ghost"
             disabled={activeSectors.length <= 1}
             style={{ marginLeft: '12px' }}
           >
@@ -589,12 +589,12 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button onClick={onClose} className="dw-btn dw-btn-cancel">
+          <button onClick={onClose} className="dw-btn-hud dw-btn-hud-ghost">
             Back
           </button>
           <button
             onClick={handleDeployClick}
-            className="dw-btn dw-btn-confirm"
+            className="dw-btn-hud dw-btn-hud-cyan"
             disabled={allActiveSlots.length === 0 || isCurrentSlotInvalid}
           >
             Deploy

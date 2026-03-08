@@ -54,10 +54,9 @@
 }
 
 /* Override dw-btn padding to match zoom controls */
-.hud-actions-group .dw-btn,
-.hud-actions-group .dw-btn-confirm,
-.hud-actions-group .dw-btn-success,
-.hud-actions-group .dw-btn-danger {
+.hud-actions-group .dw-btn-hud,
+.hud-actions-group .dw-btn-hud-cyan,
+.hud-actions-group .dw-btn-hud-green {
   padding: 8px 12px !important;
 }
 

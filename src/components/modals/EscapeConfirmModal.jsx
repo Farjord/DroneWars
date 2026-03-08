@@ -139,10 +139,10 @@ function EscapeConfirmModal({
 
           {/* Actions */}
           <div className="dw-modal-actions">
-            <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+            <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
               Cancel
             </button>
-            <button className="dw-btn dw-btn-danger" onClick={onConfirm}>
+            <button className="dw-btn-hud" onClick={onConfirm}>
               <Skull size={16} style={{ marginRight: '6px' }} />
               Risk Escape
             </button>
@@ -224,10 +224,10 @@ function EscapeConfirmModal({
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onCancel}>
             Cancel
           </button>
-          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
+          <button className="dw-btn-hud dw-btn-hud-cyan" onClick={onConfirm}>
             <Zap size={16} style={{ marginRight: '6px' }} />
             Confirm Escape
           </button>

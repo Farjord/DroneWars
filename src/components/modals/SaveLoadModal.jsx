@@ -120,7 +120,7 @@ const SaveLoadModal = ({ onClose }) => {
         <div className="dw-modal-body">
           {/* Download Save Button */}
           <div style={{ marginBottom: '16px' }}>
-            <button className="dw-btn dw-btn-confirm dw-btn--full" onClick={handleDownload}>
+            <button className="dw-btn-hud dw-btn-hud-cyan dw-btn--full" onClick={handleDownload}>
               Download Save File
             </button>
             <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
@@ -133,7 +133,7 @@ const SaveLoadModal = ({ onClose }) => {
 
           {/* Upload Save Button */}
           <div style={{ marginBottom: '16px' }}>
-            <button className="dw-btn dw-btn-success dw-btn--full" onClick={handleUploadClick}>
+            <button className="dw-btn-hud dw-btn-hud-green dw-btn--full" onClick={handleUploadClick}>
               Load Save File
             </button>
             <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
@@ -167,7 +167,7 @@ const SaveLoadModal = ({ onClose }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

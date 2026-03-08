@@ -128,7 +128,7 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, localPlayerId, isMulti
             <div className="flex justify-center mt-6">
               <button
                 onClick={onClose}
-                className="dw-btn dw-btn-cancel px-6 py-2"
+                className="dw-btn-hud dw-btn-hud-ghost px-6 py-2"
               >
                 Cancel
               </button>

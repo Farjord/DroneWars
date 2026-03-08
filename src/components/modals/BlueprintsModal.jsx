@@ -484,7 +484,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                       {/* Craft/Unlock Button */}
                       {((blueprint.isUnlocked && !isShipCard(blueprint)) || (!blueprint.isUnlocked && isShipCard(blueprint))) && (
                         <button
-                          className={`dw-btn dw-btn-confirm ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`dw-btn-hud dw-btn-hud-cyan ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={{
                             padding: '8px 24px',
                             fontSize: '12px',
@@ -526,7 +526,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn-hud dw-btn-hud-ghost" onClick={onClose}>
             Close
           </button>
         </div>

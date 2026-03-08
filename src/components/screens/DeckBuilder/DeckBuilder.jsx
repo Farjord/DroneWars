@@ -322,7 +322,7 @@ const DeckBuilder = ({
         {/* Left: Back button */}
         <div className="w-32">
           {onBack && (
-            <button onClick={onBack} className="dw-btn dw-btn-cancel flex items-center gap-2">
+            <button onClick={onBack} className="dw-btn-hud dw-btn-hud-ghost flex items-center gap-2">
               <ArrowLeft size={16} /> Back
             </button>
           )}

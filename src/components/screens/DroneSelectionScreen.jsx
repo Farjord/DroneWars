@@ -378,14 +378,14 @@ function DroneSelectionScreen() {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
             <button
               onClick={() => setShowExitConfirm(true)}
-              className="dw-btn dw-btn-cancel"
+              className="dw-btn-hud dw-btn-hud-ghost"
             >
               EXIT
             </button>
             <button
               onClick={handleContinueDroneSelection}
               disabled={!isSelectionComplete}
-              className="dw-btn dw-btn-confirm"
+              className="dw-btn-hud dw-btn-hud-cyan"
             >
               Continue to Ship Placement →
             </button>
