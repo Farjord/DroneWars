@@ -6,7 +6,7 @@
 // SVG polyline borders, faction accent washes.
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Power, Files, Cpu, ShieldCheck, ChevronsUp, AlertTriangle } from 'lucide-react';
+import { Power, Files, Cpu, ChevronsUp, AlertTriangle } from 'lucide-react';
 import KPIChangePopup from '../animations/KPIChangePopup.jsx';
 import PhaseStatusText from './gameheader/PhaseStatusText.jsx';
 import ActionPhaseButtons from './gameheader/ActionPhaseButtons.jsx';
@@ -19,6 +19,7 @@ import HealthBar from './gameheader/HealthBar.jsx';
 import GameHeaderLayers from './GameHeaderLayers.jsx';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
 import { getShipPortraitImage } from '../../logic/cards/shipSectionImageResolver.js';
+import { getContextualText } from '../../logic/phase/phaseDisplayUtils.js';
 
 const playerPri = FACTION_COLORS.player.primary;
 
@@ -264,69 +265,24 @@ function GameHeader({
   }, []);
 
   // Determine contextual text + color for Tier 2 (first match wins)
-  const getContextualText = () => {
-    // Priority 1-4: Effect chain states
-    if (effectChainState && !effectChainState.complete) {
-      if (effectChainState.prompt) {
-        return { text: effectChainState.prompt, color: 'cyan' };
-      }
-      if (effectChainState.subPhase === 'multi-target') {
-        const count = effectChainState.pendingMultiTargets?.length || 0;
-        return { text: `Select Targets (${count} selected)`, color: 'cyan' };
-      }
-      if (effectChainState.subPhase === 'destination') {
-        return { text: 'Select Destination Lane', color: 'cyan' };
-      }
-      return { text: `Resolve Effect ${effectChainState.currentIndex + 1} of ${effectChainState.effects.length}`, color: 'cyan' };
-    }
-    // Priority 5: Interception
-    if (interceptionModeActive) {
-      return { text: 'Select an Interceptor', color: 'cyan' };
-    }
-    // Priority 6: Shield allocation
-    if (turnPhase === 'allocateShields') {
-      const count = pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate;
-      return { text: `Assign ${count} Shields`, color: 'cyan' };
-    }
-    // Priority 7-8: Reallocation
-    if (reallocationPhase === 'removing') {
-      return { text: 'Remove Shields', color: 'orange' };
-    }
-    if (reallocationPhase === 'adding') {
-      return { text: 'Add Shields', color: 'green' };
-    }
-    // Priority 9: Mandatory discard
-    if ((turnPhase === 'mandatoryDiscard' || mandatoryAction?.type === 'discard') &&
-        (mandatoryAction?.type === 'discard' || excessCards > 0)) {
-      const count = mandatoryAction?.count || excessCards;
-      return { text: `Discard ${count} Cards`, color: 'orange' };
-    }
-    // Priority 10: Mandatory drone removal
-    if (turnPhase === 'mandatoryDroneRemoval' && (mandatoryAction?.type === 'destroy' || excessDrones > 0)) {
-      const count = mandatoryAction?.count || excessDrones;
-      return { text: `Remove ${count} Drones`, color: 'orange' };
-    }
-    // Priority 11: Optional discard
-    if (turnPhase === 'optionalDiscard') {
-      const remaining = localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount;
-      return { text: `Discard up to ${remaining} Cards`, color: 'yellow' };
-    }
-    // Priority 12-13: My turn during deployment/action
-    if (turnPhase === 'deployment' && isMyTurn()) {
-      return { text: 'Deploy a Drone', color: 'cyan' };
-    }
-    if (turnPhase === 'action' && isMyTurn()) {
-      return { text: 'Play an Action', color: 'cyan' };
-    }
-    // Priority 14: Not my turn
-    if ((turnPhase === 'deployment' || turnPhase === 'action') && !isMyTurn()) {
-      return { text: isMultiplayer() ? "Opponent's Turn" : 'AI Thinking', color: 'red' };
-    }
-    // Priority 15: Fallback
-    return { text: 'Initialising', color: 'cyan-dimmed' };
-  };
-
-  const contextual = getContextualText();
+  const contextual = getContextualText({
+    effectChainState,
+    interceptionModeActive,
+    turnPhase,
+    pendingShieldsRemaining,
+    shieldsToAllocate,
+    reallocationPhase,
+    shieldsToRemove,
+    shieldsToAdd,
+    mandatoryAction,
+    excessCards,
+    excessDrones,
+    optionalDiscardCount,
+    discardLimit: localPlayerEffectiveStats?.totals?.discardLimit ?? 0,
+    isMyTurn: isMyTurn(),
+    isMultiplayer: isMultiplayer(),
+    deploymentBudget: playerDeploymentValue,
+  });
   const contextStyle = CONTEXT_COLORS[contextual.color];
 
   // Ship images for hex portraits
@@ -675,30 +631,6 @@ function GameHeader({
                     currentRunState.detection >= 50 ? 'text-yellow-400' :
                     'text-green-400'
                   }
-                  isPlayer={true}
-                />
-              )}
-              {turnPhase === 'allocateShields' && (
-                <ResourceBadge
-                  icon={ShieldCheck}
-                  value={pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate}
-                  iconColor="text-cyan-300"
-                  isPlayer={true}
-                />
-              )}
-              {reallocationPhase === 'removing' && (
-                <ResourceBadge
-                  icon={ShieldCheck}
-                  value={shieldsToRemove}
-                  iconColor="text-orange-300"
-                  isPlayer={true}
-                />
-              )}
-              {reallocationPhase === 'adding' && (
-                <ResourceBadge
-                  icon={ShieldCheck}
-                  value={shieldsToAdd}
-                  iconColor="text-green-300"
                   isPlayer={true}
                 />
               )}

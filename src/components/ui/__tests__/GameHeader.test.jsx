@@ -7,9 +7,13 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // Tests for the interception mode button group in the header
 
 // Mock dependencies
-vi.mock('../../../logic/phase/phaseDisplayUtils.js', () => ({
-  getPhaseDisplayName: vi.fn((phase) => phase || 'Unknown Phase')
-}))
+vi.mock('../../../logic/phase/phaseDisplayUtils.js', async () => {
+  const actual = await vi.importActual('../../../logic/phase/phaseDisplayUtils.js');
+  return {
+    ...actual,
+    getPhaseDisplayName: vi.fn((phase) => phase || 'Unknown Phase'),
+  };
+})
 
 vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
