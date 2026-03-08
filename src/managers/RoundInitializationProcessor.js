@@ -18,11 +18,7 @@ import { processRebuildProgress } from '../logic/availability/DroneAvailabilityM
 import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
 import { performAutomaticDraw } from '../logic/cards/cardDrawUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
-
-function _countDrones(playerState) {
-  if (!playerState?.dronesOnBoard) return 0;
-  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
-}
+import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 
 function _buildStateSnapshot(gs) {
   const snap = (p) => ({

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   buildPassAction,
   shouldPass,
+  executeActionTurn,
   executeShieldAllocationTurn,
   executeMandatoryDiscardTurn,
   executeMandatoryDroneRemovalTurn
@@ -34,6 +35,42 @@ describe('AISequentialTurnStrategy', () => {
 
     it('returns false when passInfo is null', () => {
       expect(shouldPass({ passInfo: null }, 'action')).toBe(false);
+    });
+  });
+
+  describe('executeActionTurn — early pass routing', () => {
+    it('routes early pass through gameEngine when available (not direct queueAction)', async () => {
+      const gameState = {
+        passInfo: { player1Passed: false, player2Passed: true },
+        player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
+      };
+      const mockAP = { queueAction: vi.fn() };
+      const mockEngine = { processAction: vi.fn().mockResolvedValue({ result: {} }) };
+      const deps = { gameStateManager: {}, gameEngine: mockEngine };
+
+      await executeActionTurn(gameState, mockAP, deps);
+
+      // Should route through gameEngine, NOT direct queueAction
+      expect(mockEngine.processAction).toHaveBeenCalledWith('playerPass', expect.objectContaining({
+        playerId: 'player2',
+        turnPhase: 'action',
+      }));
+      expect(mockAP.queueAction).not.toHaveBeenCalled();
+    });
+
+    it('falls back to direct queueAction when no gameEngine', async () => {
+      const gameState = {
+        passInfo: { player1Passed: false, player2Passed: true },
+        player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
+      };
+      const mockAP = { queueAction: vi.fn().mockResolvedValue({}) };
+      const deps = { gameStateManager: {} }; // no gameEngine
+
+      await executeActionTurn(gameState, mockAP, deps);
+
+      expect(mockAP.queueAction).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'playerPass',
+      }));
     });
   });
 

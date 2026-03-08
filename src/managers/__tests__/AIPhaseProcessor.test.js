@@ -40,18 +40,25 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
     aiPhaseProcessor.isProcessing = false;
     aiPhaseProcessor.turnTimer = null;
 
-    // Create mock GameStateManager
+    // Create mock ActionProcessor
+    mockActionProcessor = {
+      queueAction: vi.fn()
+    };
+
+    // Create mock GameStateManager (with gameEngine that delegates to actionProcessor mock)
     mockGameStateManager = {
       getState: vi.fn(),
       setState: vi.fn(),
       subscribe: vi.fn(() => vi.fn()),
       addLogEntry: vi.fn(),
-      addAIDecisionToHistory: vi.fn()
-    };
-
-    // Create mock ActionProcessor
-    mockActionProcessor = {
-      queueAction: vi.fn()
+      addAIDecisionToHistory: vi.fn(),
+      gameEngine: {
+        processAction: vi.fn(async (type, payload) => {
+          // Delegate to the same mock so existing test assertions still work
+          const result = await mockActionProcessor.queueAction({ type, payload });
+          return { state: {}, animations: { actionAnimations: [], systemAnimations: [] }, result };
+        })
+      }
     };
 
     // Create mock GameDataService
@@ -339,13 +346,14 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
       await aiPhaseProcessor.executeDeploymentTurn(gameState);
 
       const passAction = queuedActions.find(a => a.type === 'playerPass');
-      const turnTransitionAction = queuedActions.find(a => a.type === 'turnTransition');
 
       // After successful deployment, should NOT pass
       expect(passAction).toBeUndefined();
 
-      // After successful deployment, should transition turn
-      expect(turnTransitionAction).toBeDefined();
+      // turnTransition is no longer sent explicitly — GameFlowManager handles it
+      // automatically via the action_completed event with shouldEndTurn: true
+      const turnTransitionAction = queuedActions.find(a => a.type === 'turnTransition');
+      expect(turnTransitionAction).toBeUndefined();
     });
   });
 
@@ -747,5 +755,71 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
       expect(passAction.payload.playerId).toBe('player2');
       expect(passAction.payload.turnPhase).toBe('deployment');
     });
+  });
+});
+
+describe('AIPhaseProcessor - Animation blocking retry cap', () => {
+  let originalGameDataService;
+
+  beforeEach(() => {
+    originalGameDataService = GameDataService.instance;
+    GameDataService.instance = null;
+    aiPhaseProcessor.isInitialized = false;
+    aiPhaseProcessor.isProcessing = false;
+    aiPhaseProcessor.turnTimer = null;
+    aiPhaseProcessor._animBlockRetries = 0;
+
+    vi.spyOn(GameDataService, 'getInstance').mockReturnValue({
+      getEffectiveShipStats: vi.fn(() => ({ totals: { cpuLimit: 10, handLimit: 6, shieldRegen: 2 } })),
+      getEffectiveStats: vi.fn(() => ({ attack: 2, speed: 3, hull: 2, maxShields: 0, keywords: new Set() }))
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    GameDataService.instance = originalGameDataService;
+    aiPhaseProcessor.isInitialized = false;
+    aiPhaseProcessor.isProcessing = false;
+    aiPhaseProcessor._animBlockRetries = 0;
+    if (aiPhaseProcessor.turnTimer) {
+      clearTimeout(aiPhaseProcessor.turnTimer);
+      aiPhaseProcessor.turnTimer = null;
+    }
+    if (aiPhaseProcessor.stateSubscriptionCleanup) {
+      aiPhaseProcessor.stateSubscriptionCleanup();
+      aiPhaseProcessor.stateSubscriptionCleanup = null;
+    }
+  });
+
+  it('proceeds after max animation-blocking retries instead of looping forever', async () => {
+    const mockGSM = {
+      getState: vi.fn().mockReturnValue({
+        currentPlayer: 'player2',
+        turnPhase: 'deployment',
+        passInfo: { player1Passed: false, player2Passed: false },
+        winner: null,
+        gameStage: 'battle',
+        player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, energy: 0 },
+        player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
+        placedSections: [],
+        opponentPlacedSections: [],
+      }),
+      subscribe: vi.fn(() => vi.fn()),
+      addLogEntry: vi.fn(),
+      gameEngine: null,
+    };
+    const mockAP = { queueAction: vi.fn().mockResolvedValue({ success: true }) };
+
+    aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
+      isAnimationBlocking: () => true // always blocking
+    });
+
+    // Simulate 21 calls to executeTurn — on call 21 it should proceed past the block
+    aiPhaseProcessor._animBlockRetries = 20; // Already at max
+    await aiPhaseProcessor.executeTurn();
+
+    // Should have proceeded (isProcessing was set to true then false, not stuck in retry)
+    expect(aiPhaseProcessor._animBlockRetries).toBe(0); // Reset after proceeding
   });
 });

@@ -43,12 +43,9 @@ class GameEngine {
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[4/10] GameEngine.processAction delegating to GSM', { type });
     }
-    // Snapshot state before processing so ClientStateStore.getState() returns
-    // pre-processing state instead of intermediate GSM state (drone without isTeleporting).
-    this.gameStateManager._preProcessingState = this.gameStateManager.getState();
-    // Suppress ClientStateStore notifications during processing — _emitToClients
-    // delivers the final composite state with animations after processing completes.
-    this.gameStateManager._engineProcessing = true;
+    // Freeze ClientStateStore during processing — _emitToClients delivers
+    // the final composite state with animations after processing completes.
+    this.gameStateManager.beginProcessing();
     try {
       const result = await this.gameStateManager.processAction(type, payload);
       await this.gameFlowManager.waitForPendingActionCompletion();
@@ -69,8 +66,7 @@ class GameEngine {
 
       return { state, animations, result };
     } finally {
-      this.gameStateManager._engineProcessing = false;
-      this.gameStateManager._preProcessingState = null;
+      this.gameStateManager.endProcessing();
     }
   }
 
@@ -89,8 +85,14 @@ class GameEngine {
       debugLog('DEPLOY_TRACE', '_emitToClients drone snapshot', {
         playerId, p1Total, p2Total, phase: redactedState.turnPhase,
       });
+      // Clone animations per client and strip _apDirectQueued to prevent
+      // host-only flags from leaking to P2P guests
+      const clientAnimations = {
+        actionAnimations: (animations.actionAnimations || []).map(({ _apDirectQueued, ...rest }) => rest),
+        systemAnimations: (animations.systemAnimations || []).map(({ _apDirectQueued, ...rest }) => rest),
+      };
       promises.push(
-        Promise.resolve(callback({ state: redactedState, animations }))
+        Promise.resolve(callback({ state: redactedState, animations: clientAnimations }))
           .catch(err => debugLog('STATE_SYNC', `Client ${playerId} delivery failed`, { error: err.message }))
       );
     }
@@ -99,10 +101,6 @@ class GameEngine {
 
   getState() {
     return this.gameStateManager.getState();
-  }
-
-  getPlayerView(_playerId) {
-    return this.getState();
   }
 }
 

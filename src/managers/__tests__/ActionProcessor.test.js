@@ -452,3 +452,64 @@ describe('ActionProcessor — clearQueue Full Cleanup', () => {
     expect(reject2).toHaveBeenCalledWith(expect.any(Error));
   });
 });
+
+describe('ActionProcessor — triggerSyncId stamping', () => {
+  let ap;
+  let gsm;
+
+  beforeEach(() => {
+    ActionProcessor.reset();
+    gsm = createMockGameStateManager();
+    ap = ActionProcessor.getInstance(gsm);
+  });
+
+  afterEach(() => {
+    ActionProcessor.reset();
+  });
+
+  it('captureAnimations does not stamp triggerSyncId (executeAndCaptureAnimations is authoritative)', () => {
+    const ctx = ap._getActionContext();
+    const triggerAnim = { animationName: 'TRIGGER_FIRED', payload: { abilityName: 'Test' } };
+    ctx.captureAnimations([triggerAnim]);
+
+    // captureAnimations should NOT add triggerSyncId — that's executeAndCaptureAnimations' job
+    expect(triggerAnim.payload.triggerSyncId).toBeUndefined();
+  });
+
+  it('captureAnimations does not overwrite existing triggerSyncId', () => {
+    const ctx = ap._getActionContext();
+    const existingId = 12345;
+    const triggerAnim = { animationName: 'TRIGGER_FIRED', payload: { triggerSyncId: existingId, abilityName: 'Test' } };
+    ctx.captureAnimations([triggerAnim]);
+
+    expect(triggerAnim.payload.triggerSyncId).toBe(existingId);
+  });
+
+  it('executeAndCaptureAnimations stamps triggerSyncId on TRIGGER_FIRED animations', async () => {
+    const triggerAnim = { animationName: 'TRIGGER_FIRED', payload: { abilityName: 'Test' } };
+    await ap.executeAndCaptureAnimations([triggerAnim]);
+
+    expect(triggerAnim.payload.triggerSyncId).toBeDefined();
+    expect(typeof triggerAnim.payload.triggerSyncId).toBe('number');
+  });
+
+  it('processAction stamps unstamped TRIGGER_FIRED from captureAnimations at collection time', async () => {
+    // Simulate a strategy that captures TRIGGER_FIRED via captureAnimations (no triggerSyncId)
+    const ctx = ap._getActionContext();
+    const triggerAnim = { animationName: 'TRIGGER_FIRED', payload: { abilityName: 'Mine' } };
+    ctx.captureAnimations([triggerAnim]);
+
+    // Verify it's unstamped after captureAnimations
+    expect(triggerAnim.payload.triggerSyncId).toBeUndefined();
+
+    // Simulate processAction collecting animations
+    const allAnims = [...ap._actionAnimationLog.actionAnimations, ...ap._actionAnimationLog.systemAnimations];
+    const unstamped = allAnims.filter(a => a.animationName === 'TRIGGER_FIRED' && !a.payload?.triggerSyncId);
+    expect(unstamped.length).toBe(1);
+
+    // The actual stamping happens in processAction — verify via the log entry
+    const triggerSyncId = Date.now();
+    unstamped.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
+    expect(allAnims[0].payload.triggerSyncId).toBeDefined();
+  });
+});

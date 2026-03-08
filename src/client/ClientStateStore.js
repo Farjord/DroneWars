@@ -82,8 +82,8 @@ class ClientStateStore {
     this._listeners.forEach(listener => {
       try {
         listener(event);
-      } catch {
-        // Swallow listener errors to prevent cascading failures
+      } catch (e) {
+        debugLog('STATE_SYNC', 'ClientStateStore subscriber error', { error: e?.message });
       }
     });
   }

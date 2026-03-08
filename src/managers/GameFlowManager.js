@@ -12,15 +12,10 @@ import { gameEngine } from '../logic/gameLogic.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
-
-// --- Trace Helpers ---
-function _countDrones(playerState) {
-  if (!playerState?.dronesOnBoard) return 0;
-  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
-}
 
 function _buildStateSnapshot(gs) {
   const snap = (p) => ({

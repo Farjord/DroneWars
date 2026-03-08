@@ -114,6 +114,11 @@ class GameClient extends GameServer {
     }
 
     if (!this.animationManager || visualAnimations.length === 0) {
+      if (!this.animationManager && visualAnimations.length > 0) {
+        debugLog('STATE_SYNC', 'GameClient: animations skipped — AnimationManager not yet wired', {
+          animCount: visualAnimations.length,
+        });
+      }
       this._applyState(state);
       return;
     }
@@ -202,7 +207,8 @@ class GameClient extends GameServer {
     for (const anim of allAnimations) {
       if (announcementTypes.has(anim.animationName)) {
         if (anim._apDirectQueued) {
-          // Already direct-queued by ActionProcessor — skip to prevent duplicates
+          // Already direct-queued by ActionProcessor (local/host path).
+          // For remote clients, GameEngine strips this flag in _emitToClients.
           continue;
         }
         hadAnnouncements = true;

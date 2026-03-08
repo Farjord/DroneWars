@@ -18,6 +18,8 @@ describe('GameEngine', () => {
       getState: vi.fn().mockReturnValue(mockState),
       processAction: vi.fn().mockResolvedValue({ success: true, animations: { actionAnimations: [], systemAnimations: [] } }),
       subscribe: vi.fn().mockReturnValue(vi.fn()),
+      beginProcessing: vi.fn(),
+      endProcessing: vi.fn(),
     };
     mockAP = {
       queueAction: vi.fn().mockResolvedValue({ success: true }),
@@ -83,13 +85,6 @@ describe('GameEngine', () => {
     });
   });
 
-  describe('getPlayerView', () => {
-    it('returns raw state (redaction is handled by callers)', () => {
-      const view = engine.getPlayerView('player1');
-      expect(view).toBe(mockState);
-    });
-  });
-
   describe('client registration and push', () => {
     it('registerClient adds a client and unregisterClient removes it', () => {
       const cb = vi.fn();
@@ -149,32 +144,59 @@ describe('GameEngine', () => {
     });
   });
 
-  describe('_engineProcessing flag and _preProcessingState snapshot', () => {
-    it('sets _engineProcessing and _preProcessingState during processAction and clears both after', async () => {
-      let flagDuringProcessing = undefined;
-      let snapshotDuringProcessing = undefined;
+  describe('animation isolation per client', () => {
+    it('each client receives independent animation copies (no shared _apDirectQueued mutation)', async () => {
+      const cb1 = vi.fn();
+      const cb2 = vi.fn();
+      engine.registerClient('player1', cb1);
+      engine.registerClient('player2', cb2);
+
+      const anims = {
+        actionAnimations: [{ animationName: 'PHASE_ANNOUNCEMENT', _apDirectQueued: true, payload: { phase: 'action' } }],
+        systemAnimations: [{ animationName: 'SOME_SYSTEM', payload: {} }],
+      };
+      mockGSM.processAction.mockResolvedValue({ success: true, collectedAnimations: anims });
+      await engine.processAction('attack', {});
+
+      // Each client should receive independent copies
+      const p1Anims = cb1.mock.calls[0][0].animations;
+      const p2Anims = cb2.mock.calls[0][0].animations;
+
+      // Animations should be cloned — not the same object reference
+      expect(p1Anims.actionAnimations[0]).not.toBe(p2Anims.actionAnimations[0]);
+
+      // _apDirectQueued should be stripped from all client copies
+      // (host GameClient re-checks via its own PhaseAnimationQueue dedup)
+      expect(p1Anims.actionAnimations[0]._apDirectQueued).toBeFalsy();
+      expect(p2Anims.actionAnimations[0]._apDirectQueued).toBeFalsy();
+    });
+  });
+
+  describe('processing lifecycle (beginProcessing / endProcessing)', () => {
+    it('calls beginProcessing before and endProcessing after processAction', async () => {
+      mockGSM.beginProcessing = vi.fn();
+      mockGSM.endProcessing = vi.fn();
+      let beginCalledDuringProcessing = false;
       mockGSM.processAction.mockImplementation(async () => {
-        flagDuringProcessing = mockGSM._engineProcessing;
-        snapshotDuringProcessing = mockGSM._preProcessingState;
+        beginCalledDuringProcessing = mockGSM.beginProcessing.mock.calls.length > 0;
         return { success: true };
       });
 
       await engine.processAction('move', {});
 
-      expect(flagDuringProcessing).toBe(true);
-      expect(snapshotDuringProcessing).toBe(mockState);
-      expect(mockGSM._engineProcessing).toBe(false);
-      expect(mockGSM._preProcessingState).toBeNull();
+      expect(beginCalledDuringProcessing).toBe(true);
+      expect(mockGSM.beginProcessing).toHaveBeenCalledTimes(1);
+      expect(mockGSM.endProcessing).toHaveBeenCalledTimes(1);
     });
 
-    it('clears _engineProcessing and _preProcessingState even when processAction throws', async () => {
+    it('calls endProcessing even when processAction throws', async () => {
+      mockGSM.beginProcessing = vi.fn();
+      mockGSM.endProcessing = vi.fn();
       mockGSM.processAction.mockRejectedValue(new Error('boom'));
 
       await expect(engine.processAction('move', {})).rejects.toThrow('boom');
 
-      expect(mockGSM._engineProcessing).toBe(false);
-      expect(mockGSM._preProcessingState).toBeNull();
+      expect(mockGSM.endProcessing).toHaveBeenCalledTimes(1);
     });
-
   });
 });

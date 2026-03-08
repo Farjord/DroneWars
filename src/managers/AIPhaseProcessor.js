@@ -42,6 +42,7 @@ class AIPhaseProcessor {
     // AI turn management
     this.isProcessing = false;
     this.turnTimer = null;
+    this._animBlockRetries = 0;
 
     // Initialization guards and cleanup tracking
     this.isInitialized = false;
@@ -160,13 +161,15 @@ class AIPhaseProcessor {
   async executeDeploymentTurn(gameState) {
     return _executeDeploymentTurn(gameState, this.actionProcessor, {
       effectiveShipStatsWrapper: this.effectiveShipStatsWrapper,
-      gameStateManager: this.gameStateManager
+      gameStateManager: this.gameStateManager,
+      gameEngine: this.gameStateManager?.gameEngine
     });
   }
 
   async executeActionTurn(gameState) {
     return _executeActionTurn(gameState, this.actionProcessor, {
-      gameStateManager: this.gameStateManager
+      gameStateManager: this.gameStateManager,
+      gameEngine: this.gameStateManager?.gameEngine
     });
   }
 
@@ -265,11 +268,18 @@ class AIPhaseProcessor {
 
     // Block AI if animations are playing (phase announcements or action animations)
     if (this.isAnimationBlocking()) {
-      this.turnTimer = setTimeout(() => {
-        this.executeTurn();
-      }, 500);
-      return;
+      this._animBlockRetries = (this._animBlockRetries || 0) + 1;
+      if (this._animBlockRetries > 20) {
+        debugLog('AI_TURN_TRACE', '[AI-WARN] Animation blocking exceeded 10s, proceeding');
+        this._animBlockRetries = 0;
+      } else {
+        this.turnTimer = setTimeout(() => {
+          this.executeTurn();
+        }, 500);
+        return;
+      }
     }
+    this._animBlockRetries = 0;
 
     this.isProcessing = true;
     const p2 = state.player2;

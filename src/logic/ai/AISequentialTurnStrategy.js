@@ -5,6 +5,19 @@ import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 
 /**
+ * Route an AI action through GameEngine (if available) so that animations
+ * reach registered clients via _emitToClients. Falls back to direct
+ * actionProcessor.queueAction when no GameEngine ref exists.
+ */
+async function routeAction(actionProcessor, deps, action) {
+  if (deps.gameEngine) {
+    const { result } = await deps.gameEngine.processAction(action.type, action.payload);
+    return result;
+  }
+  return await actionProcessor.queueAction(action);
+}
+
+/**
  * Build a standard pass action for the AI player.
  * @param {string} phase - Current turn phase
  * @param {Object} passInfo - Current pass state
@@ -45,12 +58,12 @@ export function shouldPass(gameState, phase) {
  */
 export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
   if (shouldPass(gameState, 'deployment')) {
-    await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
+    await routeAction(actionProcessor, deps, buildPassAction('deployment', gameState.passInfo));
     return;
   }
 
   const { aiBrain } = await import('./aiLogic.js');
-  const { gameEngine } = await import('../gameLogic.js');
+  const { getShipStatus } = await import('../statsCalculator.js');
 
   debugLog('AI_TURN_TRACE', `[AI-03] Deployment: eval | energy=${gameState.player2.energy}, budget=${gameState.turn === 1 ? gameState.player2.initialDeploymentBudget : gameState.player2.deploymentBudget}, poolSize=${gameState.player2.activeDronePool?.length ?? 0}`);
 
@@ -60,7 +73,7 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
     turn: gameState.turn,
     placedSections: gameState.placedSections,
     opponentPlacedSections: gameState.opponentPlacedSections,
-    getShipStatus: gameEngine.getShipStatus,
+    getShipStatus,
     calculateEffectiveShipStats: deps.effectiveShipStatsWrapper,
     gameStateManager: deps.gameStateManager,
     addLogEntry: (entry, debugSource, aiDecisionContext) => {
@@ -70,12 +83,12 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
 
   if (aiDecision.type === 'pass') {
     debugLog('AI_TURN_TRACE', `[AI-04b] Decision dispatched | type=pass, reason=noHighImpactPlays`);
-    await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
+    await routeAction(actionProcessor, deps, buildPassAction('deployment', gameState.passInfo));
   } else if (aiDecision.type === 'deploy') {
     debugLog('AI_TURN_TRACE', `[AI-04b] Decision dispatched | type=deploy, drone=${aiDecision.payload.droneToDeploy?.name}, lane=${aiDecision.payload.targetLane}`);
     debugLog('AI_TURN_TRACE', `[AI-04c] Dispatching | deployment action`);
 
-    const result = await actionProcessor.queueAction({
+    const result = await routeAction(actionProcessor, deps, {
       type: 'deployment',
       payload: {
         droneData: aiDecision.payload.droneToDeploy,
@@ -87,14 +100,12 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
 
     if (result.success) {
       debugLog('AI_TURN_TRACE', `[AI-06] Result | success=true`);
-      await actionProcessor.queueAction({
-        type: 'turnTransition',
-        payload: { newPlayer: 'player1', reason: 'deploymentCompleted' }
-      });
+      // No explicit turnTransition needed — GameFlowManager handles it
+      // automatically via the action_completed event with shouldEndTurn: true
     } else {
       debugLog('AI_TURN_TRACE', `[AI-06] Result | success=false, error=${result.error || result.reason}`);
       // When deployment fails, pass to prevent infinite loop
-      await actionProcessor.queueAction(buildPassAction('deployment', gameState.passInfo));
+      await routeAction(actionProcessor, deps, buildPassAction('deployment', gameState.passInfo));
     }
   }
 
@@ -110,12 +121,13 @@ export async function executeDeploymentTurn(gameState, actionProcessor, deps) {
  */
 export async function executeActionTurn(gameState, actionProcessor, deps) {
   if (shouldPass(gameState, 'action')) {
-    await actionProcessor.queueAction(buildPassAction('action', gameState.passInfo));
+    await routeAction(actionProcessor, deps, buildPassAction('action', gameState.passInfo));
     return;
   }
 
   const { aiBrain } = await import('./aiLogic.js');
-  const { gameEngine } = await import('../gameLogic.js');
+  const { getShipStatus } = await import('../statsCalculator.js');
+  const { getLaneOfDrone } = await import('../utils/gameEngineUtils.js');
   const TargetingRouter = (await import('../TargetingRouter.js')).default;
 
   const { resolveConditionalTargeting } = await import('../targeting/conditionalTargetingResolver.js');
@@ -134,8 +146,8 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
     player2: gameState.player2,
     placedSections: gameState.placedSections,
     opponentPlacedSections: gameState.opponentPlacedSections,
-    getShipStatus: gameEngine.getShipStatus,
-    getLaneOfDrone: gameEngine.getLaneOfDrone,
+    getShipStatus,
+    getLaneOfDrone,
     getValidTargets,
     gameStateManager: deps.gameStateManager,
     addLogEntry: (entry, debugSource, aiDecisionContext) => {
@@ -144,10 +156,10 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
   });
 
   if (aiDecision.type === 'pass') {
-    await actionProcessor.queueAction(buildPassAction('action', gameState.passInfo));
+    await routeAction(actionProcessor, deps, buildPassAction('action', gameState.passInfo));
     return null;
   } else {
-    const result = await actionProcessor.queueAction({
+    const result = await routeAction(actionProcessor, deps, {
       type: 'aiAction',
       payload: { aiDecision }
     });
@@ -163,7 +175,7 @@ export async function executeActionTurn(gameState, actionProcessor, deps) {
  * @returns {Promise<Object>} Result with updated player state
  */
 export async function executeOptionalDiscardTurn(gameState, gameDataService) {
-  const { gameEngine } = await import('../gameLogic.js');
+  const RoundManager = (await import('../round/RoundManager.js')).default;
   const aiState = gameState.player2;
   const opponentPlacedSections = gameState.opponentPlacedSections;
 
@@ -191,7 +203,7 @@ export async function executeOptionalDiscardTurn(gameState, gameDataService) {
     };
   }
 
-  updatedAiState = gameEngine.drawToHandLimit(updatedAiState, handLimit);
+  updatedAiState = RoundManager.drawToHandLimit(updatedAiState, handLimit);
   const cardsDrawn = updatedAiState.hand.length - (aiState.hand.length - cardsToDiscard.length);
 
   debugLog('AI_TURN_TRACE', `[AI-03] Decision | discarded=${cardsToDiscard.length}, drawn=${cardsDrawn}, handLimit=${handLimit}`);

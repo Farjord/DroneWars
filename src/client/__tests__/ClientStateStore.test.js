@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ClientStateStore from '../ClientStateStore.js';
+import { debugLog } from '../../utils/debugLogger.js';
+
+vi.mock('../../utils/debugLogger.js', () => ({
+  debugLog: vi.fn(),
+}));
 
 describe('ClientStateStore', () => {
   let store;
@@ -135,6 +140,35 @@ describe('ClientStateStore', () => {
 
       // After applyUpdate, getState returns the applied state
       expect(store.getState()).toEqual(newState);
+    });
+  });
+
+  describe('subscriber error handling', () => {
+    it('logs subscriber errors instead of swallowing silently', () => {
+      debugLog.mockClear();
+      const errorListener = vi.fn(() => { throw new Error('listener boom'); });
+      store.subscribe(errorListener);
+
+      // Trigger notification via applyUpdate
+      store.applyUpdate({ turnPhase: 'action', player1: { hp: 10 }, player2: { hp: 8 } });
+
+      expect(errorListener).toHaveBeenCalled();
+      expect(debugLog).toHaveBeenCalledWith(
+        'STATE_SYNC',
+        expect.stringContaining('subscriber error'),
+        expect.objectContaining({ error: 'listener boom' })
+      );
+    });
+
+    it('continues notifying remaining subscribers after one throws', () => {
+      const errorListener = vi.fn(() => { throw new Error('boom'); });
+      const goodListener = vi.fn();
+      store.subscribe(errorListener);
+      store.subscribe(goodListener);
+
+      store.applyUpdate({ turnPhase: 'action', player1: { hp: 10 }, player2: { hp: 8 } });
+
+      expect(goodListener).toHaveBeenCalled();
     });
   });
 });

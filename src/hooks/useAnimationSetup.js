@@ -114,6 +114,11 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       wiredToActionProcessor: !!gameStateManager.actionProcessor,
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (gameServerRef?.current) {
+        gameServerRef.current.animationManager = null;
+      }
+    };
 }, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, gameServerRef]);
 }

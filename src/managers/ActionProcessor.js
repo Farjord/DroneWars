@@ -5,6 +5,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
+import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 
 import {
   processAttack as _processAttack,
@@ -64,12 +65,6 @@ import {
   processDebugAddCardsToHand as _processDebugAddCardsToHand,
   processForceWin as _processForceWin
 } from '../logic/actions/MiscActionStrategy.js';
-
-// --- Helpers ---
-function _countDrones(playerState) {
-  if (!playerState?.dronesOnBoard) return 0;
-  return Object.values(playerState.dronesOnBoard).reduce((sum, lane) => sum + (lane?.length || 0), 0);
-}
 
 // --- Strategy Registry ---
 // Maps action type strings to instance method names.
@@ -278,17 +273,8 @@ class ActionProcessor {
           filteredOut: (animations?.length || 0) - broadcastAnims.length,
           names: broadcastAnims.map(a => a.animationName),
         });
-        const triggerAnims = broadcastAnims.filter(a => a.animationName === 'TRIGGER_FIRED');
-        if (triggerAnims.length > 0) {
-          const triggerSyncId = Date.now();
-          triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-          debugLog('TRIGGER_SYNC_TRACE', '[1/7] SERVER: Trigger captured for delivery', {
-            utc: new Date().toISOString(),
-            triggerSyncId,
-            triggerCount: triggerAnims.length,
-            triggerNames: triggerAnims.map(a => a.payload?.abilityName || a.payload?.type),
-          });
-        }
+        // triggerSyncId stamping is handled exclusively by executeAndCaptureAnimations
+        // to avoid duplicate/conflicting IDs within the same action
       },
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
@@ -552,6 +538,14 @@ setAnimationManager(animationManager) {
         throw new Error(`Unknown action type: ${type}`);
       }
 
+      // Stamp triggerSyncId on any TRIGGER_FIRED that weren't stamped by executeAndCaptureAnimations
+      const allAnims = [...this._actionAnimationLog.actionAnimations, ...this._actionAnimationLog.systemAnimations];
+      const unstampedTriggers = allAnims.filter(a => a.animationName === 'TRIGGER_FIRED' && !a.payload?.triggerSyncId);
+      if (unstampedTriggers.length > 0) {
+        const triggerSyncId = Date.now();
+        unstampedTriggers.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
+      }
+
       // Attach accumulated animations to result for GameEngine consumption
       if (result) {
         result.collectedAnimations = { ...this._actionAnimationLog };
@@ -759,23 +753,6 @@ setAnimationManager(animationManager) {
       this.gameStateManager._updateContext = null;
     }
   }
-
-  /**
-   * Add isTeleporting flags to drones in TELEPORT_IN animations
-   * Creates modified state where teleporting drones are invisible (isTeleporting: true)
-   * @param {Object} newPlayerStates - Player states to modify
-   * @param {Array} animations - All animations being played
-   * @returns {Object} Modified player states with isTeleporting flags
-   */
-  // stateProvider methods (applyPendingStateUpdate, revealTeleportedDrones,
-  // getAnimationSource, applyIntermediateState) moved to GameClient.
-  // Server no longer plays animations — it only collects and emits them.
-
-  /**
-   * Broadcast current game state to guest (host only)
-   * Called after every action that changes game state
-   * @param {string} trigger - Reason for broadcast (e.g., 'after_action', 'phase_transition')
-   */
 
   // --- Delegation methods (public API for external callers and ActionContext) ---
   async processPlayerPass(payload) { return _processPlayerPass(payload, this._getActionContext()); }

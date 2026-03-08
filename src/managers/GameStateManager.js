@@ -176,6 +176,19 @@ class GameStateManager {
     this.emit('SERVER_STATE_UPDATE', { serverState });
   }
 
+  // --- ENGINE PROCESSING LIFECYCLE ---
+  // Used by GameEngine to freeze ClientStateStore during action processing.
+
+  beginProcessing() {
+    this._preProcessingState = this.getState();
+    this._engineProcessing = true;
+  }
+
+  endProcessing() {
+    this._engineProcessing = false;
+    this._preProcessingState = null;
+  }
+
   // No-ops: optimistic animation tracking removed (Phase 4 — server-authoritative model)
   trackOptimisticAnimations() {}
   filterAnimations(actionAnimations, systemAnimations) {
