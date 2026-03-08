@@ -5,7 +5,7 @@
 // - resolveAttack: Main attack resolution with damage calculation
 // - After-attack abilities (ON_ATTACK) delegated to TriggerProcessor
 
-import { calculateEffectiveStats, calculateEffectiveShipStats } from '../statsCalculator.js';
+import { calculateEffectiveStats } from '../statsCalculator.js';
 import { onDroneDestroyed } from '../utils/droneStateUtils.js';
 import { updateAuras } from '../utils/auraManager.js';
 import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
