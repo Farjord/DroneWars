@@ -121,6 +121,10 @@ class GameClient extends GameServer {
     // TELEPORT_IN handling
     const hasTeleportIn = visualAnimations.some(anim => anim.animationName === 'TELEPORT_IN');
 
+    debugLog('DEPLOY_TRACE', '[9a/10] _onResponse: about to add isTeleporting flags', {
+      hasTeleportIn,
+    });
+
     if (hasTeleportIn) {
       const modifiedPlayers = addTeleportingFlags(
         { player1: state.player1, player2: state.player2 },
@@ -145,7 +149,9 @@ class GameClient extends GameServer {
 
   async applyPendingStateUpdate() {
     if (this.pendingServerState) {
-      debugLog('ANIMATIONS', '[STATE UPDATE] GameClient applying pending state');
+      debugLog('DEPLOY_TRACE', '[9b/10] applyPendingStateUpdate: applying state WITH isTeleporting', {
+        hasPendingState: !!this.pendingServerState,
+      });
       this._applyState(this.pendingServerState);
     }
   }
@@ -159,8 +165,8 @@ class GameClient extends GameServer {
     const current = this.getState();
     const revealed = {
       ...current,
-      player1: { ...current.player1, lanes: this.pendingFinalServerState.player1?.lanes },
-      player2: { ...current.player2, lanes: this.pendingFinalServerState.player2?.lanes },
+      player1: { ...current.player1, dronesOnBoard: this.pendingFinalServerState.player1?.dronesOnBoard },
+      player2: { ...current.player2, dronesOnBoard: this.pendingFinalServerState.player2?.dronesOnBoard },
     };
     this._applyState(revealed);
   }
@@ -195,6 +201,10 @@ class GameClient extends GameServer {
 
     for (const anim of allAnimations) {
       if (announcementTypes.has(anim.animationName)) {
+        if (anim._apDirectQueued) {
+          // Already direct-queued by ActionProcessor — skip to prevent duplicates
+          continue;
+        }
         hadAnnouncements = true;
         this._handleAnnouncementAnimation(anim);
       } else {
@@ -205,6 +215,14 @@ class GameClient extends GameServer {
     // Trigger playback if we queued announcements
     if (hadAnnouncements && this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
       this.phaseAnimationQueue.startPlayback('GC:after_announcements');
+    }
+
+    // Phase 1: Diagnostic — trace when response has animations but no announcements
+    if (!hadAnnouncements && allAnimations.length > 0) {
+      debugLog('ANNOUNCE_TRACE', '[GC] Response had animations but no announcements', {
+        animNames: allAnimations.map(a => a.animationName),
+        phase: this.getState().turnPhase,
+      });
     }
 
     return { visualAnimations, hadAnnouncements };
@@ -222,6 +240,13 @@ class GameClient extends GameServer {
     } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
       const { passedPlayerId } = anim.payload;
       const passText = passedPlayerId === this.playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
+      debugLog('ANNOUNCE_TRACE', '[GC] PASS_ANNOUNCEMENT arriving at GC (late path)', {
+        passedPlayerId,
+        passText,
+        currentPAQLength: this.phaseAnimationQueue?.getQueueLength() ?? -1,
+        isPlaying: this.phaseAnimationQueue?.isPlaying() ?? false,
+        currentlyPlaying: this.phaseAnimationQueue?.getCurrentAnimation?.()?.phaseName || null,
+      });
       this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'GC:server_pass');
       debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Pass announcement received from server', {
         utc: new Date().toISOString(), passedPlayerId, passText, playerId: this.playerId,

@@ -726,6 +726,44 @@ setAnimationManager(animationManager) {
 
     // Log animations for GameEngine response (never cleared by broadcasts)
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
+
+    // Phase 1: Diagnostic — trace PHASE_ANNOUNCEMENT capture
+    const phaseAnns = animations.filter(a => a.animationName === 'PHASE_ANNOUNCEMENT');
+    if (phaseAnns.length > 0) {
+      debugLog('ANNOUNCE_TRACE', '[AP] PHASE_ANNOUNCEMENT captured in _actionAnimationLog', {
+        phases: phaseAnns.map(a => a.payload.phase),
+        hasPhaseAnimationQueue: !!this.phaseAnimationQueue,
+        logSystemAnimCount: this._actionAnimationLog.systemAnimations.length,
+      });
+    }
+
+    // Diagnostic: trace PASS_ANNOUNCEMENT capture
+    const passAnns = animations.filter(a => a.animationName === 'PASS_ANNOUNCEMENT');
+    if (passAnns.length > 0) {
+      debugLog('ANNOUNCE_TRACE', '[AP] PASS_ANNOUNCEMENT captured in _actionAnimationLog', {
+        passedPlayerIds: passAnns.map(a => a.payload.passedPlayerId),
+        hasPhaseAnimationQueue: !!this.phaseAnimationQueue,
+        currentPAQLength: this.phaseAnimationQueue?.getQueueLength() ?? -1,
+        isPlaying: this.phaseAnimationQueue?.isPlaying() ?? false,
+      });
+    }
+
+    // Direct-queue announcements to PhaseAnimationQueue (client-only)
+    if (this.phaseAnimationQueue) {
+      const localPlayerId = this.gameStateManager?.state?.localPlayerId;
+      for (const anim of animations) {
+        if (anim.animationName === 'PHASE_ANNOUNCEMENT') {
+          const { phase, text, subtitle } = anim.payload;
+          this.phaseAnimationQueue.queueAnimation(phase, text, subtitle, 'AP:direct');
+          anim._apDirectQueued = true;
+        } else if (anim.animationName === 'PASS_ANNOUNCEMENT' && localPlayerId) {
+          const { passedPlayerId } = anim.payload;
+          const passText = passedPlayerId === localPlayerId ? 'YOU PASSED' : 'OPPONENT PASSED';
+          this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'AP:direct_pass');
+          anim._apDirectQueued = true;
+        }
+      }
+    }
   }
 
   /**
