@@ -273,33 +273,10 @@ export async function processMove(payload, ctx) {
   // Create a copy of the entire player state for processing
   let newPlayerState = JSON.parse(JSON.stringify(playerState));
 
-  // Check if drone has RAPID keyword (first move doesn't exhaust)
-  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-  const hasRapid = baseDrone?.abilities?.some(
-    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RAPID'
-  );
-  const canUseRapid = hasRapid && !drone.rapidUsed;
-
-  // Check if drone has INFILTRATE keyword (doesn't exhaust when moving into uncontrolled lane)
-  const hasInfiltrate = baseDrone?.abilities?.some(
-    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'INFILTRATE'
-  );
-  let canUseInfiltrate = false;
-  if (hasInfiltrate) {
-    // Check lane control BEFORE movement - does not exhaust if destination lane is NOT controlled
-    const freshState = ctx.getState();
-    const laneControl = LaneControlCalculator.calculateLaneControl(
-      freshState.player1,
-      freshState.player2
-    );
-    canUseInfiltrate = laneControl[toLane] !== playerId;
-  }
-
-  // Move the drone - RAPID or INFILTRATE allows move without exhaustion
+  // Move the drone — exhausted by default, trigger system may un-exhaust
   const movedDrone = {
     ...drone,
-    isExhausted: (canUseRapid || canUseInfiltrate) ? false : true,
-    rapidUsed: canUseRapid ? true : drone.rapidUsed
+    isExhausted: true
   };
   newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
   newPlayerState.dronesOnBoard[toLane].push(movedDrone);
@@ -325,6 +302,14 @@ export async function processMove(payload, ctx) {
   const onMoveAnimationEvents = moveResult.animationEvents || [];
   if (moveResult.triggered) {
     opponentState = moveResult.newPlayerStates[opponentPlayerId];
+  }
+
+  // DOES_NOT_EXHAUST: If ON_MOVE trigger returned doesNotExhaust, un-exhaust the moved drone
+  if (moveResult.doesNotExhaust) {
+    const droneInState = stateAfterMoveEffects.dronesOnBoard[toLane]?.find(d => d.id === droneId);
+    if (droneInState) {
+      droneInState.isExhausted = false;
+    }
   }
 
   // Update auras after movement

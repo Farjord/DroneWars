@@ -81,19 +81,15 @@ const AbilityIcon = ({ onClick, disabled }) => (
 const SpecialAbilityIcons = ({ drone, isPlayer }) => {
   const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
 
-  const hasRapid = baseDrone?.abilities?.some(
-    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RAPID'
-  );
-  const hasAssault = baseDrone?.abilities?.some(
-    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'ASSAULT'
-  );
+  const hasRapid = baseDrone?.abilities?.some(a => a.keywordIcon === 'RAPID');
+  const hasAssault = baseDrone?.abilities?.some(a => a.keywordIcon === 'ASSAULT');
 
   if (!hasRapid && !hasAssault) return null;
 
   const icons = [];
 
   if (hasRapid) {
-    const isUsed = drone.rapidUsed;
+    const isUsed = (drone.triggerUsesMap?.['Rapid Response'] || 0) >= 1;
     icons.push(
       <div
         key="rapid"
@@ -115,7 +111,7 @@ const SpecialAbilityIcons = ({ drone, isPlayer }) => {
   }
 
   if (hasAssault) {
-    const isUsed = drone.assaultUsed;
+    const isUsed = (drone.triggerUsesMap?.['Assault Protocol'] || 0) >= 1;
     icons.push(
       <div
         key="assault"

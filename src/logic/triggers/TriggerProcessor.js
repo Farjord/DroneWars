@@ -16,6 +16,7 @@ import { onDroneDestroyed } from '../utils/droneStateUtils.js';
 import { selectTargets, hashString } from '../targeting/TargetSelector.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
+import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 
 // Combined collection for ability lookups — Tech definitions live in techData.js
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
@@ -85,9 +86,11 @@ class TriggerProcessor {
     let anyTriggered = false;
     let anyStatMods = false;
     let goAgain = false;
+    let doesNotExhaust = false;
 
+    const filterContext = { lane, playerStates: currentStates, actingPlayerId };
     const matchingTriggers = this.findMatchingTriggers(
-      triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, card
+      triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, card, filterContext
     );
 
     debugLog('TRIGGERS', `fireTrigger: ${triggerType} in ${lane}, found ${matchingTriggers.length} matching triggers`, {
@@ -182,6 +185,10 @@ class TriggerProcessor {
           goAgain = true;
         }
 
+        if (result.doesNotExhaust) {
+          doesNotExhaust = true;
+        }
+
         // Increment per-round usage counter (per-ability)
         if (ability.usesPerRound != null) {
           currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates, ability.name);
@@ -201,7 +208,8 @@ class TriggerProcessor {
       animationEvents: allAnimationEvents,
       triggerSteps,
       statModsApplied: anyStatMods,
-      goAgain
+      goAgain,
+      doesNotExhaust
     };
   }
 
@@ -218,7 +226,7 @@ class TriggerProcessor {
    * @param {Object} [card] - For ON_CARD_PLAY: the card
    * @returns {Array<Object>} Sorted array of { drone, ability, playerId, lane }
    */
-  findMatchingTriggers(triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, card = null) {
+  findMatchingTriggers(triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, card = null, filterContext = null) {
     const matches = [];
 
     // Tier 1: Self-triggers on the acting drone
@@ -231,6 +239,15 @@ class TriggerProcessor {
             if (ability.usesPerRound != null) {
               const uses = triggeringDrone.triggerUsesMap?.[ability.name] || 0;
               if (uses >= ability.usesPerRound) continue;
+            }
+
+            // Validate triggerFilter (including laneControl)
+            let abilityForMatching = ability;
+            if (ability.triggerFilter?.laneControl && filterContext) {
+              abilityForMatching = { ...ability, triggerFilter: { ...ability.triggerFilter, _filterContext: filterContext } };
+            }
+            if (!this._validateTriggerFilter(abilityForMatching.triggerFilter, card, triggeringDrone)) {
+              continue;
             }
 
             matches.push({
@@ -312,6 +329,7 @@ class TriggerProcessor {
     let stateAfterDirectEffects = null;
     let statModsApplied = false;
     let goAgain = false;
+    let doesNotExhaust = false;
     let preCascadePlayerStates = null;
 
     // Normalize effects: support both effect{} and effects[]
@@ -428,6 +446,12 @@ class TriggerProcessor {
           continue;
         }
 
+        // DOES_NOT_EXHAUST is a control flow signal — handle before EffectRouter
+        if (effect.type === 'DOES_NOT_EXHAUST') {
+          doesNotExhaust = true;
+          continue;
+        }
+
         // Preprocess scope: 'SELF' → target the reactor drone
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
@@ -510,6 +534,7 @@ class TriggerProcessor {
       animationEvents,
       statModsApplied,
       goAgain,
+      doesNotExhaust,
       directAnimations,
       cascadeSteps,
       stateAfterDirectEffects: stateAfterDirectEffects || JSON.parse(JSON.stringify(currentStates))
@@ -586,6 +611,9 @@ class TriggerProcessor {
           break;
         case 'INCREASE_THREAT':
           parts.push(`increased threat by ${effect.value}`);
+          break;
+        case 'DOES_NOT_EXHAUST':
+          parts.push('does not exhaust');
           break;
         default:
           parts.push(effect.type);
@@ -836,6 +864,13 @@ class TriggerProcessor {
         case '==': if (!(droneStatValue === value)) return false; break;
         default: return false;
       }
+    }
+
+    if (triggerFilter.laneControl === 'NOT_CONTROLLED_BY_ACTOR') {
+      if (!triggerFilter._filterContext) return true;
+      const { lane: destLane, playerStates: ctxStates, actingPlayerId: ctxActingPlayerId } = triggerFilter._filterContext;
+      const laneControl = LaneControlCalculator.calculateLaneControl(ctxStates.player1, ctxStates.player2);
+      if (laneControl[destLane] === ctxActingPlayerId) return false;
     }
 
     return true;

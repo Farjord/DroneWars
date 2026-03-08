@@ -2,16 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import roundManager from '../RoundManager.js'  // Singleton instance
 
 /**
- * ROUND RESET - RAPID/ASSAULT FLAGS TESTS
+ * ROUND RESET - TRIGGER USAGE TRACKING TESTS
  *
  * At the start of each round, drones are "readied" which includes:
  * - Unexhausting all drones (isExhausted = false)
  * - Restoring shields
  * - Removing temporary stat modifications
- * - Resetting RAPID/ASSAULT ability usage flags (NEW)
- *
- * The rapidUsed and assaultUsed flags must be reset to false at round start
- * so that drones with these abilities can use them again.
+ * - Resetting triggerUsesMap to {} (so RAPID/ASSAULT etc. can fire again)
  */
 
 // Mock the statsCalculator to avoid complex dependencies
@@ -39,7 +36,7 @@ vi.mock('../../triggers/triggerConstants.js', () => ({
   TRIGGER_TYPES: { ON_ROUND_START: 'ON_ROUND_START' }
 }))
 
-describe('RoundManager - RAPID/ASSAULT flag reset', () => {
+describe('RoundManager - triggerUsesMap reset', () => {
   // Helper to create a drone with RAPID ability
   const createRapidDrone = (overrides = {}) => ({
     id: 'blitz_drone_1',
@@ -50,13 +47,15 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     speed: 5,
     isExhausted: true,
     doesNotReady: false,
-    rapidUsed: true,  // Used this round
-    assaultUsed: false,
     statMods: [],
+    triggerUsesMap: { 'Rapid Response': 1 },  // Used this round
     abilities: [{
       name: 'Rapid Response',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+      type: 'TRIGGERED',
+      trigger: 'ON_MOVE',
+      usesPerRound: 1,
+      keywordIcon: 'RAPID',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     ...overrides
   })
@@ -71,13 +70,15 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     speed: 3,
     isExhausted: true,
     doesNotReady: false,
-    rapidUsed: false,
-    assaultUsed: true,  // Used this round
     statMods: [],
+    triggerUsesMap: { 'Assault Protocol': 1 },  // Used this round
     abilities: [{
       name: 'Assault Protocol',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACK',
+      usesPerRound: 1,
+      keywordIcon: 'ASSAULT',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     ...overrides
   })
@@ -113,126 +114,89 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
   }
 
 
-  it('should reset rapidUsed to false at round start', () => {
-    // EXPLANATION: At the start of each round, drones with the RAPID ability
-    // should have their rapidUsed flag reset to false so they can use the
-    // ability again in the new round.
-
-    // Setup: Blitz Drone with rapidUsed=true (used last round)
-    const blitzDrone = createRapidDrone({ rapidUsed: true })
+  it('should reset triggerUsesMap to empty at round start for RAPID drone', () => {
+    const blitzDrone = createRapidDrone()
     const playerState = createPlayerState({ lane1: [blitzDrone] })
     const opponentState = createOpponentState()
 
-    // Action: Ready drones for new round
     const result = roundManager.readyDronesAndRestoreShields(
       playerState,
       opponentState,
       placedSections
     )
 
-    // Assert: rapidUsed should be reset to false
     const readiedDrone = result.dronesOnBoard.lane1[0]
-    expect(readiedDrone.rapidUsed).toBe(false)
-    // triggerUsesMap should also be reset
     expect(readiedDrone.triggerUsesMap).toEqual({})
   })
 
-  it('should reset assaultUsed to false at round start', () => {
-    // EXPLANATION: At the start of each round, drones with the ASSAULT ability
-    // should have their assaultUsed flag reset to false so they can use the
-    // ability again in the new round.
-
-    // Setup: Striker Drone with assaultUsed=true (used last round)
-    const strikerDrone = createAssaultDrone({ assaultUsed: true })
+  it('should reset triggerUsesMap to empty at round start for ASSAULT drone', () => {
+    const strikerDrone = createAssaultDrone()
     const playerState = createPlayerState({ lane1: [strikerDrone] })
     const opponentState = createOpponentState()
 
-    // Action: Ready drones for new round
     const result = roundManager.readyDronesAndRestoreShields(
       playerState,
       opponentState,
       placedSections
     )
 
-    // Assert: assaultUsed should be reset to false
     const readiedDrone = result.dronesOnBoard.lane1[0]
-    expect(readiedDrone.assaultUsed).toBe(false)
-    // triggerUsesMap should also be reset
     expect(readiedDrone.triggerUsesMap).toEqual({})
   })
 
-  it('should reset both rapidUsed and assaultUsed for drones with both abilities', () => {
-    // EXPLANATION: A drone could potentially have both RAPID and ASSAULT through
-    // upgrades. Both flags should be reset independently at round start.
-
-    // Setup: Drone with both abilities used
+  it('should reset triggerUsesMap for drones with both abilities', () => {
     const dualAbilityDrone = {
       ...createRapidDrone(),
-      rapidUsed: true,
-      assaultUsed: true,
+      triggerUsesMap: { 'Rapid Response': 1, 'Assault Protocol': 1 },
       abilities: [
-        { name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } },
-        { name: 'Assault Protocol', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' } }
+        { name: 'Rapid Response', type: 'TRIGGERED', trigger: 'ON_MOVE', usesPerRound: 1, keywordIcon: 'RAPID', effects: [{ type: 'DOES_NOT_EXHAUST' }] },
+        { name: 'Assault Protocol', type: 'TRIGGERED', trigger: 'ON_ATTACK', usesPerRound: 1, keywordIcon: 'ASSAULT', effects: [{ type: 'DOES_NOT_EXHAUST' }] }
       ]
     }
     const playerState = createPlayerState({ lane1: [dualAbilityDrone] })
     const opponentState = createOpponentState()
 
-    // Action: Ready drones for new round
     const result = roundManager.readyDronesAndRestoreShields(
       playerState,
       opponentState,
       placedSections
     )
 
-    // Assert: Both flags should be reset to false
     const readiedDrone = result.dronesOnBoard.lane1[0]
-    expect(readiedDrone.rapidUsed).toBe(false)
-    expect(readiedDrone.assaultUsed).toBe(false)
+    expect(readiedDrone.triggerUsesMap).toEqual({})
   })
 
   it('should still unexhaust drones as before', () => {
-    // EXPLANATION: The existing behavior of unexhausting drones at round start
-    // should remain intact alongside the new RAPID/ASSAULT reset.
-
-    // Setup: Exhausted drone
     const exhaustedDrone = createRapidDrone({ isExhausted: true })
     const playerState = createPlayerState({ lane1: [exhaustedDrone] })
     const opponentState = createOpponentState()
 
-    // Action: Ready drones for new round
     const result = roundManager.readyDronesAndRestoreShields(
       playerState,
       opponentState,
       placedSections
     )
 
-    // Assert: Drone should be unexhausted
     const readiedDrone = result.dronesOnBoard.lane1[0]
     expect(readiedDrone.isExhausted).toBe(false)
   })
 
-  it('should reset flags for all drones in all lanes', () => {
-    // EXPLANATION: Multiple drones across all lanes should have their flags reset.
-
-    // Setup: Drones in different lanes with used abilities
-    const blitzDrone = createRapidDrone({ rapidUsed: true })
-    const strikerDrone = createAssaultDrone({ assaultUsed: true })
+  it('should reset triggerUsesMap for all drones in all lanes', () => {
+    const blitzDrone = createRapidDrone()
+    const strikerDrone = createAssaultDrone()
     const playerState = createPlayerState({
       lane1: [blitzDrone],
       lane2: [strikerDrone]
     })
     const opponentState = createOpponentState()
 
-    // Action: Ready drones for new round
     const result = roundManager.readyDronesAndRestoreShields(
       playerState,
       opponentState,
       placedSections
     )
 
-    // Assert: Both drones should have their flags reset
-    expect(result.dronesOnBoard.lane1[0].rapidUsed).toBe(false)
-    expect(result.dronesOnBoard.lane2[0].assaultUsed).toBe(false)
+    expect(result.dronesOnBoard.lane1[0].triggerUsesMap).toEqual({})
+    expect(result.dronesOnBoard.lane2[0].triggerUsesMap).toEqual({})
   })
 })

@@ -58,9 +58,6 @@ class RoundManager {
           isExhausted: shouldRemainExhausted, // Keep exhausted if doesNotReady was set
           doesNotReady: drone.doesNotReady && !drone.isExhausted, // Only consume flag if drone was actually exhausted
           currentShields: effectiveStats.maxShields,
-          // Reset RAPID/ASSAULT ability usage flags for new round
-          rapidUsed: false,
-          assaultUsed: false,
           // Reset per-ability trigger usage tracking for new round
           triggerUsesMap: {},
           // Reset ability activation counts for new round

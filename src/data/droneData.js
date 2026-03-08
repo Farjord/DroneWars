@@ -364,8 +364,11 @@ const fullDroneCollection = [
     abilities: [{
       name: 'Rapid Response',
       description: 'First move each round does not exhaust this drone.',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+      type: 'TRIGGERED',
+      trigger: 'ON_MOVE',
+      usesPerRound: 1,
+      keywordIcon: 'RAPID',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     upgradeSlots: 2
   },
@@ -383,8 +386,11 @@ const fullDroneCollection = [
     abilities: [{
       name: 'Assault Protocol',
       description: 'First attack each round does not exhaust this drone.',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACK',
+      usesPerRound: 1,
+      keywordIcon: 'ASSAULT',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     upgradeSlots: 2
   },
@@ -403,14 +409,20 @@ const fullDroneCollection = [
       {
         name: 'Rapid Response',
         description: 'First move each round does not exhaust this drone.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+        type: 'TRIGGERED',
+        trigger: 'ON_MOVE',
+        usesPerRound: 1,
+        keywordIcon: 'RAPID',
+        effects: [{ type: 'DOES_NOT_EXHAUST' }]
       },
       {
         name: 'Assault Protocol',
         description: 'First attack each round does not exhaust this drone.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+        type: 'TRIGGERED',
+        trigger: 'ON_ATTACK',
+        usesPerRound: 1,
+        keywordIcon: 'ASSAULT',
+        effects: [{ type: 'DOES_NOT_EXHAUST' }]
       }
     ],
     upgradeSlots: 1
@@ -646,8 +658,11 @@ const fullDroneCollection = [
     abilities: [{
       name: 'Infiltration Protocol',
       description: 'Does not exhaust when moving into a lane you currently do not control.',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'INFILTRATE' }
+      type: 'TRIGGERED',
+      trigger: 'ON_MOVE',
+      keywordIcon: 'INFILTRATE',
+      triggerFilter: { laneControl: 'NOT_CONTROLLED_BY_ACTOR' },
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     upgradeSlots: 1
   },

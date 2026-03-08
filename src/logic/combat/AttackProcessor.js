@@ -517,17 +517,8 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             if (attackerIndex !== -1) {
                 const attackerDrone = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex];
 
-                // Check if drone has ASSAULT keyword (first attack doesn't exhaust)
-                const baseDrone = fullDroneCollection.find(d => d.name === attackerDrone.name);
-                const hasAssault = baseDrone?.abilities?.some(
-                    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'ASSAULT'
-                );
-                const canUseAssault = hasAssault && !attackerDrone.assaultUsed;
-
-                // ASSAULT allows first attack without exhaustion
-                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].isExhausted = !canUseAssault;
-                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].assaultUsed =
-                    canUseAssault ? true : attackerDrone.assaultUsed;
+                // Exhaust attacker by default — trigger system may un-exhaust via DOES_NOT_EXHAUST
+                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].isExhausted = true;
 
                 droneWasOnBoard = true;
                 break;
@@ -550,6 +541,17 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                 newPlayerStates[defendingPlayerId] = afterAttackResult.newPlayerStates[defendingPlayerId];
                 if (afterAttackResult.animationEvents?.length > 0) {
                     animationEvents.push(...afterAttackResult.animationEvents);
+                }
+            }
+
+            // DOES_NOT_EXHAUST: If ON_ATTACK trigger returned doesNotExhaust, un-exhaust the attacker
+            if (afterAttackResult.doesNotExhaust) {
+                for (const lk in newPlayerStates[attackingPlayerId].dronesOnBoard) {
+                    const idx = newPlayerStates[attackingPlayerId].dronesOnBoard[lk].findIndex(d => d.id === attacker.id);
+                    if (idx !== -1) {
+                        newPlayerStates[attackingPlayerId].dronesOnBoard[lk][idx].isExhausted = false;
+                        break;
+                    }
                 }
             }
         }

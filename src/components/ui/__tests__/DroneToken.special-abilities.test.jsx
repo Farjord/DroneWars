@@ -1,6 +1,6 @@
 /**
  * DroneToken.special-abilities.test.jsx
- * TDD tests for SpecialAbilityIcons component (RAPID/ASSAULT visual indicators)
+ * Tests for SpecialAbilityIcons component (RAPID/ASSAULT visual indicators)
  *
  * These tests verify:
  * 1. RAPID icon (Gauge) renders on left side for RAPID drones
@@ -37,19 +37,18 @@ vi.mock('../../../contexts/EditorStatsContext.jsx', () => ({
   useEditorStats: () => null
 }));
 
-// Mock fullDroneCollection to include our test drones
-// Note: Tempest Drone now exists in real droneData.js, no mock needed for it
+// Mock fullDroneCollection to use keywordIcon-based detection
 vi.mock('../../../data/droneData.js', () => ({
   default: [
     {
       name: 'Blitz',
       class: 2, hull: 2, shields: 1, attack: 2, speed: 5,
-      abilities: [{ name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } }]
+      abilities: [{ name: 'Rapid Response', type: 'TRIGGERED', trigger: 'ON_MOVE', usesPerRound: 1, keywordIcon: 'RAPID', effects: [{ type: 'DOES_NOT_EXHAUST' }] }]
     },
     {
       name: 'Striker',
       class: 2, hull: 2, shields: 1, attack: 3, speed: 3,
-      abilities: [{ name: 'Assault Protocol', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' } }]
+      abilities: [{ name: 'Assault Protocol', type: 'TRIGGERED', trigger: 'ON_ATTACK', usesPerRound: 1, keywordIcon: 'ASSAULT', effects: [{ type: 'DOES_NOT_EXHAUST' }] }]
     },
     {
       name: 'Dart',
@@ -60,8 +59,8 @@ vi.mock('../../../data/droneData.js', () => ({
       name: 'Tempest',
       class: 3, hull: 2, shields: 1, attack: 2, speed: 4,
       abilities: [
-        { name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } },
-        { name: 'Assault Protocol', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' } }
+        { name: 'Rapid Response', type: 'TRIGGERED', trigger: 'ON_MOVE', usesPerRound: 1, keywordIcon: 'RAPID', effects: [{ type: 'DOES_NOT_EXHAUST' }] },
+        { name: 'Assault Protocol', type: 'TRIGGERED', trigger: 'ON_ATTACK', usesPerRound: 1, keywordIcon: 'ASSAULT', effects: [{ type: 'DOES_NOT_EXHAUST' }] }
       ]
     }
   ]
@@ -78,12 +77,14 @@ describe('DroneToken - SpecialAbilityIcons', () => {
     isExhausted: false,
     isMarked: false,
     isTeleporting: false,
-    rapidUsed: false,
-    assaultUsed: false,
+    triggerUsesMap: {},
     abilities: [{
       name: 'Rapid Response',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+      type: 'TRIGGERED',
+      trigger: 'ON_MOVE',
+      usesPerRound: 1,
+      keywordIcon: 'RAPID',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }]
   };
 
@@ -97,12 +98,14 @@ describe('DroneToken - SpecialAbilityIcons', () => {
     isExhausted: false,
     isMarked: false,
     isTeleporting: false,
-    rapidUsed: false,
-    assaultUsed: false,
+    triggerUsesMap: {},
     abilities: [{
       name: 'Assault Protocol',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACK',
+      usesPerRound: 1,
+      keywordIcon: 'ASSAULT',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }]
   };
 
@@ -116,8 +119,7 @@ describe('DroneToken - SpecialAbilityIcons', () => {
     isExhausted: false,
     isMarked: false,
     isTeleporting: false,
-    rapidUsed: false,
-    assaultUsed: false,
+    triggerUsesMap: {},
     abilities: []
   };
 
@@ -154,32 +156,27 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockBlitzDrone} />
       );
 
-      // Look for the special ability icons container on the left side
-      // The container should be positioned with class "left-" for left positioning
       const leftContainer = container.querySelector('[class*="-left-"]');
       expect(leftContainer).toBeInTheDocument();
 
-      // Should contain a Gauge icon (title attribute or visual indicator)
       const rapidIcon = container.querySelector('[title*="Rapid"]');
       expect(rapidIcon).toBeInTheDocument();
     });
 
-    it('should show blue color when rapidUsed is false', () => {
+    it('should show blue color when triggerUsesMap has no usage', () => {
       const { container } = render(
-        <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, rapidUsed: false }} />
+        <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, triggerUsesMap: {} }} />
       );
 
-      // Look for blue-colored icon (available state)
       const rapidIcon = container.querySelector('[title*="available"]');
       expect(rapidIcon).toBeInTheDocument();
     });
 
-    it('should show grey color when rapidUsed is true', () => {
+    it('should show grey color when triggerUsesMap shows Rapid Response used', () => {
       const { container } = render(
-        <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, rapidUsed: true }} />
+        <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, triggerUsesMap: { 'Rapid Response': 1 } }} />
       );
 
-      // Look for grey-colored icon (used state)
       const rapidIcon = container.querySelector('[title*="used"]');
       expect(rapidIcon).toBeInTheDocument();
     });
@@ -189,7 +186,6 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStandardDrone} />
       );
 
-      // Should not find any Rapid-related elements
       const rapidIcon = container.querySelector('[title*="Rapid"]');
       expect(rapidIcon).not.toBeInTheDocument();
     });
@@ -201,27 +197,24 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStrikerDrone} />
       );
 
-      // Should contain an Assault icon
       const assaultIcon = container.querySelector('[title*="Assault"]');
       expect(assaultIcon).toBeInTheDocument();
     });
 
-    it('should show red color when assaultUsed is false', () => {
+    it('should show red color when triggerUsesMap has no usage', () => {
       const { container } = render(
-        <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, assaultUsed: false }} />
+        <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, triggerUsesMap: {} }} />
       );
 
-      // Look for red-colored icon (available state)
       const assaultIcon = container.querySelector('[title*="available"]');
       expect(assaultIcon).toBeInTheDocument();
     });
 
-    it('should show grey color when assaultUsed is true', () => {
+    it('should show grey color when triggerUsesMap shows Assault Protocol used', () => {
       const { container } = render(
-        <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, assaultUsed: true }} />
+        <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, triggerUsesMap: { 'Assault Protocol': 1 } }} />
       );
 
-      // Look for grey-colored icon (used state)
       const assaultIcon = container.querySelector('[title*="used"]');
       expect(assaultIcon).toBeInTheDocument();
     });
@@ -231,7 +224,6 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStandardDrone} />
       );
 
-      // Should not find any Assault-related elements
       const assaultIcon = container.querySelector('[title*="Assault"]');
       expect(assaultIcon).not.toBeInTheDocument();
     });
@@ -239,7 +231,6 @@ describe('DroneToken - SpecialAbilityIcons', () => {
 
   describe('stacking', () => {
     it('should stack icons vertically when drone has both RAPID and ASSAULT abilities', () => {
-      // Mock drone with both abilities
       const mockDualAbilityDrone = {
         id: 'dual_drone_1',
         name: 'Tempest',
@@ -249,11 +240,10 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         isExhausted: false,
         isMarked: false,
         isTeleporting: false,
-        rapidUsed: false,
-        assaultUsed: false,
+        triggerUsesMap: {},
         abilities: [
-          { name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } },
-          { name: 'Assault Protocol', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' } }
+          { name: 'Rapid Response', type: 'TRIGGERED', trigger: 'ON_MOVE', usesPerRound: 1, keywordIcon: 'RAPID', effects: [{ type: 'DOES_NOT_EXHAUST' }] },
+          { name: 'Assault Protocol', type: 'TRIGGERED', trigger: 'ON_ATTACK', usesPerRound: 1, keywordIcon: 'ASSAULT', effects: [{ type: 'DOES_NOT_EXHAUST' }] }
         ]
       };
 
@@ -261,13 +251,11 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockDualAbilityDrone} />
       );
 
-      // Both icons should be present
       const rapidIcon = container.querySelector('[title*="Rapid"]');
       const assaultIcon = container.querySelector('[title*="Assault"]');
       expect(rapidIcon).toBeInTheDocument();
       expect(assaultIcon).toBeInTheDocument();
 
-      // They should be in a flex container with flex-col for vertical stacking
       const flexContainer = container.querySelector('[class*="flex-col"]');
       expect(flexContainer).toBeInTheDocument();
     });

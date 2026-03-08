@@ -1,9 +1,9 @@
 /**
- * DeploymentProcessor - RAPID/ASSAULT Initialization Tests
- * TDD: Tests for initializing rapidUsed and assaultUsed flags when deploying drones
+ * DeploymentProcessor - Trigger Usage Initialization Tests
+ * Tests for initializing triggerUsesMap when deploying drones
  *
- * When drones are deployed, they should have rapidUsed and assaultUsed set to false
- * so that abilities can be used in the current round if applicable.
+ * When drones are deployed, they should have triggerUsesMap initialized to {}
+ * so that triggered abilities (like RAPID/ASSAULT) can be used in the current round.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -39,7 +39,7 @@ vi.mock('../../statsCalculator.js', () => ({
 // Now import DeploymentProcessor after mocking
 import DeploymentProcessor from '../DeploymentProcessor.js';
 
-describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
+describe('DeploymentProcessor - trigger usage initialization', () => {
   let processor;
 
   beforeEach(() => {
@@ -66,19 +66,12 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
     deployedDroneCounts: {}
   });
 
-  const createMockEffectiveStats = () => ({
-    totals: { cpuLimit: 10 }
-  });
-
   const placedSections = {
     player1: ['core', null, null],
     player2: ['core', null, null]
   };
 
-  it('should initialize rapidUsed as false when drone is deployed', () => {
-    // EXPLANATION: When any drone is deployed, it should have rapidUsed=false
-    // so that if it has the RAPID ability, it can use it immediately.
-
+  it('should initialize triggerUsesMap as empty when drone is deployed', () => {
     // Setup: Deploy a Dart
     const drone = {
       name: 'Dart',
@@ -104,50 +97,13 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
       'player1'
     );
 
-    // Assert: Deployed drone should have rapidUsed=false
+    // Assert: Deployed drone should have triggerUsesMap initialized
     const deployedDrone = result.newPlayerState.dronesOnBoard.lane1[0];
-    expect(deployedDrone.rapidUsed).toBe(false);
+    expect(deployedDrone.triggerUsesMap).toEqual({});
   });
 
-  it('should initialize assaultUsed as false when drone is deployed', () => {
-    // EXPLANATION: When any drone is deployed, it should have assaultUsed=false
-    // so that if it has the ASSAULT ability, it can use it immediately.
-
-    // Setup: Deploy a Talon
-    const drone = {
-      name: 'Talon',
-      class: 2,
-      attack: 3,
-      hull: 2,
-      shields: 1,
-      speed: 4,
-      abilities: []
-    };
-    const player = createMockPlayer();
-    const opponent = createMockOpponent();
-
-    // Action: Deploy the drone
-    const result = processor.executeDeployment(
-      drone,
-      'lane1',
-      2,
-      player,
-      opponent,
-      placedSections,
-      vi.fn(),
-      'player1'
-    );
-
-    // Assert: Deployed drone should have assaultUsed=false
-    const deployedDrone = result.newPlayerState.dronesOnBoard.lane1[0];
-    expect(deployedDrone.assaultUsed).toBe(false);
-  });
-
-  it('should initialize both rapidUsed and assaultUsed for all deployed drones', () => {
-    // EXPLANATION: All deployed drones should have both flags initialized,
-    // regardless of whether they have those abilities or not.
-
-    // Setup: Deploy a Blitz (has RAPID ability)
+  it('should initialize triggerUsesMap for drones with triggered abilities', () => {
+    // Setup: Deploy a Blitz (has RAPID triggered ability)
     const blitzDrone = {
       name: 'Blitz',
       class: 2,
@@ -157,8 +113,11 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
       speed: 5,
       abilities: [{
         name: 'Rapid Response',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+        type: 'TRIGGERED',
+        trigger: 'ON_MOVE',
+        usesPerRound: 1,
+        keywordIcon: 'RAPID',
+        effects: [{ type: 'DOES_NOT_EXHAUST' }]
       }]
     };
     const player = createMockPlayer();
@@ -176,11 +135,8 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
       'player1'
     );
 
-    // Assert: Deployed drone should have both flags initialized to false
+    // Assert: Deployed drone should have triggerUsesMap initialized empty
     const deployedDrone = result.newPlayerState.dronesOnBoard.lane1[0];
-    expect(deployedDrone.rapidUsed).toBe(false);
-    expect(deployedDrone.assaultUsed).toBe(false);
-    // triggerUsesMap should be initialized empty
     expect(deployedDrone.triggerUsesMap).toEqual({});
   });
 });

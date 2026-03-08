@@ -17,7 +17,7 @@ vi.mock('../../logic/combat/AttackProcessor.js', () => ({
   }))
 }));
 vi.mock('../../data/droneData.js', () => ({ default: [
-  { name: 'TestDrone', abilities: [{ effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } }] },
+  { name: 'TestDrone', abilities: [{ name: 'Rapid Response', type: 'TRIGGERED', trigger: 'ON_MOVE', usesPerRound: 1, keywordIcon: 'RAPID', effects: [{ type: 'DOES_NOT_EXHAUST' }] }] },
   { name: 'InertDrone', abilities: [] },
   { name: 'AbilityDrone', abilities: [{ name: 'TestAbility', activationLimit: 1, effect: { type: 'DAMAGE' } }] }
 ] }));
@@ -69,8 +69,32 @@ vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initial
 vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {
-      this.fireTrigger = vi.fn().mockReturnValue({
-        triggered: false, newPlayerStates: null, animationEvents: []
+      this.fireTrigger = vi.fn().mockImplementation((triggerType, context) => {
+        // Simulate DOES_NOT_EXHAUST for RAPID drones on ON_MOVE
+        if (triggerType === 'ON_MOVE' && context.triggeringDrone) {
+          const drone = context.triggeringDrone;
+          // Check if the drone has a RAPID-style trigger (triggerUsesMap tracks usage)
+          const uses = drone.triggerUsesMap?.['Rapid Response'] || 0;
+          if (drone.name === 'TestDrone' && uses < 1) {
+            // Return doesNotExhaust + increment triggerUsesMap
+            const ps = context.playerStates;
+            const pid = context.triggeringPlayerId;
+            const newStates = JSON.parse(JSON.stringify(ps));
+            // Find and update the drone's triggerUsesMap
+            for (const lane of ['lane1', 'lane2', 'lane3']) {
+              const idx = newStates[pid]?.dronesOnBoard?.[lane]?.findIndex(d => d.id === drone.id);
+              if (idx !== undefined && idx !== -1) {
+                newStates[pid].dronesOnBoard[lane][idx].triggerUsesMap = {
+                  ...(newStates[pid].dronesOnBoard[lane][idx].triggerUsesMap || {}),
+                  'Rapid Response': uses + 1
+                };
+                break;
+              }
+            }
+            return { triggered: true, newPlayerStates: newStates, animationEvents: [], doesNotExhaust: true };
+          }
+        }
+        return { triggered: false, newPlayerStates: null, animationEvents: [], doesNotExhaust: false };
       });
     }
   }
@@ -93,7 +117,7 @@ function createMockGSM(overrides = {}) {
     player1: {
       name: 'Player 1',
       dronesOnBoard: {
-        lane1: [{ id: 'd1', name: 'TestDrone', attack: 2, hull: 2, isExhausted: false, abilities: [], rapidUsed: false }],
+        lane1: [{ id: 'd1', name: 'TestDrone', attack: 2, hull: 2, isExhausted: false, abilities: [], triggerUsesMap: {} }],
         lane2: [{ id: 'd2', name: 'InertDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
         lane3: []
       },
@@ -309,17 +333,20 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
   let ap;
   let gsm;
 
-  // RAPID is checked via fullDroneCollection base drone lookup, not calculateEffectiveStats.
-  // The droneData mock includes TestDrone with GRANT_KEYWORD: RAPID.
+  // RAPID is now handled via TriggerProcessor (DOES_NOT_EXHAUST effect on ON_MOVE)
   const createRapidDrone = (overrides = {}) => ({
     id: 'rapid_1',
     name: 'TestDrone',
     attack: 2, hull: 2, shields: 1, speed: 5,
-    isExhausted: false, rapidUsed: false, assaultUsed: false,
+    isExhausted: false,
+    triggerUsesMap: {},
     abilities: [{
       name: 'Rapid Response',
-      type: 'PASSIVE',
-      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+      type: 'TRIGGERED',
+      trigger: 'ON_MOVE',
+      usesPerRound: 1,
+      keywordIcon: 'RAPID',
+      effects: [{ type: 'DOES_NOT_EXHAUST' }]
     }],
     ...overrides
   });
@@ -328,7 +355,8 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
     id: 'std_1',
     name: 'NormalDrone',
     attack: 1, hull: 1, shields: 1, speed: 6,
-    isExhausted: false, rapidUsed: false, assaultUsed: false,
+    isExhausted: false,
+    triggerUsesMap: {},
     abilities: [],
     ...overrides
   });
@@ -345,7 +373,7 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
     vi.clearAllMocks();
   });
 
-  it('does NOT exhaust drone on first move when rapidUsed=false', async () => {
+  it('does NOT exhaust drone on first move (Rapid Response trigger)', async () => {
     ActionProcessor.reset();
     gsm = createMockGSM({
       player1: {
@@ -365,7 +393,7 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
     expect(movedDrone.isExhausted).toBe(false);
   });
 
-  it('sets rapidUsed to true after first move', async () => {
+  it('increments triggerUsesMap for Rapid Response after first move', async () => {
     ActionProcessor.reset();
     gsm = createMockGSM({
       player1: {
@@ -381,15 +409,15 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
 
     const updateCall = gsm.updatePlayerState.mock.calls[0];
     const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
-    expect(movedDrone.rapidUsed).toBe(true);
+    expect(movedDrone.triggerUsesMap['Rapid Response']).toBe(1);
   });
 
-  it('exhausts drone on second move when rapidUsed=true', async () => {
+  it('exhausts drone on second move when triggerUsesMap shows Rapid Response used', async () => {
     ActionProcessor.reset();
     gsm = createMockGSM({
       player1: {
         name: 'Player 1',
-        dronesOnBoard: { lane1: [createRapidDrone({ rapidUsed: true })], lane2: [], lane3: [] },
+        dronesOnBoard: { lane1: [createRapidDrone({ triggerUsesMap: { 'Rapid Response': 1 } })], lane2: [], lane3: [] },
         hand: [], energy: 5, shipSections: {}
       }
     });
