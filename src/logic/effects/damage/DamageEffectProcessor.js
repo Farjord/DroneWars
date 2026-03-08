@@ -199,43 +199,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       const droneIndex = dronesInLane.findIndex(d => d.id === snapshotDrone.id);
       if (droneIndex === -1) return; // Drone already removed
 
-      const drone = dronesInLane[droneIndex];
-
-      // Calculate damage (with marked bonus if applicable)
-      let damageValue = effect.value;
-      if (effect.markedBonus && drone.isMarked) {
-        damageValue += effect.markedBonus;
-        debugLog('COMBAT', `[DAMAGE] Target ${drone.name} is marked - applying bonus: ${effect.value} + ${effect.markedBonus} = ${damageValue}`);
-      }
-
-      // Determine damage type from effect
-      const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
-
-      // Apply damage using damage type helper
-      const damageResult = calculateDamageByType(
-        damageValue,
-        drone.currentShields,
-        drone.hull,
-        damageType
-      );
-      const shieldDamage = damageResult.shieldDamage;
-      const hullDamage = damageResult.hullDamage;
-
-      // Apply damage to drone state
-      drone.currentShields -= shieldDamage;
-      drone.hull -= hullDamage;
-
-      const destroyed = drone.hull <= 0;
-
-      debugLog('COMBAT', `[DAMAGE] ${drone.name}: shields ${shieldDamage}, hull ${hullDamage}, destroyed: ${destroyed}`);
-
-      // Store damage result for animation
-      damageResults.push({
-        drone,
-        shieldDamage,
-        hullDamage,
-        destroyed
-      });
+      damageResults.push(this.applyEffectDamageToDrone(effect, dronesInLane[droneIndex]));
     });
 
     // Remove destroyed drones
@@ -260,6 +224,31 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     });
 
     return this.createResult(newPlayerStates, animationEvents);
+  }
+
+  /**
+   * Apply damage from an effect to a single drone, mutating its shields/hull
+   *
+   * @private
+   * @returns {{ drone, shieldDamage, hullDamage, destroyed }}
+   */
+  applyEffectDamageToDrone(effect, drone) {
+    let damageValue = effect.value;
+    if (effect.markedBonus && drone.isMarked) {
+      damageValue += effect.markedBonus;
+      debugLog('COMBAT', `[DAMAGE] Target ${drone.name} is marked - applying bonus: ${effect.value} + ${effect.markedBonus} = ${damageValue}`);
+    }
+
+    const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
+    const result = calculateDamageByType(damageValue, drone.currentShields, drone.hull, damageType);
+
+    drone.currentShields -= result.shieldDamage;
+    drone.hull -= result.hullDamage;
+
+    const destroyed = drone.hull <= 0;
+    debugLog('COMBAT', `[DAMAGE] ${drone.name}: shields ${result.shieldDamage}, hull ${result.hullDamage}, destroyed: ${destroyed}`);
+
+    return { drone, shieldDamage: result.shieldDamage, hullDamage: result.hullDamage, destroyed };
   }
 
   /**
@@ -289,23 +278,10 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       if (droneIndex === -1) continue;
 
       const drone = dronesInLane[droneIndex];
+      const damageResult = this.applyEffectDamageToDrone(effect, drone);
+      damageResults.push(damageResult);
 
-      let damageValue = effect.value;
-      if (effect.markedBonus && drone.isMarked) {
-        damageValue += effect.markedBonus;
-      }
-
-      const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
-      const damageResult = calculateDamageByType(damageValue, drone.currentShields, drone.hull, damageType);
-
-      drone.currentShields -= damageResult.shieldDamage;
-      drone.hull -= damageResult.hullDamage;
-
-      const destroyed = drone.hull <= 0;
-
-      damageResults.push({ drone, shieldDamage: damageResult.shieldDamage, hullDamage: damageResult.hullDamage, destroyed });
-
-      if (destroyed) {
+      if (damageResult.destroyed) {
         const updates = gameEngine.onDroneDestroyed(targetPlayerState, drone);
         targetPlayerState.deployedDroneCounts = {
           ...(targetPlayerState.deployedDroneCounts || {}),
