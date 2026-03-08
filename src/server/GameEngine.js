@@ -43,17 +43,12 @@ class GameEngine {
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[4/10] GameEngine.processAction delegating to GSM', { type });
     }
-    // Snapshot GSM state before processing so CSS.getState() can return pre-processing
-    // state instead of intermediate GSM state (drone without isTeleporting flags).
+    // Snapshot state before processing so ClientStateStore.getState() returns
+    // pre-processing state instead of intermediate GSM state (drone without isTeleporting).
     this.gameStateManager._preProcessingState = this.gameStateManager.getState();
-    // Suppress ClientStateStore notifications during processing — intermediate GSM
-    // updates (e.g. ctx.updatePlayerState) would leak drone state to the UI before
-    // animation flags (isTeleporting) are applied. _emitToClients delivers the final
-    // composite state with animations after processing completes.
+    // Suppress ClientStateStore notifications during processing — _emitToClients
+    // delivers the final composite state with animations after processing completes.
     this.gameStateManager._engineProcessing = true;
-    if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[4a/10] Engine: state frozen for UI during processing');
-    }
     try {
       const result = await this.gameStateManager.processAction(type, payload);
       await this.gameFlowManager.waitForPendingActionCompletion();

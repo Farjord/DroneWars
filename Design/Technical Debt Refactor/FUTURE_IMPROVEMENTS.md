@@ -78,6 +78,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 79 | TargetSelector.js, DamageEffectProcessor.js, DestroyEffectProcessor.js | `gameSeed ?? 12345` fallback silently masks missing seed propagation — if `context.gameSeed` is undefined in production, both players could diverge. Add a debug warning when fallback fires. | targetSelection code review | 2026-03-08 | Low |
 | 80 | counterDamage.js | Counter-damage uses manual shield/hull calculation instead of shared `calculateDamageByType`. Safe now (Viper/Thornback/Scorpion have no special damageType) but would miss ION/KINETIC/SHIELD_BREAKER if a future drone combined counter-damage with a special damage type. Migrate to use shared helper. | Trigger migration review | 2026-03-08 | Low |
 | 81 | RoundManager.js, TechSlots.jsx | Residual `triggerUsesThisRound` flat counter still set/read for backward compat with tech entities. Now that `triggerUsesMap` is the canonical source, remove the old flat counter and its fallback chain. | Trigger migration review | 2026-03-08 | Low |
+| 82 | GameEngine.js, ClientStateStore.js | `_engineProcessing` / `_preProcessingState` set as ad-hoc properties on GSM by GameEngine, read by ClientStateStore — hidden coupling through undocumented mutable state on a third object. Encapsulate behind proper GSM methods (`gsm.beginProcessing()` / `gsm.endProcessing()` / `gsm.isProcessing()` / `gsm.getPreProcessingState()`). | Multiplayer unified client review | 2026-03-08 | Low |
 
 ## Audit Findings (2026-02-23)
 

@@ -93,6 +93,31 @@ describe('ClientStateStore', () => {
     });
   });
 
+  describe('subscriber suppression during engine processing', () => {
+    it('does not notify subscribers when GSM emits during engine processing', () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      mockGSM._engineProcessing = true;
+      gsmSubscribers.forEach(sub => sub({ type: 'STATE_UPDATE' }));
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('resumes notifying subscribers after engine processing ends', () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      mockGSM._engineProcessing = true;
+      gsmSubscribers.forEach(sub => sub({ type: 'STATE_UPDATE' }));
+      expect(listener).not.toHaveBeenCalled();
+
+      mockGSM._engineProcessing = false;
+      gsmSubscribers.forEach(sub => sub({ type: 'STATE_UPDATE' }));
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('applyUpdate', () => {
     it('notifies subscribers with ENGINE_UPDATE event', () => {
       const listener = vi.fn();
