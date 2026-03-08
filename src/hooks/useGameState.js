@@ -77,14 +77,18 @@ export const useGameState = () => {
     return isMultiplayer() && !isMyTurn();
   }, [isMultiplayer, isMyTurn]);
 
-  // Perspective methods
+  // Perspective methods — derive from React state (CSS-controlled), not live GSM.
+  // During engine processing, CSS suppresses notifications so gameState stays at
+  // pre-processing values, preventing drone state from leaking before isTeleporting.
   const getLocalPlayerState = useCallback(() => {
-    return gameStateManager.getLocalPlayerState();
-  }, [gameState.localPlayerId]);
+    const localId = gameStateManager.getLocalPlayerId();
+    return gameState[localId];
+  }, [gameState]);
 
   const getOpponentPlayerState = useCallback(() => {
-    return gameStateManager.getOpponentPlayerState();
-  }, [gameState.localPlayerId]);
+    const opponentId = gameStateManager.getOpponentPlayerId();
+    return gameState[opponentId];
+  }, [gameState]);
 
   const isLocalPlayer = useCallback((playerId) => {
     return gameStateManager.isLocalPlayer(playerId);

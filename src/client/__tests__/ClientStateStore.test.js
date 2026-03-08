@@ -61,6 +61,38 @@ describe('ClientStateStore', () => {
     });
   });
 
+  describe('getState during engine processing', () => {
+    it('returns pre-processing snapshot when engine is processing and no appliedState', () => {
+      const preProcessingState = { turnPhase: 'action', player1: { hp: 10 }, player2: { hp: 8 } };
+      mockGSM._engineProcessing = true;
+      mockGSM._preProcessingState = preProcessingState;
+
+      expect(store.getState()).toBe(preProcessingState);
+      // Should NOT have called gsm.getState since snapshot was returned
+      mockGSM.getState.mockClear();
+      store.getState();
+      expect(mockGSM.getState).not.toHaveBeenCalled();
+    });
+
+    it('returns appliedState over snapshot when appliedState exists', () => {
+      const appliedState = { turnPhase: 'deployment', player1: { hp: 9 }, player2: { hp: 7 } };
+      store.applyUpdate(appliedState);
+
+      mockGSM._engineProcessing = true;
+      mockGSM._preProcessingState = { turnPhase: 'action', player1: { hp: 10 }, player2: { hp: 8 } };
+
+      expect(store.getState()).toBe(appliedState);
+    });
+
+    it('falls through to gsm.getState when not processing', () => {
+      mockGSM._engineProcessing = false;
+      mockGSM._preProcessingState = null;
+
+      expect(store.getState()).toBe(mockState);
+      expect(mockGSM.getState).toHaveBeenCalled();
+    });
+  });
+
   describe('applyUpdate', () => {
     it('notifies subscribers with ENGINE_UPDATE event', () => {
       const listener = vi.fn();

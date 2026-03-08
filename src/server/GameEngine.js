@@ -43,24 +43,40 @@ class GameEngine {
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[4/10] GameEngine.processAction delegating to GSM', { type });
     }
-    const result = await this.gameStateManager.processAction(type, payload);
-    await this.gameFlowManager.waitForPendingActionCompletion();
-    const state = this.gameStateManager.getState();
-
-    // Extract collected animations from ActionProcessor result (Phase 2 contract)
-    const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
-
-    const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
+    // Snapshot GSM state before processing so CSS.getState() can return pre-processing
+    // state instead of intermediate GSM state (drone without isTeleporting flags).
+    this.gameStateManager._preProcessingState = this.gameStateManager.getState();
+    // Suppress ClientStateStore notifications during processing — intermediate GSM
+    // updates (e.g. ctx.updatePlayerState) would leak drone state to the UI before
+    // animation flags (isTeleporting) are applied. _emitToClients delivers the final
+    // composite state with animations after processing completes.
+    this.gameStateManager._engineProcessing = true;
     if (type === 'deployment') {
-      debugLog('DEPLOY_TRACE', '[9/10] GameEngine returns {state, animations}', {
-        animCount,
-        turnPhase: state.turnPhase,
-      });
+      debugLog('DEPLOY_TRACE', '[4a/10] Engine: state frozen for UI during processing');
     }
+    try {
+      const result = await this.gameStateManager.processAction(type, payload);
+      await this.gameFlowManager.waitForPendingActionCompletion();
+      const state = this.gameStateManager.getState();
 
-    await this._emitToClients(state, animations);
+      // Extract collected animations from ActionProcessor result (Phase 2 contract)
+      const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
 
-    return { state, animations, result };
+      const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
+      if (type === 'deployment') {
+        debugLog('DEPLOY_TRACE', '[9/10] GameEngine returns {state, animations}', {
+          animCount,
+          turnPhase: state.turnPhase,
+        });
+      }
+
+      await this._emitToClients(state, animations);
+
+      return { state, animations, result };
+    } finally {
+      this.gameStateManager._engineProcessing = false;
+      this.gameStateManager._preProcessingState = null;
+    }
   }
 
   /**

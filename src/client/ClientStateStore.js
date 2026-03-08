@@ -12,6 +12,15 @@ class ClientStateStore {
 
     // Forward GSM events to our subscribers
     this._gsmUnsubscribe = gameStateManager.subscribe((event) => {
+      // During engine processing, intermediate GSM updates (e.g. deployment commits)
+      // would leak drone state to UI before animation flags are applied.
+      // _emitToClients delivers the final state with isTeleporting flags after processing.
+      if (this.gameStateManager._engineProcessing) {
+        debugLog('DEPLOY_TRACE', 'ClientStateStore: GSM subscriber suppressed during engine processing', {
+          eventType: event.type,
+        });
+        return;
+      }
       if (this._appliedState && event.payload?.updates) {
         // Merge local changes into applied state (preserves server state for client)
         this._appliedState = { ...this._appliedState, ...event.payload.updates };
@@ -36,6 +45,12 @@ class ClientStateStore {
   getState() {
     if (this._appliedState) {
       return this._appliedState;
+    }
+    // During engine processing, return pre-processing snapshot to prevent
+    // intermediate GSM state (drone without isTeleporting) from leaking to UI
+    if (this.gameStateManager._engineProcessing && this.gameStateManager._preProcessingState) {
+      debugLog('DEPLOY_TRACE', 'ClientStateStore.getState: returning frozen pre-processing snapshot (engine processing)');
+      return this.gameStateManager._preProcessingState;
     }
     return this.gameStateManager.getState();
   }

@@ -148,4 +148,53 @@ describe('GameEngine', () => {
       expect(cb).not.toHaveBeenCalled();
     });
   });
+
+  describe('_engineProcessing flag and _preProcessingState snapshot', () => {
+    it('sets _engineProcessing and _preProcessingState during processAction and clears both after', async () => {
+      let flagDuringProcessing = undefined;
+      let snapshotDuringProcessing = undefined;
+      mockGSM.processAction.mockImplementation(async () => {
+        flagDuringProcessing = mockGSM._engineProcessing;
+        snapshotDuringProcessing = mockGSM._preProcessingState;
+        return { success: true };
+      });
+
+      await engine.processAction('move', {});
+
+      expect(flagDuringProcessing).toBe(true);
+      expect(snapshotDuringProcessing).toBe(mockState);
+      expect(mockGSM._engineProcessing).toBe(false);
+      expect(mockGSM._preProcessingState).toBeNull();
+    });
+
+    it('clears _engineProcessing and _preProcessingState even when processAction throws', async () => {
+      mockGSM.processAction.mockRejectedValue(new Error('boom'));
+
+      await expect(engine.processAction('move', {})).rejects.toThrow('boom');
+
+      expect(mockGSM._engineProcessing).toBe(false);
+      expect(mockGSM._preProcessingState).toBeNull();
+    });
+
+    it('captures snapshot before setting _engineProcessing so snapshot reflects pre-processing state', async () => {
+      let captureOrder = [];
+      // Track the order: snapshot should be set before _engineProcessing
+      Object.defineProperty(mockGSM, '_preProcessingState', {
+        set(val) { this.__preProcessingState = val; if (val) captureOrder.push('snapshot'); },
+        get() { return this.__preProcessingState; },
+        configurable: true,
+      });
+      Object.defineProperty(mockGSM, '_engineProcessing', {
+        set(val) { this.__engineProcessing = val; if (val) captureOrder.push('flag'); },
+        get() { return this.__engineProcessing; },
+        configurable: true,
+      });
+      mockGSM.processAction.mockResolvedValue({ success: true });
+
+      await engine.processAction('move', {});
+
+      expect(captureOrder[0]).toBe('snapshot');
+      expect(captureOrder[1]).toBe('flag');
+    });
+  });
 });
