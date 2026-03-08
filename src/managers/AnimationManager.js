@@ -255,7 +255,7 @@ class AnimationManager {
     const triggerAnims = (animations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
     if (triggerAnims.length > 0) {
       const source = executor.getAnimationSource?.() || 'unknown';
-      const role = source === 'HOST_LOCAL' ? 'HOST' : source === 'HOST_RESPONSE' ? 'GUEST' : source;
+      const role = source;
       debugLog('TRIGGER_SYNC_TRACE', `[8/8] ${role}: Trigger animation execution starting`, {
         utc: new Date().toISOString(),
         triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,

@@ -65,7 +65,7 @@ class P2PTransport extends Transport {
       const { state, actionAnimations, systemAnimations } = message.data;
       const triggerAnims = (actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
       if (triggerAnims.length > 0) {
-        debugLog('TRIGGER_SYNC_TRACE', '[6/8] GUEST: Trigger dispatching to GameClient', {
+        debugLog('TRIGGER_SYNC_TRACE', '[6/8] CLIENT: Trigger dispatching to GameClient', {
           utc: new Date().toISOString(),
           triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
           triggerCount: triggerAnims.length,

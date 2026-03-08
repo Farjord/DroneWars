@@ -97,7 +97,7 @@ class P2PManager {
 
       const triggerAnims = (data.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
       if (triggerAnims.length > 0) {
-        debugLog('TRIGGER_SYNC_TRACE', '[4/8] GUEST: Trigger received from network', {
+        debugLog('TRIGGER_SYNC_TRACE', '[4/8] CLIENT: Trigger received from network', {
           utc: new Date().toISOString(),
           triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
           triggerCount: triggerAnims.length,
@@ -391,7 +391,7 @@ class P2PManager {
 
       const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
       if (triggerAnims.length > 0) {
-        debugLog('TRIGGER_SYNC_TRACE', '[3/8] HOST: Trigger sent over network', {
+        debugLog('TRIGGER_SYNC_TRACE', '[3/8] SERVER: Trigger sent over network', {
           utc: new Date().toISOString(),
           triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
           sequenceId: this.broadcastSequence,

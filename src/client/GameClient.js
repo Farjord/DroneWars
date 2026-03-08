@@ -17,8 +17,8 @@ class GameClient extends GameServer {
     this.animationManager = animationManager;
 
     // stateProvider protocol fields (used by AnimationManager.executeWithStateUpdate)
-    this.pendingHostState = null;
-    this.pendingFinalHostState = null;
+    this.pendingServerState = null;
+    this.pendingFinalServerState = null;
     this._localGameMode = null; // Cached on first response to avoid per-response store reads
 
     // Wire up transport handlers
@@ -34,6 +34,7 @@ class GameClient extends GameServer {
       debugLog('DEPLOY_TRACE', '[2/10] GameClient.submitAction routing to transport', {
         type,
         hasTransport: !!this.transport,
+        playerId: this.playerId,
       });
     }
     return this.transport.sendAction(type, payload);
@@ -80,6 +81,7 @@ class GameClient extends GameServer {
         newPhase,
         animCount: visualAnimations.length,
         hasTeleportIn: visualAnimations.some(a => a.animationName === 'TELEPORT_IN'),
+        playerId: this.playerId,
       });
     }
 
@@ -97,6 +99,7 @@ class GameClient extends GameServer {
         triggerCount: triggerAnims.length,
         totalAnimCount: visualAnimations.length,
         willAnimate: !!this.animationManager,
+        playerId: this.playerId,
       });
     }
 
@@ -106,6 +109,7 @@ class GameClient extends GameServer {
         animNames: visualAnimations.map(a => a.animationName),
         hasAnimationManager: !!this.animationManager,
         willPlayAnimations: !!this.animationManager && visualAnimations.length > 0,
+        playerId: this.playerId,
       });
     }
 
@@ -122,27 +126,27 @@ class GameClient extends GameServer {
         { player1: state.player1, player2: state.player2 },
         visualAnimations
       );
-      this.pendingHostState = { ...state, ...modifiedPlayers };
-      this.pendingFinalHostState = state;
+      this.pendingServerState = { ...state, ...modifiedPlayers };
+      this.pendingFinalServerState = state;
     } else {
-      this.pendingHostState = state;
-      this.pendingFinalHostState = null;
+      this.pendingServerState = state;
+      this.pendingFinalServerState = null;
     }
 
     try {
       await this.animationManager.executeWithStateUpdate(visualAnimations, this);
     } finally {
-      this.pendingHostState = null;
-      this.pendingFinalHostState = null;
+      this.pendingServerState = null;
+      this.pendingFinalServerState = null;
     }
   }
 
   // --- stateProvider protocol (AnimationManager.executeWithStateUpdate) ---
 
   async applyPendingStateUpdate() {
-    if (this.pendingHostState) {
+    if (this.pendingServerState) {
       debugLog('ANIMATIONS', '[STATE UPDATE] GameClient applying pending state');
-      this._applyState(this.pendingHostState);
+      this._applyState(this.pendingServerState);
     }
   }
 
@@ -151,12 +155,12 @@ class GameClient extends GameServer {
   }
 
   revealTeleportedDrones() {
-    if (!this.pendingFinalHostState) return;
+    if (!this.pendingFinalServerState) return;
     const current = this.getState();
     const revealed = {
       ...current,
-      player1: { ...current.player1, lanes: this.pendingFinalHostState.player1?.lanes },
-      player2: { ...current.player2, lanes: this.pendingFinalHostState.player2?.lanes },
+      player1: { ...current.player1, lanes: this.pendingFinalServerState.player1?.lanes },
+      player2: { ...current.player2, lanes: this.pendingFinalServerState.player2?.lanes },
     };
     this._applyState(revealed);
   }
@@ -166,7 +170,7 @@ class GameClient extends GameServer {
   _applyState(state) {
     debugLog('DEPLOY_TRACE', '[10/10] GameClient._applyState', {
       turnPhase: state.turnPhase, currentPlayer: state.currentPlayer,
-      gameMode: state.gameMode,
+      gameMode: state.gameMode, playerId: this.playerId,
     });
     // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server-broadcast data
     if (state.gameMode === 'guest') {
@@ -213,14 +217,14 @@ class GameClient extends GameServer {
       const { phase, text, subtitle } = anim.payload;
       this.phaseAnimationQueue.queueAnimation(phase, text, subtitle, 'GC:server_phase');
       debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Phase announcement received from server', {
-        utc: new Date().toISOString(), phase, text,
+        utc: new Date().toISOString(), phase, text, playerId: this.playerId,
       });
     } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
       const { passedPlayerId } = anim.payload;
       const passText = passedPlayerId === this.playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
       this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'GC:server_pass');
       debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Pass announcement received from server', {
-        utc: new Date().toISOString(), passedPlayerId, passText,
+        utc: new Date().toISOString(), passedPlayerId, passText, playerId: this.playerId,
       });
     }
   }

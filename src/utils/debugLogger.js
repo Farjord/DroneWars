@@ -44,7 +44,7 @@ const DEBUG_CONFIG = {
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,         // Button click tracking and effects
     MOVEMENT_LANES: false,        // Movement card lane highlighting diagnostics
-    GUEST_CASCADE: false,        // Guest optimistic cascade flow
+    PHASE_SKIP: false,           // Phase skip during cascade
     CASCADE_LOOP: false,        // Cascade loop iteration details
     VALIDATION: false,           // State validation and reconciliation
     TIMING: false,               // High-resolution timing milestones with timestamps
@@ -90,13 +90,13 @@ const DEBUG_CONFIG = {
     MP_JOIN_TRACE: true,         // Connection lifecycle trace (7 numbered steps)
     MP_SYNC_TRACE: true,         // State broadcast cycle trace (11 numbered steps)
     MP_GAME_TRACE: true,         // Game start trace (5 numbered steps)
-    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, host→guest)
+    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, server→client)
     MESSAGE_QUEUE: true,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
     ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
     PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
-    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, HOST+GUEST)
+    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
     COMMIT_TRACE: true,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
     STATE_CHECKPOINT: true,       // Master game state snapshots at key moments
 

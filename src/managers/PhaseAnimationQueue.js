@@ -102,7 +102,7 @@ class PhaseAnimationQueue {
     );
     if (this._inRoundTransitionPlayback) {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-17] Playback started for round-transition announcements', {
-        utc: new Date().toISOString(), role: 'BOTH',
+        utc: new Date().toISOString(), role: 'CLIENT',
         queueLength: this.queue.length,
         animations: this.queue.map(a => a.phaseName).join(' → '),
       });
@@ -122,7 +122,7 @@ class PhaseAnimationQueue {
       // Queue empty, playback complete
       if (this._inRoundTransitionPlayback) {
         debugLog('ROUND_TRANSITION_TRACE', '[RT-20] All announcements played — round transition UI complete', {
-          utc: new Date().toISOString(), role: 'BOTH',
+          utc: new Date().toISOString(), role: 'CLIENT',
         });
         this._inRoundTransitionPlayback = false;
       }
@@ -185,7 +185,7 @@ class PhaseAnimationQueue {
     });
     if (this._inRoundTransitionPlayback) {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-18] Individual announcement playing', {
-        utc: new Date().toISOString(), role: 'BOTH',
+        utc: new Date().toISOString(), role: 'CLIENT',
         phaseName: this.currentAnimation.phaseName,
         phaseText: this.currentAnimation.phaseText,
       });
@@ -219,7 +219,7 @@ class PhaseAnimationQueue {
     }, startTime);
     if (this._inRoundTransitionPlayback) {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-19] Individual announcement displayed (1800ms complete)', {
-        utc: new Date().toISOString(), role: 'BOTH',
+        utc: new Date().toISOString(), role: 'CLIENT',
         phaseName: this.currentAnimation.phaseName,
         phaseText: this.currentAnimation.phaseText,
       });

@@ -33,7 +33,7 @@ class HostGameServer {
    * Processes via GameEngine, broadcasts result, sends ack to guest.
    */
   async handleGuestAction(action) {
-    debugLog('MP_SYNC_TRACE', '[10/11] Host processing guest action', { actionType: action?.type });
+    debugLog('MP_SYNC_TRACE', '[10/11] Server processing remote action', { actionType: action?.type });
 
     try {
       const response = await this.gameEngine.processAction(action.type, action.payload);
@@ -49,7 +49,7 @@ class HostGameServer {
 
       return response;
     } catch (error) {
-      debugLog('MP_SYNC_TRACE', 'Error processing guest action', { error: true, actionType: action?.type, message: error.message });
+      debugLog('MP_SYNC_TRACE', 'Error processing remote action', { error: true, actionType: action?.type, message: error.message });
 
       if (this.p2pManager) {
         this.p2pManager.sendActionAck({

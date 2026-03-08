@@ -153,6 +153,9 @@ export const evaluateReadyDroneCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateCreateTokensCard = (card, target, context) => {
+  if (card.effects[0].tokenName === 'Dart') {
+    return evaluateDartTokenCard(card, target, context);
+  }
   if (card.effects[0].tokenName === 'Rally Beacon') {
     return evaluateRallyBeaconCard(card, target, context);
   }
@@ -169,6 +172,71 @@ export const evaluateCreateTokensCard = (card, target, context) => {
     return evaluateJitterMineCard(card, target, context);
   }
   return evaluateJammerCard(card, target, context);
+};
+
+/**
+ * Evaluate a Dart token deployment card
+ * Scores based on enemy presence, ship attack opportunity, and speed advantage
+ */
+const evaluateDartTokenCard = (card, target, context) => {
+  const { player1, player2, gameDataService, placedSections } = context;
+  const logic = [];
+  let score = 0;
+
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check lane capacity
+  const friendlyDrones = player2.dronesOnBoard[targetLane] || [];
+  if (friendlyDrones.length >= MAX_DRONES_PER_LANE) {
+    return { score: INVALID_SCORE, logic: ['⛔ Lane full'] };
+  }
+
+  // Base value
+  score += CARD_EVALUATION.DART_TOKEN_BASE_VALUE;
+  logic.push(`✅ Base Value: +${CARD_EVALUATION.DART_TOKEN_BASE_VALUE}`);
+
+  // Per enemy drone in lane
+  const enemyDrones = player1.dronesOnBoard[targetLane] || [];
+  if (enemyDrones.length > 0) {
+    const enemyBonus = enemyDrones.length * CARD_EVALUATION.DART_TOKEN_ENEMY_DRONE_VALUE;
+    score += enemyBonus;
+    logic.push(`✅ Enemy Drones: +${enemyBonus} (${enemyDrones.length} drones)`);
+  }
+
+  // Unguarded ship section
+  const laneIndex = parseInt(targetLane.slice(-1)) - 1;
+  const enemySectionName = placedSections[laneIndex];
+  if (enemySectionName && player1.shipSections[enemySectionName]?.hull > 0) {
+    const hasGuardian = enemyDrones.some(drone => {
+      const effectiveStats = gameDataService.getEffectiveStats(drone, targetLane);
+      return effectiveStats.keywords.has('GUARDIAN');
+    });
+    if (!hasGuardian) {
+      score += CARD_EVALUATION.DART_TOKEN_SHIP_ATTACK_VALUE;
+      logic.push(`✅ Unguarded Ship: +${CARD_EVALUATION.DART_TOKEN_SHIP_ATTACK_VALUE}`);
+    }
+  }
+
+  // Speed advantage (Dart speed 6 vs enemies)
+  const blockableEnemies = enemyDrones.filter(drone => {
+    const effectiveStats = gameDataService.getEffectiveStats(drone, targetLane);
+    return (effectiveStats.speed || 0) < 6;
+  });
+  if (blockableEnemies.length > 0) {
+    const speedBonus = blockableEnemies.length * CARD_EVALUATION.DART_TOKEN_SPEED_BONUS;
+    score += speedBonus;
+    logic.push(`✅ Speed Advantage: +${speedBonus} (${blockableEnemies.length} blockable)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
 };
 
 /**

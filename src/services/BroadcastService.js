@@ -1,8 +1,8 @@
 // ========================================
 // BROADCAST SERVICE
 // ========================================
-// Centralizes all host→guest state broadcasting logic.
-// Owns the host guard, animation pending arrays, and state priority logic.
+// Centralizes all server→client state broadcasting logic.
+// Owns the authority guard, animation pending arrays, and state priority logic.
 // Replaces scattered broadcastStateToGuest() calls across the codebase.
 
 import { debugLog } from '../utils/debugLogger.js';
@@ -56,7 +56,7 @@ class BroadcastService {
 
     const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
     if (triggerAnims.length > 0) {
-      debugLog('TRIGGER_SYNC_TRACE', '[2/8] HOST: Trigger in broadcast payload', {
+      debugLog('TRIGGER_SYNC_TRACE', '[2/8] SERVER: Trigger in broadcast payload', {
         utc: new Date().toISOString(),
         triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
         triggerCount: triggerAnims.length,
@@ -75,7 +75,7 @@ class BroadcastService {
     });
     if (trigger === 'round_initialization' || trigger === 'round_transition_both_passed') {
       debugLog('ROUND_TRANSITION_TRACE', '[RT-11] Network broadcast of round-transition state', {
-        utc: new Date().toISOString(), role: 'HOST',
+        utc: new Date().toISOString(), role: 'SERVER',
         trigger, animCount: actionAnimations.length + systemAnimations.length,
       });
     }

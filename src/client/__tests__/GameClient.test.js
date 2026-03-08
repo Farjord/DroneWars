@@ -238,7 +238,7 @@ describe('GameClient', () => {
   // --- TELEPORT_IN handling ---
 
   describe('TELEPORT_IN handling', () => {
-    it('sets pendingHostState with isTeleporting flags', async () => {
+    it('sets pendingServerState with isTeleporting flags', async () => {
       const { addTeleportingFlags } = await import('../../utils/teleportUtils.js');
       const state = makeState();
       const teleportAnim = { animationName: 'TELEPORT_IN', payload: {} };
@@ -269,8 +269,8 @@ describe('GameClient', () => {
         });
       } catch { /* expected */ }
 
-      expect(client.pendingHostState).toBeNull();
-      expect(client.pendingFinalHostState).toBeNull();
+      expect(client.pendingServerState).toBeNull();
+      expect(client.pendingFinalServerState).toBeNull();
     });
   });
 
@@ -279,7 +279,7 @@ describe('GameClient', () => {
   describe('stateProvider protocol', () => {
     it('applyPendingStateUpdate pushes state to clientStateStore', async () => {
       const state = makeState({ turnPhase: 'deployment' });
-      client.pendingHostState = state;
+      client.pendingServerState = state;
 
       await client.applyPendingStateUpdate();
 
@@ -295,7 +295,7 @@ describe('GameClient', () => {
       expect(client.getAnimationSource()).toBe('SERVER');
     });
 
-    it('revealTeleportedDrones merges only lane data from pendingFinalHostState onto current state', () => {
+    it('revealTeleportedDrones merges only lane data from pendingFinalServerState onto current state', () => {
       const currentState = makeState({ currentPlayer: 'player2', turnPhase: 'deployment' });
       const finalState = makeState({
         currentPlayer: 'player1', turnPhase: 'action',
@@ -303,7 +303,7 @@ describe('GameClient', () => {
         player2: { hand: [], dronesOnBoard: {}, hp: 20, lanes: { 2: [{ id: 'd2' }] } },
       });
       mockStore.getState.mockReturnValue(currentState);
-      client.pendingFinalHostState = finalState;
+      client.pendingFinalServerState = finalState;
 
       client.revealTeleportedDrones();
 

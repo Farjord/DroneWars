@@ -175,7 +175,7 @@ class GameStateManager {
     this.state.gameMode = localGameMode;
     this.state.localPlayerId = localPlayerId;
 
-    this.emit('HOST_STATE_UPDATE', { hostState: serverState });
+    this.emit('SERVER_STATE_UPDATE', { serverState });
   }
 
   // No-ops: optimistic animation tracking removed (Phase 4 — server-authoritative model)

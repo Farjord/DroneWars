@@ -1545,6 +1545,87 @@ describe('evaluateCreateTokensCard', () => {
 });
 
 // ========================================
+// CREATE TOKENS (DART) EVALUATORS
+// ========================================
+
+describe('evaluateCreateTokensCard - Dart Token', () => {
+  const dartCard = {
+    id: 'SCRAMBLE_DART',
+    cost: 1,
+    effects: [{ type: 'CREATE_TOKENS', tokenName: 'Dart' }]
+  };
+
+  it('returns INVALID_SCORE when lane is full (5 drones)', () => {
+    const drones = Array.from({ length: 5 }, (_, i) => createMockDrone({ id: `d${i}` }));
+    const context = createMockContext({
+      player2: createMockPlayer('player2', {
+        dronesOnBoard: { lane1: drones, lane2: [], lane3: [] }
+      })
+    });
+
+    const result = evaluateCreateTokensCard(dartCard, { id: 'lane1', owner: 'player2' }, context);
+    expect(result.score).toBe(INVALID_SCORE);
+    expect(result.logic.some(l => l.includes('Lane full'))).toBe(true);
+  });
+
+  it('returns positive score for a lane with enemy drones', () => {
+    const enemyDrone = createMockDrone({ id: 'e1', speed: 3 });
+    const context = createMockContext({
+      player1: createMockPlayer('player1', {
+        dronesOnBoard: { lane1: [enemyDrone], lane2: [], lane3: [] }
+      }),
+      player2: createMockPlayer('player2', {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+      })
+    });
+
+    const result = evaluateCreateTokensCard(dartCard, { id: 'lane1', owner: 'player2' }, context);
+
+    // Base: 15, Enemy drones: 8 (1 drone), Ship attack: 12, Speed bonus: 5 (1 blockable), Cost: -4
+    expect(result.score).toBe(36);
+    expect(result.logic.some(l => l.includes('Enemy Drones'))).toBe(true);
+  });
+
+  it('returns higher score when ship section is unguarded', () => {
+    const context = createMockContext({
+      player1: createMockPlayer('player1', {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+      }),
+      player2: createMockPlayer('player2', {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+      })
+    });
+
+    const result = evaluateCreateTokensCard(dartCard, { id: 'lane1', owner: 'player2' }, context);
+
+    // Base: 15, Ship attack: 12, Cost: -4
+    expect(result.score).toBe(23);
+    expect(result.logic.some(l => l.includes('Unguarded Ship'))).toBe(true);
+  });
+
+  it('returns base score for empty lane with destroyed ship section', () => {
+    const context = createMockContext({
+      player1: createMockPlayer('player1', {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        shipSections: {
+          bridge: { hull: 0, maxHull: 3 },
+          powerCell: { hull: 3, maxHull: 3 },
+          droneControlHub: { hull: 3, maxHull: 3 }
+        }
+      }),
+      player2: createMockPlayer('player2', {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+      })
+    });
+
+    const result = evaluateCreateTokensCard(dartCard, { id: 'lane1', owner: 'player2' }, context);
+
+    // Base: 15, No ship attack (hull 0), Cost: -4
+    expect(result.score).toBe(11);
+  });
+});
+
+// ========================================
 // UPGRADE CARD EVALUATORS
 // ========================================
 

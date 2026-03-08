@@ -291,7 +291,7 @@ class ActionProcessor {
         if (triggerAnims.length > 0) {
           const triggerSyncId = Date.now();
           triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-          debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast', {
+          debugLog('TRIGGER_SYNC_TRACE', '[1/8] SERVER: Trigger captured for broadcast', {
             utc: new Date().toISOString(),
             triggerSyncId,
             triggerCount: triggerAnims.length,
@@ -706,7 +706,7 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Execute animations and capture them for broadcasting to guest
+   * Execute animations and capture them for broadcasting to clients
    * @param {Array} animations - Animation events to execute
    * @param {boolean} isSystemAnimation - True for system animations (phase announcements), false for action animations
    * @param {boolean} waitForCompletion - If true, awaits animation completion (blocking). Default: true for proper animation sequencing.
@@ -735,7 +735,7 @@ setAnimationManager(animationManager) {
     if (triggerAnims.length > 0) {
       const triggerSyncId = Date.now();
       triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
-      debugLog('TRIGGER_SYNC_TRACE', '[1/8] HOST: Trigger captured for broadcast', {
+      debugLog('TRIGGER_SYNC_TRACE', '[1/8] SERVER: Trigger captured for broadcast', {
         utc: new Date().toISOString(),
         triggerSyncId,
         triggerCount: triggerAnims.length,
@@ -746,10 +746,10 @@ setAnimationManager(animationManager) {
     // Log animations for GameEngine response (never cleared by broadcasts)
     (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
 
-    // Capture for guest broadcasting (BroadcastService has internal host guard)
+    // Capture for client broadcasting (BroadcastService has internal authority guard)
     this.broadcastService.captureAnimations(animations, { isSystem: isSystemAnimation });
 
-    // Broadcast so guest receives animations
+    // Broadcast so client receives animations
     this.broadcastService.broadcastIfNeeded('bypass_animation');
   }
 
