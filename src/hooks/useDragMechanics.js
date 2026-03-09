@@ -195,21 +195,19 @@ const useDragMechanics = ({
         return;
       }
 
-      if (roundNumber === 1) {
-        debugLog('DRAG_DROP_DEPLOY', '🔍 Round 1 - validating deployment', { droneName: droneToDeployFromDrag.name });
-        const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
-        if (!validationResult.isValid) {
-          debugLog('DRAG_DROP_DEPLOY', '⛔ Validation failed', { reason: validationResult.reason, message: validationResult.message });
-          setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
-          return;
-        }
-        const { budgetCost, energyCost } = validationResult;
-        debugLog('DRAG_DROP_DEPLOY', '✅ Validation passed', { budgetCost, energyCost });
-        if (energyCost > 0) {
-          debugLog('DRAG_DROP_DEPLOY', '📋 Showing confirmation modal (energyCost > 0)');
-          setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag });
-          return;
-        }
+      debugLog('DRAG_DROP_DEPLOY', '🔍 Validating deployment', { droneName: droneToDeployFromDrag.name });
+      const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
+      if (!validationResult.isValid) {
+        debugLog('DRAG_DROP_DEPLOY', '⛔ Validation failed', { reason: validationResult.reason, message: validationResult.message });
+        setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
+        return;
+      }
+      const { budgetCost, energyCost } = validationResult;
+      debugLog('DRAG_DROP_DEPLOY', '✅ Validation passed', { budgetCost, energyCost });
+      if (energyCost > 0) {
+        debugLog('DRAG_DROP_DEPLOY', '📋 Showing confirmation modal (energyCost > 0)');
+        setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag });
+        return;
       }
 
       debugLog('DRAG_DROP_DEPLOY', '🚀 Calling executeDeployment', { lane, droneName: droneToDeployFromDrag.name });

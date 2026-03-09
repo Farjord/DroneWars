@@ -516,6 +516,7 @@ class AnimationManager {
     try {
       // Group animations by type for proper sequencing
       const damageEffects = ['SHIELD_DAMAGE', 'HULL_DAMAGE', 'DRONE_DESTROYED', 'SECTION_DESTROYED', 'SECTION_DAMAGED', 'HEAL_EFFECT'];
+      const buffEffects = ['STAT_BUFF', 'STAT_DEBUFF'];
 
       let i = 0;
       while (i < effects.length) {
@@ -642,6 +643,46 @@ class AnimationManager {
           }));
 
           debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] All damage effects completed');
+        }
+        // Check if this is a buff/debuff effect that should be grouped
+        else if (buffEffects.includes(effect.animationName)) {
+          // Collect all consecutive buff/debuff effects
+          const buffGroup = [];
+          while (i < effects.length && buffEffects.includes(effects[i].animationName)) {
+            buffGroup.push(effects[i]);
+            i++;
+          }
+
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Playing buff effects in parallel:', buffGroup.map(e => e.animationName));
+
+          // Play all buff/debuff effects in parallel
+          await Promise.all(buffGroup.map(async (buffEffect) => {
+            const animDef = this.animations[buffEffect.animationName];
+            if (!animDef) {
+              debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] Unknown animation: ${buffEffect.animationName}`);
+              return;
+            }
+
+            const handler = this.visualHandlers.get(animDef.type);
+            if (!handler) {
+              debugLog('ANIMATIONS', `⚠️ [ANIMATION DEBUG] No visual handler for: ${buffEffect.animationName}`);
+              return;
+            }
+
+            // Emit sound cue for buff animation
+            this.gameStateManager.emit('ANIMATION_STARTED', { animationType: buffEffect.animationName });
+
+            return new Promise(resolve => {
+              handler({
+                ...buffEffect.payload,
+                config: animDef.config,
+                onComplete: resolve
+              });
+              setTimeout(resolve, animDef.duration);
+            });
+          }));
+
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] All buff effects completed');
         } else {
           // Sequential animation (DRONE_ATTACK_START, DRONE_RETURN, CARD_VISUAL, etc.)
           debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Processing sequential effect:', effect.animationName);
