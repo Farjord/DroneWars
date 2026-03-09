@@ -124,7 +124,6 @@ describe('EffectChainProcessor - movement blocked pass-through', () => {
         newPlayerStates: successStates,
         animationEvents: [{ type: 'DRONE_MOVE' }],
         triggerAnimationEvents: [{ type: 'TRIGGER_FIRED' }],
-        triggerSteps: [{ type: 'trigger', stateAfter: JSON.parse(JSON.stringify(successStates)) }],
         preTriggerState: JSON.parse(JSON.stringify(successStates)),
         effectResult: { moved: true },
       })

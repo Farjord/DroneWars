@@ -3,6 +3,7 @@
 // Migrated from hardcoded sequences on 2025-01-XX
 
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { flowCheckpoint } from '../utils/flowVerification.js';
 
 class AnimationManager {
   constructor(gameStateManager) {
@@ -280,6 +281,10 @@ class AnimationManager {
     // Split animations by timing requirements
     const { preState, postState, independent } = this.splitByTiming(animations);
 
+    flowCheckpoint('VISUAL_ANIMS_EXECUTING', {
+      preState: preState.length + independent.length,
+      postState: postState.length,
+    });
     debugLog('ANIM_TRACE', '[3/6] AnimationManager.executeWithStateUpdate timing split', {
       source: executor.getAnimationSource?.() || 'unknown',
       preStateCount: preState.length,
@@ -296,7 +301,12 @@ class AnimationManager {
     });
 
     // 1. Play animations that need OLD state (entities still exist in DOM)
-    const preAnimations = [...independent, ...preState];
+    // Preserve original sequence order — independent animations (CARD_REVEAL, GO_AGAIN_NOTIFICATION)
+    // are already positioned correctly by buildAnimationSequence / capture ordering.
+    const preAnimations = animations.filter(a => {
+      const timing = a.timing || 'pre-state';
+      return timing !== 'post-state';
+    });
     if (preAnimations.length > 0) {
       const preStart = timingLog('[ANIM MGR] Pre-state animations', {
         count: preAnimations.length,
@@ -520,6 +530,10 @@ class AnimationManager {
         // Handle STATE_SNAPSHOT: apply intermediate state and continue
         if (effect.animationName === 'STATE_SNAPSHOT') {
           if (executor?.applyIntermediateState) {
+            debugLog('ANIM_TRACE', '[3b/6] STATE_SNAPSHOT applied mid-animation', {
+              hasApplyMethod: true,
+              playerKeys: Object.keys(effect.payload.snapshotPlayerStates || {}),
+            });
             executor.applyIntermediateState(effect.payload.snapshotPlayerStates);
             await this.waitForReactRender();
           }
@@ -529,6 +543,9 @@ class AnimationManager {
 
         // Handle TRIGGER_CHAIN_PAUSE: wait for specified duration between trigger chain steps
         if (effect.animationName === 'TRIGGER_CHAIN_PAUSE') {
+          debugLog('ANIM_TRACE', '[3c/6] TRIGGER_CHAIN_PAUSE waiting', {
+            durationMs: effect.payload?.duration || effect.duration,
+          });
           await new Promise(resolve => setTimeout(resolve, effect.payload.duration));
           i++;
           continue;
@@ -684,91 +701,6 @@ class AnimationManager {
       this.setBlocking(false);
       debugLog('ANIMATIONS', '🎬 [AI ANIMATION DEBUG] All animations completed, blocking released');
     }
-  }
-
-  /**
-   * Execute structured action steps sequentially.
-   * Each step is self-contained: apply state, wait for render, play animations, pause.
-   *
-   * @param {Array} steps - Array of { type, animations, stateAfter, ... }
-   * @param {Object} executor - Object with applyIntermediateState() and getAnimationSource()
-   */
-  async executeActionSteps(steps, executor) {
-    if (!steps || steps.length === 0) return;
-
-    debugLog('ANIMATIONS', `[ACTION STEPS] Processing ${steps.length} step(s)`);
-    this.setBlocking(true);
-
-    try {
-      for (let i = 0; i < steps.length; i++) {
-        const step = steps[i];
-        const source = executor.getAnimationSource?.() || 'ACTION_STEPS';
-
-        // Diagnostic: log drone positions in this step's stateAfter
-        if (step.stateAfter) {
-          const drones = {};
-          for (const pid of ['player1', 'player2']) {
-            const board = step.stateAfter[pid]?.dronesOnBoard || {};
-            for (const lane of ['lane1', 'lane2', 'lane3']) {
-              for (const d of (board[lane] || [])) {
-                drones[d.id] = `${pid}/${lane}`;
-              }
-            }
-          }
-          debugLog('MOVEMENT_EFFECT', `[DIAG] executeActionSteps step ${i}`, {
-            type: step.type,
-            animationCount: step.animations?.length ?? 0,
-            animationTypes: step.animations?.map(a => a.type),
-            stateAfterDrones: drones,
-          });
-        }
-
-        // 1. Map animations and split by timing
-        let preAnimations = [];
-        let postAnimations = [];
-        if (step.animations && step.animations.length > 0) {
-          const mapped = step.animations.map(event => {
-            const animDef = this.animations[event.type];
-            return {
-              animationName: event.type,
-              timing: animDef?.timing || 'pre-state',
-              payload: { ...event, droneId: event.sourceId || event.targetId }
-            };
-          });
-          const { preState, postState, independent } = this.splitByTiming(mapped);
-          preAnimations = [...independent, ...preState];
-          postAnimations = postState;
-        }
-
-        // 2. Play pre-state + independent animations (drones still in DOM)
-        if (preAnimations.length > 0) {
-          debugLog('ANIMATIONS', `[ACTION STEPS] Step ${i}: playing ${preAnimations.length} pre-state animation(s)`);
-          await this.executeAnimations(preAnimations, source, executor);
-        }
-
-        // 3. Apply step state → React re-renders
-        if (step.stateAfter && executor.applyIntermediateState) {
-          executor.applyIntermediateState(step.stateAfter);
-          await this.waitForReactRender();
-        }
-
-        // 4. Play post-state animations (e.g. TELEPORT_IN after drone appears)
-        if (postAnimations.length > 0) {
-          debugLog('ANIMATIONS', `[ACTION STEPS] Step ${i}: playing ${postAnimations.length} post-state animation(s)`);
-          await this.executeAnimations(postAnimations, source, executor);
-        }
-
-        // 5. Pause between steps (not after last)
-        if (i < steps.length - 1) {
-          await new Promise(r => setTimeout(r, 400));
-        }
-      }
-    } finally {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      this.setBlocking(false);
-    }
-
-    debugLog('ANIMATIONS', '[ACTION STEPS] All steps complete');
   }
 
   setBlocking(blocking) {

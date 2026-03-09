@@ -49,10 +49,7 @@ export async function processShipAbility(payload, ctx) {
 
   const currentState = ctx.getState();
   const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-  const placedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const placedSections = ctx.getPlacedSections();
 
   const callbacks = {
     logCallback: (entry) => ctx.addLogEntry(entry),
@@ -142,7 +139,7 @@ export async function processRecallAbility(payload, ctx) {
   const limitError = validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
   if (limitError) return limitError;
 
-  const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+  const placedSections = ctx.getPlacedSections()[playerId];
 
   const result = RecallAbilityProcessor.process(
     payload,

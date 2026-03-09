@@ -138,7 +138,7 @@ export async function processReallocateShields(payload, ctx) {
     };
 
   } else if (action === 'add') {
-    const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+    const placedSections = ctx.getPlacedSections()[playerId];
     const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, playerState, placedSections);
     const section = playerState.shipSections[sectionName];
 

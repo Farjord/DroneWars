@@ -28,10 +28,7 @@ export async function processDeployment(payload, ctx) {
   const opponentId = playerId === 'player1' ? 'player2' : 'player1';
   const opponentState = currentState[opponentId];
 
-  const placedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const placedSections = ctx.getPlacedSections();
 
   const logCallback = (entry) => {
     ctx.addLogEntry(entry);
@@ -59,6 +56,14 @@ export async function processDeployment(payload, ctx) {
   if (result.success) {
     const animations = ctx.mapAnimationEvents(result.animationEvents);
     ctx.captureAnimations(animations);
+
+    // Commit deployed drone state to GSM (was missing — root cause of invisible drones)
+    ctx.updatePlayerState(playerId, result.newPlayerState);
+    ctx.updatePlayerState(opponentId, result.opponentState);
+
+    debugLog('DEPLOY_TRACE', '[8a/10] ctx.updatePlayerState committed — GSM subscribers will fire', {
+      droneName: droneData?.name, lane: laneId, playerId,
+    });
 
     debugLog('DEPLOY_TRACE', '[8/10] Deployment animation + state commit complete', {
       droneName: droneData?.name,
@@ -127,10 +132,7 @@ export async function processDestroyDrone(payload, ctx) {
   // Get opponent state and placed sections for aura updates
   const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
   const opponentPlayerState = currentState[opponentPlayerId];
-  const placedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const placedSections = ctx.getPlacedSections();
 
   newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, opponentPlayerState, placedSections);
 
@@ -169,7 +171,8 @@ export async function processOptionalDiscard(payload, ctx) {
 
   // Validate mandatory phase-based discards to prevent over-discarding
   if (isMandatory && currentState.turnPhase === 'mandatoryDiscard' && !abilityMetadata) {
-    const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+    const allPlacedSections = ctx.getPlacedSections();
+    const placedSections = allPlacedSections[playerId];
     const gameDataService = ctx.getGameDataService();
     const effectiveStats = gameDataService.getEffectiveShipStats(playerState, placedSections);
     const handLimit = effectiveStats.totals.handLimit;
@@ -287,11 +290,7 @@ export async function processPlayerPass(payload, ctx) {
   // Notify PhaseManager
   const phaseManager = ctx.getPhaseManager();
   if (phaseManager) {
-    if (playerId === 'player1') {
-      phaseManager.notifyHostAction('pass', { phase: turnPhase });
-    } else {
-      phaseManager.notifyGuestAction('pass', { phase: turnPhase });
-    }
+    phaseManager.notifyPlayerAction(playerId, 'pass', { phase: turnPhase });
     debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} passed in ${turnPhase}`);
   }
 

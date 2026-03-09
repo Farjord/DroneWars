@@ -8,9 +8,10 @@ import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { CHAIN_ONLY_FIELDS, stripChainFields } from './chainConstants.js';
+import { stripChainFields } from './chainConstants.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
+import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
 
 // --- Selection-Time: Position Tracker ---
 
@@ -155,6 +156,20 @@ class EffectChainProcessor {
   }
 
   /**
+   * Remove a card from a player's hand and push it to their discard pile (in-place mutation).
+   * Used to patch intermediate snapshots so the played card appears discarded during animations.
+   */
+  _removeCardFromSnapshot(playerStates, playerId, card) {
+    const acting = playerStates[playerId];
+    if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
+      acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
+      if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
+        acting.discardPile = [...acting.discardPile, card];
+      }
+    }
+  }
+
+  /**
    * Pay card costs (energy + momentum). Pure — returns new states.
    */
   payCardCosts(card, actingPlayerId, playerStates) {
@@ -205,18 +220,14 @@ class EffectChainProcessor {
       energyCost: card.cost ?? 0, momentumCost: card.momentumCost ?? 0,
       effectCount: effects.length, selectionCount: selections.length,
     });
-    const cardAnimationEvents = [];       // CARD_REVEAL, CARD_VISUAL, direct effect anims
-    const deferredTriggerEvents = [];     // all trigger events, deferred after card effects
-    const actionSteps = [];               // structured step list (Phase 2 #65)
+    const cardPreambleEvents = [];        // CARD_REVEAL, CARD_VISUAL (prepended to first step)
+    const effectAnimSteps = [];            // per-effect animation steps for buildAnimationSequence
     let dynamicGoAgain = false;
     const effectResults = [];
-    let stateBeforeTriggers = null;       // first state before any trigger mutations
-    let stateBeforeTriggersEffectIdx = -1; // which effect captured stateBeforeTriggers
     const cardMovements = [];              // {droneId, toLane, effectIndex} for forward-propagation
-    const effectStepBounds = [];           // {effectIndex, startIdx} maps effects to actionSteps ranges
 
     // CARD_REVEAL animation
-    cardAnimationEvents.push({
+    cardPreambleEvents.push({
       type: 'CARD_REVEAL',
       cardId: card.id,
       cardName: card.name,
@@ -268,7 +279,7 @@ class EffectChainProcessor {
       }
 
       if (targetPlayer && targetType) {
-        cardAnimationEvents.push({
+        cardPreambleEvents.push({
           type: 'CARD_VISUAL',
           cardId: card.id,
           cardName: card.name,
@@ -288,6 +299,7 @@ class EffectChainProcessor {
     for (let i = 0; i < effects.length; i++) {
       const chainEffect = effects[i];
       const selection = selections[i];
+      const preEffectEvents = []; // PRE conditional side-effect animations
 
       // Skip if no selection (earlier referenced effect was skipped)
       if (!selection || selection.skipped) {
@@ -327,7 +339,7 @@ class EffectChainProcessor {
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;
-            cardAnimationEvents.push(...(addResult.animationEvents || []));
+            preEffectEvents.push(...(addResult.animationEvents || []));
           }
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
@@ -375,22 +387,8 @@ class EffectChainProcessor {
       }
 
       currentStates = result.newPlayerStates;
-      cardAnimationEvents.push(...(result.animationEvents || []));
-
-      // Collect deferred trigger events with leading STATE_SNAPSHOT
-      if (result.triggerAnimationEvents?.length > 0) {
-        if (!stateBeforeTriggers && result.preTriggerState) {
-          stateBeforeTriggers = JSON.parse(JSON.stringify(result.preTriggerState));
-          stateBeforeTriggersEffectIdx = i;
-        }
-        deferredTriggerEvents.push(...result.triggerAnimationEvents);
-      }
-
-      // Collect structured trigger steps (Phase 2 #65)
-      if (result.triggerSteps?.length > 0) {
-        effectStepBounds.push({ effectIndex: i, startIdx: actionSteps.length });
-        actionSteps.push(...result.triggerSteps);
-      }
+      const effectActionEvents = [...(result.animationEvents || [])];
+      const effectTriggerEvents = [...(result.triggerAnimationEvents || [])];
 
       // Resolve POST conditionals
       if (conditionals && conditionals.length > 0) {
@@ -406,7 +404,7 @@ class EffectChainProcessor {
           conditionals, postContext, result.effectResult || null
         );
         currentStates = postResult.newPlayerStates;
-        cardAnimationEvents.push(...(postResult.animationEvents || []));
+        effectActionEvents.push(...(postResult.animationEvents || []));
         if (postResult.grantsGoAgain) {
           dynamicGoAgain = true;
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional granted goAgain`, { card: card.name });
@@ -419,7 +417,7 @@ class EffectChainProcessor {
           });
           if (addResult) {
             currentStates = addResult.newPlayerStates;
-            cardAnimationEvents.push(...(addResult.animationEvents || []));
+            effectActionEvents.push(...(addResult.animationEvents || []));
           }
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }
@@ -427,6 +425,26 @@ class EffectChainProcessor {
 
       // Propagate goAgain from movement effects (Rally Beacon)
       if (result.goAgain) dynamicGoAgain = true;
+
+      // Collect per-effect animation step
+      const allEffectActionEvents = [...preEffectEvents, ...effectActionEvents];
+      const teleportEvents = allEffectActionEvents.filter(e => e.type === 'TELEPORT_IN');
+      const nonTeleportEvents = allEffectActionEvents.filter(e => e.type !== 'TELEPORT_IN');
+
+      // Capture intermediate state for this effect's STATE_SNAPSHOT
+      const intermediateState = (effectTriggerEvents.length > 0 || teleportEvents.length > 0)
+        ? (result.preTriggerState || JSON.parse(JSON.stringify(currentStates)))
+        : null;
+
+      effectAnimSteps.push({
+        actionEvents: effectAnimSteps.length === 0
+          ? [...cardPreambleEvents, ...nonTeleportEvents]
+          : nonTeleportEvents,
+        triggerEvents: effectTriggerEvents,
+        intermediateState,
+        postSnapshotEvents: teleportEvents,
+        effectIndex: i,
+      });
 
       // Store execution result for back-references
       effectResults.push({
@@ -445,27 +463,16 @@ class EffectChainProcessor {
 
     }
 
-    // Forward-propagate later card movements into stateBeforeTriggers and earlier steps' stateAfter.
-    // When effect[0] captures stateBeforeTriggers but effect[1] moves a drone, the snapshot is stale.
+    // Forward-propagate later card movements into earlier steps' intermediateState.
+    // When effect[0] captures intermediateState but effect[1] moves a drone, the snapshot is stale.
     // This patches all earlier snapshots so drones appear in their correct lanes before triggers fire.
     if (cardMovements.length > 0) {
-      if (stateBeforeTriggers && stateBeforeTriggersEffectIdx >= 0) {
-        for (const move of cardMovements) {
-          if (move.effectIndex > stateBeforeTriggersEffectIdx) {
-            _applyDroneMovement(stateBeforeTriggers, move.droneId, move.toLane);
-          }
-        }
-      }
-      for (const bound of effectStepBounds) {
-        const laterMoves = cardMovements.filter(m => m.effectIndex > bound.effectIndex);
-        if (laterMoves.length === 0) continue;
-        const nextStart = effectStepBounds.find(b => b.effectIndex > bound.effectIndex)?.startIdx ?? actionSteps.length;
-        for (let si = bound.startIdx; si < nextStart; si++) {
-          if (actionSteps[si]?.stateAfter) {
-            for (const move of laterMoves) {
-              _applyDroneMovement(actionSteps[si].stateAfter, move.droneId, move.toLane);
-            }
-          }
+      for (let si = 0; si < effectAnimSteps.length; si++) {
+        const step = effectAnimSteps[si];
+        if (!step.intermediateState) continue;
+        const laterMoves = cardMovements.filter(m => m.effectIndex > step.effectIndex);
+        for (const move of laterMoves) {
+          _applyDroneMovement(step.intermediateState, move.droneId, move.toLane);
         }
       }
     }
@@ -473,7 +480,7 @@ class EffectChainProcessor {
     // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.
     // Lane comes from first selection — multi-lane cards use first target's lane for SAME_LANE matching.
     const cardPlayLane = selections[0]?.lane ?? null;
-    const preCardPlayTriggerState = JSON.parse(JSON.stringify(currentStates));
+    const preCardPlayState = JSON.parse(JSON.stringify(currentStates));
     const cardPlayResult = this.triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_CARD_PLAY, {
       lane: cardPlayLane,
       triggeringPlayerId: playerId,
@@ -484,117 +491,29 @@ class EffectChainProcessor {
       logCallback: callbacks.logCallback
     });
     if (cardPlayResult.triggered) {
-      if (!stateBeforeTriggers) {
-        stateBeforeTriggers = JSON.parse(JSON.stringify(preCardPlayTriggerState));
-      }
       currentStates = cardPlayResult.newPlayerStates;
-      deferredTriggerEvents.push(...cardPlayResult.animationEvents);
+      // Add ON_CARD_PLAY triggers as final step with pre-trigger state snapshot
+      effectAnimSteps.push({
+        actionEvents: [],
+        triggerEvents: [...cardPlayResult.animationEvents],
+        intermediateState: preCardPlayState,
+        postSnapshotEvents: [],
+      });
     }
-    if (cardPlayResult.triggerSteps?.length > 0) {
-      actionSteps.push(...cardPlayResult.triggerSteps);
-    }
+    // Build animation sequence via centralized builder
+    const allAnimationEvents = buildAnimationSequence(effectAnimSteps);
+
+    debugLog('TRIGGERS', 'Animation pipeline:', {
+      steps: effectAnimSteps.length,
+      totalEvents: allAnimationEvents.length,
+    });
 
     // Post-process STATE_SNAPSHOT events: remove played card from hand so it appears
     // discarded during trigger animations (card is still in hand in intermediate states
     // because finishCardPlay hasn't run yet)
-    for (const event of deferredTriggerEvents) {
-      if (event.type === 'STATE_SNAPSHOT' && event.snapshotPlayerStates) {
-        const acting = event.snapshotPlayerStates[playerId];
-        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
-          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
-          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
-            acting.discardPile = [...acting.discardPile, card];
-          }
-        }
-      }
-    }
-
-    debugLog('TRIGGERS', 'Animation pipeline:', {
-      cardEvents: cardAnimationEvents.map(e => e.type),
-      deferredEvents: deferredTriggerEvents.map(e => e.type),
-      total: cardAnimationEvents.length + deferredTriggerEvents.length
-    });
-
-    // Separate TELEPORT_IN from other card animation events
-    const teleportEvents = cardAnimationEvents.filter(e => e.type === 'TELEPORT_IN');
-    const nonTeleportCardEvents = cardAnimationEvents.filter(e => e.type !== 'TELEPORT_IN');
-
-    const allAnimationEvents = [...nonTeleportCardEvents];
-
-    // Insert STATE_SNAPSHOT so teleported tokens exist in DOM before animation.
-    // Use pre-trigger state so React doesn't flash trigger side-effects before
-    // trigger announcements play (e.g., drawn cards, stat buffs).
-    if (teleportEvents.length > 0 || deferredTriggerEvents.length > 0) {
-      const snapshotState = stateBeforeTriggers || currentStates;
-      allAnimationEvents.push({
-        type: 'STATE_SNAPSHOT',
-        snapshotPlayerStates: JSON.parse(JSON.stringify(snapshotState)),
-        timestamp: Date.now()
-      });
-    }
-
-    // TELEPORT_IN plays after snapshot (drone exists in DOM)
-    allAnimationEvents.push(...teleportEvents);
-
-    // Breathing room after intermediate state so player can register
-    // visual changes (e.g., drone lane change) before triggers fire
-    if (deferredTriggerEvents.length > 0) {
-      allAnimationEvents.push(
-        { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() }
-      );
-    }
-
-    // Then deferred trigger events
-    allAnimationEvents.push(...deferredTriggerEvents);
-
-    // Post-process: ensure the intermediate STATE_SNAPSHOT also has card removed from hand
-    // (the deferred snapshots were already cleaned above, but the new intermediate one wasn't)
     for (const event of allAnimationEvents) {
       if (event.type === 'STATE_SNAPSHOT' && event.snapshotPlayerStates) {
-        const acting = event.snapshotPlayerStates[playerId];
-        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
-          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
-          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
-            acting.discardPile = [...acting.discardPile, card];
-          }
-        }
-      }
-    }
-
-    // Post-process actionSteps: remove played card from hand in stateAfter snapshots
-    // (card is still in hand in intermediate states because finishCardPlay hasn't run yet)
-    for (const step of actionSteps) {
-      if (step.stateAfter) {
-        const acting = step.stateAfter[playerId];
-        if (acting?.hand?.some(c => c.instanceId === card.instanceId)) {
-          acting.hand = acting.hand.filter(c => c.instanceId !== card.instanceId);
-          if (!acting.discardPile.some(c => c.instanceId === card.instanceId)) {
-            acting.discardPile = [...acting.discardPile, card];
-          }
-        }
-      }
-    }
-
-    // Build card-only animation events for actionSteps path
-    // (card-level animations without deferred trigger events or breathing room pause)
-    let cardOnlyAnimationEvents;
-    let cleanedStateBeforeTriggers;
-    if (actionSteps.length > 0) {
-      // Strip deferred trigger events + breathing room TRIGGER_CHAIN_PAUSE from the end
-      const stripCount = deferredTriggerEvents.length + (deferredTriggerEvents.length > 0 ? 1 : 0);
-      cardOnlyAnimationEvents = stripCount > 0
-        ? allAnimationEvents.slice(0, allAnimationEvents.length - stripCount)
-        : [...allAnimationEvents];
-
-      // Build pre-trigger state with played card removed from hand
-      const rawState = stateBeforeTriggers || currentStates;
-      cleanedStateBeforeTriggers = JSON.parse(JSON.stringify(rawState));
-      const actingState = cleanedStateBeforeTriggers[playerId];
-      if (actingState?.hand?.some(c => c.instanceId === card.instanceId)) {
-        actingState.hand = actingState.hand.filter(c => c.instanceId !== card.instanceId);
-        if (!actingState.discardPile.some(c => c.instanceId === card.instanceId)) {
-          actingState.discardPile = [...actingState.discardPile, card];
-        }
+        this._removeCardFromSnapshot(event.snapshotPlayerStates, playerId, card);
       }
     }
 
@@ -606,17 +525,13 @@ class EffectChainProcessor {
       effectsProcessed: effectResults.filter(r => r !== null).length,
       effectsSkipped: effectResults.filter(r => r === null).length,
       animationCount: allAnimationEvents.length,
-      deferredTriggerCount: deferredTriggerEvents.length,
-      actionStepCount: actionSteps.length,
+      effectStepCount: effectAnimSteps.length,
     });
 
     return {
       newPlayerStates: finish.newPlayerStates,
       shouldEndTurn: finish.shouldEndTurn,
       animationEvents: allAnimationEvents,
-      actionSteps: actionSteps.length > 0 ? actionSteps : undefined,
-      cardOnlyAnimationEvents,
-      stateBeforeTriggers: cleanedStateBeforeTriggers,
     };
   }
 
@@ -637,32 +552,21 @@ class EffectChainProcessor {
     const pseudoCard = { name: 'Effect Chain', effects: [effectData] };
     const moveContext = { callbacks, placedSections };
 
+    let result;
     if (effectData.type === 'SINGLE_MOVE') {
-      const result = this.movementProcessor.executeSingleMove(
+      result = this.movementProcessor.executeSingleMove(
         pseudoCard, selection.target, selection.lane, selection.destination,
         playerId, newStates, opponentId, moveContext
       );
-      if (result.error) {
-        debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
-        return { newPlayerStates: playerStates, animationEvents: result.animationEvents || [], effectResult: null };
-      }
-      return {
-        newPlayerStates: result.newPlayerStates,
-        animationEvents: result.animationEvents || [],
-        triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
-        triggerSteps: result.triggerSteps,
-        preTriggerState: result.postMovementState,
-        effectResult: result.effectResult,
-        goAgain: !result.shouldEndTurn,
-      };
+    } else {
+      // MULTI_MOVE
+      const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
+      result = this.movementProcessor.executeMultiMove(
+        pseudoCard, drones, selection.lane, selection.destination,
+        playerId, newStates, opponentId, moveContext
+      );
     }
 
-    // MULTI_MOVE
-    const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
-    const result = this.movementProcessor.executeMultiMove(
-      pseudoCard, drones, selection.lane, selection.destination,
-      playerId, newStates, opponentId, moveContext
-    );
     if (result.error) {
       debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });
       return { newPlayerStates: playerStates, animationEvents: result.animationEvents || [], effectResult: null };
@@ -671,7 +575,6 @@ class EffectChainProcessor {
       newPlayerStates: result.newPlayerStates,
       animationEvents: result.animationEvents || [],
       triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
-      triggerSteps: result.triggerSteps,
       preTriggerState: result.postMovementState,
       effectResult: result.effectResult,
       goAgain: !result.shouldEndTurn,
@@ -709,4 +612,4 @@ class EffectChainProcessor {
 }
 
 export default EffectChainProcessor;
-export { PositionTracker, resolveRef, resolveRefFromSelections, stripChainFields };
+export { PositionTracker, resolveRef, resolveRefFromSelections };

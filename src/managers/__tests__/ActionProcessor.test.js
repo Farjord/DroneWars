@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ActionProcessor from '../ActionProcessor.js';
+import { createMockGameStateManager } from './actionProcessorTestHelpers.js';
 
 // Mock all heavy dependencies at module level
 vi.mock('../../logic/gameLogic.js', () => ({
@@ -46,43 +47,6 @@ vi.mock('../../utils/debugLogger.js', () => ({
 vi.mock('../../data/shipSectionData.js', () => ({ shipComponentCollection: [] }));
 vi.mock('../../utils/seededRandom.js', () => ({ default: {} }));
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initializeForCombat: vi.fn() }));
-
-
-function createMockGameStateManager(overrides = {}) {
-  const defaultState = {
-    gameMode: 'local',
-    currentPlayer: 'player1',
-    turnPhase: 'action',
-    turn: 1,
-    roundNumber: 1,
-    actionsTakenThisTurn: 0,
-    winner: null,
-    passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
-    commitments: {},
-    player1: { name: 'Player 1', dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, hand: [], energy: 5, shipSections: {} },
-    player2: { name: 'Player 2', dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, hand: [], energy: 5, shipSections: {} },
-    placedSections: [null, null, null],
-    opponentPlacedSections: [null, null, null],
-    ...overrides
-  };
-
-  return {
-    getState: vi.fn(() => ({ ...defaultState })),
-    get: vi.fn((key) => defaultState[key]),
-    setState: vi.fn(),
-    setPlayerStates: vi.fn(),
-    updatePlayerState: vi.fn(),
-    setTurnPhase: vi.fn(),
-    setCurrentPlayer: vi.fn(),
-    setPassInfo: vi.fn(),
-    setWinner: vi.fn(),
-    addLogEntry: vi.fn(),
-    getLocalPlayerId: vi.fn(() => 'player1'),
-    getLocalPlacedSections: vi.fn(() => [null, null, null]),
-    createCallbacks: vi.fn(() => ({ logCallback: vi.fn() })),
-    _updateContext: null
-  };
-}
 
 describe('ActionProcessor — Queue & Locking', () => {
   let ap;
@@ -221,7 +185,7 @@ describe('ActionProcessor — Turn Validation', () => {
 
   it('rejects draw from wrong player in sequential phase', async () => {
     ap.processDraw = vi.fn(async () => ({ success: true }));
-    // Guest actions now route through HostGameServer.handleGuestAction → GameEngine,
+    // Remote actions now route through HostGameServer.handleRemoteAction → GameEngine,
     // which validates turn order. No isNetworkAction bypass.
     const result = await ap.processAction({ type: 'draw', payload: { playerId: 'player2' } });
     // 'draw' is not in playerActionTypes so turn validation doesn't block it
@@ -453,6 +417,65 @@ describe('ActionProcessor — clearQueue Full Cleanup', () => {
   });
 });
 
+describe('ActionProcessor — Response Accumulator', () => {
+  let ap;
+  let gsm;
+
+  beforeEach(() => {
+    ActionProcessor.reset();
+    gsm = createMockGameStateManager();
+    ap = ActionProcessor.getInstance(gsm);
+  });
+
+  afterEach(() => {
+    ActionProcessor.reset();
+  });
+
+  it('startResponseCapture initializes empty log, getAndClearResponseCapture returns and clears it', () => {
+    ap.startResponseCapture();
+    expect(ap._responseAnimationLog).toEqual({ actionAnimations: [], systemAnimations: [] });
+
+    // Push some animations while capture is active
+    ap._responseAnimationLog.actionAnimations.push({ animationName: 'TEST', payload: {} });
+
+    const captured = ap.getAndClearResponseCapture();
+    expect(captured).toEqual({ actionAnimations: [{ animationName: 'TEST', payload: {} }], systemAnimations: [] });
+
+    // After clear, should be null
+    expect(ap._responseAnimationLog).toBeNull();
+  });
+
+  it('executeAndCaptureAnimations pushes to both _actionAnimationLog and _responseAnimationLog when capture is active', async () => {
+    ap.startResponseCapture();
+    const anim = { animationName: 'PHASE_ANNOUNCEMENT', timing: 'independent', payload: { phase: 'action', text: 'ACTION PHASE' } };
+    await ap.executeAndCaptureAnimations([anim], true);
+
+    // Should be in both logs
+    expect(ap._actionAnimationLog.systemAnimations).toContainEqual(expect.objectContaining({ animationName: 'PHASE_ANNOUNCEMENT' }));
+    expect(ap._responseAnimationLog.systemAnimations).toContainEqual(expect.objectContaining({ animationName: 'PHASE_ANNOUNCEMENT' }));
+  });
+
+  it('executeAndCaptureAnimations does NOT push to _responseAnimationLog when capture is inactive', async () => {
+    // Don't call startResponseCapture
+    const anim = { animationName: 'ATTACK', timing: 'pre-state', payload: {} };
+    await ap.executeAndCaptureAnimations([anim]);
+
+    // Should be in _actionAnimationLog only
+    expect(ap._actionAnimationLog.actionAnimations).toContainEqual(expect.objectContaining({ animationName: 'ATTACK' }));
+    expect(ap._responseAnimationLog).toBeNull();
+  });
+
+  it('captureAnimations (action context) pushes to _responseAnimationLog when active', () => {
+    ap.startResponseCapture();
+    const ctx = ap._getActionContext();
+    const anim = { animationName: 'DRONE_MOVEMENT', payload: { droneId: 'd1' } };
+    ctx.captureAnimations([anim]);
+
+    expect(ap._responseAnimationLog.actionAnimations).toContainEqual(expect.objectContaining({ animationName: 'DRONE_MOVEMENT' }));
+  });
+
+});
+
 describe('ActionProcessor — triggerSyncId stamping', () => {
   let ap;
   let gsm;
@@ -511,5 +534,17 @@ describe('ActionProcessor — triggerSyncId stamping', () => {
     const triggerSyncId = Date.now();
     unstamped.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
     expect(allAnims[0].payload.triggerSyncId).toBeDefined();
+  });
+
+  it('captureAnimations preserves STATE_SNAPSHOT events in animation log', () => {
+    const ctx = ap._getActionContext();
+    const snapshot = { animationName: 'STATE_SNAPSHOT', payload: { snapshotPlayerStates: { player1: {}, player2: {} } } };
+    const movement = { animationName: 'DRONE_MOVEMENT', payload: { droneId: 'd1' } };
+    ctx.captureAnimations([movement, snapshot]);
+
+    const logged = ap._actionAnimationLog.actionAnimations;
+    expect(logged).toHaveLength(2);
+    expect(logged.find(a => a.animationName === 'STATE_SNAPSHOT')).toBeDefined();
+    expect(logged.find(a => a.animationName === 'DRONE_MOVEMENT')).toBeDefined();
   });
 });

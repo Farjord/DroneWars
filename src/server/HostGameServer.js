@@ -1,21 +1,21 @@
 // HostGameServer — Server-side orchestrator for P2P host mode.
-// Wraps GameEngine, registers P2P guest as a GameEngine client so
+// Wraps GameEngine, registers the remote peer as a GameEngine client so
 // _emitToClients delivers to both local and remote clients via the
-// same code path. Handles incoming guest actions.
+// same code path. Handles incoming remote actions.
 
 import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 class HostGameServer {
-  constructor(gameEngine, { p2pManager = null, guestPlayerId = 'player2' } = {}) {
+  constructor(gameEngine, { p2pManager = null, remotePlayerId = 'player2' } = {}) {
     this.gameEngine = gameEngine;
     this.p2pManager = p2pManager;
-    this.guestPlayerId = guestPlayerId;
+    this.remotePlayerId = remotePlayerId;
 
     // Register P2P delivery as a GameEngine client — same mechanism as LocalTransport.
     // _emitToClients will redact state for player2 and call this callback.
     if (p2pManager) {
-      this.gameEngine.registerClient(guestPlayerId, ({ state, animations }) => {
+      this.gameEngine.registerClient(remotePlayerId, ({ state, animations }) => {
         if (!p2pManager.isConnected) return;
         p2pManager.broadcastState(
           state,
@@ -35,10 +35,10 @@ class HostGameServer {
   }
 
   /**
-   * Handle an action from a P2P guest.
-   * Processes via GameEngine (which delivers to all clients), sends ack to guest.
+   * Handle an action from the remote peer.
+   * Processes via GameEngine (which delivers to all clients), sends ack to remote client.
    */
-  async handleGuestAction(action) {
+  async handleRemoteAction(action) {
     debugLog('MP_SYNC_TRACE', '[9/10] Server processing remote action', { actionType: action?.type });
 
     try {
@@ -61,7 +61,7 @@ class HostGameServer {
           success: false,
           error: error.message,
           authoritativeState: StateRedactor.redactForPlayer(
-            this.gameEngine.getState(), this.guestPlayerId
+            this.gameEngine.getState(), this.remotePlayerId
           ),
         });
       }

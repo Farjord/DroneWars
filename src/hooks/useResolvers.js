@@ -12,7 +12,7 @@ const MOVE_RESOLUTION_DELAY = 400;
 
 const useResolvers = ({
   // --- Core action routing ---
-  processActionWithGuestRouting,
+  submitAction,
   getLocalPlayerId,
   getOpponentPlayerId,
 
@@ -40,12 +40,12 @@ const useResolvers = ({
   setDraggedDrone,
   setCardSelectionModal,
   setShipAbilityConfirmation,
+  shipAbilityConfirmation,
 
   // --- From useCardSelection ---
   cancelCardSelection,
   setSelectedCard,
   setValidCardTargets,
-  setCostReminderArrowState,
   setCardConfirmation,
   setAffectedDroneIds,
   cardConfirmation,
@@ -94,7 +94,7 @@ const useResolvers = ({
     try {
       await new Promise(resolve => setTimeout(resolve, 250));
 
-      const result = await processActionWithGuestRouting('attack', {
+      const result = await submitAction('attack', {
         attackDetails: attackDetails
       });
 
@@ -119,12 +119,12 @@ const useResolvers = ({
     } finally {
       isResolvingAttackRef.current = false;
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId]);
+  }, [submitAction, getLocalPlayerId]);
 
   // --- Resolve Ability ---
   const resolveAbility = useCallback(async (ability, userDrone, targetDrone) => {
     try {
-      await processActionWithGuestRouting('ability', {
+      await submitAction('ability', {
         droneId: userDrone.id,
         abilityIndex: userDrone.abilities.findIndex(a => a.name === ability.name),
         targetId: targetDrone?.id || null
@@ -134,12 +134,12 @@ const useResolvers = ({
       debugLog('COMBAT', 'Error in resolveAbility:', error);
       cancelAbilityMode();
     }
-  }, [processActionWithGuestRouting, cancelAbilityMode]);
+  }, [submitAction, cancelAbilityMode]);
 
   // --- Resolve Ship Ability ---
   const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
     try {
-      const result = await processActionWithGuestRouting('shipAbility', {
+      const result = await submitAction('shipAbility', {
         ability: ability,
         sectionName: sectionName,
         targetId: target?.id || null,
@@ -160,7 +160,7 @@ const useResolvers = ({
         return;
       }
 
-      await processActionWithGuestRouting('shipAbilityCompletion', {
+      await submitAction('shipAbilityCompletion', {
         ability: ability,
         sectionName: sectionName,
         playerId: getLocalPlayerId()
@@ -175,7 +175,7 @@ const useResolvers = ({
       setShipAbilityMode(null);
       setShipAbilityConfirmation(null);
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [submitAction, getLocalPlayerId]);
 
   // --- Resolve Card Play ---
   const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null) => {
@@ -208,7 +208,7 @@ const useResolvers = ({
     debugLog('CARD_PLAY_TRACE', '[1] Card play confirmed', { card: card.name, cardId: card.id, targetId: target?.id, isAI: aiContext !== null });
     debugLog('CARD_PLAY_TRACE', '[2] Dispatching cardPlay action', { card: card.name, targetId: target?.id, playerId: actingPlayerId, isAI: aiContext !== null });
 
-    const result = await processActionWithGuestRouting('cardPlay', {
+    const result = await submitAction('cardPlay', {
       card: card,
       targetId: target?.id || null,
       playerId: actingPlayerId
@@ -252,11 +252,11 @@ const useResolvers = ({
     debugLog('CARD_PLAY_TRACE', '[10] Card play resolved', { card: card.name, success: result?.success !== false });
 
     return result;
-  }, [processActionWithGuestRouting, getLocalPlayerId, localPlayerState, opponentPlayerState]);
+  }, [submitAction, getLocalPlayerId, localPlayerState, opponentPlayerState]);
 
   // --- Handle Card Selection ---
   const handleCardSelection = useCallback(async (selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
-    await processActionWithGuestRouting('searchAndDrawCompletion', {
+    await submitAction('searchAndDrawCompletion', {
       card: originalCard,
       selectedCards,
       selectionData,
@@ -270,11 +270,11 @@ const useResolvers = ({
     }
 
     debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (after selection)', { card: originalCard.name });
-  }, [processActionWithGuestRouting, getLocalPlayerId, cancelCardSelection]);
+  }, [submitAction, getLocalPlayerId, cancelCardSelection]);
 
   // --- Resolve Multi Move ---
   const resolveMultiMove = useCallback(async (card, dronesToMove, fromLane, toLane) => {
-    await processActionWithGuestRouting('movementCompletion', {
+    await submitAction('movementCompletion', {
       card,
       movementType: 'multi_move',
       drones: dronesToMove,
@@ -286,7 +286,7 @@ const useResolvers = ({
     cancelCardSelection('confirm-multi-move');
 
     debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (multi-move)', { card: card.name });
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [submitAction, getLocalPlayerId]);
 
   // --- Resolve Single Move ---
   const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
@@ -320,7 +320,7 @@ const useResolvers = ({
     });
 
     // Normal movement completion
-    await processActionWithGuestRouting('movementCompletion', {
+    await submitAction('movementCompletion', {
       card,
       movementType: 'single_move',
       drones: [{ ...currentDrone, owner: droneOwner }],
@@ -335,23 +335,23 @@ const useResolvers = ({
     cancelCardSelection('confirm-single-move');
 
     debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (single-move)', { card: card.name });
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [submitAction, getLocalPlayerId]);
 
   // --- Handle Close AI Card Report ---
   const handleCloseAiCardReport = useCallback(async () => {
     if (aiCardPlayReport && !aiCardPlayReport.card.effects[0]?.goAgain) {
-      await processActionWithGuestRouting('turnTransition', {
+      await submitAction('turnTransition', {
         newPlayer: getLocalPlayerId(),
         reason: 'aiCardReportClosed'
       });
     } else if (aiCardPlayReport && aiCardPlayReport.card.effects[0]?.goAgain && !winner) {
-      await processActionWithGuestRouting('turnTransition', {
+      await submitAction('turnTransition', {
         newPlayer: getOpponentPlayerId(),
         reason: 'aiGoAgain'
       });
     }
     setAiCardPlayReport(null);
-  }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
+  }, [submitAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   // --- Modal Confirmation Callbacks ---
 
@@ -378,7 +378,7 @@ const useResolvers = ({
 
     if (wasSnared) {
       debugLog('CONSUMPTION_DEBUG', '[1] Calling processAction snaredConsumption', { droneId, owner });
-      await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
+      await submitAction('snaredConsumption', { droneId, playerId: owner });
       setSelectedDrone(null);
       setDraggedDrone(null);
       setValidCardTargets([]);
@@ -395,7 +395,7 @@ const useResolvers = ({
         setDraggedDrone(null);
         setValidCardTargets([]);
       } else {
-        await processActionWithGuestRouting('move', {
+        await submitAction('move', {
           droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId()
         });
         setSelectedDrone(null);
@@ -409,7 +409,7 @@ const useResolvers = ({
     debugLog('CONSUMPTION_DEBUG', '[1] Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
     setAttackConfirmation(null);
     setSelectedDrone(null);
-    await processActionWithGuestRouting('suppressedConsumption', {
+    await submitAction('suppressedConsumption', {
       droneId: attacker.id,
       playerId: attackConfirmation.attackingPlayer
     });
@@ -444,7 +444,7 @@ const useResolvers = ({
     setCardConfirmation(null);
     setTimeout(async () => {
       if (chainSelections) {
-        await processActionWithGuestRouting('cardPlay', {
+        await submitAction('cardPlay', {
           card,
           targetId: target?.id || null,
           playerId: getLocalPlayerId(),
@@ -477,17 +477,17 @@ const useResolvers = ({
 
     setTimeout(async () => {
       if (abilityType === 'recall' || ability.name === 'Recall') {
-        const result = await processActionWithGuestRouting('recallAbility', {
+        const result = await submitAction('recallAbility', {
           targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
         });
         debugLog('SHIP_ABILITY', `Recall ability completed:`, result);
       } else if (abilityType === 'targetLock' || ability.name === 'Target Lock') {
-        const result = await processActionWithGuestRouting('targetLockAbility', {
+        const result = await submitAction('targetLockAbility', {
           targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
         });
         debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
       } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
-        const result = await processActionWithGuestRouting('recalculateAbility', {
+        const result = await submitAction('recalculateAbility', {
           sectionName, playerId: getLocalPlayerId()
         });
         if (result.mandatoryAction) {
@@ -496,7 +496,7 @@ const useResolvers = ({
         }
         debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
       } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
-        const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
+        const result = await submitAction('reallocateShieldsComplete', {
           playerId: getLocalPlayerId(), pendingChanges: pendingShieldChanges
         });
         clearReallocationState();

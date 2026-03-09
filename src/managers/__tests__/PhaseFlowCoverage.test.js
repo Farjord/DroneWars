@@ -735,10 +735,10 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
     });
   });
 
-  describe('Host Mode (Guest as P2)', () => {
+  describe('Host Mode (Remote Player as P2)', () => {
     beforeEach(() => {
       mockGameStateManager._setState({ gameMode: 'host' });
-      phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
     });
 
     it('OD-H1: Round 1 → phase skipped, broadcast sent', () => {
@@ -749,57 +749,57 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
 
       const state = mockGameStateManager.getState();
       expect(state.roundNumber).toBe(1);
-      // Phase skipped, host should broadcast skip to guest
+      // Phase skipped, host should broadcast skip to remote client
     });
 
-    it('OD-H2: Round 2+, both have cards, Host commits first', () => {
+    it('OD-H2: Round 2+, both have cards, player1 commits first', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player1: createMockPlayer('Host', { hand: [{ id: 'card1' }] }),
-        player2: createMockPlayer('Guest', { hand: [{ id: 'card2' }] })
+        player1: createMockPlayer('Player1', { hand: [{ id: 'card1' }] }),
+        player2: createMockPlayer('Player2', { hand: [{ id: 'card2' }] })
       });
 
-      // Host commits
-      phaseManager.notifyHostAction('commit', { phase: 'optionalDiscard' });
+      // player1 commits
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'optionalDiscard' });
 
-      expect(phaseManager.getHostLocalState().commitments.optionalDiscard?.completed).toBe(true);
+      expect(phaseManager.getPlayer1State().commitments.optionalDiscard?.completed).toBe(true);
     });
 
-    it('OD-H3: Round 2+, both have cards, Guest commits first', () => {
+    it('OD-H3: Round 2+, both have cards, player2 commits first', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player1: createMockPlayer('Host', { hand: [{ id: 'card1' }] }),
-        player2: createMockPlayer('Guest', { hand: [{ id: 'card2' }] })
+        player1: createMockPlayer('Player1', { hand: [{ id: 'card1' }] }),
+        player2: createMockPlayer('Player2', { hand: [{ id: 'card2' }] })
       });
 
-      // Guest commits first
-      phaseManager.notifyGuestAction('commit', { phase: 'optionalDiscard' });
+      // player2 commits first
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'optionalDiscard' });
 
-      expect(phaseManager.getGuestLocalState().commitments.optionalDiscard?.completed).toBe(true);
+      expect(phaseManager.getPlayer2State().commitments.optionalDiscard?.completed).toBe(true);
     });
 
-    it('OD-H4: Only Host has cards → Guest auto-approves', () => {
+    it('OD-H4: Only player1 has cards → player2 auto-approves', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player1: createMockPlayer('Host', { hand: [{ id: 'card1' }] }),
-        player2: createMockPlayer('Guest', { hand: [] })
+        player1: createMockPlayer('Player1', { hand: [{ id: 'card1' }] }),
+        player2: createMockPlayer('Player2', { hand: [] })
       });
 
       const state = mockGameStateManager.getState();
       expect(state.player1.hand.length).toBeGreaterThan(0);
       expect(state.player2.hand.length).toBe(0);
-      // Guest should auto-approve via autoCompleteUnnecessaryCommitments
+      // player2 should auto-approve via autoCompleteUnnecessaryCommitments
     });
 
-    it('OD-H5: Only Guest has cards → Host auto-approves', () => {
+    it('OD-H5: Only player2 has cards → player1 auto-approves', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player1: createMockPlayer('Host', { hand: [] }),
-        player2: createMockPlayer('Guest', { hand: [{ id: 'card1' }] })
+        player1: createMockPlayer('Player1', { hand: [] }),
+        player2: createMockPlayer('Player2', { hand: [{ id: 'card1' }] })
       });
 
       const state = mockGameStateManager.getState();
@@ -812,14 +812,14 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player1: createMockPlayer('Host', { hand: [] }),
-        player2: createMockPlayer('Guest', { hand: [] })
+        player1: createMockPlayer('Player1', { hand: [] }),
+        player2: createMockPlayer('Player2', { hand: [] })
       });
 
       const state = mockGameStateManager.getState();
       expect(state.player1.hand.length).toBe(0);
       expect(state.player2.hand.length).toBe(0);
-      // Phase should be skipped, broadcast sent to guest
+      // Phase should be skipped, broadcast sent to remote client
     });
   });
 
@@ -830,7 +830,7 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
     });
 
     it('OD-G1: Round 1 skip broadcast received', () => {
-      // Guest receives host broadcast that phase was skipped
+      // Non-authority receives host broadcast that phase was skipped
       mockGameStateManager._setState({
         roundNumber: 1,
         turnPhase: 'roundInitialization' // Phase already transitioned past optionalDiscard
@@ -838,7 +838,7 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
 
       const state = mockGameStateManager.getState();
       expect(state.roundNumber).toBe(1);
-      // Guest should accept host state showing phase was skipped
+      // Non-authority should accept host state showing phase was skipped
     });
 
     it('OD-G2: Guest receives host broadcast correctly', () => {
@@ -860,22 +860,22 @@ describe('Phase Flow Coverage - optionalDiscard Tests', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player2: createMockPlayer('Guest', { hand: [{ id: 'card1' }] })
+        player2: createMockPlayer('Player2', { hand: [{ id: 'card1' }] })
       });
 
-      // Guest cannot transition phase directly
+      // Non-authority cannot transition phase directly
       const result = phaseManager.transitionToPhase('allocateShields');
-      expect(result).toBe(false); // Guest blocked from transitioning
+      expect(result).toBe(false); // Non-authority blocked from transitioning
     });
 
     it('OD-G4: Guest auto-approves → receives broadcast showing auto-approval', () => {
       mockGameStateManager._setState({
         roundNumber: 2,
         turnPhase: 'optionalDiscard',
-        player2: createMockPlayer('Guest', { hand: [] }) // No cards = auto-approve
+        player2: createMockPlayer('Player2', { hand: [] }) // No cards = auto-approve
       });
 
-      // Guest receives broadcast showing phase completed
+      // Non-authority receives broadcast showing phase completed
       phaseManager.applyMasterState({
         turnPhase: 'allocateShields', // Next phase
         roundNumber: 2
@@ -943,18 +943,18 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       passInfo: { player1Passed: false, player2Passed: false, firstPasser: null }
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
     // Set PhaseManager's internal phase to deployment (sequential phase where pass is valid)
     phaseManager.transitionToPhase('deployment');
 
     // Host passes first
-    phaseManager.notifyHostAction('pass', {});
+    phaseManager.notifyPlayerAction('player1','pass', {});
 
-    expect(phaseManager.getHostLocalState().passInfo.passed).toBe(true);
-    expect(phaseManager.getHostLocalState().passInfo.firstPasser).toBe('player1');
+    expect(phaseManager.getPlayer1State().passInfo.passed).toBe(true);
+    expect(phaseManager.getPlayer1State().passInfo.firstPasser).toBe('player1');
   });
 
-  it('AC-H6: Round completion in multiplayer broadcasts to guest', () => {
+  it('AC-H6: Round completion in multiplayer broadcasts to remote client', () => {
     mockGameStateManager._setState({
       gameMode: 'host',
       turnPhase: 'action',
@@ -962,7 +962,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       passInfo: { player1Passed: true, player2Passed: true, firstPasser: 'player2' }
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
 
     // Verify state before transition
     expect(mockGameStateManager.getState().passInfo.firstPasser).toBe('player2');
@@ -982,7 +982,7 @@ describe('Phase Flow Coverage - Sequential Phase Gaps', () => {
       currentPlayer: 'player1' // player1 was second passer, goes first
     });
 
-    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+    phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
 
     const state = mockGameStateManager.getState();
     expect(state.currentPlayer).toBe('player1');
@@ -1017,25 +1017,25 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       });
 
       it('DS-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'deckSelection' });
-        phaseManager.notifyGuestAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('DS-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyGuestAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('DS-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyHostAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
@@ -1055,25 +1055,25 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'deckSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
       });
 
       it('DS-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'deckSelection' });
-        phaseManager.notifyGuestAction('commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
-      it('DS-2-H: Host commits first, waits for Guest', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'deckSelection' });
-        expect(phaseManager.getHostLocalState().commitments.deckSelection?.completed).toBe(true);
+      it('DS-2-H: player1 commits first, waits for player2', () => {
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
+        expect(phaseManager.getPlayer1State().commitments.deckSelection?.completed).toBe(true);
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
-      it('DS-3-H: Guest commits first, Host sees guest ready', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'deckSelection' });
-        expect(phaseManager.getGuestLocalState().commitments.deckSelection?.completed).toBe(true);
+      it('DS-3-H: player2 commits first, player1 sees player2 ready', () => {
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
+        expect(phaseManager.getPlayer2State().commitments.deckSelection?.completed).toBe(true);
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
@@ -1096,18 +1096,18 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       });
 
       it('DS-2-G: Guest commits → sent to host', () => {
-        // Guest cannot directly modify PhaseManager
+        // Non-authority cannot directly modify PhaseManager
         const result = phaseManager.transitionToPhase('droneSelection');
         expect(result).toBe(false);
       });
 
       it('DS-3-G: Guest waits for host transition', () => {
         expect(phaseManager.getPhaseState().turnPhase).toBe('deckSelection');
-        // Guest must wait for applyMasterState
+        // Non-authority must wait for applyMasterState
       });
 
       it('DS-4-G: Guest validation done by host', () => {
-        // Guest sends deck to host, host validates
+        // Non-authority sends deck to host, host validates
         const state = mockGameStateManager.getState();
         expect(state.gameMode).toBe('guest');
       });
@@ -1124,23 +1124,23 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       });
 
       it('DR-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'droneSelection' });
-        phaseManager.notifyGuestAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('DR-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyGuestAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('DR-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'droneSelection' });
-        phaseManager.notifyHostAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
@@ -1158,25 +1158,25 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
         // Transition PhaseManager to droneSelection phase
         phaseManager.transitionToPhase('droneSelection');
       });
 
       it('DR-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'droneSelection' });
-        phaseManager.notifyGuestAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('DR-2-H: Host commits first', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'droneSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
-      it('DR-3-H: Guest commits first', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'droneSelection' });
+      it('DR-3-H: player2 commits first', () => {
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
@@ -1190,7 +1190,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'droneSelection' });
         phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
-        // Guest uses applyMasterState to sync phase
+        // Non-authority uses applyMasterState to sync phase
         phaseManager.applyMasterState({ turnPhase: 'droneSelection' });
       });
 
@@ -1224,23 +1224,23 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       });
 
       it('PL-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('PL-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('PL-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
@@ -1259,31 +1259,31 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     describe('Host Mode', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
         // Transition PhaseManager to placement phase
         phaseManager.transitionToPhase('placement');
       });
 
       it('PL-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
       it('PL-2-H: Host commits first', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
-      it('PL-3-H: Guest commits first', () => {
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+      it('PL-3-H: player2 commits first', () => {
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
       it('PL-4-H: Host broadcasts immediately after both commit', () => {
-        phaseManager.notifyHostAction('commit', { phase: 'placement' });
-        phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
         // Transition triggers broadcast
         phaseManager.transitionToPhase('roundInitialization');
@@ -1295,7 +1295,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       beforeEach(() => {
         mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'placement' });
         phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
-        // Guest uses applyMasterState to sync phase (can't call transitionToPhase)
+        // Non-authority uses applyMasterState to sync phase (can't call transitionToPhase)
         phaseManager.applyMasterState({ turnPhase: 'placement' });
       });
 
@@ -1314,7 +1314,7 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
       });
 
       it('PL-4-G: Guest receives broadcast timing', () => {
-        // Guest should receive broadcast promptly after both commit
+        // Non-authority should receive broadcast promptly after both commit
         phaseManager.applyMasterState({
           turnPhase: 'roundInitialization',
           gameStage: 'roundLoop',

@@ -12,6 +12,7 @@ import { gameEngine } from '../logic/gameLogic.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { flowCheckpoint } from '../utils/flowVerification.js';
 import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
@@ -79,7 +80,7 @@ class GameFlowManager {
    * @param {Object} actionProcessor - ActionProcessor instance
    * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
-  initialize(gameStateManager, actionProcessor, _isMultiplayerFn, aiPhaseProcessor) {
+  initialize(gameStateManager, actionProcessor, aiPhaseProcessor) {
     // Check if already initialized
     if (this.isInitialized) {
       debugLog('PHASE_TRANSITIONS', '🔧 GameFlowManager already initialized, skipping...');
@@ -89,7 +90,7 @@ class GameFlowManager {
     this.gameStateManager = gameStateManager;
     this.actionProcessor = actionProcessor;
 
-    // Phase authority: local/host drive transitions; guest receives server-pushed state
+    // Phase authority: local/host drive transitions; remote client receives server-pushed state
     this.isPhaseAuthority = gameStateManager.getLocalPlayerId() !== 'player2';
 
     // Initialize PhaseManager for authoritative phase transitions
@@ -128,7 +129,7 @@ class GameFlowManager {
           currentPersonality,
           actionProcessor,
           gameStateManager,
-          { isAnimationBlocking: () => actionProcessor?.phaseAnimationQueue?.isPlaying() || actionProcessor?.animationManager?.isBlocking }
+          { isAnimationBlocking: () => this.phaseAnimationQueue?.isPlaying() || actionProcessor?.animationManager?.isBlocking }
         );
         debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager re-initialized AIPhaseProcessor with dependencies');
       }
@@ -148,53 +149,15 @@ class GameFlowManager {
    * Set up event listeners for manager completion events
    */
   setupEventListeners() {
-    // Track previous passInfo for guest opponent pass detection
-    let previousPassInfo = null;
-
     // Subscribe to GameStateManager for simultaneous phase completion detection
     if (this.gameStateManager) {
       this.gameStateManager.subscribe((event) => {
         const { state, type: eventType } = event;
 
-        // Non-authority (guest) waits for Host's authoritative state before starting cascade
+        // Non-authority (remote client) waits for host's authoritative state before starting cascade
         // GameClient applies Host state and triggers checkSimultaneousPhaseCompletion
         if (this.isPhaseAuthority) {
           this.checkSimultaneousPhaseCompletion(state, eventType);
-        }
-
-        // Non-authority: Monitor state changes for opponent pass detection
-        // When host passes, guest receives state update (not action execution)
-        // so we need to detect pass from passInfo changes
-        if (!this.isPhaseAuthority && state.passInfo) {
-          const localPlayerId = this.gameStateManager.getLocalPlayerId();
-          const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
-          const opponentPassKey = `${opponentId}Passed`;
-
-          // Detect when opponent's pass flag changes from false to true
-          const opponentPassedNow = state.passInfo[opponentPassKey];
-          const opponentPassedBefore = previousPassInfo?.[opponentPassKey];
-
-          if (opponentPassedNow && !opponentPassedBefore) {
-            debugLog('PASS_LOGIC', '🔔 [GUEST] Detected opponent pass from state change', {
-              opponentId,
-              passInfo: state.passInfo,
-              previousPassInfo
-            });
-
-            // Queue opponent pass notification
-            if (this.phaseAnimationQueue) {
-              this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GFM:opponent_detected:164');
-
-              debugLog('PASS_LOGIC', '📋 [GUEST] Queued OPPONENT PASSED animation from state detection');
-
-              if (this._tryStartPlayback('GFM:opponent_detected:170')) {
-                debugLog('PASS_LOGIC', '🎬 [GUEST] Started playback for OPPONENT PASSED');
-              }
-            }
-          }
-
-          // Update previous passInfo for next comparison
-          previousPassInfo = { ...state.passInfo };
         }
       });
     }
@@ -302,7 +265,7 @@ class GameFlowManager {
           alreadyPlaying: this.phaseAnimationQueue?.isPlaying() || false
         });
 
-        if (this._tryStartPlayback('GFM:guest_pass:256')) {
+        if (this._tryStartPlayback('GFM:optimistic_pass:256')) {
           debugLog('PASS_LOGIC', `🎬 [OPTIMISTIC] Starting pass notification playback`, {
             bothPassed,
             explanation: bothPassed
@@ -348,7 +311,7 @@ class GameFlowManager {
     // This guard is AFTER pass playback handling so non-authority can trigger their own animations
     // Only apply in actual P2P networked mode (when p2pManager exists)
     if (!this.isPhaseAuthority && this.actionProcessor?.p2pManager) {
-      debugLog('PHASE_TRACE', 'handleActionCompletion authority guard (P2P guest blocks turn transition)', {
+      debugLog('PHASE_TRACE', 'handleActionCompletion authority guard (P2P non-authority blocks turn transition)', {
         actionType, isPhaseAuthority: this.isPhaseAuthority,
       });
       debugLog('PASS_LOGIC', `🚫 [OPTIMISTIC] Early return - non-authority blocks turn transitions (P2P)`, {
@@ -527,7 +490,7 @@ class GameFlowManager {
       });
 
       // Initialize drone selection data when deckSelection completes
-      // This must happen on host so data gets broadcast to guest
+      // This must happen on host so data gets broadcast to remote client
       if (phase === 'deckSelection') {
         debugLog('PHASE_TRANSITIONS', '🎲 GameFlowManager: Initializing drone selection data for both players after deck selection');
         const commitments = this.gameStateManager.get('commitments');
@@ -586,21 +549,18 @@ class GameFlowManager {
       }
     }
 
-    // Queue ROUND announcement if transitioning from placement to first round phase (Round 1)
-    // This ensures ROUND shows immediately before round phases begin
+    // Emit ROUND announcement through server pipeline when transitioning from placement to first round phase (Round 1)
+    // The cascade from transitionToPhase below provides roundInitialization and deployment announcements
     if (phase === 'placement') {
       const nextPhase = this.getNextPhase(phase);
       // Check if next phase is any round phase (entering round loop)
       if (nextPhase && this.ROUND_PHASES.includes(nextPhase)) {
-        debugLog('PHASE_TRANSITIONS', `🎯 Queueing ROUND announcement before transitioning to first round phase: ${nextPhase}`);
-
-        await this.actionProcessor.processPhaseTransition({
-          newPhase: 'roundAnnouncement',
-          resetPassInfo: false,
-          guestAnnouncementOnly: !this.isPhaseAuthority
-        });
-
-        debugLog('PHASE_TRANSITIONS', `✅ ROUND announcement queued before first round phase: ${nextPhase}`);
+        debugLog('PHASE_TRANSITIONS', `🎯 Emitting round announcement through server pipeline before first round phase: ${nextPhase}`);
+        await this.actionProcessor.executeAndCaptureAnimations([{
+          animationName: 'PHASE_ANNOUNCEMENT',
+          timing: 'independent',
+          payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null }
+        }], true);
       }
     }
 
@@ -732,11 +692,11 @@ class GameFlowManager {
       // Queue DEPLOYMENT COMPLETE announcement when transitioning from deployment to action
       if (phase === 'deployment' && nextPhase === 'action') {
         debugLog('STATE_CHECKPOINT', '[DEPLOY_END]', _buildStateSnapshot(this.gameStateManager.getState()));
-        await this.actionProcessor.processPhaseTransition({
-          newPhase: 'deploymentComplete',
-          resetPassInfo: false,
-          guestAnnouncementOnly: true  // Always pseudo-phase (announcement-only)
-        });
+        await this.actionProcessor.executeAndCaptureAnimations([{
+          animationName: 'PHASE_ANNOUNCEMENT',
+          timing: 'independent',
+          payload: { phase: 'deploymentComplete', text: 'DEPLOYMENT COMPLETE', subtitle: null }
+        }], true);
       }
 
       await this.transitionToPhase(nextPhase);
@@ -745,11 +705,11 @@ class GameFlowManager {
       if (phase === 'action') {
         debugLog('STATE_CHECKPOINT', '[ACTION_END]', _buildStateSnapshot(this.gameStateManager.getState()));
         // Queue ACTION PHASE COMPLETE announcement before starting new round
-        await this.actionProcessor.processPhaseTransition({
-          newPhase: 'actionComplete',
-          resetPassInfo: false,
-          guestAnnouncementOnly: true  // Always pseudo-phase (announcement-only)
-        });
+        await this.actionProcessor.executeAndCaptureAnimations([{
+          animationName: 'PHASE_ANNOUNCEMENT',
+          timing: 'independent',
+          payload: { phase: 'actionComplete', text: 'ACTION PHASE COMPLETE', subtitle: 'Transitioning to Next Round' }
+        }], true);
         if (this._isRoundTransition) {
           debugLog('ROUND_TRANSITION_TRACE', '[RT-03] actionComplete pseudo-phase announcement queued', {
             utc: new Date().toISOString(), role: 'SERVER',
@@ -777,9 +737,9 @@ class GameFlowManager {
   }
 
   /**
-   * Get next milestone phase for guest validation
-   * Determines which milestone phase guest should expect from host
-   * @param {string} currentPhase - Current phase guest is in
+   * Get next milestone phase for non-authority validation
+   * Determines which milestone phase non-authority should expect from host
+   * @param {string} currentPhase - Current phase non-authority is in
    * @returns {string} Next milestone phase to validate against
    */
   getNextMilestonePhase(currentPhase) {
@@ -806,16 +766,6 @@ class GameFlowManager {
    * @param {string} previousPhase - The phase we're transitioning from
    */
   async processAutomaticPhase(phase, previousPhase) {
-    // NON-AUTHORITY: Sync internal state from GameStateManager before processing
-    // Non-authority's GameFlowManager initializes with defaults but needs to match Host's gameStage/roundNumber
-    if (!this.isPhaseAuthority) {
-      const currentGameState = this.gameStateManager.getState();
-      this.gameStage = currentGameState.gameStage || 'preGame';
-      this.roundNumber = currentGameState.roundNumber || 0;
-
-      debugLog('OPTIMISTIC_EXECUTION', `🔄 [OPTIMISTIC] Synced GameFlowManager state from GameStateManager: {gameStage: '${this.gameStage}', roundNumber: ${this.roundNumber}}`);
-    }
-
     // Set flag to indicate we're processing an automatic phase
     this.isProcessingAutomaticPhase = true;
 
@@ -849,7 +799,7 @@ class GameFlowManager {
 
   /**
    * Process automatic phase logic ONLY (no transition)
-   * Used by guest optimistic cascade for explicit transition control
+   * Used by non-authority optimistic cascade for explicit transition control
    * Separates phase processing from phase transitioning (Hearthstone-style architecture)
    * @param {string} phase - Phase to process
    * @param {string} previousPhase - Previous phase
@@ -987,7 +937,7 @@ class GameFlowManager {
 
   /**
    * Get next required phase in round (skips conditional phases that aren't needed)
-   * Used by guest optimistic cascade for conditional phase handling
+   * Used by non-authority optimistic cascade for conditional phase handling
    * @param {string} currentPhase - Current round phase
    * @returns {string|null} Next required phase or null if no more phases
    */
@@ -1157,25 +1107,11 @@ class GameFlowManager {
   async transitionToPhase(newPhase, trigger = 'unknown') {
     const previousPhase = this.currentPhase;
 
-    // PHASE MANAGER INTEGRATION: Non-authority cannot call transitionToPhase directly
-    // Non-authority waits for PhaseManager broadcasts from Host
+    // Non-authority cannot transition phases — server broadcasts handle state delivery,
+    // GameClient handles announcement routing. Guard prevents accidental state corruption.
     if (!this.isPhaseAuthority) {
-      debugLog('PHASE_TRANSITIONS', `🎬 [OPTIMISTIC] Queueing announcement for ${newPhase} (state transition blocked)`);
-
-      // Non-authority client cannot transition state, but CAN queue announcements for UI feedback
-      // Call ActionProcessor to queue announcement, then return before state transition
-      if (this.actionProcessor && this.gameStateManager) {
-        await this.actionProcessor.queueAction({
-          type: 'phaseTransition',
-          payload: {
-            newPhase: newPhase,
-            resetPassInfo: false,
-            guestAnnouncementOnly: true  // Flag to skip state changes
-          }
-        });
-      }
-
-      return; // Block state transition (authority stays with Host)
+      debugLog('PHASE_TRANSITIONS', `🔒 [NON-AUTHORITY] Blocked transitionToPhase(${newPhase}) — server broadcasts provide state + announcements`);
+      return;
     }
 
     // Guard against redundant transitions
@@ -1219,6 +1155,7 @@ class GameFlowManager {
       });
     }
 
+    flowCheckpoint('PHASE_TRANSITION', { from: previousPhase, to: newPhase });
     this.currentPhase = newPhase;
 
     // Handle special phase transitions
@@ -1233,7 +1170,7 @@ class GameFlowManager {
     let phaseData = {};
 
     // Note: Drone selection initialization moved to onSimultaneousPhaseComplete
-    // to ensure data is created on host and broadcast to guest
+    // to ensure data is created on host and broadcast to remote client
 
     if (newPhase === 'placement') {
       debugLog('PHASE_TRANSITIONS', '🚢 GameFlowManager: Initializing placement phase data');
@@ -1243,7 +1180,7 @@ class GameFlowManager {
 
     // Update GameStateManager with new phase via ActionProcessor
     if (this.actionProcessor && this.gameStateManager) {
-      // Use ActionProcessor for phase transition (through queueAction to ensure broadcast to guest)
+      // Use ActionProcessor for phase transition (through queueAction to ensure broadcast to remote client)
       await this.actionProcessor.queueAction({
         type: 'phaseTransition',
         payload: {
@@ -1283,7 +1220,7 @@ class GameFlowManager {
     // Start animation playback for sequential phase transitions
     // Sequential→Sequential transitions (e.g., deployment→action) don't go through automatic cascade
     // so we need to manually trigger animation playback here
-    // Works for BOTH host and guest now (guest receives pass notifications from optimistic execution)
+    // Works for BOTH authority and non-authority (non-authority receives pass notifications from optimistic execution)
     if (this.isSequentialPhase(newPhase)) {
       if (this._tryStartPlayback('GFM:seq_transition:2060')) {
         debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
@@ -1373,7 +1310,7 @@ class GameFlowManager {
     }
 
     if (!player2NeedsToAct) {
-      if (isSinglePlayer || localPlayerId === 'player2') {
+      if (isSinglePlayer || this.gameStateManager.isRemoteClient()) {
         debugLog('COMMITMENTS', `✅ Player2 doesn't need to act in ${phase}, auto-committing`);
         await this.actionProcessor.processCommitment({
           playerId: 'player2',
@@ -1426,16 +1363,15 @@ class GameFlowManager {
       });
     }
 
-    // Queue ROUND announcement before transitioning to first phase of new round
-
-    await this.actionProcessor.processPhaseTransition({
-      newPhase: 'roundAnnouncement',
-      resetPassInfo: false,
-      guestAnnouncementOnly: !this.isPhaseAuthority
-    });
+    // Emit ROUND announcement through server pipeline; cascade provides UPKEEP and DEPLOYMENT
+    await this.actionProcessor.executeAndCaptureAnimations([{
+      animationName: 'PHASE_ANNOUNCEMENT',
+      timing: 'independent',
+      payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null }
+    }], true);
 
     if (this._isRoundTransition) {
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-06] roundAnnouncement pseudo-phase queued', {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-06] Round announcement emitted through server pipeline', {
         utc: new Date().toISOString(), role: 'SERVER',
         round: nextRound,
       });

@@ -106,14 +106,16 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
     // Mock gameFlowManager to avoid phase transition calls
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
-      transitionToPhase: vi.fn().mockResolvedValue(undefined)
+      transitionToPhase: vi.fn().mockResolvedValue(undefined),
+      _tryStartPlayback: vi.fn(),
+      phaseAnimationQueue: {
+        queueAnimation: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false)
+      }
     };
 
     // Mock actionProcessor
     gameStateManager.actionProcessor = {
-      phaseAnimationQueue: {
-        queueAnimation: vi.fn()
-      },
       setAIPhaseProcessor: vi.fn()
     };
   });
@@ -263,14 +265,16 @@ describe('SinglePlayerCombatInitializer - placedSections lane assignments', () =
     // Mock gameFlowManager to avoid phase transition calls
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
-      transitionToPhase: vi.fn().mockResolvedValue(undefined)
+      transitionToPhase: vi.fn().mockResolvedValue(undefined),
+      _tryStartPlayback: vi.fn(),
+      phaseAnimationQueue: {
+        queueAnimation: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false)
+      }
     };
 
     // Mock actionProcessor
     gameStateManager.actionProcessor = {
-      phaseAnimationQueue: {
-        queueAnimation: vi.fn()
-      },
       setAIPhaseProcessor: vi.fn()
     };
   });
@@ -376,15 +380,17 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
     // Mock gameFlowManager to avoid phase transition calls
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
-      transitionToPhase: vi.fn().mockResolvedValue(undefined)
-    };
-
-    // Mock actionProcessor (include clear for animation queue cleanup)
-    gameStateManager.actionProcessor = {
+      transitionToPhase: vi.fn().mockResolvedValue(undefined),
+      _tryStartPlayback: vi.fn(),
       phaseAnimationQueue: {
         queueAnimation: vi.fn(),
-        clear: vi.fn()
-      },
+        clear: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false)
+      }
+    };
+
+    // Mock actionProcessor
+    gameStateManager.actionProcessor = {
       setAIPhaseProcessor: vi.fn()
     };
   });
@@ -502,20 +508,22 @@ describe('SinglePlayerCombatInitializer - animation queue cleanup', () => {
     });
 
     // Mock gameFlowManager to avoid phase transition calls
-    gameStateManager.gameFlowManager = {
-      processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
-      transitionToPhase: vi.fn().mockResolvedValue(undefined)
-    };
-
     // Create spy for animation queue clear
     clearQueueSpy = vi.fn();
 
-    // Mock actionProcessor with phaseAnimationQueue.clear
-    gameStateManager.actionProcessor = {
+    gameStateManager.gameFlowManager = {
+      processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
+      transitionToPhase: vi.fn().mockResolvedValue(undefined),
+      _tryStartPlayback: vi.fn(),
       phaseAnimationQueue: {
         queueAnimation: vi.fn(),
-        clear: clearQueueSpy
-      },
+        clear: clearQueueSpy,
+        isPlaying: vi.fn().mockReturnValue(false)
+      }
+    };
+
+    // Mock actionProcessor
+    gameStateManager.actionProcessor = {
       setAIPhaseProcessor: vi.fn()
     };
   });

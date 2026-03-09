@@ -4,7 +4,7 @@
 // Complete deck selection phase implementation extracted from App.jsx
 // Handles choice between standard deck and custom deck building
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
@@ -21,6 +21,7 @@ import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import SoundManager from '../../managers/SoundManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
+import '../../styles/phase-screens.css';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -34,13 +35,11 @@ function DeckSelectionScreen() {
     getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
-    getOpponentPlayerState,
     addLogEntry
   } = useGameState();
 
   const { turnPhase } = gameState;
   const localPlayerState = getLocalPlayerState();
-  const opponentPlayerState = getOpponentPlayerState();
 
   // Local state for deck building UI
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
@@ -48,7 +47,7 @@ function DeckSelectionScreen() {
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
 
-  // UI state for guest submission feedback
+  // UI state for remote client submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Exit confirmation state
@@ -122,8 +121,8 @@ function DeckSelectionScreen() {
     };
 
     // Remote player: Send action to host with immediate UI feedback
-    if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMIT_TRACE', 'Guest sending deckSelection commitment to host', {
+    if (gameStateManager.isRemoteClient()) {
+      debugLog('COMMIT_TRACE', 'Remote client sending deckSelection commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -260,8 +259,8 @@ function DeckSelectionScreen() {
     };
 
     // Remote player: Send action to host with immediate UI feedback
-    if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMIT_TRACE', 'Guest sending deckSelection commitment to host (custom)', {
+    if (gameStateManager.isRemoteClient()) {
+      debugLog('COMMIT_TRACE', 'Remote client sending deckSelection commitment to host (custom)', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -322,7 +321,7 @@ function DeckSelectionScreen() {
     const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
 
     if (localPlayerCompleted && isSubmitting) {
-      debugLog('DECK_SELECTION', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      debugLog('DECK_SELECTION', '✅ Host confirmed remote client commitment, resetting isSubmitting');
       setIsSubmitting(false);
     }
   }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
@@ -333,29 +332,34 @@ function DeckSelectionScreen() {
   const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
 
-  debugLog('DECK_SELECTION', '🔍 [DECK SELECTION] Render check:', {
-    localPlayerId,
-    isMultiplayer: isMultiplayer(),
-    localPlayerId,
-    opponentPlayerId,
-    localPlayerCompleted,
-    opponentCompleted,
-    isSubmitting,
-    fullCommitmentsObject: gameState.commitments?.deckSelection,
-    turnPhase,
-    localPlayerDeckLength: localPlayerState.deck?.length,
-    willShowSubmitting: isSubmitting && !localPlayerCompleted,
-    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-  });
+  // Log commitment state changes (not every render)
+  const lastCommitStateRef = useRef(null);
+  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
+  if (commitKey !== lastCommitStateRef.current) {
+    lastCommitStateRef.current = commitKey;
+    debugLog('DECK_SELECTION', 'Render check:', {
+      localPlayerId,
+      isMultiplayer: isMultiplayer(),
+      opponentPlayerId,
+      localPlayerCompleted,
+      opponentCompleted,
+      isSubmitting,
+      fullCommitmentsObject: gameState.commitments?.deckSelection,
+      turnPhase,
+      localPlayerDeckLength: localPlayerState.deck?.length,
+      willShowSubmitting: isSubmitting && !localPlayerCompleted,
+      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
+    });
+  }
 
-  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
 
   // State 1: SUBMITTING - Client sent action, waiting for server confirmation
   if (isSubmitting && !localPlayerCompleted) {
     return <SubmittingOverlay />;
   }
 
-  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
+  // State 2: WAITING - Player confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     return (
       <WaitingForOpponentScreen
@@ -386,15 +390,6 @@ function DeckSelectionScreen() {
 
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
-      <style>
-        {`
-          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
-          .font-orbitron { font-family: 'Orbitron', sans-serif; }
-          .font-exo { font-family: 'Exo', sans-serif; }
-        `}
-      </style>
-
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full pt-8 px-4 relative z-10">
         {/* Header with hex decorations */}

@@ -2,12 +2,12 @@
  * PhaseManager - Single Authoritative Source for Phase Transitions
  *
  * This class is the ONLY entity that can transition phases in the game.
- * It tracks both Host and Guest local states independently and determines
- * when both players are ready to progress.
+ * It tracks both players' local states independently and determines
+ * when both are ready to progress.
  *
  * Design Principles:
  * - Single source of truth for phase progression
- * - Host authority, Guest reactivity
+ * - Authority/non-authority model
  * - Explicit state tracking for both players
  * - Atomic phase transitions
  *
@@ -37,40 +37,8 @@ class PhaseManager {
     this.gameStateManager = gameStateManager;
     this.isAuthority = isAuthority;
 
-    // Host's local state (what Host has done)
-    this.hostLocalState = {
-      passInfo: {
-        passed: false,
-        firstPasser: null
-      },
-      commitments: {} // { [phaseName]: { completed: boolean } }
-    };
-
-    // Guest's local state (what Guest has done, as received via network)
-    this.guestLocalState = {
-      passInfo: {
-        passed: false,
-        firstPasser: null
-      },
-      commitments: {} // { [phaseName]: { completed: boolean } }
-    };
-
-    // Authoritative phase state (only Phase Manager modifies this)
-    this.phaseState = {
-      turnPhase: 'deckSelection',
-      gameStage: 'preGame',
-      roundNumber: 1,
-      turn: 1,
-      currentPlayer: 'player1',
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null
-    };
-
-    // Transition history for debugging
-    this.transitionHistory = [];
-
-    // Lock to prevent concurrent transitions
-    this.isTransitioning = false;
+    // Initialize all mutable state via reset() — single source of truth for defaults
+    this.reset();
 
     debugLog('PHASE_MANAGER', `✅ PhaseManager initialized (authority: ${isAuthority})`);
   }
@@ -85,25 +53,27 @@ class PhaseManager {
 
     if (actionType === 'pass' && !PhaseManager.SEQUENTIAL_PHASES.includes(currentPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Pass action invalid for simultaneous phase: ${currentPhase}`);
-      debugLog('PHASE_MANAGER', `⚠️ PhaseManager: Pass action invalid for phase: ${currentPhase}`);
       return false;
     }
     if (actionType === 'commit' && !PhaseManager.SIMULTANEOUS_PHASES.includes(currentPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Commit action invalid for sequential phase: ${currentPhase}`);
-      debugLog('PHASE_MANAGER', `⚠️ PhaseManager: Commit action invalid for phase: ${currentPhase}`);
       return false;
     }
     return true;
   }
 
   /**
-   * Notify Phase Manager that Host performed an action
+   * Notify Phase Manager that a player performed an action
+   * @param {string} playerId - 'player1' or 'player2'
    * @param {string} actionType - 'pass' or 'commit'
    * @param {object} data - Action data
    * @returns {boolean} True if action was valid and processed
    */
-  notifyHostAction(actionType, data) {
-    debugLog('PHASE_MANAGER', `📥 Host action: ${actionType}`, data);
+  notifyPlayerAction(playerId, actionType, data) {
+    debugLog('PHASE_MANAGER', `📥 ${playerId} action: ${actionType}`, data);
+
+    const playerState = playerId === 'player1' ? this.player1State : this.player2State;
+    const otherState = playerId === 'player1' ? this.player2State : this.player1State;
 
     // Validate action type for current phase
     if (!this.validateActionForPhase(actionType)) {
@@ -111,61 +81,23 @@ class PhaseManager {
     }
 
     if (actionType === 'pass') {
-      this.hostLocalState.passInfo.passed = true;
+      playerState.passInfo.passed = true;
 
       // Track first passer
-      if (!this.hostLocalState.passInfo.firstPasser && !this.guestLocalState.passInfo.firstPasser) {
-        this.hostLocalState.passInfo.firstPasser = 'player1';
-        this.guestLocalState.passInfo.firstPasser = 'player1'; // Sync across states
+      if (!this.player1State.passInfo.firstPasser && !this.player2State.passInfo.firstPasser) {
+        playerState.passInfo.firstPasser = playerId;
+        otherState.passInfo.firstPasser = playerId; // Sync across states
       }
 
-      debugLog('PHASE_MANAGER', `✅ Host passed (player1)`);
+      debugLog('PHASE_MANAGER', `✅ ${playerId} passed`);
     } else if (actionType === 'commit') {
       const { phase } = data;
-      if (!this.hostLocalState.commitments[phase]) {
-        this.hostLocalState.commitments[phase] = {};
+      if (!playerState.commitments[phase]) {
+        playerState.commitments[phase] = {};
       }
-      this.hostLocalState.commitments[phase].completed = true;
+      playerState.commitments[phase].completed = true;
 
-      debugLog('PHASE_MANAGER', `✅ Host committed to ${phase}`);
-    }
-
-    // Check if ready to transition
-    this.checkReadyToTransition();
-  }
-
-  /**
-   * Notify Phase Manager that Guest performed an action (received via network)
-   * @param {string} actionType - 'pass' or 'commit'
-   * @param {object} data - Action data
-   * @returns {boolean} True if action was valid and processed
-   */
-  notifyGuestAction(actionType, data) {
-    debugLog('PHASE_MANAGER', `📥 Guest action: ${actionType}`, data);
-
-    // Validate action type for current phase
-    if (!this.validateActionForPhase(actionType)) {
-      return false;
-    }
-
-    if (actionType === 'pass') {
-      this.guestLocalState.passInfo.passed = true;
-
-      // Track first passer
-      if (!this.hostLocalState.passInfo.firstPasser && !this.guestLocalState.passInfo.firstPasser) {
-        this.guestLocalState.passInfo.firstPasser = 'player2';
-        this.hostLocalState.passInfo.firstPasser = 'player2'; // Sync across states
-      }
-
-      debugLog('PHASE_MANAGER', `✅ Guest passed (player2)`);
-    } else if (actionType === 'commit') {
-      const { phase } = data;
-      if (!this.guestLocalState.commitments[phase]) {
-        this.guestLocalState.commitments[phase] = {};
-      }
-      this.guestLocalState.commitments[phase].completed = true;
-
-      debugLog('PHASE_MANAGER', `✅ Guest committed to ${phase}`);
+      debugLog('PHASE_MANAGER', `✅ ${playerId} committed to ${phase}`);
     }
 
     // Check if ready to transition
@@ -191,30 +123,30 @@ class PhaseManager {
 
     if (isSequential) {
       // Check if both players passed
-      const bothPassed = this.hostLocalState.passInfo.passed &&
-                         this.guestLocalState.passInfo.passed;
+      const bothPassed = this.player1State.passInfo.passed &&
+                         this.player2State.passInfo.passed;
 
       if (bothPassed) {
         debugLog('PHASE_MANAGER', `🎯 Both players passed in ${currentPhase} - ready to transition`);
         return true;
       }
 
-      debugLog('PHASE_MANAGER', `⏳ Waiting for passes: Host=${this.hostLocalState.passInfo.passed}, Guest=${this.guestLocalState.passInfo.passed}`);
+      debugLog('PHASE_MANAGER', `⏳ Waiting for passes: player1=${this.player1State.passInfo.passed}, player2=${this.player2State.passInfo.passed}`);
       return false;
     }
 
     if (isSimultaneous) {
       // Check if both players committed
-      const hostCommitted = this.hostLocalState.commitments[currentPhase]?.completed || false;
-      const guestCommitted = this.guestLocalState.commitments[currentPhase]?.completed || false;
-      const bothCommitted = hostCommitted && guestCommitted;
+      const p1Committed = this.player1State.commitments[currentPhase]?.completed || false;
+      const p2Committed = this.player2State.commitments[currentPhase]?.completed || false;
+      const bothCommitted = p1Committed && p2Committed;
 
       if (bothCommitted) {
         debugLog('PHASE_MANAGER', `🎯 Both players committed to ${currentPhase} - ready to transition`);
         return true;
       }
 
-      debugLog('PHASE_MANAGER', `⏳ Waiting for commitments in ${currentPhase}: Host=${hostCommitted}, Guest=${guestCommitted}`);
+      debugLog('PHASE_MANAGER', `⏳ Waiting for commitments in ${currentPhase}: player1=${p1Committed}, player2=${p2Committed}`);
       return false;
     }
 
@@ -223,7 +155,7 @@ class PhaseManager {
 
   /**
    * Transition to a new phase (ONLY method that changes turnPhase)
-   * Only Host can call this in multiplayer
+   * Only authority can call this in multiplayer
    * @param {string} newPhase - The phase to transition to
    * @returns {boolean} Success
    */
@@ -231,14 +163,12 @@ class PhaseManager {
     // Guard: Validate phase name
     if (!PhaseManager.VALID_PHASES.includes(newPhase)) {
       debugLog('PHASE_MANAGER', `🚫 Invalid phase name: ${newPhase}`);
-      debugLog('PHASE_MANAGER', `❌ PhaseManager: Invalid phase name: ${newPhase}`);
       return false;
     }
 
     // Guard: Non-authority cannot transition
     if (!this.isAuthority) {
       debugLog('PHASE_MANAGER', `🚫 Non-authority attempted to transition to ${newPhase} - BLOCKED`);
-      debugLog('PHASE_MANAGER', '❌ PhaseManager: Non-authority cannot transition phases!');
       return false;
     }
 
@@ -265,8 +195,8 @@ class PhaseManager {
         from: oldPhase,
         to: newPhase,
         timestamp: Date.now(),
-        hostState: { ...this.hostLocalState },
-        guestState: { ...this.guestLocalState }
+        player1State: { ...this.player1State },
+        player2State: { ...this.player2State }
       });
 
       // Keep only last 20 transitions
@@ -278,8 +208,7 @@ class PhaseManager {
 
       return true;
     } catch (error) {
-      debugLog('PHASE_MANAGER', `❌ Error during transition: ${error.message}`);
-      debugLog('PHASE_MANAGER', '❌ PhaseManager transition error:', error);
+      debugLog('PHASE_MANAGER', `❌ Error during transition: ${error.message}`, error);
       return false;
     } finally {
       this.isTransitioning = false;
@@ -292,13 +221,13 @@ class PhaseManager {
    */
   resetPhaseState(phaseToReset) {
     // Clear pass info (preserving firstPasser for turn order determination)
-    const preservedFirstPasser = this.hostLocalState.passInfo.firstPasser;
+    const preservedFirstPasser = this.player1State.passInfo.firstPasser;
 
-    this.hostLocalState.passInfo = {
+    this.player1State.passInfo = {
       passed: false,
       firstPasser: preservedFirstPasser
     };
-    this.guestLocalState.passInfo = {
+    this.player2State.passInfo = {
       passed: false,
       firstPasser: preservedFirstPasser
     };
@@ -306,11 +235,11 @@ class PhaseManager {
     // CRITICAL: Reset commitments for the phase we just LEFT, not the phase we entered
     // Without this, checkReadyToTransition() will incorrectly detect
     // old commitments when a simultaneous phase runs again in subsequent rounds
-    if (phaseToReset && this.hostLocalState.commitments[phaseToReset]) {
-      this.hostLocalState.commitments[phaseToReset] = { completed: false };
+    if (phaseToReset && this.player1State.commitments[phaseToReset]) {
+      this.player1State.commitments[phaseToReset] = { completed: false };
     }
-    if (phaseToReset && this.guestLocalState.commitments[phaseToReset]) {
-      this.guestLocalState.commitments[phaseToReset] = { completed: false };
+    if (phaseToReset && this.player2State.commitments[phaseToReset]) {
+      this.player2State.commitments[phaseToReset] = { completed: false };
     }
 
     debugLog('PHASE_MANAGER', `🧹 Phase state reset (passInfo and commitments cleared for ${phaseToReset || 'no phase'})`);
@@ -324,22 +253,22 @@ class PhaseManager {
   }
 
   /**
-   * Get host local state (read-only)
+   * Get player 1 state (read-only)
    */
-  getHostLocalState() {
+  getPlayer1State() {
     return {
-      passInfo: { ...this.hostLocalState.passInfo },
-      commitments: { ...this.hostLocalState.commitments }
+      passInfo: { ...this.player1State.passInfo },
+      commitments: { ...this.player1State.commitments }
     };
   }
 
   /**
-   * Get guest local state (read-only)
+   * Get player 2 state (read-only)
    */
-  getGuestLocalState() {
+  getPlayer2State() {
     return {
-      passInfo: { ...this.guestLocalState.passInfo },
-      commitments: { ...this.guestLocalState.commitments }
+      passInfo: { ...this.player2State.passInfo },
+      commitments: { ...this.player2State.commitments }
     };
   }
 
@@ -383,8 +312,8 @@ class PhaseManager {
    * Called by GameStateManager.endGame() to prevent state leaks between games.
    */
   reset() {
-    // Reset host local state
-    this.hostLocalState = {
+    // Reset player 1 state
+    this.player1State = {
       passInfo: {
         passed: false,
         firstPasser: null
@@ -392,8 +321,8 @@ class PhaseManager {
       commitments: {}
     };
 
-    // Reset guest local state
-    this.guestLocalState = {
+    // Reset player 2 state
+    this.player2State = {
       passInfo: {
         passed: false,
         firstPasser: null
@@ -422,8 +351,8 @@ class PhaseManager {
   }
 
   /**
-   * Apply master phase state (Guest receives Host broadcast)
-   * @param {object} masterPhaseState - Authoritative state from Host
+   * Apply master phase state (non-authority receives authority broadcast)
+   * @param {object} masterPhaseState - Authoritative state from authority
    * @returns {boolean} True if applied, false if blocked
    */
   applyMasterState(masterPhaseState) {
@@ -432,21 +361,21 @@ class PhaseManager {
       return false;
     }
 
-    debugLog('PHASE_MANAGER', `📥 Guest applying master phase state:`, masterPhaseState);
+    debugLog('PHASE_MANAGER', `📥 Applying master phase state:`, masterPhaseState);
 
-    // Accept Host's phase state as authoritative
+    // Accept authority's phase state
     this.phaseState = { ...masterPhaseState };
 
     // CRITICAL: Sync firstPasser if included in broadcast
-    // Guest needs this to determine turn order in next round
-    // Guest cannot independently track firstPasser when host passes first
+    // Non-authority needs this to determine turn order in next round
+    // Non-authority cannot independently track firstPasser when authority passes first
     if (masterPhaseState.passInfo?.firstPasser) {
-      this.hostLocalState.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
-      this.guestLocalState.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
+      this.player1State.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
+      this.player2State.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
       debugLog('PHASE_MANAGER', `✅ Synced firstPasser: ${masterPhaseState.passInfo.firstPasser}`);
     }
 
-    debugLog('PHASE_MANAGER', `✅ Guest phase state updated to: ${this.phaseState.turnPhase}`);
+    debugLog('PHASE_MANAGER', `✅ Phase state updated to: ${this.phaseState.turnPhase}`);
     return true;
   }
 }

@@ -18,14 +18,16 @@ vi.mock('../../../managers/GameStateManager.js', () => ({
     get: vi.fn(() => null),
     getDroneDamageStateForSlot: vi.fn(() => ({})),
     actionProcessor: {
-      phaseAnimationQueue: {
-        queueAnimation: vi.fn()
-      },
       setAIPhaseProcessor: vi.fn()
     },
     gameFlowManager: {
       processRoundInitialization: vi.fn(async () => 'deployment'),
-      transitionToPhase: vi.fn(async () => {})
+      transitionToPhase: vi.fn(async () => {}),
+      _tryStartPlayback: vi.fn(),
+      phaseAnimationQueue: {
+        queueAnimation: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false)
+      }
     }
   }
 }));

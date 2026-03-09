@@ -137,17 +137,15 @@ export const createMockGameState = (overrides = {}) => {
  * Simulates a player pass action via PhaseManager
  */
 export const simulatePass = (phaseManager, playerId) => {
-  const actionType = playerId === 'player1' ? 'notifyHostAction' : 'notifyGuestAction';
   const currentPhase = phaseManager.phaseState?.turnPhase || 'deployment';
-  phaseManager[actionType]('pass', { phase: currentPhase });
+  phaseManager.notifyPlayerAction(playerId, 'pass', { phase: currentPhase });
 };
 
 /**
  * Simulates a player commitment via PhaseManager
  */
 export const simulateCommitment = (phaseManager, playerId, phase) => {
-  const actionType = playerId === 'player1' ? 'notifyHostAction' : 'notifyGuestAction';
-  phaseManager[actionType]('commit', { phase });
+  phaseManager.notifyPlayerAction(playerId, 'commit', { phase });
 };
 
 /**
@@ -164,14 +162,14 @@ export const assertPhaseTransitioned = (phaseManager, expectedPhase) => {
  * Asserts first passer is set correctly
  */
 export const assertFirstPasser = (phaseManager, expectedPlayerId) => {
-  const hostFirstPasser = phaseManager.hostLocalState?.passInfo?.firstPasser;
-  const guestFirstPasser = phaseManager.guestLocalState?.passInfo?.firstPasser;
+  const p1FirstPasser = phaseManager.player1State?.passInfo?.firstPasser;
+  const p2FirstPasser = phaseManager.player2State?.passInfo?.firstPasser;
 
-  if (hostFirstPasser !== expectedPlayerId) {
-    throw new Error(`Expected host firstPasser ${expectedPlayerId} but got ${hostFirstPasser}`);
+  if (p1FirstPasser !== expectedPlayerId) {
+    throw new Error(`Expected player1 firstPasser ${expectedPlayerId} but got ${p1FirstPasser}`);
   }
-  if (guestFirstPasser !== expectedPlayerId) {
-    throw new Error(`Expected guest firstPasser ${expectedPlayerId} but got ${guestFirstPasser}`);
+  if (p2FirstPasser !== expectedPlayerId) {
+    throw new Error(`Expected player2 firstPasser ${expectedPlayerId} but got ${p2FirstPasser}`);
   }
 };
 
@@ -299,6 +297,7 @@ export const createIntegrationGameStateManager = (initialState = null) => {
       };
     }),
     getLocalPlayerId: vi.fn(() => state.gameMode === 'guest' ? 'player2' : 'player1'),
+    isRemoteClient: vi.fn(() => state.gameMode === 'guest'),
     getOpponentPlayerId: vi.fn(() => state.gameMode === 'guest' ? 'player1' : 'player2'),
     isMilestonePhase: vi.fn((phase) => ['deployment', 'action'].includes(phase)),
     // Direct state access for tests
@@ -313,10 +312,15 @@ export const createIntegrationGameStateManager = (initialState = null) => {
 export const createIntegrationActionProcessor = () => {
   const phaseTransitions = [];
 
+  const capturedAnimations = [];
+
   return {
     processPhaseTransition: vi.fn(async (data) => {
       phaseTransitions.push(data);
       return { success: true };
+    }),
+    executeAndCaptureAnimations: vi.fn(async (anims) => {
+      capturedAnimations.push(...(anims || []));
     }),
     processTurnTransition: vi.fn(async () => ({ success: true })),
     processPlayerPass: vi.fn(async () => ({ success: true })),
@@ -327,8 +331,10 @@ export const createIntegrationActionProcessor = () => {
     subscribe: vi.fn(() => () => {}),
     // Test helpers
     getPhaseTransitions: () => phaseTransitions,
+    getCapturedAnimations: () => capturedAnimations,
     clearHistory: () => {
       phaseTransitions.length = 0;
+      capturedAnimations.length = 0;
     }
   };
 };
@@ -429,11 +435,11 @@ export const createLocalModeGameStateManager = (options = {}) => {
 };
 
 /**
- * MULTIPLAYER HOST MODE FIXTURES (Human P1 vs Guest P2)
+ * MULTIPLAYER HOST MODE FIXTURES (Human P1 vs Remote P2)
  * Test ID prefix: H (e.g., MD-H1, DP-H2)
  *
- * Key behavior: Guest actions arrive via NETWORK, processed asynchronously
- * Host calls notifyGuestAction() when network message is received
+ * Key behavior: Remote player actions arrive via NETWORK, processed asynchronously
+ * Host calls notifyPlayerAction('player2', ...) when network message is received
  */
 
 /**
@@ -459,15 +465,15 @@ export const createHostModeGameStateManager = (options = {}) => {
 };
 
 /**
- * Creates a mock network message handler for simulating guest actions
- * Used to test host receiving guest actions via network
+ * Creates a mock network message handler for simulating remote player actions
+ * Used to test host receiving remote player actions via network
  */
 export const createMockNetworkHandler = () => {
   const receivedMessages = [];
   const sentMessages = [];
 
   return {
-    // Simulate receiving a guest action
+    // Simulate receiving a remote player action
     receiveGuestAction: vi.fn((action) => {
       receivedMessages.push({ action, timestamp: Date.now() });
       return action;
@@ -491,7 +497,7 @@ export const createMockNetworkHandler = () => {
  * Test ID prefix: G (e.g., MD-G1, DP-G2)
  *
  * Key behavior: Client receives server state updates, does NOT call PhaseManager methods
- * Guest actions are sent to host, not processed locally
+ * Remote client actions are sent to host, not processed locally
  */
 
 /**
@@ -517,7 +523,7 @@ export const createGuestModeGameStateManager = (options = {}) => {
   const state = createGuestModeState(options);
   const manager = createIntegrationGameStateManager(state);
 
-  // Override getLocalPlayerId for guest mode
+  // Override getLocalPlayerId for 'guest' gameMode (local player is P2)
   manager.getLocalPlayerId = vi.fn(() => 'player2');
   manager.getOpponentPlayerId = vi.fn(() => 'player1');
 
@@ -598,7 +604,7 @@ export const ASYMMETRIC_SCENARIOS = {
   BOTH_NEED: { p1NeedsAction: true, p2NeedsAction: true },
   // Only P1 (Human/Host) needs action
   ONLY_P1: { p1NeedsAction: true, p2NeedsAction: false },
-  // Only P2 (AI/Guest) needs action
+  // Only P2 (AI/Remote) needs action
   ONLY_P2: { p1NeedsAction: false, p2NeedsAction: true },
   // Neither needs action (phase should skip)
   NEITHER: { p1NeedsAction: false, p2NeedsAction: false }

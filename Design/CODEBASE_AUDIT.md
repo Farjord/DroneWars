@@ -443,6 +443,7 @@
 - **[FIXED] [DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
 - **[FIXED] [DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
 - **[FIXED] [DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
+- **[FIXED] [PURITY] AttackProcessor.js:142-146** — `Object.assign(attackerPlayerState, ...)` mutates the caller's original `playerStates` parameter during mine trigger processing. Pure logic functions in `src/logic/` must not mutate inputs. **Fixed:** Deep-copy mine result states into local variables instead of `Object.assign` on input references (post-refactor review C1).
 - **[FIXED] [IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`. **Fixed:** Now imports from `gameEngineUtils.js`.
 
 #### B4: src/logic/effects/ (32 files)

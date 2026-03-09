@@ -256,13 +256,13 @@ describe('GameFlowManager - Asymmetric Phase Auto-Completion', () => {
     });
 
     /**
-     * MD-H4: Multiplayer Host - Only Guest (P2) exceeds → Host auto-commits
+     * MD-H4: Multiplayer Host - Only player2 (P2) exceeds → player1 auto-commits
      */
-    it('MD-H4: Multiplayer - Only Guest exceeds → Host auto-commits', async () => {
+    it('MD-H4: Multiplayer - Only player2 exceeds → player1 auto-commits', async () => {
       mockGameStateManager.getState.mockReturnValue({
         gameMode: 'host',
-        player1: { hand: createCards(5) },  // Host under limit
-        player2: { hand: createCards(8) },  // Guest exceeds limit
+        player1: { hand: createCards(5) },  // player1 under limit
+        player2: { hand: createCards(8) },  // player2 exceeds limit
         placedSections: {},
         opponentPlacedSections: {}
       });
@@ -270,14 +270,14 @@ describe('GameFlowManager - Asymmetric Phase Auto-Completion', () => {
 
       await gameFlowManager.autoCompleteUnnecessaryCommitments('mandatoryDiscard');
 
-      // Host (P1) should auto-commit (under limit, is local player)
+      // player1 (P1) should auto-commit (under limit, is local player)
       expect(mockActionProcessor.processCommitment).toHaveBeenCalledWith({
         playerId: 'player1',
         phase: 'mandatoryDiscard',
         actionData: { autoCompleted: true }
       });
 
-      // Guest (P2) should NOT auto-commit from host (handled by guest client)
+      // player2 (P2) should NOT auto-commit from host (handled by remote client)
       expect(mockActionProcessor.processCommitment).not.toHaveBeenCalledWith(
         expect.objectContaining({ playerId: 'player2' })
       );

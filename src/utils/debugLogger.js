@@ -26,15 +26,11 @@ const DEBUG_CONFIG = {
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
     AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
-    MULTIPLAYER: false,          // DEPRECATED — replaced by MP_*_TRACE categories
-    P2P_CONNECTION: false,      // DEPRECATED — replaced by MP_JOIN_TRACE
     ANIMATIONS: false,           // Animation system
-    OPTIMISTIC: false,           // Animation deduplication and matching logic
     COMMITMENTS: false,          // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
     STATE_SYNC: false,          // State synchronization
-    BROADCAST_TIMING: false,    // DEPRECATED — replaced by MP_SYNC_TRACE
     ENERGY: false,              // Energy management (shield allocation)
     RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds
     CARDS: false,                // Card play and effects
@@ -48,7 +44,7 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details
     VALIDATION: false,           // State validation and reconciliation
     TIMING: false,               // High-resolution timing milestones with timestamps
-    ANNOUNCE_TRACE: false,      // Announcement queueing and playback tracing
+    ANNOUNCE_TRACE: false,       // Announcement queueing and playback tracing
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation
     FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
@@ -75,6 +71,9 @@ const DEBUG_CONFIG = {
     PATH_HIGHLIGHTING: false,      // Path/waypoint display state in HexGridRenderer
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
+    // Flow Verification (12 numbered checkpoints — see Design/GAME_FLOW_SPECIFICATION.md)
+    FLOW_VERIFICATION: true,
+
     // Effect Chain Investigation
     EFFECT_CHAIN_DEBUG: false,   // Temporary: effect chain auto-commit investigation
 
@@ -83,7 +82,7 @@ const DEBUG_CONFIG = {
 
     // Client-Server Architecture Traces
     INIT_TRACE: false,             // End-to-end game initialization trace (8 numbered steps)
-    DEPLOY_TRACE: true,           // End-to-end drone deployment trace (10 numbered steps)
+    DEPLOY_TRACE: false,           // End-to-end drone deployment trace (10 numbered steps)
     ANIM_TRACE: false,             // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
@@ -94,9 +93,9 @@ const DEBUG_CONFIG = {
     MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
-    ROUND_TRACE: false,            // Round initialization substep trace (7 numbered steps)
-    PHASE_TRACE: false,            // Phase lifecycle trace (8 numbered steps)
-    ROUND_TRANSITION_TRACE: false,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
+    ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
+    PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
+    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
     COMMIT_TRACE: false,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
     STATE_CHECKPOINT: false,       // Master game state snapshots at key moments
 
@@ -136,7 +135,7 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
-    TRIGGERS: false,                     // Unified trigger system (TriggerProcessor)
+    TRIGGERS: false,                      // Unified trigger system (TriggerProcessor)
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration
@@ -228,7 +227,7 @@ export { DEBUG_CONFIG };
 
 /**
  * Get absolute timestamp for cross-window timing comparison
- * Uses Date.now() instead of performance.now() to enable comparison between host and guest windows
+ * Uses Date.now() instead of performance.now() to enable comparison between host and remote client windows
  * @returns {number} Timestamp in milliseconds since Unix epoch (absolute time)
  */
 export const getTimestamp = () => Date.now();
@@ -253,10 +252,10 @@ export const formatElapsed = (startTime, endTime) => {
  *
  * @example
  * // Start timing
- * const startTime = timingLog('[GUEST] Processing started', { phase: 'action' });
+ * const startTime = timingLog('[NON-AUTHORITY] Processing started', { phase: 'action' });
  * // ... do work ...
  * // End timing (automatically calculates elapsed)
- * timingLog('[GUEST] Processing complete', { phase: 'action' }, startTime);
+ * timingLog('[NON-AUTHORITY] Processing complete', { phase: 'action' }, startTime);
  *
  * // With context
  * timingLog('[HOST] Broadcast preparing', { phase: 'action' }, null, 'after_player_pass');

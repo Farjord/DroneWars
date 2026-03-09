@@ -8,7 +8,7 @@ import { calculateAllValidTargets } from '../logic/targeting/uiTargetingHelpers.
 import useEffectChain from './useEffectChain.js';
 
 const useCardSelection = ({
-  processActionWithGuestRouting,
+  submitAction,
   getLocalPlayerId,
   gameState,
   gameDataService,

@@ -55,10 +55,10 @@ describe('GameFlowManager - Sequential Phases', () => {
     };
 
     gameFlowManager = new GameFlowManager();
-    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
     // Initialize GameFlowManager (matches constructor signature)
-    gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
+    gameFlowManager.initialize(mockGameStateManager, mockActionProcessor);
     gameFlowManager.phaseManager = phaseManager;
   });
 
@@ -91,21 +91,21 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Expected: checkReadyToTransition() returns true when both players passed
 
       // Host passes first
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
-      // Guest passes second
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      // player2 passes second
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // Verify both passed (unit test scope)
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
+      expect(phaseManager.player2State.passInfo.passed).toBe(true);
 
       // CORE DESIGN PRINCIPLE: Phase is ready to transition
       const ready = phaseManager.checkReadyToTransition();
       expect(ready).toBe(true);
 
       // Verify firstPasser was tracked
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // NOTE: Actual GameFlowManager orchestration (deployment → action transition)
       // is tested in integration tests (Phase 5)
@@ -116,21 +116,21 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Source: PHASE_12_DEPLOYMENT.md, line 132
       // Expected: When host passes first, firstPasser set to 'player1'
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
-    it('guest passes first → firstPasser=player2', () => {
+    it('player2 passes first → firstPasser=player2', () => {
       // DESIGN: "If first to pass: Set firstPasser"
       // Source: PHASE_12_DEPLOYMENT.md, line 156
-      // Expected: When guest passes first, firstPasser set to 'player2'
+      // Expected: When player2 passes first, firstPasser set to 'player2'
 
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player2');
     });
 
     it('firstPasser not overwritten by second passer', () => {
@@ -139,15 +139,15 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Expected: Second player's pass does NOT change firstPasser
 
       // Host passes first
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      // Guest passes second
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      // player2 passes second
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // CRITICAL: firstPasser must still be 'player1' (not overwritten)
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
     it('only one player passed → phase does NOT complete', () => {
@@ -156,7 +156,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Expected: Phase remains in deployment until both pass
 
       // Only host passes
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
       // Check ready to transition
       const ready = phaseManager.checkReadyToTransition();
@@ -173,19 +173,19 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Expected: After both pass, PhaseManager state shows phase is complete
 
       // Both players pass
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // Verify PhaseManager internal state is correct
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
+      expect(phaseManager.player2State.passInfo.passed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(true);
 
       // Verify PhaseManager is in correct phase (deployment)
       expect(phaseManager.phaseState.turnPhase).toBe('deployment');
 
       // Verify firstPasser tracked
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // NOTE: Actual transition to 'action' and pseudo-phase announcements ('DEPLOYMENT COMPLETE')
       // are GameFlowManager's responsibility and will be tested in integration tests (Phase 5)
@@ -201,7 +201,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       mockGameStateManager.setState(state);
 
       // Player1 passes
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
       // Simulate turn transition (would be handled by ActionProcessor in real game)
       const updatedState = mockGameStateManager.getState();
@@ -244,19 +244,19 @@ describe('GameFlowManager - Sequential Phases', () => {
       // UNIT TEST: Verifies PhaseManager detects both players passed
 
       // Both pass
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
       // Verify both passed
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
+      expect(phaseManager.player2State.passInfo.passed).toBe(true);
 
       // Verify ready to complete
       const ready = phaseManager.checkReadyToTransition();
       expect(ready).toBe(true);
 
       // Verify firstPasser tracked
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // NOTE: Actual roundNumber increment is GameFlowManager orchestration (Phase 5)
     });
@@ -267,16 +267,16 @@ describe('GameFlowManager - Sequential Phases', () => {
       // UNIT TEST: Verifies PhaseManager correctly tracks firstPasser
 
       // Player1 passes first
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // Player2 passes
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
       // Verify both passed and firstPasser set
       const ready = phaseManager.checkReadyToTransition();
       expect(ready).toBe(true);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // NOTE: firstPasserOfPreviousRound storage is GameFlowManager orchestration (Phase 5)
     });
@@ -287,15 +287,15 @@ describe('GameFlowManager - Sequential Phases', () => {
       // Expected: If player1 passed first, player2 goes first next round (rewards aggressive play)
 
       // Player1 passes first
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // Player2 passes second
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
       // Store firstPasserOfPreviousRound
       const state = mockGameStateManager.getState();
-      state.firstPasserOfPreviousRound = phaseManager.hostLocalState.passInfo.firstPasser;
+      state.firstPasserOfPreviousRound = phaseManager.player1State.passInfo.firstPasser;
       mockGameStateManager.setState(state);
 
       // Determine next round's first player (OPPOSITE of firstPasser)
@@ -312,8 +312,8 @@ describe('GameFlowManager - Sequential Phases', () => {
       // UNIT TEST: Verifies PhaseManager ready state for pseudo-phase trigger
 
       // Both pass
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
       // Verify both passed and ready to complete
       const ready = phaseManager.checkReadyToTransition();
@@ -333,8 +333,8 @@ describe('GameFlowManager - Sequential Phases', () => {
       const initialTurn = mockGameStateManager.getState().turn;
 
       // Both pass
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
       // Simulate turn increment (would happen in GameFlowManager)
       const state = mockGameStateManager.getState();
@@ -352,7 +352,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       const initialRoundNumber = mockGameStateManager.getState().roundNumber;
 
       // Only player1 passes
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
 
       // Check ready to transition
       const ready = phaseManager.checkReadyToTransition();
@@ -372,7 +372,7 @@ describe('GameFlowManager - Sequential Phases', () => {
 
   describe('Guest Mode Blocking', () => {
     beforeEach(() => {
-      // Recreate GameFlowManager in guest mode
+      // Recreate GameFlowManager in non-authority mode (gameMode='guest')
       mockGameStateManager = createMockGameStateManager();
 
       const actionProcessorSubscribers = [];
@@ -397,7 +397,7 @@ describe('GameFlowManager - Sequential Phases', () => {
       gameFlowManager = new GameFlowManager();
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
-      gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
+      gameFlowManager.initialize(mockGameStateManager, mockActionProcessor);
       gameFlowManager.phaseManager = phaseManager;
 
       // Set up deployment phase
@@ -412,14 +412,14 @@ describe('GameFlowManager - Sequential Phases', () => {
       mockGameStateManager.setState(state);
     });
 
-    it('guest cannot trigger phase completion', () => {
-      // DESIGN: "Guest guards block Guest from triggering (3 locations)"
+    it('non-authority cannot trigger phase completion', () => {
+      // DESIGN: "Non-authority guards block non-authority from triggering (3 locations)"
       // Source: PHASE_FLOW_INDEX.md, line 635
-      // Expected: Guest mode blocks onSequentialPhaseComplete()
+      // Expected: Non-authority mode blocks onSequentialPhaseComplete()
 
       const initialPhase = mockGameStateManager.getState().turnPhase;
 
-      // Guest attempts to complete phase
+      // Non-authority attempts to complete phase
       const result = gameFlowManager.onSequentialPhaseComplete('deployment', {
         firstPasser: 'player1'
       });
@@ -430,15 +430,15 @@ describe('GameFlowManager - Sequential Phases', () => {
       expect(state.turnPhase).toBe(initialPhase);
     });
 
-    it('guest waits for host broadcast', () => {
-      // DESIGN: "Guest waits for PhaseManager broadcasts from Host"
+    it('non-authority waits for host broadcast', () => {
+      // DESIGN: "Non-authority waits for PhaseManager broadcasts from host"
       // Source: PHASE_FLOW_INDEX.md, line 366
-      // Expected: Guest cannot self-transition, waits for PhaseManager broadcast
+      // Expected: Non-authority cannot self-transition, waits for PhaseManager broadcast
 
-      // Guest tries to transition
+      // Non-authority tries to transition
       const guestTransitionResult = phaseManager.transitionToPhase('action');
 
-      // Verify blocked (PhaseManager blocks guest transitions)
+      // Verify blocked (PhaseManager blocks non-authority transitions)
       expect(guestTransitionResult).toBe(false);
 
       // Phase should remain unchanged
@@ -530,7 +530,7 @@ describe('GameFlowManager - Sequential Phases', () => {
   // HOST BROADCAST CONTENT VERIFICATION
   // ========================================
   // Design Source: PHASEMANAGER_BUGFIX_DECISION_2025-12-03.md (lines 196-199, 249-270)
-  // Guest cannot independently track firstPasser when host passes first
+  // Non-authority cannot independently track firstPasser when host passes first
 
   describe('Host Broadcast Content Verification', () => {
     beforeEach(() => {
@@ -554,17 +554,17 @@ describe('GameFlowManager - Sequential Phases', () => {
       };
 
       gameFlowManager = new GameFlowManager();
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
-      gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
+      gameFlowManager.initialize(mockGameStateManager, mockActionProcessor);
       gameFlowManager.phaseManager = phaseManager;
     });
 
     it('PhaseManager exposes firstPasser for host broadcast after sequential phase', () => {
-      // DESIGN: "Guest cannot independently track firstPasser when host passes first"
+      // DESIGN: "Non-authority cannot independently track firstPasser when host passes first"
       // Source: PHASEMANAGER_BUGFIX_DECISION_2025-12-03.md, line 196-199
       // EXPLANATION: When host broadcasts state after a sequential phase completes,
-      // the broadcast MUST include passInfo.firstPasser so guest can determine turn order.
+      // the broadcast MUST include passInfo.firstPasser so non-authority can determine turn order.
       // This test verifies PhaseManager correctly tracks firstPasser for inclusion in broadcasts.
       // Expected: After both pass, firstPasser is available in PhaseManager state
 
@@ -572,14 +572,14 @@ describe('GameFlowManager - Sequential Phases', () => {
       phaseManager.transitionToPhase('deployment');
 
       // Host passes first
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
-      // Guest passes second
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      // player2 passes second
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // Verify firstPasser is tracked and available for broadcast
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
 
       // Verify phase is ready to transition (broadcast would happen here)
       expect(phaseManager.checkReadyToTransition()).toBe(true);
@@ -598,7 +598,7 @@ describe('GameFlowManager - Sequential Phases', () => {
   describe('reset() - Full Cleanup', () => {
     beforeEach(() => {
       gameFlowManager = new GameFlowManager();
-      gameFlowManager.phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      gameFlowManager.phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
       gameFlowManager.listeners = [];
     });
 

@@ -5,6 +5,7 @@
 
 import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { flowCheckpoint, resetFlowSeq } from '../utils/flowVerification.js';
 
 class GameEngine {
   constructor(gameStateManager, actionProcessor, gameFlowManager) {
@@ -40,19 +41,22 @@ class GameEngine {
    * @returns {Promise<{state: Object, animations: Object, result: Object}>}
    */
   async processAction(type, payload) {
+    resetFlowSeq();
+    flowCheckpoint('SERVER_ACTION_RECEIVED', { type, phase: this.gameStateManager.getState().turnPhase });
     if (type === 'deployment') {
       debugLog('DEPLOY_TRACE', '[4/10] GameEngine.processAction delegating to GSM', { type });
     }
     // Freeze ClientStateStore during processing — _emitToClients delivers
     // the final composite state with animations after processing completes.
+    this.actionProcessor.startResponseCapture();
     this.gameStateManager.beginProcessing();
     try {
       const result = await this.gameStateManager.processAction(type, payload);
       await this.gameFlowManager.waitForPendingActionCompletion();
       const state = this.gameStateManager.getState();
 
-      // Extract collected animations from ActionProcessor result (Phase 2 contract)
-      const animations = result?.collectedAnimations || { actionAnimations: [], systemAnimations: [] };
+      // Response accumulator captures all animations including cascading phase transitions
+      const animations = this.actionProcessor.getAndClearResponseCapture();
 
       const animCount = (animations.actionAnimations?.length || 0) + (animations.systemAnimations?.length || 0);
       if (type === 'deployment') {
@@ -62,6 +66,10 @@ class GameEngine {
         });
       }
 
+      flowCheckpoint('SERVER_BROADCASTING', {
+        actionAnims: animations.actionAnimations?.length || 0,
+        systemAnims: animations.systemAnimations?.length || 0,
+      });
       await this._emitToClients(state, animations);
 
       return { state, animations, result };
@@ -80,16 +88,26 @@ class GameEngine {
     const promises = [];
     for (const [playerId, callback] of this._clients) {
       const redactedState = StateRedactor.redactForPlayer(state, playerId);
-      const p1Total = ['lane1','lane2','lane3'].reduce((s, l) => s + (redactedState.player1?.dronesOnBoard?.[l] || []).length, 0);
-      const p2Total = ['lane1','lane2','lane3'].reduce((s, l) => s + (redactedState.player2?.dronesOnBoard?.[l] || []).length, 0);
-      debugLog('DEPLOY_TRACE', '_emitToClients drone snapshot', {
-        playerId, p1Total, p2Total, phase: redactedState.turnPhase,
-      });
-      // Clone animations per client and strip _apDirectQueued to prevent
-      // host-only flags from leaking to P2P guests
+      // Clone animations per client and redact STATE_SNAPSHOT payloads
+      // so opponent hand/deck data isn't exposed.
+      // snapshotPlayerStates is partial ({ player1, player2 } only) — intentional.
+      const redactAnim = (anim) => {
+        if (anim.animationName === 'STATE_SNAPSHOT' && anim.payload?.snapshotPlayerStates) {
+          return {
+            ...anim,
+            payload: {
+              ...anim.payload,
+              snapshotPlayerStates: StateRedactor.redactForPlayer(
+                anim.payload.snapshotPlayerStates, playerId
+              ),
+            },
+          };
+        }
+        return { ...anim };
+      };
       const clientAnimations = {
-        actionAnimations: (animations.actionAnimations || []).map(({ _apDirectQueued, ...rest }) => rest),
-        systemAnimations: (animations.systemAnimations || []).map(({ _apDirectQueued, ...rest }) => rest),
+        actionAnimations: (animations.actionAnimations || []).map(redactAnim),
+        systemAnimations: (animations.systemAnimations || []).map(redactAnim),
       };
       promises.push(
         Promise.resolve(callback({ state: redactedState, animations: clientAnimations }))

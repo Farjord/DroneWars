@@ -6,6 +6,10 @@ vi.mock('../utils/debugLogger.js', () => ({
   debugLog: vi.fn(),
   timingLog: vi.fn(() => Date.now())
 }));
+vi.mock('../utils/flowVerification.js', () => ({
+  flowCheckpoint: vi.fn(),
+  resetFlowSeq: vi.fn()
+}));
 
 /**
  * PhaseAnimationQueue Tests - TDD Approach
@@ -23,6 +27,10 @@ describe('PhaseAnimationQueue', () => {
 
   beforeEach(() => {
     queue = new PhaseAnimationQueue();
+    // startPlayback() defers if no animationStarted listeners are registered
+    // (production guard: App.jsx must mount before playback begins).
+    // Register a no-op listener so playback proceeds in tests.
+    queue.on('animationStarted', () => {});
     vi.useFakeTimers();
   });
 

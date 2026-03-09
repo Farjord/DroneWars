@@ -411,18 +411,16 @@ describe('GameClient', () => {
       expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
     });
 
-    it('skips re-queuing animations already direct-queued by ActionProcessor (_apDirectQueued)', async () => {
+    it('queues all announcements via unified delivery (no direct-queue bypass)', async () => {
       const phaseAnim = {
         animationName: 'PHASE_ANNOUNCEMENT',
         timing: 'independent',
         payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
-        _apDirectQueued: true,
       };
       const passAnim = {
         animationName: 'PASS_ANNOUNCEMENT',
         timing: 'independent',
         payload: { passedPlayerId: 'player1' },
-        _apDirectQueued: true,
       };
 
       await client._onResponse({
@@ -430,7 +428,8 @@ describe('GameClient', () => {
         animations: { actionAnimations: [], systemAnimations: [phaseAnim, passAnim] },
       });
 
-      expect(mockPAQ.queueAnimation).not.toHaveBeenCalled();
+      // Both should be queued via unified path
+      expect(mockPAQ.queueAnimation).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing when phaseAnimationQueue is null', async () => {
@@ -537,6 +536,61 @@ describe('GameClient', () => {
 
       expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
       vi.useRealTimers();
+    });
+  });
+
+  // --- Intermediate State ---
+
+  describe('applyIntermediateState', () => {
+    it('merges snapshot player states into current state', () => {
+      const current = makeState({
+        turnPhase: 'action',
+        player1: { hand: ['a'], dronesOnBoard: { lane1: [{ id: 'd1' }] }, hp: 20 },
+        player2: { hand: ['b'], dronesOnBoard: { lane1: [] }, hp: 15 },
+      });
+      mockStore.getState.mockReturnValue(current);
+
+      const snapshot = {
+        player1: { hand: ['a'], dronesOnBoard: { lane1: [], lane2: [{ id: 'd1' }] }, hp: 20 },
+        player2: { hand: ['b'], dronesOnBoard: { lane1: [] }, hp: 15 },
+      };
+
+      client.applyIntermediateState(snapshot);
+
+      expect(mockStore.applyUpdate).toHaveBeenCalledTimes(1);
+      const applied = mockStore.applyUpdate.mock.calls[0][0];
+      // Player states replaced with snapshot
+      expect(applied.player1).toBe(snapshot.player1);
+      expect(applied.player2).toBe(snapshot.player2);
+      // Non-player fields preserved
+      expect(applied.turnPhase).toBe('action');
+    });
+
+    it('preserves current player state when snapshot omits it', () => {
+      const current = makeState({
+        player1: { hand: ['a'], hp: 20 },
+        player2: { hand: ['b'], hp: 15 },
+      });
+      mockStore.getState.mockReturnValue(current);
+
+      // Only player1 in snapshot
+      client.applyIntermediateState({ player1: { hand: ['x'], hp: 18 } });
+
+      const applied = mockStore.applyUpdate.mock.calls[0][0];
+      expect(applied.player1).toEqual({ hand: ['x'], hp: 18 });
+      expect(applied.player2).toBe(current.player2);
+    });
+
+    it('syncs GSM in guest mode', () => {
+      const guestState = makeState({ gameMode: 'guest' });
+      mockStore.getState.mockReturnValue(guestState);
+
+      client.applyIntermediateState({
+        player1: { hp: 10 },
+        player2: { hp: 5 },
+      });
+
+      expect(mockStore.gameStateManager.syncFromServer).toHaveBeenCalledTimes(1);
     });
   });
 

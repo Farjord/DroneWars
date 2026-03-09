@@ -5,6 +5,7 @@
 import { gameEngine } from '../gameLogic.js';
 import RoundManager from '../round/RoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { flowCheckpoint } from '../../utils/flowVerification.js';
 
 /**
  * Process turn transition
@@ -70,23 +71,17 @@ export async function processTurnTransition(payload, ctx) {
 
 /**
  * Process phase transition action
- * @param {Object} payload - { newPhase, resetPassInfo, guestAnnouncementOnly }
+ * @param {Object} payload - { newPhase, resetPassInfo }
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processPhaseTransition(payload, ctx) {
-  const { newPhase, resetPassInfo = true, guestAnnouncementOnly = false } = payload;
+  const { newPhase, resetPassInfo = true } = payload;
 
   const currentState = ctx.getState();
 
   if (currentState.turnPhase === newPhase) {
     debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Skipping redundant transition to same phase: ${newPhase}`);
     return { success: true, message: 'Already in phase' };
-  }
-
-  // Guest announcement-only pseudo-phase: skip state changes, early return.
-  // Phase announcements now arrive via server-emitted PHASE_ANNOUNCEMENT system animations.
-  if (guestAnnouncementOnly) {
-    return { success: true, message: 'Guest announcement-only (no-op)' };
   }
 
   debugLog('PHASE_TRANSITIONS', `[PLACEMENT DATA DEBUG] BEFORE transition to ${newPhase}:`, {
@@ -136,7 +131,6 @@ export async function processPhaseTransition(payload, ctx) {
 
   // Emit phase announcement as a system animation (delivered to all clients)
   const phaseTextMap = {
-    roundAnnouncement: 'ROUND',
     roundInitialization: 'UPKEEP',
     mandatoryDiscard: 'MANDATORY DISCARD PHASE',
     optionalDiscard: 'OPTIONAL DISCARD PHASE',
@@ -162,6 +156,7 @@ export async function processPhaseTransition(payload, ctx) {
       payload: { phase: newPhase, text: phaseText, subtitle },
     }], true); // isSystem = true
 
+    flowCheckpoint('PHASE_ANNOUNCEMENT_EMITTED', { phase: newPhase, text: phaseText });
     debugLog('ROUND_TRANSITION_TRACE', '[RT-08b] PHASE_ANNOUNCEMENT emitted', {
       utc: new Date().toISOString(),
       phase: newPhase, phaseText,

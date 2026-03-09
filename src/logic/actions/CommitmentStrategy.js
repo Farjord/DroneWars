@@ -71,33 +71,28 @@ export async function processCommitment(payload, ctx) {
   debugLog('COMMIT_TRACE', '[1/6] Commitment received', {
     phase, playerId, dataKeys: actionData ? Object.keys(actionData) : [],
   });
-  debugLog('COMMITMENTS', `🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
-  debugLog('COMMITMENTS', `📦 Full commitment payload:`, {
-    playerId,
-    phase,
-    actionDataKeys: actionData ? Object.keys(actionData) : [],
-    actionDataSummary: actionData ? {
-      selectedDrones: actionData.selectedDrones?.length,
-      deck: actionData.deck?.length,
-      drones: actionData.drones?.length,
-      shipComponents: actionData.shipComponents?.length,
-      placedSections: actionData.placedSections?.length
-    } : null
-  });
+  debugLog('COMMITMENTS', `🤝 Processing ${phase} commitment for ${playerId}`);
 
   const currentState = ctx.getState();
 
-  if (!currentState.commitments[phase]) {
-    currentState.commitments[phase] = {
-      player1: { completed: false },
-      player2: { completed: false }
-    };
-  }
-
-  currentState.commitments[phase][playerId] = {
-    completed: true,
-    ...actionData
+  // Build new commitments immutably (never mutate currentState)
+  const existingPhaseCommitments = currentState.commitments[phase] || {
+    player1: { completed: false },
+    player2: { completed: false }
   };
+
+  const newCommitments = {
+    ...currentState.commitments,
+    [phase]: {
+      ...existingPhaseCommitments,
+      [playerId]: {
+        completed: true,
+        ...actionData
+      }
+    }
+  };
+
+  const stateUpdate = { commitments: newCommitments };
 
   // Apply shield allocations from commitment data
   if (phase === 'allocateShields' && actionData.shieldAllocations) {
@@ -106,86 +101,67 @@ export async function processCommitment(payload, ctx) {
     });
 
     const playerState = currentState[playerId];
+    const newShipSections = {};
 
     Object.keys(playerState.shipSections).forEach(sectionName => {
-      playerState.shipSections[sectionName].allocatedShields = 0;
+      newShipSections[sectionName] = {
+        ...playerState.shipSections[sectionName],
+        allocatedShields: 0
+      };
     });
 
     Object.entries(actionData.shieldAllocations).forEach(([sectionName, count]) => {
-      if (playerState.shipSections[sectionName]) {
-        playerState.shipSections[sectionName].allocatedShields = count;
+      if (newShipSections[sectionName]) {
+        newShipSections[sectionName] = { ...newShipSections[sectionName], allocatedShields: count };
         debugLog('SHIELD_CLICKS', `✅ Allocated ${count} shields to ${sectionName}`);
       }
     });
 
+    stateUpdate[playerId] = { ...currentState[playerId], shipSections: newShipSections };
     const shieldsKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-    currentState[shieldsKey] = 0;
+    stateUpdate[shieldsKey] = 0;
   }
 
-  ctx.setState({
-    commitments: currentState.commitments,
-    player1: currentState.player1,
-    player2: currentState.player2,
-    shieldsToAllocate: currentState.shieldsToAllocate,
-    opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
-  }, 'COMMITMENT_UPDATE');
+  ctx.setState(stateUpdate, 'COMMITMENT_UPDATE');
 
-  let bothComplete = currentState.commitments[phase].player1.completed &&
-                      currentState.commitments[phase].player2.completed;
+  let bothComplete = newCommitments[phase].player1.completed &&
+                      newCommitments[phase].player2.completed;
 
   debugLog('COMMIT_TRACE', '[2/6] Commitment stored', {
-    phase, p1: currentState.commitments[phase].player1.completed,
-    p2: currentState.commitments[phase].player2.completed, bothComplete,
+    phase, p1: newCommitments[phase].player1.completed,
+    p2: newCommitments[phase].player2.completed, bothComplete,
   });
   debugLog('COMMITMENTS', `✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
 
   // PhaseManager integration
   const phaseManager = ctx.getPhaseManager();
   if (phaseManager) {
-    if (playerId === 'player1') {
-      phaseManager.notifyHostAction('commit', { phase });
-    } else {
-      phaseManager.notifyGuestAction('commit', { phase });
-    }
+    phaseManager.notifyPlayerAction(playerId, 'commit', { phase });
     debugLog('COMMIT_TRACE', `[2b/6] PhaseManager notified`, { playerId, phase });
   }
-  debugLog('COMMITMENTS', `📊 Commitment state after update:`, {
-    phase,
-    player1Completed: currentState.commitments[phase].player1.completed,
-    player2Completed: currentState.commitments[phase].player2.completed,
-    bothComplete
-  });
 
   // Auto-complete AI commitment immediately when opponent is AI
   if (!bothComplete && ctx.isPlayerAI('player2') && playerId === 'player1') {
-    debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment immediately');
-    debugLog('SHIELD_CLICKS', '🤖 About to call handleAICommitment for AI auto-commit');
+    debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment');
     if (aiPhaseProcessor) {
       try {
         debugLog('COMMIT_TRACE', '[3/6] AI auto-commit starting', {
           phase, willTriggerPhaseCompletion: true,
         });
-        debugLog('SHIELD_CLICKS', '⏳ Calling handleAICommitment...');
         await handleAICommitment(phase, currentState, ctx);
-        debugLog('COMMITMENTS', '✅ AI commitment completed successfully');
-        debugLog('SHIELD_CLICKS', '✅ handleAICommitment returned successfully');
 
         const freshState = ctx.getState();
         bothComplete = freshState.commitments[phase].player1.completed &&
                       freshState.commitments[phase].player2.completed;
-        debugLog('COMMITMENTS', `🔄 Recalculated bothComplete after AI commit: ${bothComplete}`);
-        debugLog('SHIELD_CLICKS', `🔄 Both players complete: ${bothComplete}`);
+        debugLog('COMMITMENTS', `✅ AI commitment completed, bothComplete: ${bothComplete}`);
       } catch (error) {
-        debugLog('COMMITMENTS', 'AI commitment error:', error);
-        debugLog('SHIELD_CLICKS', '❌ Error during AI commitment:', error);
+        debugLog('COMMITMENTS', '❌ AI commitment error:', error);
         throw error;
       }
     } else {
-      debugLog('SHIELD_CLICKS', '⚠️ aiPhaseProcessor not available!');
+      debugLog('COMMITMENTS', '⚠️ aiPhaseProcessor not available');
     }
   }
-
-  debugLog('SHIELD_CLICKS', '🏁 processCommitment about to return', { success: true, bothComplete });
 
   return {
     success: true,

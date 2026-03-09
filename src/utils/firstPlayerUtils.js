@@ -32,7 +32,7 @@ export const determineFirstPlayer = (gameState) => {
     return firstPlayerOverride;
   }
 
-  // First round - seeded random selection (ensures Host and Guest pick same player)
+  // First round - seeded random selection (ensures host and remote client pick same player)
   if (roundNumber === 1) {
     const gameSeed = gameState.gameSeed || 12345; // Fallback for tests
     const rng = new SeededRandom(gameSeed);  // Use base game seed directly for determinism

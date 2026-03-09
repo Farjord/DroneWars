@@ -8,7 +8,7 @@ import { debugLog } from '../utils/debugLogger.js';
 /**
  * @param {Object} deps
  * @param {Function} deps.processAction - Action processor from useGameState
- * @param {Object|null} deps.gameServer - GameServer instance (local/host/guest)
+ * @param {Object|null} deps.gameServer - GameServer instance (local/host/remote)
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
  * @param {Object|null} deps.selectedDrone - Currently selected drone (default for deployment)
  * @param {number} deps.roundNumber - Current round number
@@ -29,7 +29,7 @@ const useActionRouting = ({
 
   // --- Action Routing ---
   // All modes route through gameServer when available, falling back to direct processAction.
-  const processActionWithGuestRouting = useCallback(async (type, payload) => {
+  const submitAction = useCallback(async (type, payload) => {
     if (gameServer) {
       return await gameServer.submitAction(type, payload);
     }
@@ -53,7 +53,7 @@ const useActionRouting = ({
         turn
       });
 
-      const result = await processActionWithGuestRouting('deployment', {
+      const result = await submitAction('deployment', {
         droneData: droneToDeployed,
         laneId: lane,
         playerId: getLocalPlayerId(),
@@ -72,7 +72,7 @@ const useActionRouting = ({
   };
 
   return {
-    processActionWithGuestRouting,
+    submitAction,
     executeDeployment,
   };
 };

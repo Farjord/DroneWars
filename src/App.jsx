@@ -488,7 +488,7 @@ const App = ({ phaseAnimationQueue }) => {
   }, [gameState.gameMode, gameStateManager]);
 
   const {
-    processActionWithGuestRouting,
+    submitAction,
     executeDeployment,
   } = useActionRouting({
     processAction, gameServer, getLocalPlayerId,
@@ -543,7 +543,7 @@ const App = ({ phaseAnimationQueue }) => {
     gameDataService,
     getLocalPlayerId,
     getOpponentPlayerId,
-    processActionWithGuestRouting,
+    submitAction,
     setWaitingForPlayerPhase,
     setShipAbilityConfirmation,
   });
@@ -562,7 +562,7 @@ const App = ({ phaseAnimationQueue }) => {
     effectChainState, startEffectChain, selectChainTarget, selectChainDestination,
     selectChainMultiTarget, confirmChainMultiSelect, cancelEffectChain,
   } = useCardSelection({
-    processActionWithGuestRouting,
+    submitAction,
     getLocalPlayerId,
     gameState,
     gameDataService,
@@ -602,16 +602,16 @@ const App = ({ phaseAnimationQueue }) => {
     handleConfirmDroneAbility, handleConfirmShipAbility,
     clearConfirmations,
   } = useResolvers({
-    processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId,
+    submitAction, getLocalPlayerId, getOpponentPlayerId,
     isResolvingAttackRef,
     interceptionRef,
     localPlayerState, opponentPlayerState, winner, turnPhase, currentPlayer,
     gameStateManager,
     setSelectedDrone, setAbilityMode, setValidAbilityTargets, setMandatoryAction,
     setFooterView, setShipAbilityMode, setDraggedDrone,
-    setCardSelectionModal, setShipAbilityConfirmation,
+    setCardSelectionModal, setShipAbilityConfirmation, shipAbilityConfirmation,
     cancelCardSelection, setSelectedCard, setValidCardTargets,
-    setCostReminderArrowState, setCardConfirmation,
+    setCardConfirmation,
     setAffectedDroneIds,
     cardConfirmation,
     pendingShieldChanges, clearReallocationState,
@@ -776,6 +776,18 @@ const App = ({ phaseAnimationQueue }) => {
     const unsubAnimationEnded = phaseAnimationQueue.on('animationEnded', handleAnimationEnded);
     const unsubPlaybackState = phaseAnimationQueue.on('playbackStateChanged', handlePlaybackStateChanged);
 
+    // Phase 1: Diagnostic — trace subscription state
+    debugLog('ANNOUNCE_TRACE', '[App] PhaseAnimationQueue subscribed', {
+      queueLength: phaseAnimationQueue.getQueueLength(),
+      isPlaying: phaseAnimationQueue.isPlaying(),
+      currentAnimation: phaseAnimationQueue.getCurrentAnimation()?.phaseName || null,
+    });
+
+    // Phase 2: Start playback if announcements queued before subscription
+    if (phaseAnimationQueue.getQueueLength() > 0 && !phaseAnimationQueue.isPlaying()) {
+      phaseAnimationQueue.startPlayback('App:late_subscribe');
+    }
+
     return () => {
       unsubAnimationStarted();
       unsubAnimationEnded();
@@ -863,7 +875,7 @@ const App = ({ phaseAnimationQueue }) => {
     setShowWinnerModal, setShowAbandonRunModal, setShowAddCardModal,
     setOptionalDiscardCount, setWaitingForPlayerPhase, setDeck, setCardToView,
     // Functions
-    processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId,
+    submitAction, getLocalPlayerId, getOpponentPlayerId,
     cancelAllActions, resetGame, endGame,
     // Refs
     isResolvingAttackRef,
@@ -912,7 +924,7 @@ const App = ({ phaseAnimationQueue }) => {
     resolveAbility, resolveSingleMove, resolveMultiMove,
     handleConfirmMandatoryDestroy,
     // Action dispatching
-    processActionWithGuestRouting,
+    submitAction,
     // External services
     gameEngine, gameDataService,
     // Refs

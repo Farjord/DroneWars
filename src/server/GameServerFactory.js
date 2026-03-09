@@ -10,12 +10,14 @@ const GameServerFactory = {
   create(gameMode, { gameStateManager, actionProcessor, gameFlowManager, clientStateStore, p2pManager, phaseAnimationQueue }) {
     if (gameMode === 'local') {
       const gameEngine = new GameEngine(gameStateManager, actionProcessor, gameFlowManager);
+      gameStateManager.gameEngine = gameEngine;
       const transport = new LocalTransport(gameEngine, { playerId: 'player1' });
       return new GameClient(transport, { clientStateStore, playerId: 'player1', phaseAnimationQueue });
     }
 
     if (gameMode === 'host') {
       const gameEngine = new GameEngine(gameStateManager, actionProcessor, gameFlowManager);
+      gameStateManager.gameEngine = gameEngine;
       const hostServer = new HostGameServer(gameEngine, { p2pManager });
       p2pManager.hostGameServer = hostServer;
       const transport = new LocalTransport(hostServer, { playerId: 'player1' });

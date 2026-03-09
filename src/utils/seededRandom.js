@@ -2,7 +2,7 @@
 // SEEDED RANDOM NUMBER GENERATOR
 // ========================================
 // Deterministic RNG for multiplayer synchronization
-// Uses game state properties as seed to ensure Host and Guest generate identical "random" sequences
+// Uses game state properties as seed to ensure host and remote client generate identical "random" sequences
 
 /**
  * SeededRandom - Deterministic random number generator using mulberry32 algorithm
@@ -90,13 +90,13 @@ export class SeededRandom {
 
   /**
    * Create SeededRandom from game state properties
-   * Uses deterministic properties to generate same seed on Host and Guest
+   * Uses deterministic properties to generate same seed on host and remote client
    *
    * @param {Object} gameState - Current game state
    * @returns {SeededRandom} New seeded RNG instance
    */
   static fromGameState(gameState) {
-    // Use deterministic properties that are synchronized between Host and Guest
+    // Use deterministic properties that are synchronized between host and remote client
     // Avoid using timestamps or local-only properties
     const seedComponents = [
       gameState.roundNumber || 1,

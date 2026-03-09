@@ -15,7 +15,7 @@ import { calculateRoundStartReset } from '../logic/shields/ShieldResetUtils.js';
  * @param {Object} deps.gameDataService - Game data service instance
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
  * @param {Function} deps.getOpponentPlayerId - Returns opponent player ID
- * @param {Function} deps.processActionWithGuestRouting - Action routing function
+ * @param {Function} deps.submitAction - Action routing function
  * @param {Function} deps.setWaitingForPlayerPhase - Sets waiting overlay
  * @param {Function} deps.setShipAbilityConfirmation - Shows ship ability confirmation modal
  */
@@ -26,7 +26,7 @@ const useShieldAllocation = ({
   gameDataService,
   getLocalPlayerId,
   getOpponentPlayerId,
-  processActionWithGuestRouting,
+  submitAction,
   setWaitingForPlayerPhase,
   setShipAbilityConfirmation,
 }) => {
@@ -37,7 +37,6 @@ const useShieldAllocation = ({
   const [shieldsToAdd, setShieldsToAdd] = useState(0);
   const [shieldsToRemove, setShieldsToRemove] = useState(0);
   const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
-  const [postRemovalShieldAllocation, setPostRemovalShieldAllocation] = useState(null);
   const [initialShieldAllocation, setInitialShieldAllocation] = useState(null);
   const [reallocationAbility, setReallocationAbility] = useState(null);
   const [pendingShieldChanges, setPendingShieldChanges] = useState({});
@@ -101,7 +100,7 @@ const useShieldAllocation = ({
     debugLog('COMMITMENTS', '🏁 handleConfirmShields called');
     debugLog('SHIELD_CLICKS', '🔵 Confirm Shields button clicked');
 
-    const result = await processActionWithGuestRouting('commitment', {
+    const result = await submitAction('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'allocateShields',
       actionData: {
@@ -136,7 +135,7 @@ const useShieldAllocation = ({
       debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
       debugLog('SHIELD_CLICKS', '✅ Both players committed, proceeding');
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations, setWaitingForPlayerPhase]);
+  }, [submitAction, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations, setWaitingForPlayerPhase]);
 
   const handleAllocateShield = async (sectionName) => {
     debugLog('SHIELD_CLICKS', `🟢 handleAllocateShield called`, {
@@ -153,7 +152,6 @@ const useShieldAllocation = ({
         return;
       }
 
-      const section = localPlayerState.shipSections[sectionName];
       const maxShields = gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
       const currentPending = pendingShieldAllocations[sectionName] || 0;
 
@@ -174,7 +172,7 @@ const useShieldAllocation = ({
       });
     } else {
       debugLog('SHIELD_CLICKS', `🔄 Using reallocation path instead`);
-      await processActionWithGuestRouting('reallocateShields', {
+      await submitAction('reallocateShields', {
         action: 'add',
         sectionName: sectionName,
         playerId: getLocalPlayerId()
@@ -190,7 +188,7 @@ const useShieldAllocation = ({
     const effectiveAllocated = section.allocatedShields + currentPendingDelta;
     if (effectiveAllocated <= 0) return;
 
-    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
+    const result = await submitAction('reallocateShieldsAbility', {
       action: 'remove',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -209,7 +207,7 @@ const useShieldAllocation = ({
   const handleAddShield = async (sectionName) => {
     if (shieldsToAdd <= 0) return;
 
-    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
+    const result = await submitAction('reallocateShieldsAbility', {
       action: 'add',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -285,7 +283,7 @@ const useShieldAllocation = ({
   };
 
   const handleResetShieldAllocation = async () => {
-    await processActionWithGuestRouting('resetShieldAllocation', {
+    await submitAction('resetShieldAllocation', {
       playerId: getLocalPlayerId()
     });
   };
@@ -293,7 +291,7 @@ const useShieldAllocation = ({
   const handleEndAllocation = async () => {
     debugLog('COMMITMENTS', '🏁 handleEndAllocation called');
 
-    const result = await processActionWithGuestRouting('endShieldAllocation', {
+    const result = await submitAction('endShieldAllocation', {
       playerId: getLocalPlayerId()
     });
 
@@ -324,7 +322,7 @@ const useShieldAllocation = ({
       handleRoundStartShieldAction(actionType, payload);
     } else if (phase === 'action') {
       debugLog('ENERGY', `🛡️ Routing to action phase shield handling (sequential)`);
-      processActionWithGuestRouting(actionType, payload);
+      submitAction(actionType, payload);
     } else {
       debugLog('ENERGY', '⚠️ Shield action not valid:', { actionType, phase });
     }
@@ -374,7 +372,6 @@ const useShieldAllocation = ({
     setShieldsToRemove(0);
     setShieldsToAdd(0);
     setOriginalShieldAllocation(null);
-    setPostRemovalShieldAllocation(null);
     setReallocationAbility(null);
     setPendingShieldChanges({});
     setPostRemovalPendingChanges({});

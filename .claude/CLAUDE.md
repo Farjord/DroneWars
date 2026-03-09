@@ -1,10 +1,14 @@
+## NUMBER ONE RULE - WE ARE BUILDING FOUNDATIONS FOR THE FUTURE, NOT QUICK FIXES ##
+This is not a 'live' project with customers. Everything we build should be viewed with long term code stability and cleanness, not quick wins. Where you think it is sensible to do so refactors will be considered. 
+Please outline the pros and cons of doing so when considering anything - from bug fixes to new features. 
+
+
 ## Master Plan
 
 - Supporting documentation ecosystem:
   - `Design/Technical Debt Refactor/CODE_STANDARDS.md` — Gold standard for code. Any violation of these standard must raise a question to the user. 
   - `Design/Technical Debt Refactor/FUTURE_IMPROVEMENTS.md` — resolve items when fixed, add when deferred
   - `Design/CODEBASE_AUDIT.md` — mark findings `[FIXED]` as they're addressed
-  - `Design/Technical Debt Refactor/CURRENT_STATE_AUDIT.md` — update metrics after each phase
   - `Design/Technical Debt Refactor/REFACTORING_WORKFLOW.md` - process to follow
 
 ## Context Efficiency
@@ -38,7 +42,6 @@ Keep explanations proportional to complexity. Simple changes need one sentence, 
 
 Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project standards.
 
-### Zero Test Failures
 - **TDD Where possible.**
 - Whenever suitable implement via a TDD approach. 
 - Make sure we are testing the intent as well as the code. 
@@ -47,14 +50,14 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 ### Zero Test Failures
 
 - **All tests must pass before committing.** No exceptions.
+- Tests are vitest tests. 
 - If a test fails, stop and fix it before proceeding with any other work.
 - Never commit with known test failures, even if they are "unrelated" to your change.
 
 ## Git Workflow
 
 - **No feature branches**: Work directly on master.
-- **Auto-commit after completing tasks** (tests pass, build clean). Do NOT push — the user will push manually.
-- **Commit before risky changes**: Before changes that touch many imports or files, create a checkpoint commit.
+- **Commit before risky changes**: Before changes that touch many imports or files, create a checkpoint commit. Othersie do not commit. 
 
 ## Code Review
 
@@ -68,12 +71,6 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 - When deferring an improvement, write it down in the same commit — never just say "noted for later."
 - When touching a file listed there, check for applicable items and resolve them.
 - **When resolving items**: move them to the `## Resolved Items` table in the same commit as the fix. Never leave stale entries in the Active/Bugs tables.
-
-## Audit Tracking
-
-- **Audit doc**: `Design/CODEBASE_AUDIT.md`
-- When fixing an issue listed in the audit, prefix the finding with `[FIXED]` in the audit doc in the same commit.
-- The audit is a historical record — don't delete findings, just mark them resolved.
 
 ## Plan Mode
 

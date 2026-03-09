@@ -6,25 +6,11 @@ import EffectChainProcessor from '../cards/EffectChainProcessor.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
-// --- Diagnostic Helpers ---
-
-function _snapshotDrones(playerStates) {
-  if (!playerStates) return null;
-  const positions = {};
-  for (const pid of ['player1', 'player2']) {
-    const board = playerStates[pid]?.dronesOnBoard || {};
-    for (const lane of ['lane1', 'lane2', 'lane3']) {
-      for (const d of (board[lane] || [])) {
-        positions[d.id] = `${pid}/${lane}`;
-      }
-    }
-  }
-  return positions;
-}
-
 // --- Chain Engine Card Processing ---
 // All cards route through EffectChainProcessor.processEffectChain.
 
+// Lazy-initialized: EffectChainProcessor depends on modules that may not be
+// fully resolved at import time (circular dependency through gameLogic.js).
 let _chainProcessor = null;
 function getChainProcessor() {
   if (!_chainProcessor) _chainProcessor = new EffectChainProcessor();
@@ -108,42 +94,14 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     roundNumber: currentState.roundNumber,
   });
 
-  let animations;
-  if (result.actionSteps) {
-    debugLog('CARD_PLAY_TRACE', '[5b] Animation path: actionSteps', {
-      card: card.name,
-      cardOnlyAnimCount: result.cardOnlyAnimationEvents?.length || 0,
-      actionStepCount: result.actionSteps.length,
-    });
-    debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: actionSteps path', {
-      stateBeforeTriggersDrones: _snapshotDrones(result.stateBeforeTriggers),
-      cardOnlyAnimationTypes: result.cardOnlyAnimationEvents?.map(e => e.type ?? e.animationName),
-      actionStepCount: result.actionSteps.length,
-    });
-
-    // New path: card animations + structured trigger steps
-    animations = ctx.mapAnimationEvents(result.cardOnlyAnimationEvents);
-    ctx.captureAnimations(animations);
-
-    // Play trigger steps through the structured action steps path
-    await ctx.executeActionSteps(result.actionSteps);
-
-    // Apply final state (after finishCardPlay - card in discard, turn state updated)
-    ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
-  } else {
-    debugLog('CARD_PLAY_TRACE', '[5b] Animation path: flat', {
-      card: card.name,
-      animCount: result.animationEvents?.length || 0,
-      hasStateSnapshot: result.animationEvents?.some(e => e.type === 'STATE_SNAPSHOT') || false,
-    });
-    debugLog('MOVEMENT_EFFECT', '[DIAG] CardActionStrategy: flat animation path', {
-      animationTypes: result.animationEvents?.map(e => e.type),
-    });
-
-    // Old path: flat animation array with STATE_SNAPSHOT/TRIGGER_CHAIN_PAUSE
-    animations = ctx.mapAnimationEvents(result.animationEvents);
-    ctx.captureAnimations(animations);
-  }
+  debugLog('CARD_PLAY_TRACE', '[5b] Animation path: flat', {
+    card: card.name,
+    animCount: result.animationEvents?.length || 0,
+    hasStateSnapshot: result.animationEvents?.some(e => e.type === 'STATE_SNAPSHOT') || false,
+  });
+  const animations = ctx.mapAnimationEvents(result.animationEvents);
+  ctx.captureAnimations(animations);
+  ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
 
   ctx.checkWinCondition();
 
@@ -171,10 +129,7 @@ export async function processCardPlay(payload, ctx) {
 
   const currentState = ctx.getState();
   const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-  const placedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const placedSections = ctx.getPlacedSections();
 
   // Look up full target object from targetId
   let target = null;

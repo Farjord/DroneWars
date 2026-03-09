@@ -51,9 +51,9 @@ describe('HostGameServer', () => {
       expect(engine.registerClient).not.toHaveBeenCalled();
     });
 
-    it('uses custom guestPlayerId for client registration', () => {
+    it('uses custom remotePlayerId for client registration', () => {
       const engine = { registerClient: vi.fn() };
-      new HostGameServer(engine, { p2pManager: mockP2P, guestPlayerId: 'player1' });
+      new HostGameServer(engine, { p2pManager: mockP2P, remotePlayerId: 'player1' });
       expect(engine.registerClient).toHaveBeenCalledWith('player1', expect.any(Function));
     });
   });
@@ -72,16 +72,16 @@ describe('HostGameServer', () => {
     });
   });
 
-  // --- handleGuestAction ---
+  // --- handleRemoteAction ---
 
-  describe('handleGuestAction', () => {
-    it('processes guest action via gameEngine', async () => {
-      await hostServer.handleGuestAction({ type: 'attack', payload: { droneId: 'd2' } });
+  describe('handleRemoteAction', () => {
+    it('processes remote action via gameEngine', async () => {
+      await hostServer.handleRemoteAction({ type: 'attack', payload: { droneId: 'd2' } });
       expect(mockEngine.processAction).toHaveBeenCalledWith('attack', { droneId: 'd2' });
     });
 
-    it('sends success ack to guest via p2pManager', async () => {
-      await hostServer.handleGuestAction({ type: 'attack', payload: {} });
+    it('sends success ack to remote client via p2pManager', async () => {
+      await hostServer.handleRemoteAction({ type: 'attack', payload: {} });
       expect(mockP2P.sendActionAck).toHaveBeenCalledWith({
         actionType: 'attack',
         success: true,
@@ -89,15 +89,15 @@ describe('HostGameServer', () => {
     });
 
     it('returns the engine response', async () => {
-      const result = await hostServer.handleGuestAction({ type: 'move', payload: {} });
+      const result = await hostServer.handleRemoteAction({ type: 'move', payload: {} });
       expect(result).toBe(mockResponse);
     });
 
     it('sends error ack with authoritative state on failure (no re-throw)', async () => {
       mockEngine.processAction.mockRejectedValue(new Error('Invalid action'));
 
-      // handleGuestAction no longer throws — it sends ack and swallows the error
-      await hostServer.handleGuestAction({ type: 'attack', payload: {} });
+      // handleRemoteAction swallows the error after sending ack
+      await hostServer.handleRemoteAction({ type: 'attack', payload: {} });
 
       expect(mockP2P.sendActionAck).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -111,10 +111,10 @@ describe('HostGameServer', () => {
     it('includes redacted state in error ack', async () => {
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
-      await hostServer.handleGuestAction({ type: 'attack', payload: {} });
+      await hostServer.handleRemoteAction({ type: 'attack', payload: {} });
 
       const ackCall = mockP2P.sendActionAck.mock.calls[0][0];
-      // authoritativeState should be redacted for player2 (guest)
+      // authoritativeState should be redacted for player2 (remote)
       expect(ackCall.authoritativeState).toBeDefined();
       // Player2's own hand preserved, player1's hand redacted
       expect(ackCall.authoritativeState.player2.hand).toEqual([{ id: 'c2' }]);
@@ -123,23 +123,23 @@ describe('HostGameServer', () => {
 
     it('does not send ack when p2pManager is null', async () => {
       const noP2P = new HostGameServer(mockEngine);
-      await noP2P.handleGuestAction({ type: 'attack', payload: {} });
+      await noP2P.handleRemoteAction({ type: 'attack', payload: {} });
       // No error thrown, no ack sent
     });
 
-    it('uses parameterized guestPlayerId for error ack redaction', async () => {
+    it('uses remotePlayerId for error ack redaction', async () => {
       const customHost = new HostGameServer(mockEngine, {
         p2pManager: mockP2P,
-        guestPlayerId: 'player1',
+        remotePlayerId: 'player1',
       });
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
-      await customHost.handleGuestAction({ type: 'attack', payload: {} });
+      await customHost.handleRemoteAction({ type: 'attack', payload: {} });
 
       const ackCall = mockP2P.sendActionAck.mock.calls[0][0];
-      // Redacted for player1 (the custom guest), so player1's hand is preserved
+      // Redacted for player1 (the custom remote), so player1's hand is preserved
       expect(ackCall.authoritativeState.player1.hand).toEqual([{ id: 'c1' }]);
-      // Player2's hand is redacted (they're the host in this scenario)
+      // Player2's hand is redacted (they're the local player in this scenario)
       expect(ackCall.authoritativeState.player2.hand).toEqual([]);
     });
 
@@ -148,7 +148,7 @@ describe('HostGameServer', () => {
       mockEngine.processAction.mockRejectedValue(new Error('bad'));
 
       // Should not throw — error is caught and swallowed
-      await noP2P.handleGuestAction({ type: 'attack', payload: {} });
+      await noP2P.handleRemoteAction({ type: 'attack', payload: {} });
       // No error from missing p2pManager
     });
   });

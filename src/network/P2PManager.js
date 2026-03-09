@@ -19,7 +19,7 @@ class P2PManager {
     // Trystero action handlers
     this.actions = {
       stateUpdate: null,
-      guestAction: null,
+      remoteAction: null,
       ping: null,
       phaseCompleted: null,
       syncRequest: null,  // For resync requests (guest → host)
@@ -117,12 +117,12 @@ class P2PManager {
 
     // GUEST_ACTION action (guest → host)
     const [sendGuestAction, receiveGuestAction] = this.room.makeAction('GUEST_ACTION');
-    this.actions.guestAction = { send: sendGuestAction, receive: receiveGuestAction };
+    this.actions.remoteAction = { send: sendGuestAction, receive: receiveGuestAction };
 
     receiveGuestAction(async (data, peerId) => {
       debugLog('MP_SYNC_TRACE', '[8/10] Server received client action', { actionType: data.action?.type });
       if (this.hostGameServer) {
-        await this.hostGameServer.handleGuestAction(data.action);
+        await this.hostGameServer.handleRemoteAction(data.action);
       }
     });
 
@@ -205,7 +205,7 @@ class P2PManager {
 
       // Setup peer join/leave handlers
       this.room.onPeerJoin(peerId => {
-        debugLog('MP_JOIN_TRACE', '[4/7] Peer detected', { role: 'host', guestPeerId: peerId, elapsedMs: Date.now() - startTime });
+        debugLog('MP_JOIN_TRACE', '[4/7] Peer detected', { role: 'host', remotePeerId: peerId, elapsedMs: Date.now() - startTime });
 
         this.peers.add(peerId);
         this.currentPeerId = peerId;
@@ -423,7 +423,7 @@ class P2PManager {
         timestamp: Date.now()
       };
 
-      this.actions.guestAction.send(actionData, this.currentPeerId);
+      this.actions.remoteAction.send(actionData, this.currentPeerId);
       debugLog('MP_SYNC_TRACE', '[7/10] Client sent action to server', { actionType });
     } catch (error) {
       debugLog('MP_SYNC_TRACE', 'sendActionToHost failed', { error: true, actionType, message: error.message });
@@ -557,7 +557,7 @@ class P2PManager {
     // Clear actions
     this.actions = {
       stateUpdate: null,
-      guestAction: null,
+      remoteAction: null,
       ping: null,
       phaseCompleted: null,
       syncRequest: null,

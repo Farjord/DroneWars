@@ -4,7 +4,7 @@
 // Complete drone selection phase implementation extracted from App.jsx
 // Handles both single-player and multiplayer drone selection logic
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
@@ -14,10 +14,11 @@ import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 import SoundManager from '../../managers/SoundManager.js';
+import '../../styles/phase-screens.css';
 
 /**
  * SUBMITTING OVERLAY COMPONENT
- * Displays feedback while guest's action is being sent to host and confirmed.
+ * Displays feedback while remote client's action is being sent to host and confirmed.
  * Shows between clicking Continue and host confirming the commitment.
  */
 export const SubmittingOverlay = () => {
@@ -54,6 +55,7 @@ export const WaitingForOpponentScreen = ({ phase, localPlayerStatus }) => {
         <p className="text-gray-400 text-lg mb-6">
           {phase === 'droneSelection' && 'Your opponent is still selecting their drones...'}
           {phase === 'deckSelection' && 'Your opponent is still choosing their deck...'}
+          {phase === 'placement' && 'Your opponent is still placing their ship components...'}
         </p>
         {localPlayerStatus && (
           <div className="bg-slate-800 rounded-lg p-4 max-w-md mx-auto">
@@ -90,20 +92,25 @@ function DroneSelectionScreen() {
   const droneSelectionTrio = gameState[propertyNameTrio];
   const droneSelectionPool = gameState[propertyNamePool];
 
-  debugLog('DRONE_SELECTION', 'DroneSelectionScreen render:', {
-    localPlayerId,
-    propertyNameTrio,
-    propertyNamePool,
-    hasTrio: !!droneSelectionTrio,
-    hasPool: !!droneSelectionPool,
-    trioLength: droneSelectionTrio?.length,
-    poolLength: droneSelectionPool?.length,
-    trioData: droneSelectionTrio?.map(d => d.name),
-    // Also check what's in the other player's data
-    player1Trio: gameState.player1DroneSelectionTrio?.map(d => d.name),
-    player2Trio: gameState.player2DroneSelectionTrio?.map(d => d.name),
-    localPlayerId
-  });
+  // Log once on mount (not every render)
+  const hasLoggedMountRef = useRef(false);
+  useEffect(() => {
+    if (!hasLoggedMountRef.current) {
+      hasLoggedMountRef.current = true;
+      debugLog('DRONE_SELECTION', 'DroneSelectionScreen mounted:', {
+        localPlayerId,
+        propertyNameTrio,
+        propertyNamePool,
+        hasTrio: !!droneSelectionTrio,
+        hasPool: !!droneSelectionPool,
+        trioLength: droneSelectionTrio?.length,
+        poolLength: droneSelectionPool?.length,
+        trioData: droneSelectionTrio?.map(d => d.name),
+        player1Trio: gameState.player1DroneSelectionTrio?.map(d => d.name),
+        player2Trio: gameState.player2DroneSelectionTrio?.map(d => d.name),
+      });
+    }
+  }, []);
 
   // Local state for drone selection process
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
@@ -112,7 +119,7 @@ function DroneSelectionScreen() {
   const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio || []);
   const [remainingPool, setRemainingPool] = useState(droneSelectionPool || []);
 
-  // UI state for guest submission feedback
+  // UI state for remote client submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Exit confirmation state
@@ -175,8 +182,8 @@ function DroneSelectionScreen() {
     });
 
     // Remote player: Send action to host with immediate UI feedback
-    if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMIT_TRACE', 'Guest sending droneSelection commitment to host', {
+    if (gameStateManager.isRemoteClient()) {
+      debugLog('COMMIT_TRACE', 'Remote client sending droneSelection commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -218,7 +225,7 @@ function DroneSelectionScreen() {
     const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
 
     if (localPlayerCompleted && isSubmitting) {
-      debugLog('DRONE_SELECTION', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      debugLog('DRONE_SELECTION', '✅ Host confirmed remote client commitment, resetting isSubmitting');
       setIsSubmitting(false);
     }
   }, [gameState.commitments, localPlayerId, isSubmitting, getOpponentPlayerId]);
@@ -228,29 +235,33 @@ function DroneSelectionScreen() {
   const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.droneSelection?.[opponentPlayerId]?.completed || false;
 
-  // DEBUG LOGGING
-  debugLog('DRONE_SELECTION', 'Render check:', {
-    localPlayerId,
-    isMultiplayer: isMultiplayer(),
-    localPlayerId,
-    opponentPlayerId,
-    localPlayerCompleted,
-    opponentCompleted,
-    isSubmitting,
-    fullCommitmentsObject: gameState.commitments?.droneSelection,
-    turnPhase,
-    willShowSubmitting: isSubmitting && !localPlayerCompleted,
-    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-  });
+  // Log commitment state changes (not every render)
+  const lastCommitStateRef = useRef(null);
+  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
+  if (commitKey !== lastCommitStateRef.current) {
+    lastCommitStateRef.current = commitKey;
+    debugLog('DRONE_SELECTION', 'Render check:', {
+      localPlayerId,
+      isMultiplayer: isMultiplayer(),
+      opponentPlayerId,
+      localPlayerCompleted,
+      opponentCompleted,
+      isSubmitting,
+      fullCommitmentsObject: gameState.commitments?.droneSelection,
+      turnPhase,
+      willShowSubmitting: isSubmitting && !localPlayerCompleted,
+      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
+    });
+  }
 
-  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
 
   // State 1: SUBMITTING - Client sent action, waiting for server confirmation
   if (isSubmitting && !localPlayerCompleted) {
     return <SubmittingOverlay />;
   }
 
-  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
+  // State 2: WAITING - Player confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     // Get drone names from commitments
     const localDrones = gameState.commitments?.droneSelection?.[localPlayerId]?.drones || tempSelectedDrones;
@@ -273,15 +284,6 @@ function DroneSelectionScreen() {
 
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
-      <style>
-        {`
-          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
-          .font-orbitron { font-family: 'Orbitron', sans-serif; }
-          .font-exo { font-family: 'Exo', sans-serif; }
-        `}
-      </style>
-
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full p-4 relative z-10">
         {/* Header with hex decorations */}

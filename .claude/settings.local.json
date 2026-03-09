@@ -73,7 +73,12 @@
       "Bash(git diff:*)",
       "Bash(npx react-scripts:*)",
       "Bash(python:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git show:*)",
+      "Bash(sort:*)",
+      "Bash(git stash:*)",
+      "Bash(xargs grep:*)"
     ],
     "deny": [],
     "ask": []

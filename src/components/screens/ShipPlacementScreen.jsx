@@ -13,6 +13,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
+import '../../styles/phase-screens.css';
 import { calculateEffectiveShipStats } from '../../logic/statsCalculator.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 
@@ -28,8 +29,7 @@ function ShipPlacementScreen() {
     getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
-    getLocalPlacedSections,
-    updateGameState
+    getLocalPlacedSections
   } = useGameState();
 
   const { turnPhase, unplacedSections } = gameState;
@@ -52,7 +52,7 @@ function ShipPlacementScreen() {
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
 
-  // UI state for guest submission feedback
+  // UI state for remote client submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Exit confirmation state
@@ -209,8 +209,8 @@ function ShipPlacementScreen() {
     };
 
     // Remote player: Send action to host with immediate UI feedback
-    if (getLocalPlayerId() === 'player2') {
-      debugLog('COMMIT_TRACE', 'Guest sending placement commitment to host', {
+    if (gameStateManager.isRemoteClient()) {
+      debugLog('COMMIT_TRACE', 'Remote client sending placement commitment to host', {
         phase: payload.phase,
         playerId: payload.playerId,
         actionDataKeys: Object.keys(payload.actionData),
@@ -222,8 +222,8 @@ function ShipPlacementScreen() {
 
       p2pManager.sendActionToHost('commitment', payload);
 
-      // OPTIMISTIC UPDATE: Mark guest's own commitment locally before cascade check
-      // Guest is certain it just committed (user clicked button)
+      // OPTIMISTIC UPDATE: Mark remote client's own commitment locally before cascade check
+      // Remote client is certain it just committed (user clicked button)
       // Host will confirm this in broadcast milliseconds later
       // Uses spread pattern to match ActionProcessor structure
       gameStateManager.setState({
@@ -239,12 +239,12 @@ function ShipPlacementScreen() {
         }
       });
 
-      debugLog('PLACEMENT_CASCADE', '✅ [GUEST CONFIRM] Optimistically updated local commitment state');
-      debugLog('PLACEMENT_CASCADE', '⏸️ [GUEST CONFIRM] Cascade will be triggered by useEffect watcher when host commits');
+      debugLog('PLACEMENT_CASCADE', '✅ [REMOTE CONFIRM] Optimistically updated local commitment state');
+      debugLog('PLACEMENT_CASCADE', '⏸️ [REMOTE CONFIRM] Cascade will be triggered by useEffect watcher when host commits');
 
       // NOTE: Cascade trigger moved to useEffect (lines 292-317)
       // The useEffect watches for both players' commitments and triggers cascade automatically
-      // This handles both cases: guest commits first OR host commits first
+      // This handles both cases: remote client commits first OR host commits first
 
       return;
     }
@@ -276,7 +276,7 @@ function ShipPlacementScreen() {
     const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
 
     if (localPlayerCompleted && isSubmitting) {
-      debugLog('PLACEMENT', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      debugLog('PLACEMENT', '✅ Host confirmed remote client commitment, resetting isSubmitting');
       setIsSubmitting(false);
     }
   }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
@@ -287,28 +287,33 @@ function ShipPlacementScreen() {
   const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
 
-  debugLog('PLACEMENT', '🔍 [SHIP PLACEMENT] Render check:', {
-    localPlayerId,
-    isMultiplayer: isMultiplayer(),
-    localPlayerId,
-    opponentPlayerId,
-    localPlayerCompleted,
-    opponentCompleted,
-    isSubmitting,
-    fullCommitmentsObject: gameState.commitments?.placement,
-    turnPhase,
-    willShowSubmitting: isSubmitting && !localPlayerCompleted,
-    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-  });
+  // Log commitment state changes (not every render)
+  const lastCommitStateRef = useRef(null);
+  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
+  if (commitKey !== lastCommitStateRef.current) {
+    lastCommitStateRef.current = commitKey;
+    debugLog('PLACEMENT', 'Render check:', {
+      localPlayerId,
+      isMultiplayer: isMultiplayer(),
+      opponentPlayerId,
+      localPlayerCompleted,
+      opponentCompleted,
+      isSubmitting,
+      fullCommitmentsObject: gameState.commitments?.placement,
+      turnPhase,
+      willShowSubmitting: isSubmitting && !localPlayerCompleted,
+      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
+    });
+  }
 
-  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
 
   // State 1: SUBMITTING - Client sent action, waiting for server confirmation
   if (isSubmitting && !localPlayerCompleted) {
     return <SubmittingOverlay />;
   }
 
-  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
+  // State 2: WAITING - Player confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
     return (
@@ -356,24 +361,8 @@ function ShipPlacementScreen() {
   // Render the placement interface
   const allPlaced = localPlacedSections.every(section => section !== null);
 
-  debugLog('PLACEMENT', `🔥 ShipPlacementScreen rendered:`, {
-    allPlaced,
-    placed: localPlacedSections,
-    unplaced: unplacedSections,
-    selected: selectedSectionForPlacement
-  });
-
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
-      <style>
-        {`
-          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
-          .font-orbitron { font-family: 'Orbitron', sans-serif; }
-          .font-exo { font-family: 'Exo', sans-serif; }
-        `}
-      </style>
-
       {/* Exit Button - Top Left */}
       <button
         onClick={() => setShowExitConfirm(true)}

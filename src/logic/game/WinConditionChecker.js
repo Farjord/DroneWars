@@ -114,7 +114,7 @@ class WinConditionChecker {
    * logic itself is pure.
    *
    * @param {Object} playerStates - { player1: playerState, player2: playerState }
-   * @param {Object} callbacks - Callback functions { logCallback, setWinnerCallback, showWinnerModalCallback }
+   * @param {Object} callbacks - Callback functions { logCallback, setWinnerCallback, showWinnerModalCallback? }
    * @returns {string|null} Winner ('player1', 'player2', or null if no winner yet)
    */
   checkGameStateForWinner(playerStates, callbacks) {
@@ -125,7 +125,7 @@ class WinConditionChecker {
       const p2Integrity = this.calculateHullIntegrity(playerStates.player2);
 
       setWinnerCallback('player1');
-      showWinnerModalCallback(true);
+      showWinnerModalCallback?.(true);
       logCallback({
         player: 'SYSTEM',
         actionType: 'GAME_END',
@@ -141,7 +141,7 @@ class WinConditionChecker {
       const p1Integrity = this.calculateHullIntegrity(playerStates.player1);
 
       setWinnerCallback('player2');
-      showWinnerModalCallback(true);
+      showWinnerModalCallback?.(true);
       logCallback({
         player: 'SYSTEM',
         actionType: 'GAME_END',

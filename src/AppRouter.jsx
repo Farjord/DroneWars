@@ -115,7 +115,7 @@ function AppRouter() {
     debugLog('MP_GAME_TRACE', 'AppRouter: GameServer wired to managers');
   }, [gameState.appState]);
 
-  // Handle guest full sync requests (must be active during ALL inGame phases)
+  // Handle remote client full sync requests (must be active during ALL inGame phases)
   useEffect(() => {
     if (gameState.appState !== 'inGame' || gameState.gameMode !== 'host') return;
 
@@ -126,7 +126,7 @@ function AppRouter() {
 
     const handleSyncRequest = (event) => {
       if (event.type === 'sync_requested') {
-        debugLog('MP_SYNC_TRACE', 'AppRouter: Host responding to guest sync request');
+        debugLog('MP_SYNC_TRACE', 'AppRouter: Host responding to remote client sync request');
         const currentState = gameStateManager.getState();
         const redactedState = StateRedactor.redactForPlayer(currentState, 'player2');
         p2pManager.sendFullSyncResponse(redactedState, p2pManager.broadcastSequence);
@@ -267,19 +267,13 @@ function AppRouter() {
   // Note: SimultaneousActionManager functionality moved to ActionProcessor
   // Note: AIPhaseProcessor is initialized in LobbyScreen when player starts single-player game
 
-  // Initialize GameFlowManager with all managers (for host/local/guest)
-  // Guest needs GameFlowManager for optimistic automatic phase processing
+  // Initialize GameFlowManager with all managers (for host/local/remote client)
+  // Remote client needs GameFlowManager for optimistic automatic phase processing
   useEffect(() => {
     if (!gameFlowInitialized.current) {
-      // Inject PhaseAnimationQueue into ActionProcessor
-      if (gameStateManager.actionProcessor && phaseAnimationQueueRef.current) {
-        gameStateManager.actionProcessor.phaseAnimationQueue = phaseAnimationQueueRef.current;
-      }
-
       gameFlowManagerRef.current.initialize(
         gameStateManager,
         gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-        () => gameStateManager.isMultiplayer(),
         aiPhaseProcessor // Add AIPhaseProcessor
       );
 
@@ -294,7 +288,7 @@ function AppRouter() {
 
       gameFlowInitialized.current = true;
       const modeLabel = gameStateManager.gameServer?.isMultiplayer?.()
-        ? (gameStateManager.getLocalPlayerId() === 'player2' ? 'guest mode (optimistic)' : 'host mode')
+        ? (gameStateManager.isRemoteClient() ? 'remote client mode (optimistic)' : 'host mode')
         : 'local mode';
       debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager initialized in AppRouter (${modeLabel})`);
     } else {

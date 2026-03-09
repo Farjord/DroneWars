@@ -48,17 +48,17 @@ describe('Asymmetric Phase Tests', () => {
 
       // Verify initial state
       expect(phaseManager.phaseState.turnPhase).toBe('mandatoryDiscard');
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard?.completed).toBeFalsy();
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard?.completed).toBeFalsy();
+      expect(phaseManager.player1State.commitments.mandatoryDiscard?.completed).toBeFalsy();
+      expect(phaseManager.player2State.commitments.mandatoryDiscard?.completed).toBeFalsy();
 
       // Human (P1) commits first
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(false); // Still waiting for AI
 
       // AI (P2) commits (simulating handleAICommitment inline behavior)
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player2State.commitments.mandatoryDiscard.completed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(true); // Both committed
 
       // Verify expected behavior from helper
@@ -87,15 +87,15 @@ describe('Asymmetric Phase Tests', () => {
 
       // AI auto-approves immediately (simulating ActionProcessor behavior)
       // In real code, AI would call processCommitment with auto-approve
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player2State.commitments.mandatoryDiscard.completed).toBe(true);
 
       // Not ready yet - Human still needs to commit
       expect(phaseManager.checkReadyToTransition()).toBe(false);
 
       // Human commits after discarding
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
 
       // Now ready to transition
       expect(phaseManager.checkReadyToTransition()).toBe(true);
@@ -124,15 +124,15 @@ describe('Asymmetric Phase Tests', () => {
       expect(state.player2.hand.length).toBe(8); // Over limit
 
       // Human auto-approves immediately (no cards to discard)
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
 
       // Not ready yet - AI still needs to act and commit
       expect(phaseManager.checkReadyToTransition()).toBe(false);
 
       // AI commits after discarding
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player2State.commitments.mandatoryDiscard.completed).toBe(true);
 
       // Now ready to transition
       expect(phaseManager.checkReadyToTransition()).toBe(true);
@@ -165,8 +165,8 @@ describe('Asymmetric Phase Tests', () => {
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Both auto-approve
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
 
       // Ready immediately
       expect(phaseManager.checkReadyToTransition()).toBe(true);
@@ -203,11 +203,11 @@ describe('Asymmetric Phase Tests', () => {
       expect(p2Drones).toBe(6);
 
       // Human commits
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(false);
 
       // AI commits
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
@@ -230,11 +230,11 @@ describe('Asymmetric Phase Tests', () => {
       expect(p2Drones).toBe(2); // Under limit
 
       // AI auto-approves first
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(false); // Human still needs to act
 
       // Human commits after removal
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
@@ -258,11 +258,11 @@ describe('Asymmetric Phase Tests', () => {
       expect(p2Drones).toBe(6); // Exceeds limit
 
       // Human auto-approves first
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(false); // AI still needs to act
 
       // AI commits after removal
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
@@ -286,8 +286,8 @@ describe('Asymmetric Phase Tests', () => {
       phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Both auto-approve
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDroneRemoval' });
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDroneRemoval' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDroneRemoval' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
   });
@@ -302,86 +302,86 @@ describe('Asymmetric Phase Tests', () => {
     /**
      * MD-H1: Both need action - Host commits first
      */
-    it('MD-H1: Both need action, Host commits first → waits for Guest via network', () => {
+    it('MD-H1: Both need action, player1 commits first → waits for player2 via network', () => {
       mockGameStateManager = createHostModeGameStateManager({
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Host commits first
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
-      expect(phaseManager.checkReadyToTransition()).toBe(false); // Waiting for Guest
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
+      expect(phaseManager.checkReadyToTransition()).toBe(false); // Waiting for player2
 
-      // Guest action arrives via network
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      // player2 action arrives via network
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player2State.commitments.mandatoryDiscard.completed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
     /**
-     * MD-H2: Both need action - Guest commits first
+     * MD-H2: Both need action - player2 commits first
      */
-    it('MD-H2: Both need action, Guest commits first → Host sees guest ready', () => {
+    it('MD-H2: Both need action, player2 commits first → player1 sees player2 ready', () => {
       mockGameStateManager = createHostModeGameStateManager({
         ...ASYMMETRIC_SCENARIOS.BOTH_NEED,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
-      // Guest action arrives via network first
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.guestLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      // player2 action arrives via network first
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player2State.commitments.mandatoryDiscard.completed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(false); // Host hasn't committed
 
       // Host commits
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
     /**
      * MD-H3: Only Host needs action
      */
-    it('MD-H3: Only Host needs action → Guest auto-approves', () => {
+    it('MD-H3: Only player1 needs action → player2 auto-approves', () => {
       mockGameStateManager = createHostModeGameStateManager({
         ...ASYMMETRIC_SCENARIOS.ONLY_P1,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
-      // Guest auto-approves (via network message)
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
+      // player2 auto-approves (via network message)
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
       expect(phaseManager.checkReadyToTransition()).toBe(false); // Host still needs to act
 
       // Host commits after discarding
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
     /**
-     * MD-H4: Only Guest needs action
+     * MD-H4: Only player2 needs action
      * HIGH PRIORITY: Asymmetric where remote P2 acts, local P1 doesn't
      */
-    it('MD-H4: Only Guest needs action → Host auto-approves', () => {
+    it('MD-H4: Only player2 needs action → player1 auto-approves', () => {
       mockGameStateManager = createHostModeGameStateManager({
         ...ASYMMETRIC_SCENARIOS.ONLY_P2,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Host auto-approves immediately
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      expect(phaseManager.hostLocalState.commitments.mandatoryDiscard.completed).toBe(true);
-      expect(phaseManager.checkReadyToTransition()).toBe(false); // Guest still needs to act
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      expect(phaseManager.player1State.commitments.mandatoryDiscard.completed).toBe(true);
+      expect(phaseManager.checkReadyToTransition()).toBe(false); // player2 still needs to act
 
-      // Guest action arrives via network
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
+      // player2 action arrives via network
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
     });
 
@@ -393,12 +393,12 @@ describe('Asymmetric Phase Tests', () => {
         ...ASYMMETRIC_SCENARIOS.NEITHER,
         phase: 'mandatoryDiscard'
       });
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('mandatoryDiscard');
 
       // Both auto-approve
-      phaseManager.notifyHostAction('commit', { phase: 'mandatoryDiscard' });
-      phaseManager.notifyGuestAction('commit', { phase: 'mandatoryDiscard' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'mandatoryDiscard' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'mandatoryDiscard' });
       expect(phaseManager.checkReadyToTransition()).toBe(true);
 
       // Verify expected behavior
@@ -425,7 +425,7 @@ describe('Asymmetric Phase Tests', () => {
       });
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
-      // Guest receives master state from host
+      // Non-authority receives master state from host
       const masterState = {
         turnPhase: 'mandatoryDiscard',
         gameStage: 'roundLoop',
@@ -439,7 +439,7 @@ describe('Asymmetric Phase Tests', () => {
 
     /**
      * MD-G2: Guest needs action
-     * Verify guest cannot call transitionToPhase
+     * Verify non-authority cannot call transitionToPhase
      */
     it('MD-G2: Guest needs action → Cannot transition phase locally', () => {
       mockGameStateManager = createGuestModeGameStateManager({
@@ -451,7 +451,7 @@ describe('Asymmetric Phase Tests', () => {
       // Apply initial state
       phaseManager.applyMasterState({ turnPhase: 'mandatoryDiscard' });
 
-      // Guest cannot transition phase
+      // Non-authority cannot transition phase
       const result = phaseManager.transitionToPhase('optionalDiscard');
       expect(result).toBe(false); // Blocked
 
@@ -466,21 +466,21 @@ describe('Asymmetric Phase Tests', () => {
     it('MD-G3: Guest auto-approves → Receives broadcast showing completion', () => {
       mockGameStateManager = createGuestModeGameStateManager({
         phase: 'mandatoryDiscard',
-        guestNeedsAction: false // Guest has no cards to discard
+        guestNeedsAction: false // player2 has no cards to discard
       });
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
       // Apply initial state
       phaseManager.applyMasterState({ turnPhase: 'mandatoryDiscard' });
 
-      // Guest receives broadcast indicating phase complete
+      // Non-authority receives broadcast indicating phase complete
       // Host would have processed auto-approves and moved on
       const completionBroadcast = createMockServerUpdate({
         phase: 'optionalDiscard', // Next phase
         phaseComplete: true
       });
 
-      // Simulating guest receiving the broadcast
+      // Simulating non-authority receiving the broadcast
       phaseManager.applyMasterState({ turnPhase: completionBroadcast.phase });
       expect(phaseManager.phaseState.turnPhase).toBe('optionalDiscard');
     });
@@ -491,9 +491,9 @@ describe('Asymmetric Phase Tests', () => {
   // ========================================
   describe('firstPasser Synchronization', () => {
     /**
-     * Verify firstPasser is synced between host and guest states
+     * Verify firstPasser is synced between host and non-authority states
      */
-    it('firstPasser synced when guest applies master state', () => {
+    it('firstPasser synced when non-authority applies master state', () => {
       const mockGameStateManager = createGuestModeGameStateManager({
         phase: 'deployment'
       });
@@ -507,8 +507,8 @@ describe('Asymmetric Phase Tests', () => {
       phaseManager.applyMasterState(masterState);
 
       // Verify firstPasser synced to both local states
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
     /**
@@ -523,18 +523,18 @@ describe('Asymmetric Phase Tests', () => {
       phaseManager.transitionToPhase('deployment');
 
       // Host passes first in deployment
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      // Guest passes
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      // player2 passes
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
 
       // Transition to action phase
       phaseManager.transitionToPhase('action');
 
       // firstPasser should be preserved
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
   });
 });

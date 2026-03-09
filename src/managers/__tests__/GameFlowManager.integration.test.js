@@ -38,11 +38,11 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
 
     // Initialize GameFlowManager (fresh instance due to singleton reset)
     gameFlowManager = new GameFlowManager();
-    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+    phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
     // Reset isInitialized to allow re-initialization with our mocks
     gameFlowManager.isInitialized = false;
-    gameFlowManager.initialize(mockGameStateManager, mockActionProcessor, () => false);
+    gameFlowManager.initialize(mockGameStateManager, mockActionProcessor);
     gameFlowManager.phaseManager = phaseManager;
     gameFlowManager.gameStage = 'roundLoop';
   });
@@ -64,35 +64,35 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
 
       // Verify initial state
       expect(phaseManager.phaseState.turnPhase).toBe('deployment');
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player2State.passInfo.passed).toBe(false);
 
       // Action: Player1 (host) passes first
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
       // Verify intermediate state
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
       expect(phaseManager.checkReadyToTransition()).toBe(false); // Only one passed
 
-      // Action: Player2 (guest) passes second
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      // Action: player2 passes second
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // Verify both passed
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player2State.passInfo.passed).toBe(true);
       expect(phaseManager.checkReadyToTransition()).toBe(true); // Both passed
 
       // Verify firstPasser preserved (for turn order in next round)
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
 
       // Transition to action phase
       phaseManager.transitionToPhase('action');
       expect(phaseManager.phaseState.turnPhase).toBe('action');
 
       // Verify pass state was reset for new phase
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player2State.passInfo.passed).toBe(false);
     });
 
     it('deployment complete → queues DEPLOYMENT COMPLETE animation → transitions', async () => {
@@ -103,8 +103,8 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
       // Setup: Both players passed deployment
       phaseManager.transitionToPhase('deployment');
       mockGameStateManager._state.turnPhase = 'deployment';
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
       // Verify ready to transition
       expect(phaseManager.checkReadyToTransition()).toBe(true);
@@ -115,21 +115,19 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
 
       // Call onSequentialPhaseComplete (simulating GameFlowManager orchestration)
       await gameFlowManager.onSequentialPhaseComplete('deployment', {
-        firstPasser: phaseManager.hostLocalState.passInfo.firstPasser
+        firstPasser: phaseManager.player1State.passInfo.firstPasser
       });
 
-      // Verify processPhaseTransition was called
-      expect(mockActionProcessor.processPhaseTransition).toHaveBeenCalled();
+      // Verify executeAndCaptureAnimations was called with PHASE_ANNOUNCEMENT
+      expect(mockActionProcessor.executeAndCaptureAnimations).toHaveBeenCalled();
 
-      // Verify pseudo-phase transition was queued
-      const phaseTransitions = mockActionProcessor.getPhaseTransitions();
-
-      // Should have queued 'deploymentComplete' as pseudo-phase
-      const deploymentCompleteTransition = phaseTransitions.find(
-        t => t.newPhase === 'deploymentComplete'
+      // Should have queued 'deploymentComplete' PHASE_ANNOUNCEMENT
+      const capturedAnims = mockActionProcessor.getCapturedAnimations();
+      const deploymentCompleteAnnouncement = capturedAnims.find(
+        a => a.animationName === 'PHASE_ANNOUNCEMENT' && a.payload?.phase === 'deploymentComplete'
       );
-      expect(deploymentCompleteTransition).toBeDefined();
-      expect(deploymentCompleteTransition.guestAnnouncementOnly).toBe(true);
+      expect(deploymentCompleteAnnouncement).toBeDefined();
+      expect(deploymentCompleteAnnouncement.payload.text).toBe('DEPLOYMENT COMPLETE');
 
       // Verify actual phase is 'action', NOT 'deploymentComplete'
       // (pseudo-phases don't change turnPhase)
@@ -157,20 +155,20 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
       // Verify initial state
       expect(phaseManager.phaseState.turnPhase).toBe('action');
 
-      // Action: Player2 (guest) passes FIRST this time
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
+      // Action: player2 passes FIRST this time
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
 
       // Action: Player1 (host) passes second
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
 
       // Verify both passed and firstPasser tracked
       expect(phaseManager.checkReadyToTransition()).toBe(true);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
 
       // The firstPasser value would be stored as firstPasserOfPreviousRound
       // when startNewRound() is called
-      const firstPasserOfPreviousRound = phaseManager.hostLocalState.passInfo.firstPasser;
+      const firstPasserOfPreviousRound = phaseManager.player1State.passInfo.firstPasser;
       expect(firstPasserOfPreviousRound).toBe('player2');
 
       // According to design: "second passer goes first next round"
@@ -287,24 +285,24 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
       phaseManager.transitionToPhase('deployment');
 
       // Round 1 Deployment: Player1 passes first (sets firstPasser for the round)
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // Transition to action
       phaseManager.transitionToPhase('action');
 
       // IMPORTANT: firstPasser is PRESERVED within a round (not reset per-phase)
       // Player1 passed first in deployment, so they're still firstPasser for the round
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // Round 1 Action: Both players pass (firstPasser unchanged - already set)
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
 
       // Track firstPasser for the round (determines Round 2 turn order)
-      const round1FirstPasser = phaseManager.hostLocalState.passInfo.firstPasser;
+      const round1FirstPasser = phaseManager.player1State.passInfo.firstPasser;
       expect(round1FirstPasser).toBe('player1'); // Still player1 from deployment
 
       // ============ ROUND 2 ============
@@ -313,34 +311,34 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
       expect(round2FirstPlayer).toBe('player2'); // Player2 goes first (player1 passed first last round)
 
       // Simulate startNewRound behavior: reset firstPasser for new round
-      phaseManager.hostLocalState.passInfo.firstPasser = null;
-      phaseManager.guestLocalState.passInfo.firstPasser = null;
+      phaseManager.player1State.passInfo.firstPasser = null;
+      phaseManager.player2State.passInfo.firstPasser = null;
 
       // Transition to deployment for round 2
       phaseManager.transitionToPhase('deployment');
 
       // Verify state was reset
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe(null); // Reset for new round
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player2State.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe(null); // Reset for new round
 
       // Round 2 Deployment: Player2 passes first this time
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
 
       // Transition to action
       phaseManager.transitionToPhase('action');
 
       // firstPasser still preserved as player2 within round 2
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
 
       // Round 2 Action: Both players pass
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player1', 'pass', { phase: 'action' });
+      phaseManager.notifyPlayerAction('player2', 'pass', { phase: 'action' });
 
-      const round2FirstPasser = phaseManager.hostLocalState.passInfo.firstPasser;
+      const round2FirstPasser = phaseManager.player1State.passInfo.firstPasser;
       expect(round2FirstPasser).toBe('player2'); // Player2 from deployment
 
       // ============ ROUND 3 ============
@@ -354,8 +352,8 @@ describe('GameFlowManager - Integration Tests (Phase 5)', () => {
 
       // Final verification: PhaseManager is still in valid state
       expect(phaseManager.phaseState).toBeDefined();
-      expect(typeof phaseManager.hostLocalState.passInfo.passed).toBe('boolean');
-      expect(typeof phaseManager.guestLocalState.passInfo.passed).toBe('boolean');
+      expect(typeof phaseManager.player1State.passInfo.passed).toBe('boolean');
+      expect(typeof phaseManager.player2State.passInfo.passed).toBe('boolean');
     });
   });
 });

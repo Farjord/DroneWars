@@ -1,6 +1,6 @@
 // --- useMultiplayerSync ---
 // Manages multiplayer synchronization: waiting overlay, P2P messaging,
-// guest phase transition detection, and simultaneous phase commitment monitoring.
+// remote client phase transition detection, and simultaneous phase commitment monitoring.
 // Extracted from App.jsx Phase C (Step 8).
 
 import { useState, useRef, useEffect } from 'react';
@@ -23,7 +23,7 @@ const useMultiplayerSync = ({
   // --- GameFlowManager subscription (host/local only) ---
   // Clears waiting overlay when both players complete or when phase transitions
   useEffect(() => {
-    if (gameStateManager.getLocalPlayerId() === 'player2') return;
+    if (gameStateManager.isRemoteClient()) return;
 
     const handlePhaseEvent = (event) => {
       const { type, phase, playerId } = event;
@@ -63,11 +63,11 @@ const useMultiplayerSync = ({
     };
   }, [isMultiplayer, getLocalPlayerId, waitingForPlayerPhase, gameStateManager]);
 
-  // --- Guest phase transition detection ---
-  // Guest watches turnPhase changes and synthesizes phaseTransition events locally
+  // --- Remote client phase transition detection ---
+  // Remote client watches turnPhase changes and synthesizes phaseTransition events locally
   // to clear waiting modals and show deployment complete modal
   useEffect(() => {
-    if (gameStateManager.getLocalPlayerId() !== 'player2') return;
+    if (!gameStateManager.isRemoteClient()) return;
 
     const previousPhase = previousPhaseRef.current;
 
@@ -77,7 +77,7 @@ const useMultiplayerSync = ({
     }
 
     if (previousPhase !== turnPhase) {
-      debugLog('PHASE_TRANSITIONS', `👁️ Guest detected phase change: ${previousPhase} → ${turnPhase}`);
+      debugLog('PHASE_TRANSITIONS', `👁️ Remote client detected phase change: ${previousPhase} → ${turnPhase}`);
 
       const syntheticEvent = {
         type: 'phaseTransition',
@@ -93,7 +93,7 @@ const useMultiplayerSync = ({
 
         if (type === 'phaseTransition') {
           const { newPhase, previousPhase } = event;
-          debugLog('PHASE_TRANSITIONS', `🔄 Guest handling synthetic phase transition: ${previousPhase} → ${newPhase}`);
+          debugLog('PHASE_TRANSITIONS', `🔄 Remote client handling synthetic phase transition: ${previousPhase} → ${newPhase}`);
 
           if (waitingForPlayerPhase === previousPhase) {
             setWaitingForPlayerPhase(null);

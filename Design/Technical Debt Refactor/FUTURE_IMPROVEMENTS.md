@@ -80,6 +80,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 81 | RoundManager.js, TechSlots.jsx | Residual `triggerUsesThisRound` flat counter still set/read for backward compat with tech entities. Now that `triggerUsesMap` is the canonical source, remove the old flat counter and its fallback chain. | Trigger migration review | 2026-03-08 | Low |
 | ~~82~~ | ~~GameEngine.js, ClientStateStore.js~~ | ~~`_engineProcessing` / `_preProcessingState` set as ad-hoc properties on GSM by GameEngine~~ | ~~Multiplayer unified client review~~ | ~~2026-03-08~~ | ~~Resolved~~ |
 | 83 | useAnimationSetup.js, GameClient.js | AnimationManager wired in useEffect after GameClient creation — actions firing before useEffect skip animations silently. Structural fix: queue responses in GameClient until AnimationManager is wired, then replay. Warning log added in this commit. | Client/server architecture review | 2026-03-08 | Medium |
+| 84 | useGameLifecycle.js, useMultiplayerSync.js | Hooks accessing GameStateManager internals directly (e.g., `gameStateManager._updateContext`, direct property reads) — consider adding accessor methods to GSM to reduce coupling and protect internal state shape. | Post-refactor review (D18) | 2026-03-09 | Low |
 
 ## Audit Findings (2026-02-23)
 

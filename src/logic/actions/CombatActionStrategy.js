@@ -2,9 +2,7 @@
 // Extracted from ActionProcessor.js — handles all direct drone interactions.
 
 import { resolveAttack } from '../combat/AttackProcessor.js';
-import fullDroneCollection from '../../data/droneData.js';
 import { calculateEffectiveStats } from '../statsCalculator.js';
-import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 import { calculateAiInterception } from '../combat/InterceptionProcessor.js';
 import AbilityResolver from '../abilities/AbilityResolver.js';
 import { gameEngine } from '../gameLogic.js';
@@ -12,6 +10,8 @@ import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
+import { buildDefaultMovementAnimation } from '../effects/movement/animations/DefaultMovementAnimation.js';
+import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
 
 /**
  * Process attack action
@@ -22,10 +22,7 @@ export async function processAttack(payload, ctx) {
   const { attackDetails } = payload;
 
   const currentState = ctx.getState();
-  const allPlacedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const allPlacedSections = ctx.getPlacedSections();
 
   // Check for interception opportunity BEFORE resolving attack
   let finalAttackDetails = { ...attackDetails };
@@ -145,6 +142,9 @@ export async function processAttack(payload, ctx) {
     ctx.setState({ interceptionPending: null });
   }
 
+  // Commit damage state — resolveAttack returns deep copies, so GSM is stale without this
+  ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
+
   // Check for win conditions after attack
   ctx.checkWinCondition();
 
@@ -189,10 +189,7 @@ export async function processMove(payload, ctx) {
   const drone = playerState.dronesOnBoard[fromLane][droneIndex];
 
   // Get placed sections for INERT check and later updateAuras
-  const placedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const placedSections = ctx.getPlacedSections();
 
   // Check if drone has INERT keyword (cannot move)
   const effectiveStats = calculateEffectiveStats(drone, fromLane, playerState, opponentPlayerState, placedSections);
@@ -281,33 +278,19 @@ export async function processMove(payload, ctx) {
     placedSections
   );
 
-  // --- Phase 1: Commit movement (drone appears in destination lane) ---
-  ctx.updatePlayerState(playerId, stateAfterMoveEffects);
-
-  // Wait for React to render drone in new lane before querying DOM for animation positions
-  const animationManager = ctx.getAnimationManager();
-  if (animationManager) {
-    await animationManager.waitForReactRender();
-  }
-
-  // Play ON_MOVE heal animations (drone is now visually in destination lane)
-  if (onMoveAnimationEvents && onMoveAnimationEvents.length > 0) {
-    const healAnimations = onMoveAnimationEvents.map(event => ({
-      animationName: event.type,
-      timing: animationManager?.animations[event.type]?.timing || 'independent',
-      payload: { ...event, targetPlayer: playerId }
-    }));
-    await ctx.executeAndCaptureAnimations(healAnimations);
-  }
-
-  // --- Phase 2: Process mine triggers on committed state (drone is now visually in destination lane) ---
-  const committedState = ctx.getState();
-  const minePlayerStates = {
-    [playerId]: JSON.parse(JSON.stringify(committedState[playerId])),
-    [opponentPlayerId]: JSON.parse(JSON.stringify(committedState[opponentPlayerId]))
+  // Capture intermediate state (post-movement, pre-mine) for STATE_SNAPSHOT
+  const intermediateState = {
+    [playerId]: JSON.parse(JSON.stringify(stateAfterMoveEffects)),
+    [opponentPlayerId]: JSON.parse(JSON.stringify(opponentState)),
   };
-  const movedDroneInLane = minePlayerStates[playerId].dronesOnBoard[toLane].find(d => d.id === droneId);
+
+  // Fire ON_LANE_MOVEMENT_IN triggers on in-memory state (not from GSM)
+  const movedDroneInLane = stateAfterMoveEffects.dronesOnBoard[toLane]?.find(d => d.id === droneId);
   const mineTriggerProcessor = new TriggerProcessor();
+  const minePlayerStates = {
+    [playerId]: JSON.parse(JSON.stringify(stateAfterMoveEffects)),
+    [opponentPlayerId]: JSON.parse(JSON.stringify(opponentState)),
+  };
   const mineResult = mineTriggerProcessor.fireTrigger(TRIGGER_TYPES.ON_LANE_MOVEMENT_IN, {
     lane: toLane,
     triggeringDrone: movedDroneInLane,
@@ -318,30 +301,42 @@ export async function processMove(payload, ctx) {
     logCallback: (entry) => ctx.addLogEntry(entry)
   });
 
-  // Play mine animations (drone is now visually in destination lane)
-  if (mineResult.triggered && mineResult.animationEvents.length > 0) {
-    const mineAnimations = mineResult.animationEvents.map(event => {
-      const animDef = animationManager?.animations[event.type];
-      return {
-        animationName: event.type,
-        timing: animDef?.timing || 'pre-state',
-        payload: { ...event }
-      };
-    });
-    await ctx.executeAndCaptureAnimations(mineAnimations);
-  }
+  // Capture goAgain from mine result BEFORE building sequence
+  const goAgain = mineResult.goAgain;
 
-  // Commit mine destruction state (removes destroyed mine/drone from DOM)
+  // Determine final player states (after mine destruction)
+  let finalPlayerState = stateAfterMoveEffects;
+  let finalOpponentState = opponentState;
   if (mineResult.triggered) {
-    const mineStates = mineResult.newPlayerStates;
-    ctx.updatePlayerState(playerId, mineStates[playerId]);
-    ctx.updatePlayerState(opponentPlayerId, mineStates[opponentPlayerId]);
+    finalPlayerState = mineResult.newPlayerStates[playerId];
+    finalOpponentState = mineResult.newPlayerStates[opponentPlayerId];
   }
 
   // Check if the moved drone was destroyed by the mine
-  const finalPlayerState = ctx.getState()[playerId];
   const droneDestroyedByMine = mineResult.triggered &&
     !finalPlayerState.dronesOnBoard[toLane].some(d => d.id === droneId);
+
+  // Build properly-ordered animation sequence: movement → STATE_SNAPSHOT → triggers
+  const allTriggerEvents = [...onMoveAnimationEvents, ...(mineResult.animationEvents || [])];
+  const movementEvents = buildDefaultMovementAnimation({
+    drone, fromLane, toLane, actingPlayerId: playerId,
+  });
+  const sequence = buildAnimationSequence([{
+    actionEvents: movementEvents,
+    triggerEvents: allTriggerEvents,
+    intermediateState: allTriggerEvents.length > 0 ? intermediateState : null,
+  }]);
+
+  // Map raw events to animation format and execute
+  const mapped = ctx.mapAnimationEvents(sequence);
+  await ctx.executeAndCaptureAnimations(mapped);
+
+  // Single state commit — setPlayerStates expects (player1State, player2State)
+  if (playerId === 'player1') {
+    ctx.setPlayerStates(finalPlayerState, finalOpponentState);
+  } else {
+    ctx.setPlayerStates(finalOpponentState, finalPlayerState);
+  }
 
   // Log the move
   ctx.addLogEntry({
@@ -365,9 +360,6 @@ export async function processMove(payload, ctx) {
       toLane: toLane
     };
   }
-
-  // Rally Beacon go-again comes from ON_LANE_MOVEMENT_IN trigger result
-  const goAgain = mineResult.goAgain;
 
   if (goAgain) {
     await ctx.executeGoAgainAnimation(playerId);
@@ -393,10 +385,7 @@ export async function processAbility(payload, ctx) {
 
   const currentState = ctx.getState();
   const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-  const allPlacedSections = {
-    player1: currentState.placedSections,
-    player2: currentState.opponentPlacedSections
-  };
+  const allPlacedSections = ctx.getPlacedSections();
 
   // Find the drone and ability
   let userDrone = null;
@@ -459,6 +448,9 @@ export async function processAbility(payload, ctx) {
 
   // Capture animations for broadcasting (host only)
   ctx.captureAnimations(animations);
+
+  // Commit ability state — AbilityResolver returns deep copies, so GSM is stale without this
+  ctx.setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
 
   // Check for win conditions after ability
   ctx.checkWinCondition();

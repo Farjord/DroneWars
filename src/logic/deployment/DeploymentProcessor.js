@@ -12,6 +12,7 @@ import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
+import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
 
 /**
  * DeploymentProcessor
@@ -343,7 +344,7 @@ class DeploymentProcessor {
     const opponentId = playerId === 'player1' ? 'player2' : 'player1';
     let finalPlayerState = newPlayerState;
     let finalOpponentState = opponentState;
-    const allAnimationEvents = [];
+    const allTriggerEvents = [];
 
     const triggerProcessor = new TriggerProcessor();
     const deployResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DEPLOY, {
@@ -364,7 +365,7 @@ class DeploymentProcessor {
       finalOpponentState = deployResult.newPlayerStates[opponentId];
 
       if (deployResult.animationEvents.length > 0) {
-        allAnimationEvents.push(...deployResult.animationEvents);
+        allTriggerEvents.push(...deployResult.animationEvents);
       }
     }
 
@@ -391,17 +392,26 @@ class DeploymentProcessor {
     }
 
     if (mineResult.triggered && mineResult.animationEvents.length > 0) {
-      allAnimationEvents.push(...mineResult.animationEvents);
+      allTriggerEvents.push(...mineResult.animationEvents);
     }
 
-    // Create animation event for deployment
-    const animationEvents = [{
+    // TELEPORT_IN event
+    const teleportInEvent = {
       type: 'TELEPORT_IN',
       targetId: newDrone.id,
       targetLane: lane,
       targetPlayer: playerId,
       timestamp: Date.now()
-    }, ...allAnimationEvents];
+    };
+
+    // Build ordered sequence: TELEPORT_IN → STATE_SNAPSHOT → triggers
+    const animationEvents = buildAnimationSequence([{
+      actionEvents: [teleportInEvent],
+      triggerEvents: allTriggerEvents,
+      intermediateState: allTriggerEvents.length > 0
+        ? { [playerId]: finalPlayerState, [opponentId]: finalOpponentState }
+        : null,
+    }]);
 
     debugLog('DEPLOYMENT', `✅ Deployment complete`, {
       droneId: newDrone.id,

@@ -1,0 +1,60 @@
+// ========================================
+// ANIMATION SEQUENCE BUILDER
+// ========================================
+// Enforces the architectural contract: action animations always precede
+// trigger animations, with STATE_SNAPSHOT + TRIGGER_CHAIN_PAUSE bridge.
+
+import { debugLog } from '../../utils/debugLogger.js';
+import { flowCheckpoint } from '../../utils/flowVerification.js';
+
+const TRIGGER_CHAIN_PAUSE_MS = 400;
+
+/**
+ * Build a properly-ordered animation sequence enforcing the architectural
+ * contract: action animations always precede trigger animations, with
+ * STATE_SNAPSHOT + TRIGGER_CHAIN_PAUSE bridge between them.
+ *
+ * Works with RAW event format (pre-mapAnimationEvents).
+ *
+ * @param {Array<Object>} steps - One step per effect/action
+ * @param {Array} steps[].actionEvents - Primary action animations
+ * @param {Array} steps[].triggerEvents - Trigger animations from TriggerProcessor
+ * @param {Object} [steps[].intermediateState] - { player1, player2 } for STATE_SNAPSHOT
+ * @param {Array} [steps[].postSnapshotEvents] - Events needing DOM update first (e.g., TELEPORT_IN)
+ * @returns {Array} Ordered raw event sequence
+ */
+export function buildAnimationSequence(steps) {
+  const sequence = [];
+  for (const step of steps) {
+    const { actionEvents = [], triggerEvents = [], intermediateState = null, postSnapshotEvents = [] } = step;
+
+    sequence.push(...actionEvents);
+
+    if (triggerEvents.length > 0 || postSnapshotEvents.length > 0) {
+      if (intermediateState) {
+        sequence.push({ type: 'STATE_SNAPSHOT', snapshotPlayerStates: intermediateState });
+      }
+      sequence.push(...postSnapshotEvents);
+    }
+
+    if (triggerEvents.length > 0) {
+      sequence.push({ type: 'TRIGGER_CHAIN_PAUSE', duration: TRIGGER_CHAIN_PAUSE_MS });
+      sequence.push(...triggerEvents);
+    }
+  }
+
+  flowCheckpoint('ANIMATION_SEQUENCE_BUILT', {
+    steps: steps.length,
+    events: sequence.length,
+    order: sequence.map(e => e.type).join(','),
+  });
+  debugLog('ANIM_TRACE', '[seq-built] buildAnimationSequence', {
+    stepCount: steps.length,
+    totalEvents: sequence.length,
+    snapshots: sequence.filter(e => e.type === 'STATE_SNAPSHOT').length,
+    pauses: sequence.filter(e => e.type === 'TRIGGER_CHAIN_PAUSE').length,
+    eventTypes: sequence.map(e => e.type),
+  });
+
+  return sequence;
+}

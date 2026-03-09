@@ -6,6 +6,7 @@
 // Ensures animations play one-at-a-time to guide player through game flow
 
 import { debugLog, timingLog } from '../utils/debugLogger.js';
+import { flowCheckpoint } from '../utils/flowVerification.js';
 
 // Total phase display duration: 1500ms display + 300ms fade out
 const PHASE_DISPLAY_DURATION = 1800;
@@ -91,6 +92,16 @@ class PhaseAnimationQueue {
       return;
     }
 
+    // Defer playback if no UI listeners are subscribed yet (e.g., App.jsx hasn't mounted).
+    // Items stay in queue; App.jsx's late-subscribe pattern will start playback on mount.
+    const animListeners = this.listeners.get('animationStarted');
+    if (!animListeners || animListeners.length === 0) {
+      debugLog('ANNOUNCE_TRACE', `⏸️ DEFERRED: No animationStarted listeners, deferring playback (from ${source})`, {
+        queueLength: this.queue.length
+      });
+      return;
+    }
+
     debugLog('ANNOUNCE_TRACE', `▶️ PLAYBACK: Started from ${source}`, {
       queueLength: this.queue.length,
       animations: this.queue.map(a => `${a.phaseName}[${a.source}]`).join(' → ')
@@ -136,6 +147,11 @@ class PhaseAnimationQueue {
 
     // Get next animation
     this.currentAnimation = this.queue.shift();
+    flowCheckpoint('ANNOUNCEMENT_PLAYING', {
+      name: this.currentAnimation.phaseName,
+      text: this.currentAnimation.phaseText,
+      pos: `${1}/${this.queue.length + 1}`,
+    });
 
     // Calculate dynamic round number for round announcements
     // This ensures correct round number using fresh state at playback time

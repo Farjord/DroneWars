@@ -6,6 +6,7 @@
 import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { flowCheckpoint } from '../utils/flowVerification.js';
 
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
@@ -19,8 +20,6 @@ class GameClient extends GameServer {
     // stateProvider protocol fields (used by AnimationManager.executeWithStateUpdate)
     this.pendingServerState = null;
     this.pendingFinalServerState = null;
-    this._localGameMode = null; // Cached on first response to avoid per-response store reads
-
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
     this.transport.onActionAck(ack => this._onActionAck(ack));
@@ -71,45 +70,31 @@ class GameClient extends GameServer {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnimations = this._collectAnimations(animations);
+    flowCheckpoint('CLIENT_RECEIVED', {
+      anims: allAnimations.length,
+      phase: newPhase,
+    });
 
     // Extract phase/pass announcements — route to PhaseAnimationQueue, not AnimationManager
-    const { visualAnimations, hadAnnouncements } = this._extractAndQueueAnnouncements(allAnimations);
+    const { visualAnimations } = this._extractAndQueueAnnouncements(allAnimations);
+
+    // Preserve local gameMode from current store state
+    state = { ...state, gameMode: this.getState().gameMode, localPlayerId: this.playerId };
 
     if (visualAnimations.length > 0) {
-      debugLog('ANIM_TRACE', '[6a/6] GameClient._onResponse entry', {
+      const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+      debugLog('ANIM_TRACE', '[6/6] GameClient._onResponse', {
         previousPhase,
         newPhase,
         animCount: visualAnimations.length,
-        hasTeleportIn: visualAnimations.some(a => a.animationName === 'TELEPORT_IN'),
-        playerId: this.playerId,
-      });
-    }
-
-    // Preserve local gameMode (cached on first response to avoid per-response spread overhead)
-    if (!this._localGameMode) {
-      this._localGameMode = this.getState().gameMode;
-    }
-    state = { ...state, gameMode: this._localGameMode, localPlayerId: this.playerId };
-
-    const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
-    if (triggerAnims.length > 0) {
-      debugLog('TRIGGER_SYNC_TRACE', '[6/7] Trigger received by GameClient', {
-        utc: new Date().toISOString(),
-        triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
-        triggerCount: triggerAnims.length,
-        totalAnimCount: visualAnimations.length,
-        willAnimate: !!this.animationManager,
-        playerId: this.playerId,
-      });
-    }
-
-    if (visualAnimations.length > 0) {
-      debugLog('ANIM_TRACE', '[6/6] GameClient._onResponse received', {
-        animCount: visualAnimations.length,
         animNames: visualAnimations.map(a => a.animationName),
+        hasTeleportIn: visualAnimations.some(a => a.animationName === 'TELEPORT_IN'),
         hasAnimationManager: !!this.animationManager,
-        willPlayAnimations: !!this.animationManager && visualAnimations.length > 0,
         playerId: this.playerId,
+        ...(triggerAnims.length > 0 && {
+          triggerSyncId: triggerAnims[0]?.payload?.triggerSyncId,
+          triggerCount: triggerAnims.length,
+        }),
       });
     }
 
@@ -176,6 +161,24 @@ class GameClient extends GameServer {
     this._applyState(revealed);
   }
 
+  /**
+   * Apply intermediate state during animation playback.
+   * Called by AnimationManager when processing STATE_SNAPSHOT events.
+   * Merges snapshot player states into current state, preserving non-player fields.
+   */
+  applyIntermediateState(snapshotPlayerStates) {
+    debugLog('ANIM_TRACE', '[state-intermediate] applyIntermediateState', {
+      hasPlayer1: !!snapshotPlayerStates.player1,
+      hasPlayer2: !!snapshotPlayerStates.player2,
+    });
+    const current = this.getState();
+    this._applyState({
+      ...current,
+      player1: snapshotPlayerStates.player1 || current.player1,
+      player2: snapshotPlayerStates.player2 || current.player2,
+    });
+  }
+
   // --- Internal helpers ---
 
   _applyState(state) {
@@ -183,7 +186,7 @@ class GameClient extends GameServer {
       turnPhase: state.turnPhase, currentPlayer: state.currentPlayer,
       gameMode: state.gameMode, playerId: this.playerId,
     });
-    // Guest mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server state
+    // Remote client mode: sync GSM so helper methods (getLocalPlayerState etc.) return current server state
     if (state.gameMode === 'guest') {
       this.clientStateStore.gameStateManager.syncFromServer(state);
     }
@@ -202,28 +205,28 @@ class GameClient extends GameServer {
   _extractAndQueueAnnouncements(allAnimations) {
     const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT']);
     const visualAnimations = [];
-    let hadAnnouncements = false;
+    let announcementCount = 0;
 
     for (const anim of allAnimations) {
       if (announcementTypes.has(anim.animationName)) {
-        if (anim._apDirectQueued) {
-          // Already direct-queued by ActionProcessor (local/host path).
-          // For remote clients, GameEngine strips this flag in _emitToClients.
-          continue;
-        }
-        hadAnnouncements = true;
+        announcementCount++;
         this._handleAnnouncementAnimation(anim);
       } else {
         visualAnimations.push(anim);
       }
     }
 
+    flowCheckpoint('ANNOUNCEMENTS_SPLIT', {
+      toQueue: announcementCount,
+      toVisual: visualAnimations.length,
+    });
+
     // Trigger playback if we queued announcements
-    if (hadAnnouncements && this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
+    if (announcementCount > 0 && this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
       this.phaseAnimationQueue.startPlayback('GC:after_announcements');
     }
 
-    return { visualAnimations, hadAnnouncements };
+    return { visualAnimations };
   }
 
   _handleAnnouncementAnimation(anim) {
@@ -245,7 +248,7 @@ class GameClient extends GameServer {
     }
   }
 
-  // --- Action ack handling (M1: guest desync prevention) ---
+  // --- Action ack handling (M1: remote client desync prevention) ---
 
   _onActionAck({ actionType, success, error, authoritativeState }) {
     if (success) {
@@ -255,7 +258,7 @@ class GameClient extends GameServer {
 
     debugLog('MP_SYNC_TRACE', '[6/10] Client received action ack', { actionType, success: false, error });
     if (authoritativeState) {
-      this._applyState({ ...authoritativeState, gameMode: this._localGameMode || this.getState().gameMode });
+      this._applyState({ ...authoritativeState, gameMode: this.getState().gameMode });
     }
   }
 

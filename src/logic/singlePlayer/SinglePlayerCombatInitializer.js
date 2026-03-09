@@ -66,47 +66,20 @@ class SinglePlayerCombatInitializer {
     debugLog('SP_COMBAT', 'AI ID:', aiId);
     debugLog('SP_COMBAT', 'Quick Deploy ID:', quickDeployId);
 
-    // Check for residual state from previous combat (potential bug source)
-    const preExistingState = {
-      appState: gameStateManager.get('appState'),
-      turnPhase: gameStateManager.get('turnPhase'),
-      gameActive: gameStateManager.get('gameActive'),
-      gameStage: gameStateManager.get('gameStage'),
-      roundNumber: gameStateManager.get('roundNumber'),
-      hasPlayer1: !!gameStateManager.get('player1'),
-      hasPlayer2: !!gameStateManager.get('player2'),
-      player1DeckSize: gameStateManager.get('player1')?.deck?.length || 0,
-      player2DeckSize: gameStateManager.get('player2')?.deck?.length || 0
-    };
-    debugLog('SP_COMBAT', 'Pre-existing game state (check for residual):', preExistingState);
-
-    // Log pending state from run state for debugging consecutive combat issues
-    debugLog('SP_COMBAT', '=== Pre-Combat State Verification ===', {
-      pendingPOICombat: !!currentRunState?.pendingPOICombat,
-      pendingSalvageLoot: !!currentRunState?.pendingSalvageLoot,
-      pendingSalvageState: !!currentRunState?.pendingSalvageState,
-      pendingPOICombatData: currentRunState?.pendingPOICombat
-    });
-
-    // Flag and cleanup residual state (e.g., from Force Win or unexpected exits)
-    if (preExistingState.gameActive || preExistingState.turnPhase) {
-      debugLog('SP_COMBAT', '⚠️ WARNING: Residual state detected - cleaning up before new combat');
-      debugLog('SP_COMBAT', '  gameActive:', preExistingState.gameActive);
-      debugLog('SP_COMBAT', '  turnPhase:', preExistingState.turnPhase);
-      debugLog('SP_COMBAT', '  hasPlayer1:', preExistingState.hasPlayer1);
-      debugLog('SP_COMBAT', '  hasPlayer2:', preExistingState.hasPlayer2);
-
-      // Clean up residual state to prevent the new game from getting stuck
+    // Check for and cleanup residual state from previous combat (e.g., Force Win or unexpected exits)
+    const residualGameActive = gameStateManager.get('gameActive');
+    const residualTurnPhase = gameStateManager.get('turnPhase');
+    if (residualGameActive || residualTurnPhase) {
+      debugLog('SP_COMBAT', 'Cleaning up residual state before new combat', {
+        gameActive: residualGameActive,
+        turnPhase: residualTurnPhase,
+      });
       gameStateManager.resetGameState();
 
       // Clear animation queue to prevent stale animations blocking new game
-      // (e.g., old roundAnnouncement blocking new one via deduplication)
-      if (gameStateManager.actionProcessor?.phaseAnimationQueue) {
-        gameStateManager.actionProcessor.phaseAnimationQueue.clear();
-        debugLog('SP_COMBAT', '✅ Animation queue cleared');
+      if (gameStateManager.gameFlowManager?.phaseAnimationQueue) {
+        gameStateManager.gameFlowManager.phaseAnimationQueue.clear();
       }
-
-      debugLog('SP_COMBAT', '✅ Residual state cleaned up');
     }
 
     debugLog('SP_COMBAT', 'Current Run State:', currentRunState);
@@ -307,25 +280,8 @@ class SinglePlayerCombatInitializer {
       });
       gameStateManager.setState(combatGameState, 'SP_COMBAT_INITIALIZED');
 
-      // DIAGNOSTIC: Verify state was set correctly
-      const verifyState = gameStateManager.getState();
-      debugLog('EXTRACTION', '✅ State verification after setState:', {
-        player1DeckSize: verifyState.player1?.deck?.length || 0,
-        player1HandSize: verifyState.player1?.hand?.length || 0,
-        player2DeckSize: verifyState.player2?.deck?.length || 0,
-        player2HandSize: verifyState.player2?.hand?.length || 0,
-        turnPhase: verifyState.turnPhase,
-        gameStage: verifyState.gameStage
-      });
-
-      // 9. Queue ROUND 1 announcement for UI display
-      const actionProcessor = gameStateManager.actionProcessor;
-      if (actionProcessor?.phaseAnimationQueue) {
-        // DIAGNOSTIC: Track SP_INIT round announcement
-        debugLog('PHASE_FLOW', '📢 SP_INIT queuing ROUND 1 announcement');
-        actionProcessor.phaseAnimationQueue.queueAnimation('roundAnnouncement', 'ROUND', null);
-        debugLog('SP_COMBAT', 'Queued ROUND 1 announcement for display');
-      }
+      // 9. GFM reference for later use (announcements queued after cascade in step 13)
+      const gfm = gameStateManager.gameFlowManager;
 
       // 10. Initialize AIPhaseProcessor
       const ap = gameStateManager.actionProcessor;
@@ -335,7 +291,7 @@ class SinglePlayerCombatInitializer {
         aiPersonality,
         ap,
         gameStateManager,
-        { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
+        { isAnimationBlocking: () => gfm?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
       );
       debugLog('SP_COMBAT', 'AIPhaseProcessor initialized with:', aiPersonality.name);
 
@@ -360,6 +316,20 @@ class SinglePlayerCombatInitializer {
         }
       } else {
         debugLog('SP_COMBAT', '[SP Combat] GameFlowManager not available - round initialization skipped');
+      }
+
+      // 13. Queue all initial announcements AFTER cascade completes
+      // The cascade generates PHASE_ANNOUNCEMENT animations but they're lost (no GameEngine wrapper during init).
+      // Queue directly into PhaseAnimationQueue — no remote client in single-player, so server pipeline isn't needed.
+      if (gfm) {
+        const paq = gfm.phaseAnimationQueue;
+        paq.queueAnimation('roundAnnouncement', 'ROUND', null, 'SPCI:initial');
+        paq.queueAnimation('roundInitialization', 'UPKEEP',
+          'Drawing Cards, Gaining Energy, Resetting Drones...', 'SPCI:initial');
+        paq.queueAnimation('deployment', 'DEPLOYMENT PHASE', null, 'SPCI:initial');
+        // Explicit startPlayback — cascade's _tryStartPlayback already fired with empty queue.
+        // Part 1's deferred check makes this safe regardless of App.jsx mount timing.
+        gfm._tryStartPlayback('SPCI:initial');
       }
 
       debugLog('SP_COMBAT', '=== Combat Initialized Successfully ===');
@@ -577,8 +547,6 @@ class SinglePlayerCombatInitializer {
     let deck = [];
     const decklist = shipSlot?.decklist || this.getDefaultDecklist();
 
-    let instanceCounter = 0;
-
     // Handle both formats:
     // - Array format from ship slot: [{id: 'CONVERGENCE_BEAM', quantity: 4}, ...]
     // - Object format from default: {'CONVERGENCE_BEAM': 4, ...}
@@ -604,19 +572,11 @@ class SinglePlayerCombatInitializer {
       });
     }
 
-    // DIAGNOSTIC: Log deck creation result
-    debugLog('EXTRACTION', `🃏 Deck created with ${deck.length} cards:`,
-      deck.slice(0, 5).map(c => c?.name || 'UNDEFINED'));
-
-    // If deck is empty, log what went wrong
     if (deck.length === 0) {
-      debugLog('EXTRACTION', '❌ DECK IS EMPTY! Checking decklist:', decklist);
-      debugLog('EXTRACTION', '❌ fullCardCollection has', fullCardCollection?.length || 0, 'cards');
-      // Log first few card IDs to verify format
-      const decklistKeys = Object.keys(decklist);
-      debugLog('EXTRACTION', '❌ Decklist card IDs:', decklistKeys.slice(0, 5));
-      // Log first few cards from collection to verify IDs
-      debugLog('EXTRACTION', '❌ Collection card IDs:', fullCardCollection?.slice(0, 5).map(c => c.id) || []);
+      debugLog('SP_COMBAT', 'Deck is empty after creation', {
+        decklistKeys: Object.keys(decklist).slice(0, 5),
+        collectionSize: fullCardCollection?.length || 0,
+      });
     }
 
     // Shuffle deck using seeded RNG for determinism
@@ -723,8 +683,6 @@ class SinglePlayerCombatInitializer {
 
     // Build deck from AI decklist
     let deck = [];
-    let instanceCounter = 0;
-
     if (aiPersonality.decklist) {
       aiPersonality.decklist.forEach(item => {
         for (let i = 0; i < item.quantity; i++) {

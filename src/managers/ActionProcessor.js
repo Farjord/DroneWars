@@ -5,6 +5,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
+import { flowCheckpoint } from '../utils/flowVerification.js';
 import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 
 import {
@@ -146,12 +147,6 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
-    this.phaseAnimationQueue = null; // Set externally by AppRouter; client-only concern
-
-    // Wrapper function for game logic compatibility
-    this.effectiveStatsWrapper = (drone, lane) => {
-      return this.gameDataService.getEffectiveStats(drone, lane);
-    };
 
     this.actionQueue = [];
     this.isProcessing = false;
@@ -187,6 +182,11 @@ class ActionProcessor {
     // Used by GameEngine to return animations alongside state in the response.
     this._actionAnimationLog = { actionAnimations: [], systemAnimations: [] };
 
+    // Response-level accumulator that spans all actions within a single GameEngine response.
+    // Unlike _actionAnimationLog (reset per processAction), this captures cascading animations
+    // from phase transitions triggered by handleActionCompletion/waitForPendingActionCompletion.
+    this._responseAnimationLog = null;
+
     debugLog('STATE_SYNC', '⚙️ ActionProcessor initialized');
   }
 
@@ -213,11 +213,15 @@ class ActionProcessor {
       setWinner: (...args) => ap.gameStateManager.setWinner(...args),
       getLocalPlayerId: () => ap.gameStateManager.getLocalPlayerId(),
       getLocalPlacedSections: () => ap.gameStateManager.getLocalPlacedSections(),
+      getPlacedSections: () => {
+        const state = ap.gameStateManager.getState();
+        return { player1: state.placedSections, player2: state.opponentPlacedSections };
+      },
+      getEffectiveStats: (drone, lane) => ap.gameDataService.getEffectiveStats(drone, lane),
       createCallbacks: (...args) => ap.gameStateManager.createCallbacks(...args),
 
       // Animation (late-bound via getters since set after construction)
       getAnimationManager: () => ap.animationManager,
-      executeActionSteps: (steps) => ap.animationManager.executeActionSteps(steps, ap),
       executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => {
@@ -262,16 +266,18 @@ class ActionProcessor {
         return mapped;
       },
       captureAnimations: (animations) => {
-        // Log for GameEngine response (filter STATE_SNAPSHOT internal events)
-        const broadcastAnims = animations?.filter(a => a.animationName !== 'STATE_SNAPSHOT') || [];
+        // Pass all animations through — STATE_SNAPSHOT redaction is handled
+        // by GameEngine._emitToClients before delivery to each client
         if (animations?.length) {
-          ap._actionAnimationLog.actionAnimations.push(...broadcastAnims);
+          ap._actionAnimationLog.actionAnimations.push(...animations);
+          // Also push to response-level accumulator when active
+          if (ap._responseAnimationLog) {
+            ap._responseAnimationLog.actionAnimations.push(...animations);
+          }
         }
         debugLog('ANIM_TRACE', '[2/6] captureAnimations', {
-          totalCount: animations?.length || 0,
-          broadcastCount: broadcastAnims.length,
-          filteredOut: (animations?.length || 0) - broadcastAnims.length,
-          names: broadcastAnims.map(a => a.animationName),
+          count: animations?.length || 0,
+          names: (animations || []).map(a => a.animationName),
         });
         // triggerSyncId stamping is handled exclusively by executeAndCaptureAnimations
         // to avoid duplicate/conflicting IDs within the same action
@@ -546,11 +552,6 @@ setAnimationManager(animationManager) {
         unstampedTriggers.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
       }
 
-      // Attach accumulated animations to result for GameEngine consumption
-      if (result) {
-        result.collectedAnimations = { ...this._actionAnimationLog };
-      }
-
       // Store result for event emission in finally block
       this.lastActionResult = result;
       this.lastActionType = type;
@@ -642,10 +643,6 @@ setAnimationManager(animationManager) {
       },
       setWinnerCallback: (winnerId) => {
         this.gameStateManager.setWinner(winnerId);
-      },
-      showWinnerModalCallback: () => {
-        // Winner modal display is handled by App.jsx reactively through gameState.winner
-        // No need to set separate UI state here
       }
     };
 
@@ -696,6 +693,25 @@ setAnimationManager(animationManager) {
     await this.executeAndCaptureAnimations(goAgainAnim);
   }
 
+  /**
+   * Begin capturing animations for a GameEngine response cycle.
+   * Called by GameEngine before processing — spans all cascading actions.
+   */
+  startResponseCapture() {
+    this._responseAnimationLog = { actionAnimations: [], systemAnimations: [] };
+    flowCheckpoint('CAPTURE_OPENED');
+  }
+
+  /**
+   * Return all animations captured during the response cycle and deactivate capture.
+   * Called by GameEngine after waitForPendingActionCompletion completes.
+   */
+  getAndClearResponseCapture() {
+    const captured = this._responseAnimationLog;
+    this._responseAnimationLog = null;
+    return captured || { actionAnimations: [], systemAnimations: [] };
+  }
+
   async executeAndCaptureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) return;
 
@@ -718,26 +734,14 @@ setAnimationManager(animationManager) {
       });
     }
 
-    // Log animations for GameEngine response (never cleared by broadcasts)
-    (isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations).push(...animations);
+    // Log to per-action log (reset each processAction call)
+    const actionTarget = isSystemAnimation ? this._actionAnimationLog.systemAnimations : this._actionAnimationLog.actionAnimations;
+    actionTarget.push(...animations);
 
-    // Direct-queue announcements to PhaseAnimationQueue (client-only)
-    if (this.phaseAnimationQueue) {
-      const localPlayerId = this.gameStateManager?.state?.localPlayerId;
-      for (const anim of animations) {
-        if (anim.animationName === 'PHASE_ANNOUNCEMENT') {
-          const { phase, text, subtitle } = anim.payload;
-          this.phaseAnimationQueue.queueAnimation(phase, text, subtitle, 'AP:direct');
-          anim._apDirectQueued = true;
-        // PASS_ANNOUNCEMENT needs localPlayerId to personalize text ("YOU" vs "OPPONENT").
-        // Without it, GC's late path handles it instead (which has access to this.playerId).
-        } else if (anim.animationName === 'PASS_ANNOUNCEMENT' && localPlayerId) {
-          const { passedPlayerId } = anim.payload;
-          const passText = passedPlayerId === localPlayerId ? 'YOU PASSED' : 'OPPONENT PASSED';
-          this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'AP:direct_pass');
-          anim._apDirectQueued = true;
-        }
-      }
+    // Also push to response-level accumulator when active (spans all cascading actions)
+    if (this._responseAnimationLog) {
+      const responseTarget = isSystemAnimation ? this._responseAnimationLog.systemAnimations : this._responseAnimationLog.actionAnimations;
+      responseTarget.push(...animations);
     }
   }
 
@@ -804,14 +808,6 @@ setAnimationManager(animationManager) {
     return _processStatusConsumption(statusType, params, this._getActionContext());
   }
 
-  // Delegate methods for backwards compatibility with switch cases
-  async processSnaredConsumption(params) {
-    return this.processStatusConsumption('snared', params);
-  }
-
-  async processSuppressedConsumption(params) {
-    return this.processStatusConsumption('suppressed', params);
-  }
 }
 
 export default ActionProcessor;

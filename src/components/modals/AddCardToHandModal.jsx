@@ -29,11 +29,11 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, localPlayerId, isMulti
 
   if (!isOpen) return null;
 
-  const isGuest = localPlayerId === 'player2';
+  const isPlayer2 = localPlayerId === 'player2';
 
   // Determine player labels
   const getLocalPlayerLabel = () => {
-    if (isGuest) return 'Player 2 (You)';
+    if (isPlayer2) return 'Player 2 (You)';
     return 'Player 1 (You)';
   };
 
@@ -45,9 +45,9 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, localPlayerId, isMulti
   // Determine actual player ID based on tab
   const getTargetPlayerId = (tab) => {
     if (tab === 'local') {
-      return isGuest ? 'player2' : 'player1';
+      return isPlayer2 ? 'player2' : 'player1';
     } else {
-      return isGuest ? 'player1' : 'player2';
+      return isPlayer2 ? 'player1' : 'player2';
     }
   };
 

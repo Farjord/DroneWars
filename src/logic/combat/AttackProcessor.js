@@ -20,6 +20,7 @@ import { createSectionDamagedAnimation } from './animations/SectionDamagedAnimat
 import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
+import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
 
 /**
  * Resolve a combat attack
@@ -47,8 +48,8 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     const attackingPlayerId = attackingPlayer;
     const defendingPlayerId = finalTarget.owner || (attackingPlayerId === 'player1' ? 'player2' : 'player1');
 
-    const attackerPlayerState = playerStates[attackingPlayerId];
-    const defenderPlayerState = playerStates[defendingPlayerId];
+    let attackerPlayerState = playerStates[attackingPlayerId];
+    let defenderPlayerState = playerStates[defendingPlayerId];
 
     // Check if attacker can attack (status effect restriction or PASSIVE keyword)
     // Skip this check for card/ability attacks (no attacker drone)
@@ -138,10 +139,9 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         });
 
         if (mineResult.triggered) {
-            // Apply mine state changes from returned states
-            Object.assign(attackerPlayerState, mineResult.newPlayerStates[attackingPlayerId]);
-            Object.assign(defenderPlayerState, mineResult.newPlayerStates[defendingPlayerId]);
-            // Update playerStates references
+            // Apply mine state changes via reassignment (avoid mutating caller's input)
+            attackerPlayerState = { ...mineResult.newPlayerStates[attackingPlayerId] };
+            defenderPlayerState = { ...mineResult.newPlayerStates[defendingPlayerId] };
             playerStates[attackingPlayerId] = attackerPlayerState;
             playerStates[defendingPlayerId] = defenderPlayerState;
 
@@ -399,6 +399,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
 
     // Shared trigger processor for all post-attack triggers (ON_ATTACK, ON_INTERCEPT, ON_ATTACKED)
     const triggerProcessor = new TriggerProcessor();
+    const triggerEvents = [];
 
     // Handle attacker exhaustion and after-attack abilities (like DESTROY_SELF)
     if (!isAbilityOrCard && attacker && attacker.id) {
@@ -428,7 +429,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                 newPlayerStates[attackingPlayerId] = afterAttackResult.newPlayerStates[attackingPlayerId];
                 newPlayerStates[defendingPlayerId] = afterAttackResult.newPlayerStates[defendingPlayerId];
                 if (afterAttackResult.animationEvents?.length > 0) {
-                    animationEvents.push(...afterAttackResult.animationEvents);
+                    triggerEvents.push(...afterAttackResult.animationEvents);
                 }
             }
 
@@ -472,7 +473,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             newPlayerStates[attackingPlayerId] = interceptResult.newPlayerStates[attackingPlayerId];
             newPlayerStates[defendingPlayerId] = interceptResult.newPlayerStates[defendingPlayerId];
             if (interceptResult.animationEvents?.length > 0) {
-                animationEvents.push(...interceptResult.animationEvents);
+                triggerEvents.push(...interceptResult.animationEvents);
             }
         }
         if (interceptResult.attackerDestroyedByCounter) {
@@ -505,7 +506,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                         newPlayerStates[attackingPlayerId] = targetResult.newPlayerStates[attackingPlayerId];
                         newPlayerStates[defendingPlayerId] = targetResult.newPlayerStates[defendingPlayerId];
                         if (targetResult.animationEvents?.length > 0) {
-                            animationEvents.push(...targetResult.animationEvents);
+                            triggerEvents.push(...targetResult.animationEvents);
                         }
                     }
                     if (targetResult.attackerDestroyedByCounter) {
@@ -535,15 +536,24 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                     newPlayerStates[attackingPlayerId] = interceptorAttackedResult.newPlayerStates[attackingPlayerId];
                     newPlayerStates[defendingPlayerId] = interceptorAttackedResult.newPlayerStates[defendingPlayerId];
                     if (interceptorAttackedResult.animationEvents?.length > 0) {
-                        animationEvents.push(...interceptorAttackedResult.animationEvents);
+                        triggerEvents.push(...interceptorAttackedResult.animationEvents);
                     }
                 }
             }
         }
     }
 
-    // Prepend mine animation events (mine triggers before damage visually)
-    const allAnimationEvents = [...mineAnimationEvents, ...animationEvents];
+    // Capture intermediate state for STATE_SNAPSHOT (after damage, before trigger animations)
+    const intermediateState = triggerEvents.length > 0
+        ? JSON.parse(JSON.stringify(newPlayerStates))
+        : null;
+
+    // Build ordered sequence: mine anims + action anims → STATE_SNAPSHOT → triggers
+    const allAnimationEvents = buildAnimationSequence([{
+        actionEvents: [...mineAnimationEvents, ...animationEvents],
+        triggerEvents,
+        intermediateState,
+    }]);
 
     return {
         newPlayerStates,

@@ -265,7 +265,7 @@ export function initializeTestGame(config, gameStateManager) {
       defaultAI,
       ap,
       gameStateManager,
-      { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
+      { isAnimationBlocking: () => gameStateManager.gameFlowManager?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
     );
     debugLog('TESTING', '🤖 TEST MODE: AIPhaseProcessor initialized with:', defaultAI.name);
 

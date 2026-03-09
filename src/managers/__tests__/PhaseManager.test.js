@@ -26,7 +26,7 @@ describe('PhaseManager', () => {
       // This is the core of the single authority pattern - host controls phase flow.
       // Expected: transitionToPhase() succeeds in host mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
       const result = phaseManager.transitionToPhase('action');
 
@@ -35,9 +35,9 @@ describe('PhaseManager', () => {
     });
 
     it('guest mode blocks transitionToPhase()', () => {
-      // EXPLANATION: Verifies guest cannot self-transition phases.
-      // PhaseManager must prevent guests from changing phases independently.
-      // Expected: transitionToPhase() throws error or returns false in guest mode
+      // EXPLANATION: Verifies non-authority cannot self-transition phases.
+      // PhaseManager must prevent non-authority from changing phases independently.
+      // Expected: transitionToPhase() throws error or returns false in non-authority mode
 
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
@@ -66,69 +66,69 @@ describe('PhaseManager', () => {
 
   describe('State Tracking - Sequential Phases', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('deployment');
     });
 
     it('tracks host pass correctly', () => {
       // EXPLANATION: When host passes in deployment/action, PhaseManager must record it.
-      // Expected: hostLocalState.passInfo.passed = true after notifyHostAction('pass')
+      // Expected: player1State.passInfo.passed = true after notifyPlayerAction('player1', 'pass')
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
     });
 
-    it('tracks guest pass correctly', () => {
-      // EXPLANATION: When guest passes (via network), PhaseManager must record it.
-      // Expected: guestLocalState.passInfo.passed = true after notifyGuestAction('pass')
+    it('tracks player2 pass correctly', () => {
+      // EXPLANATION: When player2 passes (via network), PhaseManager must record it.
+      // Expected: player2State.passInfo.passed = true after notifyPlayerAction('player2', 'pass')
 
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
 
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player2State.passInfo.passed).toBe(true);
     });
 
-    it('identifies first passer correctly - host first', () => {
+    it('identifies first passer correctly - player1 first', () => {
       // EXPLANATION: First player to pass is recorded in passInfo.firstPasser.
       // This determines next round's turn order.
-      // Expected: notifyHostAction('pass') sets firstPasser = 'player1'
+      // Expected: notifyPlayerAction('player1', 'pass') sets firstPasser = 'player1'
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
-    it('identifies first passer correctly - guest first', () => {
-      // EXPLANATION: If guest passes first, they should be recorded as firstPasser.
-      // Expected: notifyGuestAction('pass') sets firstPasser = 'player2'
+    it('identifies first passer correctly - player2 first', () => {
+      // EXPLANATION: If player2 passes first, they should be recorded as firstPasser.
+      // Expected: notifyPlayerAction('player2', 'pass') sets firstPasser = 'player2'
 
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
 
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player2');
     });
 
     it('does not overwrite firstPasser on second pass', () => {
       // EXPLANATION: Critical race condition test. Once firstPasser is set,
       // second player's pass should NOT change it.
-      // Expected: Host passes (firstPasser='player1'), guest passes (firstPasser stays 'player1')
+      // Expected: player1 passes (firstPasser='player1'), player2 passes (firstPasser stays 'player1')
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1'); // Should NOT change
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1'); // Should NOT change
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
     it('checkReadyToTransition returns true when both passed', () => {
       // EXPLANATION: Sequential phases require both players to pass.
-      // Expected: After both notifyHostAction('pass') and notifyGuestAction('pass'),
+      // Expected: After both notifyPlayerAction('player1', 'pass') and notifyPlayerAction('player2', 'pass'),
       // checkReadyToTransition() returns true
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -139,7 +139,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: Phase should not transition until both players ready.
       // Expected: After only one pass, checkReadyToTransition() returns false
 
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -153,34 +153,34 @@ describe('PhaseManager', () => {
 
   describe('State Tracking - Simultaneous Phases', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('placement');
     });
 
     it('tracks host commitment correctly', () => {
       // EXPLANATION: In simultaneous phases (placement, discard), players commit independently.
-      // Expected: notifyHostAction('commit', {phase: 'placement'}) marks host as committed
+      // Expected: notifyPlayerAction('player1', 'commit', {phase: 'placement'}) marks host as committed
 
-      phaseManager.notifyHostAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
 
-      expect(phaseManager.hostLocalState.commitments.placement?.completed).toBe(true);
+      expect(phaseManager.player1State.commitments.placement?.completed).toBe(true);
     });
 
-    it('tracks guest commitment correctly', () => {
-      // EXPLANATION: Guest commitments come via network.
-      // Expected: notifyGuestAction('commit', {phase: 'placement'}) marks guest as committed
+    it('tracks player2 commitment correctly', () => {
+      // EXPLANATION: Player2 commitments come via network.
+      // Expected: notifyPlayerAction('player2', 'commit', {phase: 'placement'}) marks player2 as committed
 
-      phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
-      expect(phaseManager.guestLocalState.commitments.placement?.completed).toBe(true);
+      expect(phaseManager.player2State.commitments.placement?.completed).toBe(true);
     });
 
     it('checkReadyToTransition returns true when both committed', () => {
       // EXPLANATION: Simultaneous phases transition when both commit.
       // Expected: After both commitments, checkReadyToTransition() returns true
 
-      phaseManager.notifyHostAction('commit', { phase: 'placement' });
-      phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -191,7 +191,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: Must wait for both commitments.
       // Expected: Single commitment means checkReadyToTransition() returns false
 
-      phaseManager.notifyHostAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -205,7 +205,7 @@ describe('PhaseManager', () => {
 
   describe('Phase Transition Logic', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
     });
 
     it('resets passInfo after transitioning from sequential phase', () => {
@@ -215,21 +215,21 @@ describe('PhaseManager', () => {
       // BUT firstPasser should be preserved for turn order determination
 
       phaseManager.transitionToPhase('deployment');
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
-      phaseManager.notifyGuestAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'deployment' });
 
       // Verify firstPasser was set before transition
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       phaseManager.transitionToPhase('action');
 
       // passed should be reset to false
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player2State.passInfo.passed).toBe(false);
 
       // firstPasser should be preserved for turn order determination
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
     });
 
     it('resets commitments after transitioning from simultaneous phase', () => {
@@ -237,14 +237,14 @@ describe('PhaseManager', () => {
       // Expected: After transitionToPhase(), commitments for that phase cleared
 
       phaseManager.transitionToPhase('placement');
-      phaseManager.notifyHostAction('commit', { phase: 'placement' });
-      phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
       phaseManager.transitionToPhase('roundInitialization');
 
       // Commitments should be reset for next use of this phase
-      expect(phaseManager.hostLocalState.commitments.placement?.completed).toBe(false);
-      expect(phaseManager.guestLocalState.commitments.placement?.completed).toBe(false);
+      expect(phaseManager.player1State.commitments.placement?.completed).toBe(false);
+      expect(phaseManager.player2State.commitments.placement?.completed).toBe(false);
     });
 
     it('records transition in history log', () => {
@@ -308,12 +308,12 @@ describe('PhaseManager', () => {
   });
 
   // ========================================
-  // GUEST BROADCAST SYNCHRONIZATION
+  // NON-AUTHORITY BROADCAST SYNCHRONIZATION
   // ========================================
 
-  describe('Guest Broadcast Synchronization', () => {
-    it('applyMasterState updates phaseState in guest mode', () => {
-      // EXPLANATION: When host broadcasts, guest must accept and apply the phase state.
+  describe('Non-Authority Broadcast Synchronization', () => {
+    it('applyMasterState updates phaseState in non-authority mode', () => {
+      // EXPLANATION: When host broadcasts, non-authority must accept and apply the phase state.
       // Expected: applyMasterState() updates phaseState to match host
 
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
@@ -333,10 +333,10 @@ describe('PhaseManager', () => {
     });
 
     it('applyMasterState is blocked in host mode', () => {
-      // EXPLANATION: Host should never apply guest state - host is authoritative.
+      // EXPLANATION: Host should never apply non-authority state - host is authoritative.
       // Expected: applyMasterState() throws error or returns false in host mode
 
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
 
       const masterState = {
         turnPhase: 'action',
@@ -352,9 +352,9 @@ describe('PhaseManager', () => {
       expect(phaseManager.phaseState.turnPhase).toBe('deckSelection');
     });
 
-    it('guest state matches host state after broadcast', () => {
+    it('non-authority state matches host state after broadcast', () => {
       // EXPLANATION: After broadcast, both must be synchronized.
-      // Expected: phaseState, passInfo, commitments all match between host and guest
+      // Expected: phaseState, passInfo, commitments all match between host and non-authority
 
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: false });
 
@@ -375,7 +375,7 @@ describe('PhaseManager', () => {
       // Verify synchronization
       expect(phaseManager.phaseState.turnPhase).toBe(masterState.turnPhase);
       expect(phaseManager.phaseState.roundNumber).toBe(masterState.roundNumber);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
     });
   });
 
@@ -387,7 +387,7 @@ describe('PhaseManager', () => {
 
   describe('First-Passer Race Condition Prevention', () => {
     beforeEach(() => {
-      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
       phaseManager.transitionToPhase('action');
     });
 
@@ -399,14 +399,14 @@ describe('PhaseManager', () => {
       // This prevents race conditions where network latency causes inconsistent state.
       // Expected: First notify wins, second notify does not change firstPasser
 
-      // Simulate "simultaneous" passes - guest notification arrives first
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2');
+      // Simulate "simultaneous" passes - player2 notification arrives first
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2');
 
       // Host pass arrives milliseconds later - should NOT overwrite
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player2'); // Must stay player2
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player2');
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player2'); // Must stay player2
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player2');
     });
 
     it('rapid alternating passes → firstPasser not overwritten', () => {
@@ -417,20 +417,20 @@ describe('PhaseManager', () => {
       // Expected: Only the first pass sets firstPasser, subsequent passes don't change it
 
       // Host passes first
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      // Guest passes (second)
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1'); // Still player1
+      // player2 passes (second)
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1'); // Still player1
 
       // Simulate duplicate/delayed host notification arriving again
-      phaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1'); // Still player1
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1'); // Still player1
 
-      // Simulate duplicate guest notification
-      phaseManager.notifyGuestAction('pass', { phase: 'action' });
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1'); // Still player1
+      // Simulate duplicate player2 notification
+      phaseManager.notifyPlayerAction('player2','pass', { phase: 'action' });
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1'); // Still player1
     });
 
     it('local mode first-passer determination is deterministic', () => {
@@ -444,12 +444,12 @@ describe('PhaseManager', () => {
       localPhaseManager.transitionToPhase('action');
 
       // Player 1 (human) passes first
-      localPhaseManager.notifyHostAction('pass', { phase: 'action' });
-      expect(localPhaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      localPhaseManager.notifyPlayerAction('player1','pass', { phase: 'action' });
+      expect(localPhaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
       // Player 2 (AI) passes second
-      localPhaseManager.notifyGuestAction('pass', { phase: 'action' });
-      expect(localPhaseManager.hostLocalState.passInfo.firstPasser).toBe('player1'); // No change
+      localPhaseManager.notifyPlayerAction('player2','pass', { phase: 'action' });
+      expect(localPhaseManager.player1State.passInfo.firstPasser).toBe('player1'); // No change
 
       // Both passed, ready to transition
       expect(localPhaseManager.checkReadyToTransition()).toBe(true);
@@ -467,29 +467,29 @@ describe('PhaseManager', () => {
     let guestPhaseManager;
 
     beforeEach(() => {
-      // Create separate PhaseManagers to simulate host and guest states
-      hostPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      // Create separate PhaseManagers to simulate host and non-authority states
+      hostPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
       guestPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: false });
     });
 
-    it('detects passInfo.firstPasser mismatch between host and guest', () => {
+    it('detects passInfo.firstPasser mismatch between host and non-authority', () => {
       // DESIGN: "Deliberately desync passInfo - verify detection"
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 705
-      // EXPLANATION: If host and guest have different firstPasser values, this indicates
+      // EXPLANATION: If host and non-authority have different firstPasser values, this indicates
       // a desync that would cause incorrect turn order in subsequent rounds.
       // Expected: Comparison of states should be able to detect this mismatch
 
       // Set up host state - player1 passed first
       hostPhaseManager.transitionToPhase('deployment');
-      hostPhaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      hostPhaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
-      // Set up guest state - simulate desync where guest thinks player2 passed first
-      guestPhaseManager.hostLocalState.passInfo.firstPasser = 'player2';
-      guestPhaseManager.guestLocalState.passInfo.firstPasser = 'player2';
+      // Set up non-authority state - simulate desync where non-authority thinks player2 passed first
+      guestPhaseManager.player1State.passInfo.firstPasser = 'player2';
+      guestPhaseManager.player2State.passInfo.firstPasser = 'player2';
 
       // Verify states are different (desync detectable)
-      const hostFirstPasser = hostPhaseManager.hostLocalState.passInfo.firstPasser;
-      const guestFirstPasser = guestPhaseManager.hostLocalState.passInfo.firstPasser;
+      const hostFirstPasser = hostPhaseManager.player1State.passInfo.firstPasser;
+      const guestFirstPasser = guestPhaseManager.player1State.passInfo.firstPasser;
 
       expect(hostFirstPasser).toBe('player1');
       expect(guestFirstPasser).toBe('player2');
@@ -499,7 +499,7 @@ describe('PhaseManager', () => {
     it('detects passInfo.passed state mismatch', () => {
       // DESIGN: "Deliberately desync passInfo - verify detection"
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 705
-      // EXPLANATION: If host thinks player1 passed but guest doesn't, the game will
+      // EXPLANATION: If host thinks player1 passed but non-authority doesn't, the game will
       // be stuck or transition incorrectly.
       // Expected: Mismatch in passed state is detectable
 
@@ -507,39 +507,39 @@ describe('PhaseManager', () => {
       guestPhaseManager.transitionToPhase('action');
 
       // Host: player1 has passed
-      hostPhaseManager.notifyHostAction('pass', { phase: 'action' });
+      hostPhaseManager.notifyPlayerAction('player1','pass', { phase: 'action' });
 
-      // Guest: player1 has NOT passed (desync - guest missed the message)
-      // guestPhaseManager.hostLocalState.passInfo.passed remains false
+      // Non-authority: player1 has NOT passed (desync - missed the message)
+      // guestPhaseManager.player1State.passInfo.passed remains false
 
       // Verify states are different
-      const hostPassed = hostPhaseManager.hostLocalState.passInfo.passed;
-      const guestThinksPassed = guestPhaseManager.hostLocalState.passInfo.passed;
+      const hostPassed = hostPhaseManager.player1State.passInfo.passed;
+      const guestThinksPassed = guestPhaseManager.player1State.passInfo.passed;
 
       expect(hostPassed).toBe(true);
       expect(guestThinksPassed).toBe(false);
       expect(hostPassed).not.toBe(guestThinksPassed); // Desync detected!
     });
 
-    it('detects commitments mismatch between host and guest', () => {
+    it('detects commitments mismatch between host and non-authority', () => {
       // DESIGN: "Deliberately desync commitments - verify detection"
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 706
       // EXPLANATION: In simultaneous phases, if host thinks player committed but
-      // guest doesn't, phase transitions will fail or happen prematurely.
+      // non-authority doesn't, phase transitions will fail or happen prematurely.
       // Expected: Mismatch in commitment state is detectable
 
       hostPhaseManager.transitionToPhase('placement');
       guestPhaseManager.transitionToPhase('placement');
 
       // Host: player1 has committed
-      hostPhaseManager.notifyHostAction('commit', { phase: 'placement' });
+      hostPhaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
 
-      // Guest: player1 has NOT committed (desync)
-      // guestPhaseManager.hostLocalState.commitments.placement remains uncommitted
+      // Non-authority: player1 has NOT committed (desync)
+      // guestPhaseManager.player1State.commitments.placement remains uncommitted
 
       // Verify states are different
-      const hostCommitted = hostPhaseManager.hostLocalState.commitments.placement?.completed;
-      const guestThinksCommitted = guestPhaseManager.hostLocalState.commitments.placement?.completed;
+      const hostCommitted = hostPhaseManager.player1State.commitments.placement?.completed;
+      const guestThinksCommitted = guestPhaseManager.player1State.commitments.placement?.completed;
 
       expect(hostCommitted).toBe(true);
       expect(guestThinksCommitted).toBeFalsy(); // undefined or false
@@ -549,15 +549,15 @@ describe('PhaseManager', () => {
     it('detects gameStage mismatch', () => {
       // DESIGN: "gameStage comparison" (implied by state comparison requirements)
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 409-411
-      // EXPLANATION: If host is in 'roundLoop' but guest thinks it's still 'preGame',
-      // the game logic will behave incorrectly on the guest side.
+      // EXPLANATION: If host is in 'roundLoop' but non-authority thinks it's still 'preGame',
+      // the game logic will behave incorrectly on the non-authority side.
       // Expected: Mismatch in gameStage is detectable via PhaseManager state
 
       // Host: transitioned through setup phases to roundLoop
       hostPhaseManager.transitionToPhase('placement');
       hostPhaseManager.phaseState.gameStage = 'roundLoop';
 
-      // Guest: still thinks it's in preGame (desync)
+      // Non-authority: still thinks it's in preGame (desync)
       guestPhaseManager.phaseState.gameStage = 'preGame';
 
       // Verify states are different
@@ -638,10 +638,10 @@ describe('PhaseManager', () => {
       // First application
       guestPhaseManager.applyMasterState(broadcast1);
       expect(guestPhaseManager.phaseState.turnPhase).toBe('deployment');
-      expect(guestPhaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(guestPhaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      // Modify guest state to detect if duplicate is processed
-      guestPhaseManager.hostLocalState.passInfo.firstPasser = 'player2';
+      // Modify non-authority state to detect if duplicate is processed
+      guestPhaseManager.player1State.passInfo.firstPasser = 'player2';
 
       // "Duplicate" with same data - in design, this should be ignored
       // Current implementation applies it, but test documents expected behavior
@@ -674,17 +674,17 @@ describe('PhaseManager', () => {
     // NOTE: "triggers resync when too many pending messages" is tested in MessageQueue
     // PhaseManager handles phase state; MessageQueue handles resync triggering
 
-    it('guest state matches host after full sync response', () => {
+    it('non-authority state matches host after full sync response', () => {
       // DESIGN: "Verify state matches after resync"
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 709
-      // EXPLANATION: When guest receives a SYNC_RESPONSE from host, it should
+      // EXPLANATION: When non-authority receives a SYNC_RESPONSE from host, it should
       // completely replace its state with the host's authoritative state.
       // Expected: All state fields match host after applying sync response
 
-      // Guest has diverged state
+      // Non-authority has diverged state
       guestPhaseManager.phaseState.turnPhase = 'deployment';
       guestPhaseManager.phaseState.roundNumber = 1;
-      guestPhaseManager.hostLocalState.passInfo.firstPasser = 'player2';
+      guestPhaseManager.player1State.passInfo.firstPasser = 'player2';
 
       // Host sends full sync response
       const hostSyncResponse = {
@@ -706,7 +706,7 @@ describe('PhaseManager', () => {
       expect(guestPhaseManager.phaseState.turnPhase).toBe('action');
       expect(guestPhaseManager.phaseState.roundNumber).toBe(2);
       expect(guestPhaseManager.phaseState.turn).toBe(5);
-      expect(guestPhaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(guestPhaseManager.player1State.passInfo.firstPasser).toBe('player1');
     });
 
     it('applyMasterState is synchronous and independent of external systems', () => {
@@ -715,7 +715,7 @@ describe('PhaseManager', () => {
       // updated immediately when a sync response arrives.
       // Expected: applyMasterState returns true and updates state immediately
 
-      // Guest has old state
+      // Non-authority has old state
       guestPhaseManager.phaseState.turnPhase = 'deployment';
 
       // Apply new state (simulating sync response from host)
@@ -744,7 +744,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
     });
 
     it('complex phase transition results in single coherent state', () => {
@@ -752,13 +752,13 @@ describe('PhaseManager', () => {
       // Source: PHASE_SYNC_HARDENING_PLAN.md, line 703
       // EXPLANATION: During complex transitions (e.g., simultaneous phase → sequential phase),
       // multiple state changes occur: apply commitments, reset phase state, change turnPhase.
-      // Guest should receive ONE broadcast with the FINAL coherent state, not intermediate states.
+      // Non-authority should receive ONE broadcast with the FINAL coherent state, not intermediate states.
       // Expected: After transition, all state fields are consistent with final phase
 
       // Start in placement phase with commitments
       phaseManager.transitionToPhase('placement');
-      phaseManager.notifyHostAction('commit', { phase: 'placement' });
-      phaseManager.notifyGuestAction('commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
 
       // Capture state before complex transition
       const preTransitionPhase = phaseManager.phaseState.turnPhase;
@@ -772,8 +772,8 @@ describe('PhaseManager', () => {
       expect(phaseManager.phaseState.turnPhase).toBe('roundInitialization');
 
       // Commitments for placement should be reset (ready for next time)
-      expect(phaseManager.hostLocalState.commitments.placement?.completed).toBe(false);
-      expect(phaseManager.guestLocalState.commitments.placement?.completed).toBe(false);
+      expect(phaseManager.player1State.commitments.placement?.completed).toBe(false);
+      expect(phaseManager.player2State.commitments.placement?.completed).toBe(false);
 
       // No intermediate state where turnPhase changed but commitments weren't reset
       // This is the "single coherent state" guarantee
@@ -789,10 +789,10 @@ describe('PhaseManager', () => {
 
       // Set up initial state
       phaseManager.transitionToPhase('deployment');
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
       const initialPhase = phaseManager.phaseState.turnPhase;
-      const initialPassState = phaseManager.hostLocalState.passInfo.passed;
+      const initialPassState = phaseManager.player1State.passInfo.passed;
 
       expect(initialPhase).toBe('deployment');
       expect(initialPassState).toBe(true);
@@ -805,7 +805,7 @@ describe('PhaseManager', () => {
 
       // State is unchanged (transition was rejected)
       expect(phaseManager.phaseState.turnPhase).toBe('deployment');
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
     });
   });
 
@@ -819,7 +819,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
     });
 
     it('pass action in simultaneous phase is rejected by validation', () => {
@@ -830,14 +830,14 @@ describe('PhaseManager', () => {
       phaseManager.transitionToPhase('placement');
 
       // Track state before action
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
 
       // Attempt pass in simultaneous phase - should be rejected
-      const result = phaseManager.notifyHostAction('pass', { phase: 'placement' });
+      const result = phaseManager.notifyPlayerAction('player1','pass', { phase: 'placement' });
 
       // Validation rejects pass in simultaneous phase
       expect(result).toBe(false);
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false); // Unchanged
+      expect(phaseManager.player1State.passInfo.passed).toBe(false); // Unchanged
 
       // Verify placement is correctly identified as simultaneous
       expect(PhaseManager.SEQUENTIAL_PHASES.includes('placement')).toBe(false);
@@ -852,14 +852,14 @@ describe('PhaseManager', () => {
       phaseManager.transitionToPhase('action');
 
       // Track state before action
-      expect(phaseManager.hostLocalState.commitments.action?.completed).toBeFalsy();
+      expect(phaseManager.player1State.commitments.action?.completed).toBeFalsy();
 
       // Attempt commit in sequential phase - should be rejected
-      const result = phaseManager.notifyHostAction('commit', { phase: 'action' });
+      const result = phaseManager.notifyPlayerAction('player1','commit', { phase: 'action' });
 
       // Validation rejects commit in sequential phase
       expect(result).toBe(false);
-      expect(phaseManager.hostLocalState.commitments.action?.completed).toBeFalsy(); // Unchanged
+      expect(phaseManager.player1State.commitments.action?.completed).toBeFalsy(); // Unchanged
 
       // Verify action is correctly identified as sequential
       expect(PhaseManager.SEQUENTIAL_PHASES.includes('action')).toBe(true);
@@ -872,27 +872,27 @@ describe('PhaseManager', () => {
       // EXPLANATION: When a pass occurs, both the game state (passInfo) and
       // PhaseManager's internal tracking should update together, with no gap
       // where one is updated but not the other.
-      // Expected: After notifyHostAction, both are in sync
+      // Expected: After notifyPlayerAction, both are in sync
 
       // Set up sequential phase
       phaseManager.transitionToPhase('deployment');
 
       // Before pass: both should show not passed
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe(null);
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe(null);
 
       // Execute pass action
-      phaseManager.notifyHostAction('pass', { phase: 'deployment' });
+      phaseManager.notifyPlayerAction('player1','pass', { phase: 'deployment' });
 
       // After pass: both tracking mechanisms updated atomically
       // 1. passInfo.passed updated
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(true);
+      expect(phaseManager.player1State.passInfo.passed).toBe(true);
 
       // 2. firstPasser tracking updated
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe('player1');
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe('player1');
 
-      // 3. guestLocalState also in sync (single source of truth)
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe('player1');
+      // 3. player2State also in sync (single source of truth)
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe('player1');
 
       // No intermediate state where passed=true but firstPasser=null
       // This is the atomicity guarantee
@@ -909,7 +909,7 @@ describe('PhaseManager', () => {
     let phaseManager;
 
     beforeEach(() => {
-      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      phaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
     });
 
     it('should clear transitionHistory', () => {
@@ -968,47 +968,47 @@ describe('PhaseManager', () => {
       expect(phaseManager.phaseState.firstPasserOfPreviousRound).toBe(null);
     });
 
-    it('should clear hostLocalState', () => {
-      // EXPLANATION: hostLocalState holds pass info and commitments.
+    it('should clear player1State', () => {
+      // EXPLANATION: player1State holds pass info and commitments.
       // Stale values could affect first round of next game.
-      // Expected: reset() should clear hostLocalState to initial values
+      // Expected: reset() should clear player1State to initial values
 
       // Populate host state
-      phaseManager.hostLocalState.passInfo.passed = true;
-      phaseManager.hostLocalState.passInfo.firstPasser = 'player2';
-      phaseManager.hostLocalState.commitments.placement = { completed: true };
-      phaseManager.hostLocalState.commitments.deployment = { completed: true };
+      phaseManager.player1State.passInfo.passed = true;
+      phaseManager.player1State.passInfo.firstPasser = 'player2';
+      phaseManager.player1State.commitments.placement = { completed: true };
+      phaseManager.player1State.commitments.deployment = { completed: true };
 
       phaseManager.reset();
 
-      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe(null);
-      expect(phaseManager.hostLocalState.commitments).toEqual({});
+      expect(phaseManager.player1State.passInfo.passed).toBe(false);
+      expect(phaseManager.player1State.passInfo.firstPasser).toBe(null);
+      expect(phaseManager.player1State.commitments).toEqual({});
     });
 
-    it('should clear guestLocalState', () => {
-      // EXPLANATION: guestLocalState holds pass info and commitments for player2.
+    it('should clear player2State', () => {
+      // EXPLANATION: player2State holds pass info and commitments for player2.
       // Must be cleared for new game.
-      // Expected: reset() should clear guestLocalState to initial values
+      // Expected: reset() should clear player2State to initial values
 
-      // Populate guest state
-      phaseManager.guestLocalState.passInfo.passed = true;
-      phaseManager.guestLocalState.passInfo.firstPasser = 'player1';
-      phaseManager.guestLocalState.commitments.placement = { completed: true };
-      phaseManager.guestLocalState.commitments.action = { completed: true };
+      // Populate player2 state
+      phaseManager.player2State.passInfo.passed = true;
+      phaseManager.player2State.passInfo.firstPasser = 'player1';
+      phaseManager.player2State.commitments.placement = { completed: true };
+      phaseManager.player2State.commitments.action = { completed: true };
 
       phaseManager.reset();
 
-      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
-      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe(null);
-      expect(phaseManager.guestLocalState.commitments).toEqual({});
+      expect(phaseManager.player2State.passInfo.passed).toBe(false);
+      expect(phaseManager.player2State.passInfo.firstPasser).toBe(null);
+      expect(phaseManager.player2State.commitments).toEqual({});
     });
 
     it('should handle reset when called on fresh instance', () => {
       // EXPLANATION: Defensive test - reset() should not error on fresh state.
       // Expected: reset() should safely run without throwing
 
-      const freshPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true, isMultiplayer: true });
+      const freshPhaseManager = new PhaseManager(createMockGameStateManager(), { isAuthority: true });
 
       // Should not throw
       expect(() => freshPhaseManager.reset()).not.toThrow();

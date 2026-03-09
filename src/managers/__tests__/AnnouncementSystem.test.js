@@ -6,6 +6,10 @@ vi.mock('../utils/debugLogger.js', () => ({
   debugLog: vi.fn(),
   timingLog: vi.fn(() => Date.now())
 }));
+vi.mock('../utils/flowVerification.js', () => ({
+  flowCheckpoint: vi.fn(),
+  resetFlowSeq: vi.fn()
+}));
 
 /**
  * AnnouncementSystem.test.js - Comprehensive Announcement System Tests
@@ -15,7 +19,7 @@ vi.mock('../utils/debugLogger.js', () => ({
  *
  * Problem areas:
  * - 10 different startPlayback() call sites
- * - Complex guest pattern detection
+ * - Complex non-authority pattern detection
  * - Race conditions between queueing and playback
  */
 
@@ -52,6 +56,7 @@ describe('Category 1: Deduplication Edge Cases', () => {
 
   beforeEach(() => {
     queue = new PhaseAnimationQueue();
+    queue.on('animationStarted', () => {});
     vi.useFakeTimers();
   });
 
@@ -59,20 +64,19 @@ describe('Category 1: Deduplication Edge Cases', () => {
     vi.useRealTimers();
   });
 
-  it('ANN-D1: Same phaseName queued from ActionProcessor + GameClient should dedup', () => {
-    // Simulates both sources queueing the same phase
-    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null); // From ActionProcessor
-    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null); // From GameClient
+  it('ANN-D1: Same phaseName queued twice should dedup', () => {
+    // Defence-in-depth: dedup if same phase queued twice from any source
+    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null);
+    queue.queueAnimation('roundAnnouncement', 'ROUND 1', null);
 
     expect(queue.getQueueLength()).toBe(1);
   });
 
-  it('ANN-D2: playerPass queued from multiple detection paths should dedup', () => {
-    // GameFlowManager:164 (state change detection)
+  it('ANN-D2: playerPass queued multiple times should dedup', () => {
+    // Defence-in-depth: all pass announcements arrive via server → GameClient,
+    // but dedup protects against any future duplicate path
     queue.queueAnimation('playerPass', 'OPPONENT PASSED', null);
-    // GameFlowManager:256 (handleActionCompletion)
     queue.queueAnimation('playerPass', 'OPPONENT PASSED', null);
-    // ActionProcessor:2716
     queue.queueAnimation('playerPass', 'OPPONENT PASSED', null);
 
     expect(queue.getQueueLength()).toBe(1);
@@ -184,6 +188,7 @@ describe('Category 2: Multiple startPlayback() Race Conditions', () => {
 
   beforeEach(() => {
     queue = new PhaseAnimationQueue();
+    queue.on('animationStarted', () => {});
     vi.useFakeTimers();
   });
 
@@ -403,7 +408,7 @@ describe('Category 3: Guest Pattern Detection', () => {
       actionComplete: 'ACTION PHASE COMPLETE'
     };
 
-    const localPlayerId = 'player2'; // Guest is player2
+    const localPlayerId = 'player2'; // In 'guest' gameMode, local player is player2
     const localPassKey = `${localPlayerId}Passed`;
 
     if (guestPhase !== hostPhase) {
@@ -990,7 +995,7 @@ describe('Category 5: Dynamic Content Timing', () => {
       gameMode: 'guest',
       firstPlayerOfRound: 'player1'
     });
-    mockGSM.getLocalPlayerId = vi.fn(() => 'player2'); // Guest is player2
+    mockGSM.getLocalPlayerId = vi.fn(() => 'player2'); // In 'guest' gameMode, local player is player2
 
     queue.queueAnimation('deployment', 'DEPLOYMENT PHASE', null);
 
@@ -1027,6 +1032,7 @@ describe('Category 6: Clear and Abort', () => {
 
   beforeEach(() => {
     queue = new PhaseAnimationQueue();
+    queue.on('animationStarted', () => {});
     vi.useFakeTimers();
   });
 
@@ -1162,6 +1168,7 @@ describe('Category 7: Event Emission', () => {
 
   beforeEach(() => {
     queue = new PhaseAnimationQueue();
+    queue.on('animationStarted', () => {});
     vi.useFakeTimers();
   });
 

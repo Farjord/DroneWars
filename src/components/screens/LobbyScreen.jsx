@@ -9,7 +9,6 @@ import { useGameState } from '../../hooks/useGameState.js';
 import aiPersonalities from '../../data/aiData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import fullCardCollection from '../../data/cardData.js';
-import { shipComponentCollection } from '../../data/shipSectionData.js';
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import MultiplayerLobby from './MultiplayerLobby.jsx';
@@ -101,7 +100,7 @@ function LobbyScreen() {
         selectedAI,
         ap,
         gameStateManager,
-        { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
+        { isAnimationBlocking: () => gameStateManager.gameFlowManager?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
       );
       debugLog('PHASE_TRANSITIONS', '🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
 

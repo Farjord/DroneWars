@@ -49,7 +49,7 @@ export default function useGameLifecycle({
   setCardToView,
 
   // --- Functions ---
-  processActionWithGuestRouting,
+  submitAction,
   getLocalPlayerId,
   getOpponentPlayerId,
   cancelAllActions,
@@ -165,7 +165,7 @@ export default function useGameLifecycle({
       }
     });
 
-    await processActionWithGuestRouting('debugAddCardsToHand', { playerId, cardInstances });
+    await submitAction('debugAddCardsToHand', { playerId, cardInstances });
     debugLog('DEBUG_TOOLS', '✅ Cards added through ActionProcessor');
   };
 
@@ -216,7 +216,7 @@ export default function useGameLifecycle({
 
     cancelAllActions();
 
-    await processActionWithGuestRouting('playerPass', {
+    await submitAction('playerPass', {
       playerId: getLocalPlayerId(),
       playerName: localPlayerState.name,
       turnPhase: turnPhase,
@@ -254,12 +254,12 @@ export default function useGameLifecycle({
         };
     }
 
-    await processActionWithGuestRouting('optionalDiscard', discardPayload);
+    await submitAction('optionalDiscard', discardPayload);
     setConfirmationModal(null);
 
     if (isLastDiscard && isAbilityBased) {
         setMandatoryAction(null);
-        await processActionWithGuestRouting('recalculateComplete', {
+        await submitAction('recalculateComplete', {
             playerId: mandatoryAction.actingPlayerId
         });
     } else if (!isLastDiscard && isAbilityBased) {
@@ -270,7 +270,7 @@ export default function useGameLifecycle({
   // --- handleRoundStartDiscard ---
 
   const handleRoundStartDiscard = async (card) => {
-    await processActionWithGuestRouting('optionalDiscard', {
+    await submitAction('optionalDiscard', {
       playerId: getLocalPlayerId(),
       cardsToDiscard: [card],
       isMandatory: false
@@ -285,7 +285,7 @@ export default function useGameLifecycle({
     debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Player completing optional discard phase');
     setOptionalDiscardCount(0);
 
-    await processActionWithGuestRouting('commitment', {
+    await submitAction('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'optionalDiscard',
       actionData: { completed: true }
@@ -313,7 +313,7 @@ export default function useGameLifecycle({
   const commitMandatoryPhase = async (phaseName, logLabel) => {
     debugLog('PHASE_TRANSITIONS', `[${logLabel}] Player completing ${phaseName} phase`);
 
-    await processActionWithGuestRouting('commitment', {
+    await submitAction('commitment', {
       playerId: getLocalPlayerId(),
       phase: phaseName,
       actionData: { completed: true }
@@ -372,7 +372,7 @@ export default function useGameLifecycle({
     const isAbilityBased = mandatoryAction?.fromAbility;
     const currentCount = isAbilityBased ? mandatoryAction.count : excessDrones;
 
-    const result = await processActionWithGuestRouting('destroyDrone', {
+    const result = await submitAction('destroyDrone', {
       droneId: drone.id,
       playerId: getLocalPlayerId()
     });
@@ -401,7 +401,7 @@ export default function useGameLifecycle({
           const rng = SeededRandom.fromGameState(gameState);
           const droneToDestroy = rng.select(candidates);
 
-          await processActionWithGuestRouting('destroyDrone', {
+          await submitAction('destroyDrone', {
             droneId: droneToDestroy.id,
             playerId: getOpponentPlayerId()
           });

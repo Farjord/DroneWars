@@ -428,7 +428,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
       triggerAnimationEvents: postMoveResult.triggerAnimationEvents,
-      triggerSteps: postMoveResult.triggerSteps
     };
   }
 
@@ -598,7 +597,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldClearMultiSelectState: true,
       mineAnimationEvents: postMoveResult.mineAnimationEvents,
       triggerAnimationEvents: postMoveResult.triggerAnimationEvents,
-      triggerSteps: postMoveResult.triggerSteps
     };
   }
 
@@ -628,7 +626,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const isEnemyMove = droneOwnerId !== actingPlayerId;
     const triggerProcessor = new TriggerProcessor();
     const triggerAnimationEvents = [];
-    const allTriggerSteps = [];
 
     // ON_MOVE triggers fire for ALL moved drones (including force-moved enemy drones per PRD 3.3)
     for (const movedDrone of movedDrones) {
@@ -661,9 +658,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           droneInState.isExhausted = false;
         }
       }
-      if (moveResult.triggerSteps?.length > 0) {
-        allTriggerSteps.push(...moveResult.triggerSteps);
-      }
     }
 
     // ON_LANE_MOVEMENT_OUT fires for friendly drones leaving the source lane
@@ -689,9 +683,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           if (outResult.animationEvents.length > 0) {
             triggerAnimationEvents.push(...outResult.animationEvents);
           }
-        }
-        if (outResult.triggerSteps?.length > 0) {
-          allTriggerSteps.push(...outResult.triggerSteps);
         }
       }
     }
@@ -745,12 +736,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           goAgain = true;
         }
       }
-      if (result.triggerSteps?.length > 0) {
-        allTriggerSteps.push(...result.triggerSteps);
-      }
     }
 
-    return { triggerAnimationEvents, mineAnimationEvents, goAgain, triggerSteps: allTriggerSteps };
+    return { triggerAnimationEvents, mineAnimationEvents, goAgain };
   }
 
   _findDroneOwner(droneId, playerStates) {

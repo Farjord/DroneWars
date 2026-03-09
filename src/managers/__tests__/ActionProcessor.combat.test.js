@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ActionProcessor from '../ActionProcessor.js';
+import { createMockGameStateManager, createMockAnimationManager } from './actionProcessorTestHelpers.js';
 
 vi.mock('../../logic/gameLogic.js', () => ({
   gameEngine: {
@@ -66,6 +67,7 @@ vi.mock('../../data/shipSectionData.js', () => ({ shipComponentCollection: [] })
 vi.mock('../../utils/seededRandom.js', () => ({ default: {} }));
 vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({ initializeForCombat: vi.fn() }));
 
+// Combat-specific mocks — kept here because they contain test-specific behaviour
 vi.mock('../../logic/triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {
@@ -103,54 +105,32 @@ vi.mock('../../logic/triggers/triggerConstants.js', () => ({
   TRIGGER_TYPES: { ON_MOVE: 'ON_MOVE', ON_LANE_MOVEMENT_IN: 'ON_LANE_MOVEMENT_IN', ON_LANE_ATTACK: 'ON_LANE_ATTACK' }
 }));
 
+// Combat-specific default drone state — provides pre-populated boards for combat tests
+const COMBAT_DEFAULT_PLAYER_1 = {
+  name: 'Player 1',
+  dronesOnBoard: {
+    lane1: [{ id: 'd1', name: 'TestDrone', attack: 2, hull: 2, isExhausted: false, abilities: [], triggerUsesMap: {} }],
+    lane2: [{ id: 'd2', name: 'InertDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
+    lane3: []
+  },
+  hand: [], energy: 5, shipSections: {}
+};
+
+const COMBAT_DEFAULT_PLAYER_2 = {
+  name: 'Player 2',
+  dronesOnBoard: {
+    lane1: [{ id: 'e1', name: 'EnemyDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
+    lane2: [],
+    lane3: []
+  },
+  hand: [], energy: 5, shipSections: {}
+};
+
 function createMockGSM(overrides = {}) {
-  const state = {
-    gameMode: 'local',
-    currentPlayer: 'player1',
-    turnPhase: 'action',
-    turn: 1,
-    roundNumber: 1,
-    actionsTakenThisTurn: 0,
-    winner: null,
-    passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
-    commitments: {},
-    player1: {
-      name: 'Player 1',
-      dronesOnBoard: {
-        lane1: [{ id: 'd1', name: 'TestDrone', attack: 2, hull: 2, isExhausted: false, abilities: [], triggerUsesMap: {} }],
-        lane2: [{ id: 'd2', name: 'InertDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
-        lane3: []
-      },
-      hand: [], energy: 5, shipSections: {}
-    },
-    player2: {
-      name: 'Player 2',
-      dronesOnBoard: {
-        lane1: [{ id: 'e1', name: 'EnemyDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
-        lane2: [],
-        lane3: []
-      },
-      hand: [], energy: 5, shipSections: {}
-    },
-    placedSections: [null, null, null],
-    opponentPlacedSections: [null, null, null],
-    ...overrides
-  };
-  return {
-    getState: vi.fn(() => JSON.parse(JSON.stringify(state))),
-    get: vi.fn((key) => state[key]),
-    setState: vi.fn(),
-    setPlayerStates: vi.fn(),
-    updatePlayerState: vi.fn(),
-    setTurnPhase: vi.fn(),
-    setCurrentPlayer: vi.fn(),
-    setPassInfo: vi.fn(),
-    setWinner: vi.fn(),
-    addLogEntry: vi.fn(),
-    getLocalPlayerId: vi.fn(() => 'player1'),
-    getLocalPlacedSections: vi.fn(() => [null, null, null]),
-    _updateContext: null
-  };
+  return createMockGameStateManager(
+    { player1: COMBAT_DEFAULT_PLAYER_1, player2: COMBAT_DEFAULT_PLAYER_2, ...overrides },
+    { deepClone: true }
+  );
 }
 
 describe('ActionProcessor — processAttack go-again', () => {
@@ -161,18 +141,7 @@ describe('ActionProcessor — processAttack go-again', () => {
     ActionProcessor.reset();
     gsm = createMockGSM();
     ap = ActionProcessor.getInstance(gsm);
-    // Mock AnimationManager with executeWithStateUpdate
-    ap.setAnimationManager({
-      animations: {},
-      executeAnimations: vi.fn(),
-      executeWithStateUpdate: vi.fn(async (animations, context) => {
-        // Simulate what AnimationManager does: apply pending state
-        if (context.pendingStateUpdate) {
-          context.applyPendingStateUpdate();
-        }
-      }),
-      waitForReactRender: vi.fn()
-    });
+    ap.setAnimationManager(createMockAnimationManager({ applyPending: true }));
   });
 
   afterEach(() => {
@@ -213,12 +182,7 @@ describe('ActionProcessor — processMove keywords', () => {
     ActionProcessor.reset();
     gsm = createMockGSM();
     ap = ActionProcessor.getInstance(gsm);
-    ap.setAnimationManager({
-      animations: {},
-      executeAnimations: vi.fn(),
-      executeWithStateUpdate: vi.fn(),
-      waitForReactRender: vi.fn()
-    });
+    ap.setAnimationManager(createMockAnimationManager());
   });
 
   afterEach(() => {
@@ -270,14 +234,7 @@ describe('ActionProcessor — processAbility activation limit', () => {
 
   beforeEach(() => {
     ActionProcessor.reset();
-    const state = {
-      gameMode: 'local',
-      currentPlayer: 'player1',
-      turnPhase: 'action',
-      turn: 1, roundNumber: 1, actionsTakenThisTurn: 0,
-      winner: null,
-      passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
-      commitments: {},
+    gsm = createMockGSM({
       player1: {
         name: 'Player 1',
         dronesOnBoard: {
@@ -294,27 +251,10 @@ describe('ActionProcessor — processAbility activation limit', () => {
         name: 'Player 2',
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
         hand: [], energy: 5, shipSections: {}
-      },
-      placedSections: [null, null, null],
-      opponentPlacedSections: [null, null, null]
-    };
-    gsm = {
-      getState: vi.fn(() => JSON.parse(JSON.stringify(state))),
-      get: vi.fn((key) => state[key]),
-      setState: vi.fn(), setPlayerStates: vi.fn(), updatePlayerState: vi.fn(),
-      setTurnPhase: vi.fn(), setCurrentPlayer: vi.fn(), setPassInfo: vi.fn(),
-      setWinner: vi.fn(), addLogEntry: vi.fn(),
-      getLocalPlayerId: vi.fn(() => 'player1'),
-      getLocalPlacedSections: vi.fn(() => [null, null, null]),
-      _updateContext: null
-    };
-    ap = ActionProcessor.getInstance(gsm);
-    ap.setAnimationManager({
-      animations: {},
-      executeAnimations: vi.fn(),
-      executeWithStateUpdate: vi.fn(),
-      waitForReactRender: vi.fn()
+      }
     });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(createMockAnimationManager());
   });
 
   afterEach(() => {
@@ -326,6 +266,203 @@ describe('ActionProcessor — processAbility activation limit', () => {
     await expect(
       ap.processAbility({ droneId: 'd1', abilityIndex: 0, targetId: null })
     ).rejects.toThrow('activation limit');
+  });
+});
+
+describe('ActionProcessor — processAttack state commitment', () => {
+  let ap;
+  let gsm;
+
+  beforeEach(() => {
+    ActionProcessor.reset();
+    gsm = createMockGSM();
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(createMockAnimationManager({ applyPending: true }));
+  });
+
+  afterEach(() => {
+    ActionProcessor.reset();
+    vi.clearAllMocks();
+  });
+
+  it('commits newPlayerStates to GSM after attack', async () => {
+    const { resolveAttack } = await import('../../logic/combat/AttackProcessor.js');
+    const damagedPlayer2 = {
+      ...gsm.getState().player2,
+      dronesOnBoard: {
+        lane1: [{ id: 'e1', name: 'EnemyDrone', attack: 2, hull: 1, isExhausted: false, abilities: [] }],
+        lane2: [], lane3: []
+      }
+    };
+    const attackResult = {
+      newPlayerStates: { player1: gsm.getState().player1, player2: damagedPlayer2 },
+      animationEvents: [],
+      shouldEndTurn: true,
+      mineAnimationEventCount: 0
+    };
+    resolveAttack.mockReturnValueOnce(attackResult);
+
+    await ap.processAttack({
+      attackDetails: {
+        attacker: { id: 'd1', name: 'TestDrone' },
+        target: { id: 'e1', name: 'EnemyDrone' },
+        lane: 'lane1',
+        attackingPlayer: 'player1'
+      }
+    });
+
+    expect(gsm.setPlayerStates).toHaveBeenCalledTimes(1);
+    expect(gsm.setPlayerStates).toHaveBeenCalledWith(
+      attackResult.newPlayerStates.player1,
+      attackResult.newPlayerStates.player2
+    );
+  });
+
+  it('commits state before checkWinCondition', async () => {
+    const { resolveAttack } = await import('../../logic/combat/AttackProcessor.js');
+    const WinConditionChecker = (await import('../../logic/game/WinConditionChecker.js')).default;
+
+    const damagedPlayer2 = {
+      ...gsm.getState().player2,
+      dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+    };
+    resolveAttack.mockReturnValueOnce({
+      newPlayerStates: { player1: gsm.getState().player1, player2: damagedPlayer2 },
+      animationEvents: [],
+      shouldEndTurn: true,
+      mineAnimationEventCount: 0
+    });
+
+    // Track call order to verify state is committed before win check
+    const callOrder = [];
+    gsm.setPlayerStates.mockImplementation(() => callOrder.push('setPlayerStates'));
+    WinConditionChecker.checkGameStateForWinner.mockImplementation(() => callOrder.push('checkWin'));
+
+    await ap.processAttack({
+      attackDetails: {
+        attacker: { id: 'd1', name: 'TestDrone' },
+        target: { id: 'e1', name: 'EnemyDrone' },
+        lane: 'lane1',
+        attackingPlayer: 'player1'
+      }
+    });
+
+    expect(callOrder).toEqual(['setPlayerStates', 'checkWin']);
+  });
+
+  it('commits state when drone is destroyed', async () => {
+    const { resolveAttack } = await import('../../logic/combat/AttackProcessor.js');
+    const destroyedPlayer2 = {
+      ...gsm.getState().player2,
+      dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+    };
+    resolveAttack.mockReturnValueOnce({
+      newPlayerStates: { player1: gsm.getState().player1, player2: destroyedPlayer2 },
+      animationEvents: [],
+      shouldEndTurn: true,
+      mineAnimationEventCount: 0
+    });
+
+    await ap.processAttack({
+      attackDetails: {
+        attacker: { id: 'd1', name: 'TestDrone' },
+        target: { id: 'e1', name: 'EnemyDrone' },
+        lane: 'lane1',
+        attackingPlayer: 'player1'
+      }
+    });
+
+    expect(gsm.setPlayerStates).toHaveBeenCalledTimes(1);
+    const committedP2 = gsm.setPlayerStates.mock.calls[0][1];
+    expect(committedP2.dronesOnBoard.lane1).toEqual([]);
+  });
+
+  it('commits state for AI attacks via processAiAction', async () => {
+    const { resolveAttack } = await import('../../logic/combat/AttackProcessor.js');
+    resolveAttack.mockReturnValueOnce({
+      newPlayerStates: { player1: gsm.getState().player1, player2: gsm.getState().player2 },
+      animationEvents: [],
+      shouldEndTurn: true,
+      mineAnimationEventCount: 0
+    });
+
+    await ap.processAiAction({
+      aiDecision: {
+        type: 'action',
+        payload: {
+          type: 'attack',
+          attacker: { id: 'e1', name: 'EnemyDrone' },
+          target: { id: 'd1', name: 'TestDrone' },
+          lane: 'lane1',
+          attackingPlayer: 'player2'
+        }
+      }
+    });
+
+    expect(gsm.setPlayerStates).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ActionProcessor — processAbility state commitment', () => {
+  let ap;
+  let gsm;
+
+  beforeEach(() => {
+    ActionProcessor.reset();
+    gsm = createMockGSM({
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: {
+          lane1: [{
+            id: 'd1', name: 'AbilityDrone', attack: 2, hull: 2, isExhausted: false,
+            abilities: [{ name: 'TestAbility', activationLimit: 2, effect: { type: 'DAMAGE' } }],
+            abilityActivations: {}
+          }],
+          lane2: [], lane3: []
+        },
+        hand: [], energy: 5, shipSections: {}
+      },
+      player2: {
+        name: 'Player 2',
+        dronesOnBoard: {
+          lane1: [{ id: 'e1', name: 'EnemyDrone', attack: 2, hull: 2, isExhausted: false, abilities: [] }],
+          lane2: [], lane3: []
+        },
+        hand: [], energy: 5, shipSections: {}
+      }
+    });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(createMockAnimationManager());
+  });
+
+  afterEach(() => {
+    ActionProcessor.reset();
+    vi.clearAllMocks();
+  });
+
+  it('commits newPlayerStates to GSM after ability', async () => {
+    const AbilityResolver = (await import('../../logic/abilities/AbilityResolver.js')).default;
+    const damagedPlayer2 = {
+      ...gsm.getState().player2,
+      dronesOnBoard: {
+        lane1: [{ id: 'e1', name: 'EnemyDrone', attack: 2, hull: 1, isExhausted: false, abilities: [] }],
+        lane2: [], lane3: []
+      }
+    };
+    const abilityResult = {
+      newPlayerStates: { player1: gsm.getState().player1, player2: damagedPlayer2 },
+      animationEvents: [],
+      shouldEndTurn: true
+    };
+    AbilityResolver.resolveAbility.mockReturnValueOnce(abilityResult);
+
+    await ap.processAbility({ droneId: 'd1', abilityIndex: 0, targetId: 'e1' });
+
+    expect(gsm.setPlayerStates).toHaveBeenCalledTimes(1);
+    expect(gsm.setPlayerStates).toHaveBeenCalledWith(
+      abilityResult.newPlayerStates.player1,
+      abilityResult.newPlayerStates.player2
+    );
   });
 });
 
@@ -361,12 +498,7 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
     ...overrides
   });
 
-  const mockAnimManager = {
-    animations: {},
-    executeAnimations: vi.fn(),
-    executeWithStateUpdate: vi.fn(),
-    waitForReactRender: vi.fn()
-  };
+  const mockAnimManager = createMockAnimationManager();
 
   afterEach(() => {
     ActionProcessor.reset();
@@ -387,9 +519,9 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
 
     await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
 
-    const updateCall = gsm.updatePlayerState.mock.calls[0];
-    expect(updateCall).toBeDefined();
-    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    const setCall = gsm.setPlayerStates.mock.calls[0];
+    expect(setCall).toBeDefined();
+    const movedDrone = setCall[0].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
     expect(movedDrone.isExhausted).toBe(false);
   });
 
@@ -407,8 +539,8 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
 
     await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
 
-    const updateCall = gsm.updatePlayerState.mock.calls[0];
-    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    const setCall = gsm.setPlayerStates.mock.calls[0];
+    const movedDrone = setCall[0].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
     expect(movedDrone.triggerUsesMap['Rapid Response']).toBe(1);
   });
 
@@ -426,8 +558,8 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
 
     await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
 
-    const updateCall = gsm.updatePlayerState.mock.calls[0];
-    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    const setCall = gsm.setPlayerStates.mock.calls[0];
+    const movedDrone = setCall[0].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
     expect(movedDrone.isExhausted).toBe(true);
   });
 
@@ -445,8 +577,8 @@ describe('ActionProcessor — processMove RAPID keyword', () => {
 
     await ap.processMove({ droneId: 'std_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
 
-    const updateCall = gsm.updatePlayerState.mock.calls[0];
-    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'std_1');
+    const setCall = gsm.setPlayerStates.mock.calls[0];
+    const movedDrone = setCall[0].dronesOnBoard.lane2.find(d => d.id === 'std_1');
     expect(movedDrone.isExhausted).toBe(true);
   });
 });

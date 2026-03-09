@@ -53,24 +53,41 @@ Verifies the full deployment path from UI click through game logic to state appl
 
 ---
 
-## ANIM_TRACE (6 steps + bypass) — Animation Pipeline
+## ANIM_TRACE (6 steps + sub-steps + bypass) — Animation Pipeline
 
-Verifies the animation pipeline from game logic events through to execution.
+Verifies the animation pipeline from sequence construction through to execution.
 
 | Step | Location | What it proves |
 |-|-|-|
+| [seq-built] | AnimationSequenceBuilder.buildAnimationSequence | Sequence constructed: stepCount, totalEvents, snapshots, pauses, eventTypes |
 | [1/6] | ActionProcessor.mapAnimationEvents | Raw events from game logic: count + types |
 | [1b/6] | ActionProcessor.executeAndCaptureAnimations | Bypass path entry (GO_AGAIN, CARD_REVEAL, etc.) |
-| [2/6] | ActionProcessor.captureAnimations | What gets stored for response |
+| [2/6] | ActionProcessor.captureAnimations | What gets stored for response: count + names |
 | [3/6] | AnimationManager.executeWithStateUpdate | Pre/post/independent breakdown + source |
+| [3b/6] | AnimationManager.executeAnimations | STATE_SNAPSHOT applied mid-animation (playerKeys) |
+| [3c/6] | AnimationManager.executeAnimations | TRIGGER_CHAIN_PAUSE waiting (durationMs) |
 | [4/6] | AnimationManager (after applyPendingStateUpdate) | State committed mid-animation |
 | [5/6] | AnimationManager (end of executeWithStateUpdate) | Execution complete with duration |
+| [state-intermediate] | GameClient.applyIntermediateState | Client-side state injection during playback (hasPlayer1, hasPlayer2) |
 | [6a/6] | GameClient._onResponse | Client received engine response: animation count, phase |
 | [6/6] | GameClient._onResponse | Client animation dispatch: count, names, willPlay |
 
-Steps [1-2] are server-side (collect animations during processing). Steps [3-5] are client-side (AnimationManager). Steps [6a]+[6] are client entry (GameClient).
+Steps [seq-built], [1], [1b], [2] are server-side (construct + collect animations). Steps [3]-[5] are client-side (AnimationManager). [state-intermediate] fires in GameClient. Steps [6a]+[6] are client entry (GameClient).
 
 **Enable:** `ANIM_TRACE: true`
+
+### Animation Ordering (buildAnimationSequence)
+
+All action processors route through `buildAnimationSequence()` in AnimationSequenceBuilder.js:
+- **processMove** (CombatActionStrategy) — movement + ON_MOVE triggers
+- **resolveAttack** (AttackProcessor) — attack + ON_ATTACK/ON_DAMAGE triggers
+- **executeDeployment** (DeploymentProcessor) — deploy + ON_DEPLOY triggers
+- **EffectChainProcessor** — card effects with per-effect trigger steps
+
+Output per step: `actionEvents → STATE_SNAPSHOT → postSnapshotEvents → TRIGGER_CHAIN_PAUSE → triggerEvents`
+
+- `[seq-built]` fires at construction time (server-side), logging the full sequence shape
+- `[3b/6]` and `[3c/6]` fire at playback time (client-side) when AnimationManager processes the sequence
 
 ### Step [1b/6] — Bypass Path
 
@@ -83,22 +100,29 @@ Step [1b/6] logs: `{ count, isSystem, names }` to track these bypass animations.
 ### Expected Output by Action Type
 
 **Player deploy drone:**
+- [seq-built] fires during DeploymentProcessor
 - Steps [1/6] and [2/6] fire during ActionProcessor processing
 - Steps [3/6] through [5/6] fire in AnimationManager
+- Steps [3b/6] and [3c/6] fire if deployment triggers exist
 - Steps [6a/6] and [6/6] fire in GameClient._onResponse
 
+**Player move drone (with triggers):**
+- [seq-built] fires during processMove (stepCount=1)
+- Steps [1/6] and [2/6] fire during ActionProcessor processing
+- Steps [3/6], [3b/6] (STATE_SNAPSHOT), [3c/6] (TRIGGER_CHAIN_PAUSE), [4/6], [5/6] fire in AnimationManager
+- [state-intermediate] fires in GameClient when STATE_SNAPSHOT is applied
+
 **AI deploy drone:**
-- Steps [1/6] and [2/6] only (no GameClient path for AI actions processed server-side)
+- [seq-built] and steps [1/6] and [2/6] only (no GameClient path for AI actions processed server-side)
 
 **Card play with goAgain:**
 - Steps [1/6] and [2/6] for the card effect animations
 - Step [1b/6] for the GO_AGAIN_NOTIFICATION bypass
 - Steps [6a/6] and [6/6] on response
 
-### Deduplication Notes
-
-- **STATE_SNAPSHOT filtering:** `captureAnimations` filters out STATE_SNAPSHOT events (step [2/6] shows filteredOut count)
-- **No action animation dedup:** There is no deduplication of action animations between the processing path and the response path
+**Multi-effect card play:**
+- [seq-built] with stepCount=N (one per effect)
+- Steps [3b/6] and [3c/6] fire per step with triggers
 
 ---
 
