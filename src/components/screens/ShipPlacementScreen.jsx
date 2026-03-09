@@ -251,7 +251,7 @@ function ShipPlacementScreen() {
 
     // Host/Local mode: Submit placement to ActionProcessor
     try {
-      const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+      const submissionResult = await gameStateManager.submitCommitment(payload);
 
       if (!submissionResult.success) {
         debugLog('PLACEMENT', '❌ Placement submission failed:', submissionResult.error);

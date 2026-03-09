@@ -125,6 +125,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [showGlossaryModal, setShowGlossaryModal] = useState(false);
+  const [showGameManualModal, setShowGameManualModal] = useState(false);
   const [showAIStrategyModal, setShowAIStrategyModal] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [showAbandonRunModal, setShowAbandonRunModal] = useState(false);
@@ -776,19 +777,18 @@ const App = ({ phaseAnimationQueue }) => {
     const unsubAnimationEnded = phaseAnimationQueue.on('animationEnded', handleAnimationEnded);
     const unsubPlaybackState = phaseAnimationQueue.on('playbackStateChanged', handlePlaybackStateChanged);
 
-    // Phase 1: Diagnostic — trace subscription state
-    debugLog('ANNOUNCE_TRACE', '[App] PhaseAnimationQueue subscribed', {
+    debugLog('ANNOUNCE_TRACE', '[App] AnnouncementQueue subscribed', {
       queueLength: phaseAnimationQueue.getQueueLength(),
       isPlaying: phaseAnimationQueue.isPlaying(),
       currentAnimation: phaseAnimationQueue.getCurrentAnimation()?.phaseName || null,
     });
 
-    // Phase 2: Start playback if announcements queued before subscription
-    if (phaseAnimationQueue.getQueueLength() > 0 && !phaseAnimationQueue.isPlaying()) {
-      phaseAnimationQueue.startPlayback('App:late_subscribe');
-    }
+    // Release the queue — announcements queued before mount will now play sequentially.
+    // This prevents announcements from firing before the UI subscriber is ready.
+    phaseAnimationQueue.release();
 
     return () => {
+      phaseAnimationQueue.hold();
       unsubAnimationStarted();
       unsubAnimationEnded();
       unsubPlaybackState();
@@ -1073,6 +1073,7 @@ const App = ({ phaseAnimationQueue }) => {
         onShowDebugModal={() => setShowDebugModal(true)}
         onShowOpponentDrones={handleShowOpponentDrones}
         onShowGlossary={() => setShowGlossaryModal(true)}
+        onShowGameManual={() => setShowGameManualModal(true)}
         onShowAIStrategy={() => setShowAIStrategyModal(true)}
         onShowAddCardModal={handleOpenAddCardModal}
         onForceWin={handleForceWin}
@@ -1253,6 +1254,7 @@ const App = ({ phaseAnimationQueue }) => {
         opponentSelectedDrones={opponentSelectedDrones}
         showDebugModal={showDebugModal}
         showGlossaryModal={showGlossaryModal}
+        showGameManualModal={showGameManualModal}
         showAIStrategyModal={showAIStrategyModal}
         showAddCardModal={showAddCardModal}
         isViewDeckModalOpen={isViewDeckModalOpen}
@@ -1294,6 +1296,7 @@ const App = ({ phaseAnimationQueue }) => {
         onCloseOpponentDronesModal={() => setShowOpponentDronesModal(false)}
         onCloseDebugModal={() => setShowDebugModal(false)}
         onCloseGlossaryModal={() => setShowGlossaryModal(false)}
+        onCloseGameManualModal={() => setShowGameManualModal(false)}
         onCloseAIStrategyModal={() => setShowAIStrategyModal(false)}
         onCloseAddCardModal={() => setShowAddCardModal(false)}
         onConfirmAddCards={handleAddCardsToHand}

@@ -11,26 +11,49 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
  */
 
 // Mock dependencies
-vi.mock('../../../managers/GameStateManager.js', () => ({
-  default: {
+vi.mock('../../../managers/GameStateManager.js', () => {
+  const gsm = {
     getState: vi.fn(),
     setState: vi.fn(),
     get: vi.fn(() => null),
     getDroneDamageStateForSlot: vi.fn(() => ({})),
     actionProcessor: {
-      setAIPhaseProcessor: vi.fn()
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: vi.fn(),
+      getAndClearResponseCapture: vi.fn(() => ({
+        actionAnimations: [],
+        systemAnimations: [
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+        ],
+      })),
     },
     gameFlowManager: {
       processRoundInitialization: vi.fn(async () => 'deployment'),
       transitionToPhase: vi.fn(async () => {}),
-      _tryStartPlayback: vi.fn(),
+      resubscribe: vi.fn(),
       phaseAnimationQueue: {
-        queueAnimation: vi.fn(),
-        isPlaying: vi.fn().mockReturnValue(false)
+        enqueue: vi.fn(),
+        enqueueAll: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false),
+        clear: vi.fn(),
       }
     }
-  }
-}));
+  };
+  // startGame passes options through to setState for test assertion compatibility
+  gsm.startGame = vi.fn((gameMode, p1, p2, options = {}) => {
+    gsm.setState({
+      appState: 'inGame',
+      gameActive: true,
+      gameMode,
+      player1: p1,
+      player2: p2,
+      ...options
+    }, 'GAME_STARTED');
+  });
+  return { default: gsm };
+});
 
 vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()

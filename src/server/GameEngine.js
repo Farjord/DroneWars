@@ -6,6 +6,7 @@
 import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint, resetFlowSeq } from '../utils/flowVerification.js';
+import { personalizeAnnouncements } from '../utils/announcementUtils.js';
 
 class GameEngine {
   constructor(gameStateManager, actionProcessor, gameFlowManager) {
@@ -109,12 +110,21 @@ class GameEngine {
         actionAnimations: (animations.actionAnimations || []).map(redactAnim),
         systemAnimations: (animations.systemAnimations || []).map(redactAnim),
       };
+      this._personalizeAnnouncements(clientAnimations, playerId, state);
       promises.push(
         Promise.resolve(callback({ state: redactedState, animations: clientAnimations }))
           .catch(err => debugLog('STATE_SYNC', `Client ${playerId} delivery failed`, { error: err.message }))
       );
     }
     await Promise.all(promises);
+  }
+
+  /**
+   * Personalize announcement animations for a specific client.
+   * Delegates to shared utility — see src/utils/announcementUtils.js.
+   */
+  _personalizeAnnouncements(clientAnimations, playerId, state) {
+    personalizeAnnouncements(clientAnimations, playerId, state);
   }
 
   getState() {

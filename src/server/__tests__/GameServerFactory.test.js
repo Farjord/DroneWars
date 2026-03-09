@@ -23,7 +23,7 @@ describe('GameServerFactory', () => {
     requestFullSync: () => {},
     subscribe: () => () => {},
   };
-  const mockPAQ = { queueAnimation: () => {} };
+  const mockPAQ = { enqueue: () => {}, enqueueAll: () => {}, isPlaying: () => false };
 
   describe('local mode', () => {
     it('creates a GameClient', () => {

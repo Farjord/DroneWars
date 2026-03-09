@@ -253,29 +253,9 @@ class GameFlowManager {
         currentPhase: updatedState.turnPhase
       });
 
-      // Non-authority: Only handle pass animation playback, not phase transitions
+      // Non-authority: AnnouncementQueue auto-plays on enqueue — no manual trigger needed.
+      // Just skip phase transitions (host handles them).
       if (!this.isPhaseAuthority) {
-        // ALWAYS trigger playback if animation is queued, regardless of bothPassed
-        // This fixes race condition where optimistic pass processing sets bothPassed=true
-        // before handleActionCompletion executes, causing animation to be skipped
-        debugLog('PASS_LOGIC', `⏰ [OPTIMISTIC] Checking for queued pass animations`, {
-          currentPhase: updatedState.turnPhase,
-          bothPassed,
-          queueLength: this.phaseAnimationQueue?.getQueueLength() || 0,
-          alreadyPlaying: this.phaseAnimationQueue?.isPlaying() || false
-        });
-
-        if (this._tryStartPlayback('GFM:optimistic_pass:256')) {
-          debugLog('PASS_LOGIC', `🎬 [OPTIMISTIC] Starting pass notification playback`, {
-            bothPassed,
-            explanation: bothPassed
-              ? 'Starting playback despite bothPassed=true (optimistic processing race condition fixed)'
-              : 'Starting playback for single player pass'
-          });
-        }
-
-        // PHASE MANAGER INTEGRATION: Non-authority waits for Host's PhaseManager broadcast
-        // Shows immediate UI feedback (animations) but doesn't transition phases
         return;
       }
 
@@ -297,14 +277,8 @@ class GameFlowManager {
         });
 
         return;
-      } else {
-        // Single player passed - start PhaseAnimationQueue playback for pass notification
-        // (Pass notification was queued by ActionProcessor.processPlayerPass)
-        // This handles both Host and Local modes
-        if (this._tryStartPlayback('GFM:host_pass:302')) {
-          debugLog('TIMING', `🎬 [${modeLabel}] Starting pass notification playback`);
-        }
       }
+      // Single-pass: AnnouncementQueue auto-plays on enqueue — no manual trigger needed.
     }
 
     // Guard: Non-authority doesn't handle turn transitions (host sends them)
@@ -576,14 +550,9 @@ class GameFlowManager {
         });
         await this.transitionToPhase(nextPhase);
 
-        // Start animation playback for host after transitioning to sequential phase
-        // This ensures queued phase announcements (like DEPLOYMENT) play for the host
-        // (Non-authority gets playback via cascade finally block, but authority needs it here)
-        if (this._tryStartPlayback('GFM:sim_to_seq:599')) {
-          debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after simultaneous→sequential transition`, { phase: nextPhase });
-        }
+        // AnnouncementQueue auto-plays — no manual trigger needed
 
-        // RT-13: Clear round transition flag after sim→seq playback starts
+        // RT-13: Clear round transition flag after sim→seq transition
         if (this._isRoundTransition) {
           debugLog('ROUND_TRANSITION_TRACE', '[RT-13] Animation playback triggered — server flow complete', {
             utc: new Date().toISOString(), role: 'SERVER',
@@ -599,11 +568,7 @@ class GameFlowManager {
         });
         await this.transitionToPhase(nextPhase);
 
-        // Start animation playback after transitioning to another simultaneous phase
-        // This ensures queued phase announcements play before players can interact
-        if (this._tryStartPlayback('GFM:sim_to_sim:625')) {
-          debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after simultaneous→simultaneous transition`, { phase: nextPhase });
-        }
+        // AnnouncementQueue auto-plays — no manual trigger needed
       }
       // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
     } else {
@@ -785,15 +750,7 @@ class GameFlowManager {
       // Always clear the flag when automatic phase processing is complete
       this.isProcessingAutomaticPhase = false;
 
-      // AUTHORITY: Start animation playback after automatic cascade completes
-      // Only start if we're authority and landed on non-automatic phase
-      const currentPhase = this.gameStateManager.getState().turnPhase;
-
-      if (this.isPhaseAuthority && !this.isAutomaticPhase(currentPhase)) {
-        if (this._tryStartPlayback('GFM:auto_cascade:880')) {
-          debugLog('TIMING', `🎬 [AUTHORITY] Starting animation playback after automatic cascade`, { finalPhase: currentPhase });
-        }
-      }
+      // AnnouncementQueue auto-plays — no manual trigger needed
     }
   }
 
@@ -962,17 +919,6 @@ class GameFlowManager {
     }
   }
 
-  // Start animation playback if queue has pending items and isn't already playing.
-  // Returns true if playback was started.
-  _tryStartPlayback(source) {
-    if (!this.phaseAnimationQueue) return false;
-    const queueLength = this.phaseAnimationQueue.getQueueLength();
-    if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-      this.phaseAnimationQueue.startPlayback(source);
-      return true;
-    }
-    return false;
-  }
 
   // Lazy-init for paths that set gameStateManager without calling initialize()
   _ensurePhaseRequirementChecker() {
@@ -1217,21 +1163,13 @@ class GameFlowManager {
       await this.autoCompleteUnnecessaryCommitments(newPhase);
     }
 
-    // Start animation playback for sequential phase transitions
-    // Sequential→Sequential transitions (e.g., deployment→action) don't go through automatic cascade
-    // so we need to manually trigger animation playback here
-    // Works for BOTH authority and non-authority (non-authority receives pass notifications from optimistic execution)
-    if (this.isSequentialPhase(newPhase)) {
-      if (this._tryStartPlayback('GFM:seq_transition:2060')) {
-        debugLog('TIMING', `🎬 [${this.isPhaseAuthority ? 'AUTHORITY' : 'OPTIMISTIC'}] Starting animation playback after sequential transition`, { phase: newPhase });
-        if (this._isRoundTransition) {
-          debugLog('ROUND_TRANSITION_TRACE', '[RT-13] Animation playback triggered — server flow complete', {
-            utc: new Date().toISOString(), role: 'SERVER',
-            phase: newPhase,
-          });
-          this._isRoundTransition = false;
-        }
-      }
+    // AnnouncementQueue auto-plays — no manual trigger needed
+    if (this.isSequentialPhase(newPhase) && this._isRoundTransition) {
+      debugLog('ROUND_TRANSITION_TRACE', '[RT-13] Sequential transition complete — server flow complete', {
+        utc: new Date().toISOString(), role: 'SERVER',
+        phase: newPhase,
+      });
+      this._isRoundTransition = false;
     }
 
     timingLog('[PHASE] Transition complete', {

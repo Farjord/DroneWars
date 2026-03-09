@@ -105,13 +105,7 @@ class AnimationManager {
         config: {}
       },
 
-      // Phase announcements
-      PHASE_ANNOUNCEMENT: {
-        duration: 1500,  // 1.5 second phase announcement
-        type: 'PHASE_ANNOUNCEMENT_EFFECT',
-        timing: 'independent',  // Doesn't need specific entities
-        config: { }
-      },
+      // PHASE_ANNOUNCEMENT removed — announcements route through AnnouncementQueue, not AnimationManager
 
       // Deployment animations
       TELEPORT_IN: {

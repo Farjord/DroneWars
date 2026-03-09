@@ -11,6 +11,7 @@ import DEV_CONFIG from '../../config/devConfig.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import GlossaryModal from '../modals/GlossaryModal.jsx';
 import AIStrategyModal from '../modals/AIStrategyModal.jsx';
+import GameManualModal from '../modals/GameManualModal.jsx';
 import ScalingText from '../ui/ScalingText.jsx';
 import SoundManager from '../../managers/SoundManager.js';
 
@@ -88,6 +89,7 @@ function MenuScreen() {
   const [animationKey, setAnimationKey] = useState(0);
   const [showGlossary, setShowGlossary] = useState(false);
   const [showAIStrategy, setShowAIStrategy] = useState(false);
+  const [showGameManual, setShowGameManual] = useState(false);
 
   // Random animation triggers (20-40 second intervals) - all effects trigger together
   useEffect(() => {
@@ -333,6 +335,14 @@ function MenuScreen() {
           {/* Row 3: Info/utility buttons - standard gradient buttons */}
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
             <button
+              onClick={() => setShowGameManual(true)}
+              className="dw-btn-hud dw-btn-hud-ghost"
+              style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
+            >
+              <ScalingText text="GAME MANUAL" className="uppercase tracking-wider font-semibold" />
+            </button>
+
+            <button
               onClick={() => setShowGlossary(true)}
               className="dw-btn-hud dw-btn-hud-ghost"
               style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
@@ -360,6 +370,11 @@ function MenuScreen() {
           </div>
         </div>
       </div>
+
+      {/* Game Manual */}
+      {showGameManual && (
+        <GameManualModal onClose={() => setShowGameManual(false)} />
+      )}
 
       {/* Glossary Modal */}
       {showGlossary && (

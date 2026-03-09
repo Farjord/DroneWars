@@ -198,7 +198,7 @@ function DroneSelectionScreen() {
     }
 
     // Host/Local mode: Process action locally
-    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+    const submissionResult = await gameStateManager.submitCommitment(payload);
     if (!submissionResult.success) {
       debugLog('DRONE_SELECTION', '❌ Drone selection submission failed:', submissionResult.error);
       return;

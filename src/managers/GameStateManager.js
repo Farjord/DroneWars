@@ -469,22 +469,30 @@ class GameStateManager {
    * @param {string} gameMode - 'local', 'host', 'guest'
    * @param {Object} player1Config - Player 1 configuration
    * @param {Object} player2Config - Player 2 configuration
+   * @param {Object} options - Optional state overrides (used by SPCI for extraction combat)
+   *   May contain: turnPhase, gameStage, roundNumber, currentPlayer, firstPlayerOfRound,
+   *   commitments, placedSections, opponentPlacedSections, singlePlayerEncounter,
+   *   pendingQuickDeploy, opponentShieldsToAllocate, gameLog
    */
-  startGame(gameMode = 'local', player1Config = {}, player2Config = {}) {
+  startGame(gameMode = 'local', player1Config = {}, player2Config = {}, options = {}) {
     debugLog('STATE_SYNC', '🎮 GAME START: Initializing new game session');
 
-    // Clear any orphaned single-player context before starting PvP
-    this.clearSinglePlayerContext();
+    // Skip SP context clearing and pre-game validation for single-player combat
+    // (SPCI manages its own run lifecycle and cleanup before calling startGame)
+    if (!options.singlePlayerEncounter) {
+      // Clear any orphaned single-player context before starting PvP
+      this.clearSinglePlayerContext();
 
-    // Validate pre-game state and cleanup if dirty
-    const validation = this.validatePreGameState();
-    if (!validation.valid) {
-      debugLog('VALIDATION', '🚨 DIRTY STATE DETECTED AT GAME START', {
-        issues: validation.issues,
-        action: 'Calling resetGameState() to clean up',
-        stack: new Error().stack
-      });
-      this.resetGameState();
+      // Validate pre-game state and cleanup if dirty
+      const validation = this.validatePreGameState();
+      if (!validation.valid) {
+        debugLog('VALIDATION', '🚨 DIRTY STATE DETECTED AT GAME START', {
+          issues: validation.issues,
+          action: 'Calling resetGameState() to clean up',
+          stack: new Error().stack
+        });
+        this.resetGameState();
+      }
     }
 
     // Generate random game seed for deterministic gameplay
@@ -552,6 +560,11 @@ class GameStateManager {
       droneSelectionPool: [],
       droneSelectionTrio: [],
     };
+
+    // Apply options overrides (SPCI uses this for turnPhase, gameStage, commitments, etc.)
+    if (Object.keys(options).length > 0) {
+      Object.assign(gameState, options);
+    }
 
     this.setState(gameState, 'GAME_STARTED');
 
@@ -941,6 +954,18 @@ class GameStateManager {
       type: actionType,
       payload: payload
     });
+  }
+
+  /**
+   * Submit a commitment through the game server pipeline (when available).
+   * Routes through GameEngine so announcements are captured and broadcast.
+   * Falls back to direct actionProcessor call when no server is present.
+   */
+  async submitCommitment(payload) {
+    if (this.gameServer?.submitAction) {
+      return await this.gameServer.submitAction('commitment', payload);
+    }
+    return await this.actionProcessor.processCommitment(payload);
   }
 
   /**

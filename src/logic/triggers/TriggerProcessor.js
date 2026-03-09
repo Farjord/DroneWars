@@ -151,6 +151,15 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
+        // Apply DOES_NOT_EXHAUST before snapshot so animation never shows drone exhausted
+        if (result.doesNotExhaust && triggeringDrone) {
+          const drones = currentStates[triggeringPlayerId]?.dronesOnBoard?.[lane] || [];
+          const drone = drones.find(d => d.id === triggeringDrone.id);
+          if (drone) {
+            drone.isExhausted = false;
+          }
+        }
+
         // Build STATE_SNAPSHOT event — use pre-cascade state for additive triggers
         // so cascade changes (e.g., Odin +1 attack from ON_CARD_DRAWN) don't appear
         // until their own nested snapshot

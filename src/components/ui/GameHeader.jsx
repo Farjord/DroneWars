@@ -116,6 +116,7 @@ function GameHeader({
   onShowDebugModal,
   onShowOpponentDrones,
   onShowGlossary,
+  onShowGameManual,
   onShowAIStrategy,
   onShowAddCardModal,
   onForceWin,
@@ -563,6 +564,7 @@ function GameHeader({
                 onShowAddCardModal={onShowAddCardModal}
                 onForceWin={onForceWin}
                 onShowGlossary={onShowGlossary}
+                onShowGameManual={onShowGameManual}
                 onShowAIStrategy={onShowAIStrategy}
                 onOpenLog={onOpenLog}
                 onOpenLogModal={onOpenLogModal}

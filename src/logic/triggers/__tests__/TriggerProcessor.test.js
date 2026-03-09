@@ -275,6 +275,27 @@ vi.mock('../../../data/droneData.js', () => ({
         usesPerRound: 1,
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
       }]
+    },
+    {
+      name: 'TestDoesNotExhaustDrone',
+      attack: 3, hull: 4, shields: 1, speed: 2,
+      abilities: [{
+        name: 'Rapid Response',
+        type: 'TRIGGERED',
+        trigger: 'ON_MOVE',
+        effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      }]
+    },
+    {
+      name: 'TestDoesNotExhaustLimitedDrone',
+      attack: 3, hull: 4, shields: 1, speed: 2,
+      abilities: [{
+        name: 'Limited Rapid Response',
+        type: 'TRIGGERED',
+        trigger: 'ON_MOVE',
+        usesPerRound: 1,
+        effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      }]
     }
   ]
 }));
@@ -2367,6 +2388,109 @@ describe('TriggerProcessor', () => {
       });
 
       expect(result2.triggered).toBe(true);
+    });
+  });
+
+  // ========================================
+  // DOES_NOT_EXHAUST SNAPSHOT CORRECTNESS
+  // ========================================
+
+  describe('DOES_NOT_EXHAUST snapshot correctness', () => {
+    it('STATE_SNAPSHOT shows drone as not exhausted when DOES_NOT_EXHAUST fires', () => {
+      const triggeringDrone = {
+        id: 'blitz1', name: 'TestDoesNotExhaustDrone',
+        attack: 3, hull: 4, shields: 1, speed: 2, isExhausted: true
+      };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.doesNotExhaust).toBe(true);
+
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBeGreaterThan(0);
+
+      for (const snap of snapshots) {
+        const drone = snap.snapshotPlayerStates.player1.dronesOnBoard.lane1
+          .find(d => d.id === 'blitz1');
+        expect(drone.isExhausted).toBe(false);
+      }
+    });
+
+    it('returned newPlayerStates has drone un-exhausted', () => {
+      const triggeringDrone = {
+        id: 'blitz2', name: 'TestDoesNotExhaustDrone',
+        attack: 3, hull: 4, shields: 1, speed: 2, isExhausted: true
+      };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      const drone = result.newPlayerStates.player1.dronesOnBoard.lane1
+        .find(d => d.id === 'blitz2');
+      expect(drone.isExhausted).toBe(false);
+    });
+
+    it('usesPerRound exhausted: drone stays exhausted when trigger cannot fire', () => {
+      const triggeringDrone = {
+        id: 'blitz3', name: 'TestDoesNotExhaustLimitedDrone',
+        attack: 3, hull: 4, shields: 1, speed: 2, isExhausted: true
+      };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      // First fire — uses the single allowed use
+      const result1 = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result1.triggered).toBe(true);
+      expect(result1.doesNotExhaust).toBe(true);
+
+      // Second fire — usesPerRound exhausted, trigger should NOT fire
+      // Must pass the updated drone (with triggerUsesMap) from the first result
+      const updatedDrone = result1.newPlayerStates.player1.dronesOnBoard.lane1
+        .find(d => d.id === 'blitz3');
+      updatedDrone.isExhausted = true;
+
+      const result2 = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone: updatedDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: result1.newPlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result2.triggered).toBe(false);
+      expect(result2.doesNotExhaust).toBeFalsy();
     });
   });
 });

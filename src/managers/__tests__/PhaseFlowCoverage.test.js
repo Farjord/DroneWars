@@ -99,21 +99,26 @@ function createMockPhaseManager(gameStateManager, { isAuthority = true } = {}) {
 }
 
 /**
- * Create mock PhaseAnimationQueue
+ * Create mock AnnouncementQueue (replaces PhaseAnimationQueue)
  */
 function createMockPhaseAnimationQueue() {
   const queuedAnimations = [];
   let isPlaying = false;
 
   return {
-    queueAnimation: vi.fn((phaseName, phaseText, subtitle) => {
-      queuedAnimations.push({ phaseName, phaseText, subtitle, queuedAt: Date.now() });
+    enqueue: vi.fn((announcement) => {
+      queuedAnimations.push(announcement);
     }),
-    startPlayback: vi.fn(() => { isPlaying = true; }),
-    stopPlayback: vi.fn(() => { isPlaying = false; }),
+    enqueueAll: vi.fn((announcements) => {
+      queuedAnimations.push(...announcements);
+    }),
     isPlaying: vi.fn(() => isPlaying),
     getQueueLength: vi.fn(() => queuedAnimations.length),
+    getCurrentAnimation: vi.fn(() => null),
     clear: vi.fn(() => { queuedAnimations.length = 0; }),
+    onComplete: vi.fn(),
+    on: vi.fn().mockReturnValue(vi.fn()),
+    off: vi.fn(),
     getQueuedPhases: () => queuedAnimations.map(a => a.phaseName),
     _clearQueue: () => { queuedAnimations.length = 0; }
   };

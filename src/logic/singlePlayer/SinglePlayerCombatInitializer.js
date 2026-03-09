@@ -17,6 +17,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { personalizeAnnouncements, extractAnnouncements } from '../../utils/announcementUtils.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/slotDamageUtils.js';
 import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
@@ -151,125 +152,55 @@ class SinglePlayerCombatInitializer {
       player2State.initialDeploymentBudget = 0;
       player2State.deploymentBudget = 0;
 
-      // 7. Create game state - start at roundInitialization for proper flow
-      // GameFlowManager.processRoundInitialization() will handle energy, draw, etc.
-      const gameSeed = Math.floor(Math.random() * 2147483647);
-
-      const combatGameState = {
-        // Application state
-        appState: 'inGame',
-        gameActive: true,
-        gameMode: 'local', // Must be 'local' for AIPhaseProcessor to work
-        gameSeed: gameSeed,
-
-        // Game metadata - start at roundInitialization (handles energy, draw, drone readying)
-        // Note: roundNumber starts at 0 so processRoundInitialization() will initialize it to 1
+      // 7. Build options for startGame() — overrides for SPCI-specific state
+      const options = {
         turnPhase: 'roundInitialization',
         gameStage: 'roundLoop',
         roundNumber: 0,
-        turn: 1,
-        currentPlayer: 'player1', // Player goes first
+        currentPlayer: 'player1',
         firstPlayerOfRound: 'player1',
-        firstPasserOfPreviousRound: null,
-        firstPlayerOverride: null,
-
-        // Pass state
-        passInfo: {
-          firstPasser: null,
-          player1Passed: false,
-          player2Passed: false
-        },
-
-        // Player states
-        player1: player1State,
-        player2: player2State,
-
-        // Ship placement
+        opponentShieldsToAllocate: 0,
         placedSections: placedSections,
         opponentPlacedSections: opponentPlacedSections,
-        unplacedSections: [],
-
-        // Shields (none in round 1)
-        shieldsToAllocate: 0,
-        opponentShieldsToAllocate: 0,
-
-        // Other state
-        winner: null,
+        commitments: {
+          deckSelection: {
+            player1: { completed: true, deck: player1State.deck, drones: player1State.activeDronePool, timestamp: Date.now() },
+            player2: { completed: true, deck: player2State.deck, drones: player2State.activeDronePool, timestamp: Date.now() }
+          },
+          droneSelection: {
+            player1: { completed: true, drones: player1State.activeDronePool, timestamp: Date.now() },
+            player2: { completed: true, drones: player2State.activeDronePool, timestamp: Date.now() }
+          },
+          placement: {
+            player1: { completed: true, placedSections: placedSections, timestamp: Date.now() },
+            player2: { completed: true, placedSections: opponentPlacedSections, timestamp: Date.now() }
+          }
+        },
+        singlePlayerEncounter: {
+          aiId: aiId,
+          aiName: aiPersonality.name,
+          aiDifficulty: aiPersonality.difficulty,
+          startingHull: currentRunState?.currentHull || 30,
+          isBlockade: isBlockade
+        },
+        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null,
         gameLog: [{
           type: 'system',
           message: `Combat initiated: ${aiPersonality.name}`,
           timestamp: Date.now(),
           round: 1
-        }],
-
-        // Drone selection (pre-populated)
-        droneSelectionPool: [],
-        droneSelectionTrio: [],
-
-        // Commitments - mark deck/drone selection as complete
-        commitments: {
-          deckSelection: {
-            player1: {
-              completed: true,
-              deck: player1State.deck,
-              drones: player1State.activeDronePool,
-              timestamp: Date.now()
-            },
-            player2: {
-              completed: true,
-              deck: player2State.deck,
-              drones: player2State.activeDronePool,
-              timestamp: Date.now()
-            }
-          },
-          droneSelection: {
-            player1: {
-              completed: true,
-              drones: player1State.activeDronePool,
-              timestamp: Date.now()
-            },
-            player2: {
-              completed: true,
-              drones: player2State.activeDronePool,
-              timestamp: Date.now()
-            }
-          },
-          placement: {
-            player1: {
-              completed: true,
-              placedSections: placedSections,
-              timestamp: Date.now()
-            },
-            player2: {
-              completed: true,
-              placedSections: opponentPlacedSections,
-              timestamp: Date.now()
-            }
-          }
-        },
-
-        // Store encounter info for outcome processing
-        singlePlayerEncounter: {
-          aiId: aiId,
-          aiName: aiPersonality.name,
-          aiDifficulty: aiPersonality.difficulty,  // For AI Cores drop chance calculation
-          startingHull: currentRunState?.currentHull || 30,
-          isBlockade: isBlockade  // For auto-extraction after blockade victory
-        },
-
-        // Quick deploy ID (if selected at POI encounter modal)
-        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null
+        }]
       };
 
       // Update TacticalMapStateManager with isBlockadeCombat flag for fallback detection
       // This survives if singlePlayerEncounter is cleared before CombatOutcomeProcessor reads it
       if (isBlockade && tacticalMapStateManager.isRunActive()) {
         tacticalMapStateManager.setState({
-          isBlockadeCombat: true  // Fallback flag for blockade detection
+          isBlockadeCombat: true
         });
       }
 
-      // 8. Apply state to GameStateManager
+      // 8. Start game through canonical pipeline
       debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> inGame ===', {
         trigger: 'async_event',
         source: 'SinglePlayerCombatInitializer.initiateCombat',
@@ -278,7 +209,7 @@ class SinglePlayerCombatInitializer {
         isBlockade,
         hasQuickDeploy: !!quickDeployId
       });
-      gameStateManager.setState(combatGameState, 'SP_COMBAT_INITIALIZED');
+      gameStateManager.startGame('local', player1State, player2State, options);
 
       // 9. GFM reference for later use (announcements queued after cascade in step 13)
       const gfm = gameStateManager.gameFlowManager;
@@ -300,15 +231,17 @@ class SinglePlayerCombatInitializer {
         gameStateManager.actionProcessor.setAIPhaseProcessor(aiPhaseProcessor);
       }
 
-      // 12. Explicitly trigger roundInitialization processing
-      // GameFlowManager handles: energy calculation, card draw, drone readying, first player
+      // 12. Capture cascade animations — no GameEngine in single-player, so we
+      // use ActionProcessor's response capture to collect PHASE_ANNOUNCEMENT animations
+      // generated by GameFlowManager/PhaseTransitionStrategy during initialization.
+      ap.startResponseCapture();
+
       const gameFlowManager = gameStateManager.gameFlowManager;
       if (gameFlowManager) {
         debugLog('SP_COMBAT', 'Triggering processRoundInitialization via GameFlowManager');
         const nextPhase = await gameFlowManager.processRoundInitialization('placement');
         debugLog('SP_COMBAT', 'processRoundInitialization completed, next phase:', nextPhase);
 
-        // CRITICAL: Must transition to the returned phase (typically 'deployment')
         if (nextPhase) {
           debugLog('SP_COMBAT', 'Transitioning to phase:', nextPhase);
           await gameFlowManager.transitionToPhase(nextPhase);
@@ -318,18 +251,17 @@ class SinglePlayerCombatInitializer {
         debugLog('SP_COMBAT', '[SP Combat] GameFlowManager not available - round initialization skipped');
       }
 
-      // 13. Queue all initial announcements AFTER cascade completes
-      // The cascade generates PHASE_ANNOUNCEMENT animations but they're lost (no GameEngine wrapper during init).
-      // Queue directly into PhaseAnimationQueue — no remote client in single-player, so server pipeline isn't needed.
+      // 13. Extract captured announcements, personalize for player1, and enqueue.
+      // Uses the same announcement text as all other paths (PhaseTransitionStrategy.phaseTextMap).
+      const captured = ap.getAndClearResponseCapture();
       if (gfm) {
-        const paq = gfm.phaseAnimationQueue;
-        paq.queueAnimation('roundAnnouncement', 'ROUND', null, 'SPCI:initial');
-        paq.queueAnimation('roundInitialization', 'UPKEEP',
-          'Drawing Cards, Gaining Energy, Resetting Drones...', 'SPCI:initial');
-        paq.queueAnimation('deployment', 'DEPLOYMENT PHASE', null, 'SPCI:initial');
-        // Explicit startPlayback — cascade's _tryStartPlayback already fired with empty queue.
-        // Part 1's deferred check makes this safe regardless of App.jsx mount timing.
-        gfm._tryStartPlayback('SPCI:initial');
+        const allAnims = [...(captured.actionAnimations || []), ...(captured.systemAnimations || [])];
+        personalizeAnnouncements(captured, 'player1', gameStateManager.getState());
+        const { announcements } = extractAnnouncements(allAnims);
+
+        if (announcements.length > 0) {
+          gfm.phaseAnimationQueue.enqueueAll(announcements);
+        }
       }
 
       debugLog('SP_COMBAT', '=== Combat Initialized Successfully ===');
@@ -638,6 +570,7 @@ class SinglePlayerCombatInitializer {
       shipId: shipCard.id,
       shipSections: shipSections,
       energy: 0,
+      momentum: 0,
       initialDeploymentBudget: 10,
       deploymentBudget: 0,
       hand: [],
@@ -645,6 +578,7 @@ class SinglePlayerCombatInitializer {
       discardPile: [],
       activeDronePool: activeDronePool,
       dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+      techSlots: { lane1: [], lane2: [], lane3: [] },
       deployedDroneCounts: {},
       totalDronesDeployed: 0,
       appliedUpgrades: appliedUpgrades,
@@ -713,6 +647,7 @@ class SinglePlayerCombatInitializer {
       shipId: shipCard.id,
       shipSections: shipSections,
       energy: 0,
+      momentum: 0,
       initialDeploymentBudget: 10,
       deploymentBudget: 0,
       hand: [],
@@ -720,6 +655,7 @@ class SinglePlayerCombatInitializer {
       discardPile: [],
       activeDronePool: activeDronePool,
       dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+      techSlots: { lane1: [], lane2: [], lane3: [] },
       deployedDroneCounts: {},
       totalDronesDeployed: 0,
       appliedUpgrades: {},

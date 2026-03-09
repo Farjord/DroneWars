@@ -8,7 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './managers/GameStateManager.js';
 import GameFlowManager from './managers/GameFlowManager.js';
-import PhaseAnimationQueue from './managers/PhaseAnimationQueue.js';
+import AnnouncementQueue from './managers/AnnouncementQueue.js';
 import aiPhaseProcessor from './managers/AIPhaseProcessor.js';
 import ActionProcessor from './managers/ActionProcessor.js';
 import MenuScreen from './components/screens/MenuScreen.jsx';
@@ -53,7 +53,7 @@ function AppRouter() {
   // Initialize PhaseAnimationQueue (shared across all managers)
   const phaseAnimationQueueRef = useRef(null);
   if (!phaseAnimationQueueRef.current) {
-    phaseAnimationQueueRef.current = new PhaseAnimationQueue(gameStateManager);
+    phaseAnimationQueueRef.current = new AnnouncementQueue();
   }
 
   // Initialize GameFlowManager singleton with PhaseAnimationQueue

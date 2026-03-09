@@ -7,6 +7,7 @@ import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
+import { extractAnnouncements } from '../utils/announcementUtils.js';
 
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
@@ -23,7 +24,7 @@ class GameClient extends GameServer {
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
     this.transport.onActionAck(ack => this._onActionAck(ack));
-    this.transport.onQueueDrained(() => this._onQueueDrained());
+    // onQueueDrained no longer needed — AnnouncementQueue auto-plays on enqueue
   }
 
   // --- GameServer interface ---
@@ -75,7 +76,7 @@ class GameClient extends GameServer {
       phase: newPhase,
     });
 
-    // Extract phase/pass announcements — route to PhaseAnimationQueue, not AnimationManager
+    // Extract phase/pass announcements — route to AnnouncementQueue, not AnimationManager
     const { visualAnimations } = this._extractAndQueueAnnouncements(allAnimations);
 
     // Preserve local gameMode from current store state
@@ -200,52 +201,23 @@ class GameClient extends GameServer {
 
   /**
    * Extract PHASE_ANNOUNCEMENT and PASS_ANNOUNCEMENT from animations,
-   * queue them into PhaseAnimationQueue, and return the remaining visual animations.
+   * queue them into AnnouncementQueue (auto-plays), return remaining visual animations.
+   * Server has already personalized all text/subtitles — client just passes through.
+   * Delegates to shared extractAnnouncements utility (single source of truth).
    */
   _extractAndQueueAnnouncements(allAnimations) {
-    const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT']);
-    const visualAnimations = [];
-    let announcementCount = 0;
-
-    for (const anim of allAnimations) {
-      if (announcementTypes.has(anim.animationName)) {
-        announcementCount++;
-        this._handleAnnouncementAnimation(anim);
-      } else {
-        visualAnimations.push(anim);
-      }
-    }
+    const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
 
     flowCheckpoint('ANNOUNCEMENTS_SPLIT', {
-      toQueue: announcementCount,
+      toQueue: announcements.length,
       toVisual: visualAnimations.length,
     });
 
-    // Trigger playback if we queued announcements
-    if (announcementCount > 0 && this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
-      this.phaseAnimationQueue.startPlayback('GC:after_announcements');
+    if (announcements.length > 0 && this.phaseAnimationQueue) {
+      this.phaseAnimationQueue.enqueueAll(announcements);
     }
 
     return { visualAnimations };
-  }
-
-  _handleAnnouncementAnimation(anim) {
-    if (!this.phaseAnimationQueue) return;
-
-    if (anim.animationName === 'PHASE_ANNOUNCEMENT') {
-      const { phase, text, subtitle } = anim.payload;
-      this.phaseAnimationQueue.queueAnimation(phase, text, subtitle, 'GC:server_phase');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Phase announcement received from server', {
-        utc: new Date().toISOString(), phase, text, playerId: this.playerId,
-      });
-    } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
-      const { passedPlayerId } = anim.payload;
-      const passText = passedPlayerId === this.playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
-      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'GC:server_pass');
-      debugLog('ROUND_TRANSITION_TRACE', '[RT-GC] Pass announcement received from server', {
-        utc: new Date().toISOString(), passedPlayerId, passText, playerId: this.playerId,
-      });
-    }
   }
 
   // --- Action ack handling (M1: remote client desync prevention) ---
@@ -259,21 +231,6 @@ class GameClient extends GameServer {
     debugLog('MP_SYNC_TRACE', '[6/10] Client received action ack', { actionType, success: false, error });
     if (authoritativeState) {
       this._applyState({ ...authoritativeState, gameMode: this.getState().gameMode });
-    }
-  }
-
-  // --- Queue drain handler (M2: phase animation playback trigger) ---
-
-  _onQueueDrained() {
-    if (!this.phaseAnimationQueue) return;
-    if (this.phaseAnimationQueue.isPlaying()) return;
-
-    const queueLength = this.phaseAnimationQueue.getQueueLength();
-    if (queueLength > 0) {
-      debugLog('TIMING', '[GameClient] Scheduling animation playback after queue drain (50ms delay)');
-      setTimeout(() => {
-        this.phaseAnimationQueue.startPlayback('GameClient:after_drain');
-      }, 50);
     }
   }
 

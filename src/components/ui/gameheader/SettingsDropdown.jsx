@@ -23,6 +23,7 @@ function SettingsDropdown({
   onShowAddCardModal,
   onForceWin,
   onShowGlossary,
+  onShowGameManual,
   onShowAIStrategy,
   onOpenLog,
   onOpenLogModal,
@@ -165,6 +166,16 @@ function SettingsDropdown({
           >
             <ScrollText size={16} />
             Game Log (Modal)
+          </button>
+          <button
+            onClick={() => {
+              onShowGameManual && onShowGameManual();
+              setShowSettingsDropdown(false);
+            }}
+            className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+          >
+            <BookOpen size={16} />
+            Game Manual
           </button>
           <button
             onClick={() => {

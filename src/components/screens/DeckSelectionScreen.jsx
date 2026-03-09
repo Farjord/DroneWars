@@ -137,7 +137,7 @@ function DeckSelectionScreen() {
     }
 
     // Host/Local mode: Process action locally
-    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+    const submissionResult = await gameStateManager.submitCommitment(payload);
 
     if (!submissionResult.success) {
       debugLog('DECK_SELECTION', '❌ Deck selection submission failed:', submissionResult.error);
@@ -278,7 +278,7 @@ function DeckSelectionScreen() {
     }
 
     // Host/Local mode: Process action locally
-    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+    const submissionResult = await gameStateManager.submitCommitment(payload);
 
     if (!submissionResult.success) {
       debugLog('DECK_SELECTION', '❌ Custom deck submission failed:', submissionResult.error);

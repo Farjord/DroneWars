@@ -28,6 +28,7 @@ import AIHandDebugModal from '../modals/AIHandDebugModal.jsx';
 import GameDebugModal from '../modals/GameDebugModal.jsx';
 import OpponentDronesModal from '../modals/OpponentDronesModal.jsx';
 import GlossaryModal from '../modals/GlossaryModal.jsx';
+import GameManualModal from '../modals/GameManualModal.jsx';
 import AIStrategyModal from '../modals/AIStrategyModal.jsx';
 import AddCardToHandModal from '../modals/AddCardToHandModal.jsx';
 import CardDetailModal from '../modals/CardDetailModal.jsx';
@@ -79,6 +80,7 @@ function ModalLayer({
   opponentSelectedDrones,
   showDebugModal,
   showGlossaryModal,
+  showGameManualModal,
   showAIStrategyModal,
   showAddCardModal,
   isViewDeckModalOpen,
@@ -118,6 +120,7 @@ function ModalLayer({
   onCloseOpponentDronesModal,
   onCloseDebugModal,
   onCloseGlossaryModal,
+  onCloseGameManualModal,
   onCloseAIStrategyModal,
   onCloseAddCardModal,
   onConfirmAddCards,
@@ -379,6 +382,10 @@ function ModalLayer({
 
       {showGlossaryModal && (
         <GlossaryModal onClose={onCloseGlossaryModal} />
+      )}
+
+      {showGameManualModal && (
+        <GameManualModal onClose={onCloseGameManualModal} />
       )}
 
       {showAIStrategyModal && (

@@ -3,81 +3,25 @@ import { getViewportCenter } from '../../utils/gameUtils.js';
 
 // Animation durations (ms)
 const TELEPORT_DURATION = 600;
-const PHASE_BREATHING_ROOM_DELAY = 300;
 
 /**
  * Registers notification-related animation handlers on the AnimationManager.
- * Handlers: PHASE_ANNOUNCEMENT_EFFECT, PASS_NOTIFICATION_EFFECT, GO_AGAIN_NOTIFICATION_EFFECT,
+ * Handlers: PASS_NOTIFICATION_EFFECT, GO_AGAIN_NOTIFICATION_EFFECT,
  *           SHIP_ABILITY_REVEAL_EFFECT, TELEPORT_EFFECT
+ *
+ * Note: PHASE_ANNOUNCEMENT_EFFECT removed — announcements now route through
+ * AnnouncementQueue (auto-play FIFO), not AnimationManager.
  */
 export function registerNotificationAnimations(animationManager, {
   gameStateManager,
   droneRefs,
   setShipAbilityReveals,
-  setPhaseAnnouncements,
   setTeleportEffects,
   setPassNotifications,
   setGoAgainNotifications,
   setTriggerFiredNotifications,
   setMovementBlockedNotifications
 }) {
-  animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {
-    const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
-
-    timingLog('[VISUAL HANDLER] PHASE_ANNOUNCEMENT handler called', {
-      phaseName,
-      phaseText,
-      blockingReason: 'waiting_for_breathing_room_delay'
-    });
-
-    // Add brief delay to provide visual breathing room between overlay clearing and announcement
-    // Waiting overlays now clear immediately via 'bothPlayersComplete' event
-    await new Promise(resolve => setTimeout(resolve, PHASE_BREATHING_ROOM_DELAY));
-
-    timingLog('[VISUAL HANDLER] Breathing room complete', {
-      phaseName,
-      blockingReason: 'calculating_subtitle'
-    });
-
-    // Calculate subtitle from local player's perspective
-    let subtitle = null;
-    if (firstPlayerId) {
-      const localPlayerId = gameStateManager.getLocalPlayerId();
-      subtitle = firstPlayerId === localPlayerId ? 'You Go First' : 'Opponent Goes First';
-    }
-
-    debugLog('ANIMATIONS', '📢 [PHASE ANNOUNCEMENT DEBUG] PHASE_ANNOUNCEMENT_EFFECT handler called:', {
-      phaseName,
-      phaseText,
-      firstPlayerId,
-      localPlayerId: gameStateManager.getLocalPlayerId(),
-      calculatedSubtitle: subtitle
-    });
-
-    const announcementId = `phaseannouncement-${crypto.randomUUID()}`;
-
-    timingLog('[VISUAL HANDLER] Setting React state', {
-      phaseName,
-      announcementId,
-      blockingReason: 'calling_setPhaseAnnouncements'
-    });
-
-    setPhaseAnnouncements(prev => [...prev, {
-      id: announcementId,
-      phaseText: phaseText,
-      subtitle: subtitle,
-      onComplete: () => {
-        setPhaseAnnouncements(prev => prev.filter(a => a.id !== announcementId));
-        onComplete?.();
-      }
-    }]);
-
-    timingLog('[VISUAL HANDLER] React state set', {
-      phaseName,
-      blockingReason: 'waiting_for_react_render_then_animation_duration'
-    });
-  });
-
   animationManager.registerVisualHandler('PASS_NOTIFICATION_EFFECT', (payload) => {
     const { passingPlayerId, onComplete } = payload;
 

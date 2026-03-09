@@ -56,10 +56,15 @@ describe('GameClient', () => {
       gameStateManager: { syncFromServer: vi.fn() },
     };
     mockPAQ = {
-      queueAnimation: vi.fn(),
+      enqueue: vi.fn(),
+      enqueueAll: vi.fn(),
       isPlaying: vi.fn().mockReturnValue(false),
       getQueueLength: vi.fn().mockReturnValue(0),
-      startPlayback: vi.fn(),
+      getCurrentAnimation: vi.fn().mockReturnValue(null),
+      clear: vi.fn(),
+      onComplete: vi.fn(),
+      on: vi.fn().mockReturnValue(vi.fn()),
+      off: vi.fn(),
     };
     mockAnimMgr = {
       executeWithStateUpdate: vi.fn().mockResolvedValue(undefined),
@@ -323,7 +328,7 @@ describe('GameClient', () => {
   // --- Server-emitted announcements ---
 
   describe('_extractAndQueueAnnouncements', () => {
-    it('extracts PHASE_ANNOUNCEMENT and queues into phaseAnimationQueue', async () => {
+    it('extracts PHASE_ANNOUNCEMENT and enqueues into phaseAnimationQueue', async () => {
       const phaseAnim = {
         animationName: 'PHASE_ANNOUNCEMENT',
         timing: 'independent',
@@ -335,17 +340,16 @@ describe('GameClient', () => {
         animations: { actionAnimations: [], systemAnimations: [phaseAnim] },
       });
 
-      expect(mockPAQ.queueAnimation).toHaveBeenCalledWith(
-        'deployment', 'DEPLOYMENT PHASE', null, 'GC:server_phase'
-      );
-      expect(mockPAQ.startPlayback).toHaveBeenCalledWith('GC:after_announcements');
+      expect(mockPAQ.enqueueAll).toHaveBeenCalledWith([
+        expect.objectContaining({ phaseName: 'deployment', phaseText: 'DEPLOYMENT PHASE', subtitle: null }),
+      ]);
     });
 
-    it('extracts PASS_ANNOUNCEMENT and personalizes for local player ("YOU PASSED")', async () => {
+    it('extracts PASS_ANNOUNCEMENT with server-provided text', async () => {
       const passAnim = {
         animationName: 'PASS_ANNOUNCEMENT',
         timing: 'independent',
-        payload: { passedPlayerId: 'player1' },
+        payload: { passedPlayerId: 'player1', text: 'YOU PASSED', phase: 'playerPass' },
       };
 
       await client._onResponse({
@@ -353,26 +357,9 @@ describe('GameClient', () => {
         animations: { actionAnimations: [], systemAnimations: [passAnim] },
       });
 
-      expect(mockPAQ.queueAnimation).toHaveBeenCalledWith(
-        'playerPass', 'YOU PASSED', null, 'GC:server_pass'
-      );
-    });
-
-    it('extracts PASS_ANNOUNCEMENT and personalizes for opponent ("OPPONENT PASSED")', async () => {
-      const passAnim = {
-        animationName: 'PASS_ANNOUNCEMENT',
-        timing: 'independent',
-        payload: { passedPlayerId: 'player2' },
-      };
-
-      await client._onResponse({
-        state: makeState(),
-        animations: { actionAnimations: [], systemAnimations: [passAnim] },
-      });
-
-      expect(mockPAQ.queueAnimation).toHaveBeenCalledWith(
-        'playerPass', 'OPPONENT PASSED', null, 'GC:server_pass'
-      );
+      expect(mockPAQ.enqueueAll).toHaveBeenCalledWith([
+        expect.objectContaining({ phaseName: 'playerPass', phaseText: 'YOU PASSED' }),
+      ]);
     });
 
     it('filters announcements from visual animations passed to AnimationManager', async () => {
@@ -394,24 +381,7 @@ describe('GameClient', () => {
       );
     });
 
-    it('does not start playback if already playing', async () => {
-      mockPAQ.isPlaying.mockReturnValue(true);
-      const phaseAnim = {
-        animationName: 'PHASE_ANNOUNCEMENT',
-        timing: 'independent',
-        payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
-      };
-
-      await client._onResponse({
-        state: makeState(),
-        animations: { actionAnimations: [], systemAnimations: [phaseAnim] },
-      });
-
-      expect(mockPAQ.queueAnimation).toHaveBeenCalled();
-      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
-    });
-
-    it('queues all announcements via unified delivery (no direct-queue bypass)', async () => {
+    it('enqueues all announcements in a single batch', async () => {
       const phaseAnim = {
         animationName: 'PHASE_ANNOUNCEMENT',
         timing: 'independent',
@@ -420,7 +390,7 @@ describe('GameClient', () => {
       const passAnim = {
         animationName: 'PASS_ANNOUNCEMENT',
         timing: 'independent',
-        payload: { passedPlayerId: 'player1' },
+        payload: { passedPlayerId: 'player1', text: 'YOU PASSED', phase: 'playerPass' },
       };
 
       await client._onResponse({
@@ -428,8 +398,9 @@ describe('GameClient', () => {
         animations: { actionAnimations: [], systemAnimations: [phaseAnim, passAnim] },
       });
 
-      // Both should be queued via unified path
-      expect(mockPAQ.queueAnimation).toHaveBeenCalledTimes(2);
+      // Both should be in a single enqueueAll call
+      expect(mockPAQ.enqueueAll).toHaveBeenCalledTimes(1);
+      expect(mockPAQ.enqueueAll.mock.calls[0][0]).toHaveLength(2);
     });
 
     it('does nothing when phaseAnimationQueue is null', async () => {
@@ -488,56 +459,7 @@ describe('GameClient', () => {
     });
   });
 
-  // --- Queue drain handling (M2) ---
-
-  describe('queue drain handling', () => {
-    it('triggers phaseAnimationQueue.startPlayback after drain when queue has items', () => {
-      vi.useFakeTimers();
-      mockPAQ.getQueueLength.mockReturnValue(2);
-
-      transport.simulateQueueDrained();
-      vi.advanceTimersByTime(50);
-
-      expect(mockPAQ.startPlayback).toHaveBeenCalledWith('GameClient:after_drain');
-      vi.useRealTimers();
-    });
-
-    it('does NOT trigger playback when queue is empty', () => {
-      vi.useFakeTimers();
-      mockPAQ.getQueueLength.mockReturnValue(0);
-
-      transport.simulateQueueDrained();
-      vi.advanceTimersByTime(50);
-
-      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
-      vi.useRealTimers();
-    });
-
-    it('does NOT trigger playback when already playing', () => {
-      vi.useFakeTimers();
-      mockPAQ.getQueueLength.mockReturnValue(2);
-      mockPAQ.isPlaying.mockReturnValue(true);
-
-      transport.simulateQueueDrained();
-      vi.advanceTimersByTime(50);
-
-      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
-      vi.useRealTimers();
-    });
-
-    it('does NOT trigger playback when phaseAnimationQueue is null', () => {
-      vi.useFakeTimers();
-      const noQueueClient = new GameClient(transport, {
-        clientStateStore: mockStore, playerId: 'player1',
-      });
-
-      transport.simulateQueueDrained();
-      vi.advanceTimersByTime(50);
-
-      expect(mockPAQ.startPlayback).not.toHaveBeenCalled();
-      vi.useRealTimers();
-    });
-  });
+  // Queue drain handling removed — AnnouncementQueue auto-plays on enqueue
 
   // --- Intermediate State ---
 

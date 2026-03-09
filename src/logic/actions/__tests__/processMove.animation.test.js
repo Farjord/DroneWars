@@ -173,6 +173,39 @@ describe('processMove animation ordering', () => {
     expect(ctx.executeGoAgainAnimation).toHaveBeenCalledWith('player1');
   });
 
+  it('bridge STATE_SNAPSHOT contains pre-trigger state (no stat buffs from trigger)', async () => {
+    const ctx = makeCtx();
+
+    mockFireTrigger.mockImplementation((triggerType, context) => {
+      if (triggerType === 'ON_MOVE') {
+        // Simulate trigger adding a stat mod to the moved drone
+        const modifiedStates = JSON.parse(JSON.stringify(context.playerStates));
+        const droneInLane = modifiedStates.player1.dronesOnBoard.lane2.find(d => d.id === 'd1');
+        droneInLane.statMods = [{ stat: 'attack', value: 1, source: 'Phase Shift' }];
+        return {
+          triggered: true,
+          newPlayerStates: modifiedStates,
+          animationEvents: [{ type: 'STAT_BUFF', targetDrone: 'd1' }],
+        };
+      }
+      return { triggered: false, newPlayerStates: null, animationEvents: [] };
+    });
+
+    await processMove(
+      { droneId: 'd1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' },
+      ctx
+    );
+
+    const rawEvents = ctx.mapAnimationEvents.mock.calls[0][0];
+    const snapshot = rawEvents.find(e => e.type === 'STATE_SNAPSHOT');
+    expect(snapshot).toBeDefined();
+
+    // Bridge snapshot should have the drone in lane2 (moved) but with NO stat mods
+    const snapshotDrone = snapshot.snapshotPlayerStates.player1.dronesOnBoard.lane2.find(d => d.id === 'd1');
+    expect(snapshotDrone).toBeDefined();
+    expect(snapshotDrone.statMods).toEqual([]);
+  });
+
   it('commits state once via setPlayerStates', async () => {
     const ctx = makeCtx();
 

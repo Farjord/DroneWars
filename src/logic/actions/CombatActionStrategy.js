@@ -240,6 +240,13 @@ export async function processMove(payload, ctx) {
   newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
   newPlayerState.dronesOnBoard[toLane].push(movedDrone);
 
+  // Capture pre-trigger state for bridge STATE_SNAPSHOT
+  // (drone has moved but no trigger effects applied yet)
+  const preTriggerIntermediateState = {
+    [playerId]: JSON.parse(JSON.stringify(newPlayerState)),
+    [opponentPlayerId]: JSON.parse(JSON.stringify(opponentPlayerState)),
+  };
+
   // Apply ON_MOVE effects via TriggerProcessor (fires for all drones per PRD 3.3)
   const triggerProcessor = new TriggerProcessor();
   let opponentState = JSON.parse(JSON.stringify(opponentPlayerState));
@@ -269,6 +276,11 @@ export async function processMove(payload, ctx) {
     if (droneInState) {
       droneInState.isExhausted = false;
     }
+    // Also patch bridge snapshot so animation never shows drone exhausted
+    const droneInIntermediate = preTriggerIntermediateState[playerId]?.dronesOnBoard?.[toLane]?.find(d => d.id === droneId);
+    if (droneInIntermediate) {
+      droneInIntermediate.isExhausted = false;
+    }
   }
 
   // Update auras after movement
@@ -277,12 +289,6 @@ export async function processMove(payload, ctx) {
     opponentState,
     placedSections
   );
-
-  // Capture intermediate state (post-movement, pre-mine) for STATE_SNAPSHOT
-  const intermediateState = {
-    [playerId]: JSON.parse(JSON.stringify(stateAfterMoveEffects)),
-    [opponentPlayerId]: JSON.parse(JSON.stringify(opponentState)),
-  };
 
   // Fire ON_LANE_MOVEMENT_IN triggers on in-memory state (not from GSM)
   const movedDroneInLane = stateAfterMoveEffects.dronesOnBoard[toLane]?.find(d => d.id === droneId);
@@ -324,7 +330,7 @@ export async function processMove(payload, ctx) {
   const sequence = buildAnimationSequence([{
     actionEvents: movementEvents,
     triggerEvents: allTriggerEvents,
-    intermediateState: allTriggerEvents.length > 0 ? intermediateState : null,
+    intermediateState: allTriggerEvents.length > 0 ? preTriggerIntermediateState : null,
   }]);
 
   // Map raw events to animation format and execute

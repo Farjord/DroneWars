@@ -29,6 +29,16 @@ describe('SinglePlayerCombatInitializer - shipId inclusion', () => {
       expect(playerState.shipId).toBeDefined();
       expect(playerState.shipId).toBe('SHIP_001'); // Default ship
     });
+
+    it('should include momentum and techSlots fields', () => {
+      const mockShipSlot = { shipId: 'SHIP_001', decklist: [], activeDronePool: [] };
+      const mockRunState = {};
+
+      const playerState = SinglePlayerCombatInitializer.buildPlayerState(mockShipSlot, mockRunState);
+
+      expect(playerState.momentum).toBe(0);
+      expect(playerState.techSlots).toEqual({ lane1: [], lane2: [], lane3: [] });
+    });
   });
 
   describe('buildAIState', () => {
@@ -60,6 +70,21 @@ describe('SinglePlayerCombatInitializer - shipId inclusion', () => {
 
       expect(aiState.shipId).toBeDefined();
       expect(aiState.shipId).toBe('SHIP_001'); // Default ship
+    });
+
+    it('should include momentum and techSlots fields', () => {
+      const mockAIPersonality = {
+        id: 'AI_001',
+        name: 'Test AI',
+        shipId: 'SHIP_001',
+        decklist: [],
+        dronePool: []
+      };
+
+      const aiState = SinglePlayerCombatInitializer.buildAIState(mockAIPersonality);
+
+      expect(aiState.momentum).toBe(0);
+      expect(aiState.techSlots).toEqual({ lane1: [], lane2: [], lane3: [] });
     });
   });
 });
@@ -107,16 +132,27 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
       transitionToPhase: vi.fn().mockResolvedValue(undefined),
-      _tryStartPlayback: vi.fn(),
+      resubscribe: vi.fn(),
       phaseAnimationQueue: {
-        queueAnimation: vi.fn(),
-        isPlaying: vi.fn().mockReturnValue(false)
+        enqueue: vi.fn(),
+        enqueueAll: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false),
+        clear: vi.fn(),
       }
     };
 
-    // Mock actionProcessor
+    // Mock actionProcessor with response capture for announcement pipeline
     gameStateManager.actionProcessor = {
-      setAIPhaseProcessor: vi.fn()
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: vi.fn(),
+      getAndClearResponseCapture: vi.fn(() => ({
+        actionAnimations: [],
+        systemAnimations: [
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+        ],
+      })),
     };
   });
 
@@ -266,16 +302,27 @@ describe('SinglePlayerCombatInitializer - placedSections lane assignments', () =
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
       transitionToPhase: vi.fn().mockResolvedValue(undefined),
-      _tryStartPlayback: vi.fn(),
+      resubscribe: vi.fn(),
       phaseAnimationQueue: {
-        queueAnimation: vi.fn(),
-        isPlaying: vi.fn().mockReturnValue(false)
+        enqueue: vi.fn(),
+        enqueueAll: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false),
+        clear: vi.fn(),
       }
     };
 
-    // Mock actionProcessor
+    // Mock actionProcessor with response capture for announcement pipeline
     gameStateManager.actionProcessor = {
-      setAIPhaseProcessor: vi.fn()
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: vi.fn(),
+      getAndClearResponseCapture: vi.fn(() => ({
+        actionAnimations: [],
+        systemAnimations: [
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+        ],
+      })),
     };
   });
 
@@ -381,17 +428,27 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
       transitionToPhase: vi.fn().mockResolvedValue(undefined),
-      _tryStartPlayback: vi.fn(),
+      resubscribe: vi.fn(),
       phaseAnimationQueue: {
-        queueAnimation: vi.fn(),
+        enqueue: vi.fn(),
+        enqueueAll: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false),
         clear: vi.fn(),
-        isPlaying: vi.fn().mockReturnValue(false)
       }
     };
 
-    // Mock actionProcessor
+    // Mock actionProcessor with response capture for announcement pipeline
     gameStateManager.actionProcessor = {
-      setAIPhaseProcessor: vi.fn()
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: vi.fn(),
+      getAndClearResponseCapture: vi.fn(() => ({
+        actionAnimations: [],
+        systemAnimations: [
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+        ],
+      })),
     };
   });
 
@@ -514,17 +571,26 @@ describe('SinglePlayerCombatInitializer - animation queue cleanup', () => {
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
       transitionToPhase: vi.fn().mockResolvedValue(undefined),
-      _tryStartPlayback: vi.fn(),
       phaseAnimationQueue: {
-        queueAnimation: vi.fn(),
+        enqueue: vi.fn(),
+        enqueueAll: vi.fn(),
+        isPlaying: vi.fn().mockReturnValue(false),
         clear: clearQueueSpy,
-        isPlaying: vi.fn().mockReturnValue(false)
       }
     };
 
-    // Mock actionProcessor
+    // Mock actionProcessor with response capture for announcement pipeline
     gameStateManager.actionProcessor = {
-      setAIPhaseProcessor: vi.fn()
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: vi.fn(),
+      getAndClearResponseCapture: vi.fn(() => ({
+        actionAnimations: [],
+        systemAnimations: [
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+          { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+        ],
+      })),
     };
   });
 
@@ -594,5 +660,106 @@ describe('SinglePlayerCombatInitializer - animation queue cleanup', () => {
 
     // ASSERT: Animation queue should NOT be cleared
     expect(clearQueueSpy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * TDD Tests: Announcement capture pipeline
+ * Verifies SPCI captures cascade-generated announcements via ActionProcessor
+ * instead of hardcoding them, ensuring a single source of truth for announcement text.
+ */
+describe('SinglePlayerCombatInitializer - announcement capture pipeline', () => {
+  let setStateSpy;
+  let originalGetState;
+  let enqueueAllSpy;
+  let startResponseCaptureSpy;
+  let getAndClearResponseCaptureSpy;
+
+  beforeEach(() => {
+    setStateSpy = vi.spyOn(gameStateManager, 'setState').mockImplementation(() => {});
+    originalGetState = gameStateManager.getState;
+
+    gameStateManager.getState = vi.fn(() => ({
+      singlePlayerShipSlots: [
+        { id: 0, shipId: 'SHIP_001', decklist: [], activeDronePool: [] }
+      ],
+      roundNumber: 1,
+      firstPlayerOfRound: 'player1',
+    }));
+
+    vi.spyOn(SinglePlayerCombatInitializer, 'getAIPersonality').mockReturnValue({
+      name: 'Test AI',
+      difficulty: 1,
+      shipId: 'SHIP_001',
+      decklist: [],
+      dronePool: [],
+      modes: ['extraction'],
+      shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
+    });
+
+    enqueueAllSpy = vi.fn();
+    gameStateManager.gameFlowManager = {
+      processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
+      transitionToPhase: vi.fn().mockResolvedValue(undefined),
+      resubscribe: vi.fn(),
+      phaseAnimationQueue: {
+        enqueue: vi.fn(),
+        enqueueAll: enqueueAllSpy,
+        isPlaying: vi.fn().mockReturnValue(false),
+        clear: vi.fn(),
+      }
+    };
+
+    // Mock ActionProcessor with response capture methods
+    startResponseCaptureSpy = vi.fn();
+    getAndClearResponseCaptureSpy = vi.fn().mockReturnValue({
+      actionAnimations: [],
+      systemAnimations: [
+        { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null } },
+        { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'roundInitialization', text: 'UPKEEP', subtitle: 'Drawing Cards, Gaining Energy, Resetting Drones...' } },
+        { animationName: 'PHASE_ANNOUNCEMENT', payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null } },
+      ],
+    });
+
+    gameStateManager.actionProcessor = {
+      setAIPhaseProcessor: vi.fn(),
+      startResponseCapture: startResponseCaptureSpy,
+      getAndClearResponseCapture: getAndClearResponseCaptureSpy,
+    };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    gameStateManager.getState = originalGetState;
+  });
+
+  it('captures cascade animations via startResponseCapture/getAndClearResponseCapture', async () => {
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    await SinglePlayerCombatInitializer.initiateCombat('Rogue Scout Pattern', mockRunState, null, false);
+
+    expect(startResponseCaptureSpy).toHaveBeenCalled();
+    expect(getAndClearResponseCaptureSpy).toHaveBeenCalled();
+  });
+
+  it('enqueues captured announcements with personalized text', async () => {
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    await SinglePlayerCombatInitializer.initiateCombat('Rogue Scout Pattern', mockRunState, null, false);
+
+    expect(enqueueAllSpy).toHaveBeenCalledTimes(1);
+    const enqueuedItems = enqueueAllSpy.mock.calls[0][0];
+
+    expect(enqueuedItems).toHaveLength(3);
+    // Round announcement should have personalized text "ROUND 1"
+    expect(enqueuedItems[0].phaseName).toBe('roundAnnouncement');
+    expect(enqueuedItems[0].phaseText).toBe('ROUND 1');
+    // Upkeep
+    expect(enqueuedItems[1].phaseName).toBe('roundInitialization');
+    expect(enqueuedItems[1].phaseText).toBe('UPKEEP');
+    // Deployment should have personalized subtitle
+    expect(enqueuedItems[2].phaseName).toBe('deployment');
+    expect(enqueuedItems[2].phaseText).toBe('DEPLOYMENT PHASE');
+    expect(enqueuedItems[2].subtitle).toBe('You Go First');
   });
 });
