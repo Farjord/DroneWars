@@ -81,6 +81,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | ~~82~~ | ~~GameEngine.js, ClientStateStore.js~~ | ~~`_engineProcessing` / `_preProcessingState` set as ad-hoc properties on GSM by GameEngine~~ | ~~Multiplayer unified client review~~ | ~~2026-03-08~~ | ~~Resolved~~ |
 | 83 | useAnimationSetup.js, GameClient.js | AnimationManager wired in useEffect after GameClient creation — actions firing before useEffect skip animations silently. Structural fix: queue responses in GameClient until AnimationManager is wired, then replay. Warning log added in this commit. | Client/server architecture review | 2026-03-08 | Medium |
 | 84 | useGameLifecycle.js, useMultiplayerSync.js | Hooks accessing GameStateManager internals directly (e.g., `gameStateManager._updateContext`, direct property reads) — consider adding accessor methods to GSM to reduce coupling and protect internal state shape. | Post-refactor review (D18) | 2026-03-09 | Low |
+| 85 | SinglePlayerCombatInitializer.js | SPCI manually queues Round/Upkeep/Deployment announcements because `processRoundInitialization()` runs before GameServer exists. Full fix requires either: (a) making GameServer creation synchronous before startGame(), or (b) deferring processRoundInitialization() until after server wiring via a callback/event. Workaround is isolated and functional. | SPCI unification | 2026-03-09 | Low |
 
 ## Audit Findings (2026-02-23)
 
