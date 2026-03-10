@@ -21,7 +21,7 @@ describe('GameStateManager.submitCommitment', () => {
     };
     gameStateManager.setGameServer(mockGameServer);
 
-    const payload = { phase: 'deckSelection', playerId: 'player1', actionData: {} };
+    const payload = { phase: 'preGameSetup', playerId: 'player1', actionData: { subPhase: 'deckSelection' } };
     const result = await gameStateManager.submitCommitment(payload);
 
     expect(mockGameServer.submitAction).toHaveBeenCalledWith('commitment', payload);
@@ -35,7 +35,7 @@ describe('GameStateManager.submitCommitment', () => {
       processCommitment: vi.fn().mockResolvedValue(mockResult),
     };
 
-    const payload = { phase: 'deckSelection', playerId: 'player1', actionData: {} };
+    const payload = { phase: 'preGameSetup', playerId: 'player1', actionData: { subPhase: 'deckSelection' } };
     const result = await gameStateManager.submitCommitment(payload);
 
     expect(gameStateManager.actionProcessor.processCommitment).toHaveBeenCalledWith(payload);

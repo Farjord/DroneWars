@@ -53,7 +53,7 @@ function createMockGameStateManager(overrides = {}) {
     roundNumber: 0,
     turn: 0,
     gameMode: 'local',
-    turnPhase: 'placement',
+    turnPhase: 'preGameSetup',
     player1: { hand: [], dronesOnBoard: {}, energy: 0 },
     player2: { hand: [], dronesOnBoard: {}, energy: 0 },
     placedSections: [],

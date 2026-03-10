@@ -98,7 +98,7 @@ describe('StateValidationService', () => {
   });
 
   describe('isInitializationPhase', () => {
-    const initPhases = [null, 'preGame', 'droneSelection', 'deckSelection', 'deckBuilding', 'placement', 'gameInitializing', 'initialDraw'];
+    const initPhases = [null, 'preGame', 'preGameSetup', 'deckBuilding', 'gameInitializing', 'initialDraw'];
     const gameplayPhases = ['deployment', 'action', 'roundEnd', 'gameEnd', 'energyReset', 'draw'];
 
     test('returns true for initialization phases', () => {
@@ -117,7 +117,7 @@ describe('StateValidationService', () => {
   describe('validateTurnPhaseTransition', () => {
     test('does not warn for valid transitions', () => {
       service.validateTurnPhaseTransition(null, 'preGame');
-      service.validateTurnPhaseTransition('preGame', 'droneSelection');
+      service.validateTurnPhaseTransition('preGame', 'preGameSetup');
       service.validateTurnPhaseTransition('deployment', 'action');
 
       const warningCalls = debugLog.mock.calls.filter(

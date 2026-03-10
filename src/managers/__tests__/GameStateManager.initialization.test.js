@@ -412,7 +412,7 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       // Game should be properly initialized
       expect(gameStateManager.get('appState')).toBe('inGame');
       expect(gameStateManager.get('gameActive')).toBe(true);
-      expect(gameStateManager.get('turnPhase')).toBe('deckSelection');
+      expect(gameStateManager.get('turnPhase')).toBe('preGameSetup');
       expect(gameStateManager.get('player1').name).toBe('New Player 1');
       expect(gameStateManager.get('player2').name).toBe('New Player 2');
     });

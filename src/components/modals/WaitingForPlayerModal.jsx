@@ -9,7 +9,7 @@ import React from 'react';
 /**
  * WaitingForPlayerModal - Shows waiting state for simultaneous phase acknowledgment
  * @param {boolean} show - Whether to show the modal
- * @param {string} phase - The phase we're waiting for (e.g., 'determineFirstPlayer')
+ * @param {string} phase - The phase we're waiting for (e.g., 'allocateShields')
  * @param {string} opponentName - Name of the opponent we're waiting for (not used - kept for compatibility)
  * @param {string} roomCode - Room code for multiplayer sessions (not used - kept for compatibility)
  */
@@ -19,8 +19,6 @@ const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCod
   // Get phase-specific display text
   const getPhaseText = (phase) => {
     switch (phase) {
-      case 'determineFirstPlayer':
-        return 'Waiting for Opponent';
       case 'mandatoryDiscard':
         return 'Opponent Discarding';
       case 'optionalDiscard':

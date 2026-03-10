@@ -67,7 +67,7 @@ describe('CombatStateManager', () => {
       });
 
       const state = manager.getState();
-      expect(state.turnPhase).toBe('placement');
+      expect(state.turnPhase).toBe('preGameSetup');
       expect(state.roundNumber).toBe(1);
       expect(state.turn).toBe(1);
     });

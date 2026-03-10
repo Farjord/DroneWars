@@ -5,7 +5,7 @@
 // Handles both single-player and multiplayer drone selection logic
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { SubmittingOverlay } from './WaitingForOpponentScreen.jsx';
 import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
 import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
@@ -17,72 +17,17 @@ import SoundManager from '../../managers/SoundManager.js';
 import '../../styles/phase-screens.css';
 
 /**
- * SUBMITTING OVERLAY COMPONENT
- * Displays feedback while remote client's action is being sent to host and confirmed.
- * Shows between clicking Continue and host confirming the commitment.
- */
-export const SubmittingOverlay = () => {
-  return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <div className="text-center p-8">
-        <Loader2 className="w-16 h-16 mx-auto text-cyan-400 animate-spin mb-6" />
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Processing Your Selection
-        </h2>
-        <p className="text-gray-400 text-lg">
-          Sending your choices to the host...
-        </p>
-      </div>
-    </div>
-  );
-};
-
-/**
- * WAITING FOR OPPONENT SCREEN COMPONENT
- * Displays waiting screen when opponent is still making selections.
- * Shows loading indicator and current status.
- * @param {string} phase - Current game phase
- * @param {string} localPlayerStatus - Local player completion status
- */
-export const WaitingForOpponentScreen = ({ phase, localPlayerStatus }) => {
-  return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <div className="text-center p-8">
-        <Loader2 className="w-16 h-16 mx-auto text-cyan-400 animate-spin mb-6" />
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Waiting for Your Opponent
-        </h2>
-        <p className="text-gray-400 text-lg mb-6">
-          {phase === 'droneSelection' && 'Your opponent is still selecting their drones...'}
-          {phase === 'deckSelection' && 'Your opponent is still choosing their deck...'}
-          {phase === 'placement' && 'Your opponent is still placing their ship components...'}
-        </p>
-        {localPlayerStatus && (
-          <div className="bg-slate-800 rounded-lg p-4 max-w-md mx-auto">
-            <h3 className="text-lg font-bold text-green-400 mb-2">✅ Your Selection Complete</h3>
-            <p className="text-gray-300 text-sm">{localPlayerStatus}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/**
  * DRONE SELECTION SCREEN COMPONENT
  * Complete drone selection phase management with state and phase completion tracking.
  * Extracted from App.jsx with all original logic preserved.
  */
-function DroneSelectionScreen() {
+function DroneSelectionScreen({ onStepComplete }) {
   const {
     gameState,
     getLocalPlayerId,
-    getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState
   } = useGameState();
-
-  const { turnPhase } = gameState;
   const localPlayerState = getLocalPlayerState();
   const localPlayerId = getLocalPlayerId();
 
@@ -132,8 +77,6 @@ function DroneSelectionScreen() {
    * @param {Object} chosenDrone - The drone being selected
    */
   const handleChooseDroneForSelection = (chosenDrone) => {
-    // Only handle during drone selection phase
-    if (turnPhase !== 'droneSelection') return;
     SoundManager.getInstance().play('ui_click');
 
     debugLog('DRONE_SELECTION', '🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
@@ -161,16 +104,13 @@ function DroneSelectionScreen() {
    * Uses PhaseManager submission pattern for drone selection.
    */
   const handleContinueDroneSelection = async () => {
-    // Only handle during drone selection phase
-    if (turnPhase !== 'droneSelection') return;
-
     debugLog('DRONE_SELECTION', '🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
 
     const localPlayerId = getLocalPlayerId();
     const payload = {
       playerId: localPlayerId,
-      phase: 'droneSelection',
-      actionData: { drones: tempSelectedDrones }
+      phase: 'preGameSetup',
+      actionData: { subPhase: 'droneSelection', drones: tempSelectedDrones }
     };
 
     // DEBUG LOGGING
@@ -194,6 +134,7 @@ function DroneSelectionScreen() {
       setIsSubmitting(true);
 
       p2pManager.sendActionToHost('commitment', payload);
+      onStepComplete?.();
       return;
     }
 
@@ -204,7 +145,7 @@ function DroneSelectionScreen() {
       return;
     }
     debugLog('COMMIT_TRACE', 'Host/local submitting droneSelection commitment');
-    // CommitmentStrategy handles: state updates, event emission, phase transitions, AI completion
+    onStepComplete?.();
   };
 
   // Reinitialize local state if drone selection data changes (handles late arrival from network)
@@ -219,65 +160,10 @@ function DroneSelectionScreen() {
     }
   }, [droneSelectionTrio, droneSelectionPool]);
 
-  // Reset submitting state when host confirms commitment
-  useEffect(() => {
-    const opponentPlayerId = getOpponentPlayerId();
-    const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
-
-    if (localPlayerCompleted && isSubmitting) {
-      debugLog('DRONE_SELECTION', '✅ Host confirmed remote client commitment, resetting isSubmitting');
-      setIsSubmitting(false);
-    }
-  }, [gameState.commitments, localPlayerId, isSubmitting, getOpponentPlayerId]);
-
-  // Check completion status directly from gameState.commitments
-  const opponentPlayerId = getOpponentPlayerId();
-  const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
-  const opponentCompleted = gameState.commitments?.droneSelection?.[opponentPlayerId]?.completed || false;
-
-  // Log commitment state changes (not every render)
-  const lastCommitStateRef = useRef(null);
-  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
-  if (commitKey !== lastCommitStateRef.current) {
-    lastCommitStateRef.current = commitKey;
-    debugLog('DRONE_SELECTION', 'Render check:', {
-      localPlayerId,
-      isMultiplayer: isMultiplayer(),
-      opponentPlayerId,
-      localPlayerCompleted,
-      opponentCompleted,
-      isSubmitting,
-      fullCommitmentsObject: gameState.commitments?.droneSelection,
-      turnPhase,
-      willShowSubmitting: isSubmitting && !localPlayerCompleted,
-      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-    });
-  }
-
-  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
-
-  // State 1: SUBMITTING - Client sent action, waiting for server confirmation
-  if (isSubmitting && !localPlayerCompleted) {
+  // Show submitting overlay while remote client is waiting for host confirmation
+  if (isSubmitting) {
     return <SubmittingOverlay />;
   }
-
-  // State 2: WAITING - Player confirmed, waiting for opponent to complete
-  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
-    // Get drone names from commitments
-    const localDrones = gameState.commitments?.droneSelection?.[localPlayerId]?.drones || tempSelectedDrones;
-    const localDroneNames = localDrones.length > 0 ?
-      localDrones.map(d => d.name).join(', ') :
-      'Selection complete';
-
-    return (
-      <WaitingForOpponentScreen
-        phase="droneSelection"
-        localPlayerStatus={`You selected: ${localDroneNames}`}
-      />
-    );
-  }
-
-  // State 3: SELECTING - Active selection interface (default)
 
   // Show the main drone selection interface
   const isSelectionComplete = tempSelectedDrones.length === 5;

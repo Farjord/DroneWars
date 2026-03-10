@@ -4,6 +4,8 @@
 
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
+import { initializeDroneSelection, extractDronesFromDeck } from '../../utils/droneSelectionUtils.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -61,6 +63,19 @@ export function clearPhaseCommitments(phase = null, ctx) {
 }
 
 /**
+ * Check if all 6 pre-game sub-commitments are complete (both players x 3 sub-phases).
+ * @param {Object} commitments - The commitments object from game state
+ * @returns {boolean} True when both players have completed deckSelection, droneSelection, and placement
+ */
+export function isPreGameComplete(commitments) {
+  const subPhases = ['deckSelection', 'droneSelection', 'placement'];
+  return subPhases.every(subPhase =>
+    commitments[subPhase]?.player1?.completed &&
+    commitments[subPhase]?.player2?.completed
+  );
+}
+
+/**
  * Process commitment action for simultaneous phases
  * @param {Object} payload - { playerId, phase, actionData }
  * @param {Object} ctx - ActionContext from ActionProcessor
@@ -74,6 +89,65 @@ export async function processCommitment(payload, ctx) {
   debugLog('COMMITMENTS', `🤝 Processing ${phase} commitment for ${playerId}`);
 
   const currentState = ctx.getState();
+
+  // preGameSetup: route to sub-phase commitment storage + immediate application
+  if (phase === 'preGameSetup') {
+    const { subPhase, ...subPhaseData } = actionData;
+    debugLog('COMMITMENTS', `🔀 preGameSetup sub-phase: ${subPhase} for ${playerId}`);
+
+    const existingSubPhaseCommitments = currentState.commitments[subPhase] || {
+      player1: { completed: false },
+      player2: { completed: false }
+    };
+
+    const newCommitments = {
+      ...currentState.commitments,
+      [subPhase]: {
+        ...existingSubPhaseCommitments,
+        [playerId]: {
+          completed: true,
+          ...subPhaseData
+        }
+      }
+    };
+
+    ctx.setState({ commitments: newCommitments }, 'COMMITMENT_UPDATE');
+
+    // Apply immediately per-player
+    applyPlayerCommitment(subPhase, playerId, subPhaseData, ctx);
+
+    // PhaseManager integration — notify with the top-level phase
+    const phaseManager = ctx.getPhaseManager();
+    if (phaseManager) {
+      phaseManager.notifyPlayerAction(playerId, 'commit', { phase });
+      debugLog('COMMIT_TRACE', `[2b/6] PhaseManager notified`, { playerId, phase, subPhase });
+    }
+
+    // AI auto-commit for this subPhase
+    if (ctx.isPlayerAI('player2') && playerId === 'player1') {
+      if (aiPhaseProcessor) {
+        try {
+          await handleAICommitment(phase, currentState, ctx, subPhase);
+        } catch (error) {
+          debugLog('COMMITMENTS', '❌ AI commitment error:', error);
+          throw error;
+        }
+      }
+    }
+
+    const freshState = ctx.getState();
+    const preGameComplete = isPreGameComplete(freshState.commitments);
+
+    return {
+      success: true,
+      data: {
+        playerId,
+        phase,
+        actionData,
+        bothPlayersComplete: preGameComplete
+      }
+    };
+  }
 
   // Build new commitments immutably (never mutate currentState)
   const existingPhaseCommitments = currentState.commitments[phase] || {
@@ -179,43 +253,54 @@ export async function processCommitment(payload, ctx) {
  * @param {string} phase - Phase name
  * @param {Object} currentState - Current game state
  * @param {Object} ctx - ActionContext from ActionProcessor
+ * @param {string} [subPhase] - Sub-phase for preGameSetup
  */
-export async function handleAICommitment(phase, currentState, ctx) {
+export async function handleAICommitment(phase, currentState, ctx, subPhase) {
   try {
-    debugLog('COMMITMENTS', `🤖 Processing AI commitment for phase: ${phase}`);
+    debugLog('COMMITMENTS', `🤖 Processing AI commitment for phase: ${phase}${subPhase ? ` (subPhase: ${subPhase})` : ''}`);
 
     let aiResult;
     switch(phase) {
-      case 'droneSelection':
-        aiResult = await aiPhaseProcessor.processDroneSelection();
-        await ctx.processCommitment({
-          playerId: 'player2',
-          phase: 'droneSelection',
-          actionData: { drones: aiResult }
-        });
-        break;
+      case 'preGameSetup': {
+        // Dispatch to the appropriate sub-phase AI handler
+        switch (subPhase) {
+          case 'deckSelection':
+            aiResult = await aiPhaseProcessor.processDeckSelection();
+            await ctx.processCommitment({
+              playerId: 'player2',
+              phase: 'preGameSetup',
+              actionData: {
+                subPhase: 'deckSelection',
+                deck: aiResult.deck,
+                drones: aiResult.drones,
+                shipComponents: aiResult.shipComponents
+              }
+            });
+            break;
 
-      case 'deckSelection':
-        aiResult = await aiPhaseProcessor.processDeckSelection();
-        await ctx.processCommitment({
-          playerId: 'player2',
-          phase: 'deckSelection',
-          actionData: {
-            deck: aiResult.deck,
-            drones: aiResult.drones,
-            shipComponents: aiResult.shipComponents
-          }
-        });
-        break;
+          case 'droneSelection':
+            aiResult = await aiPhaseProcessor.processDroneSelection();
+            await ctx.processCommitment({
+              playerId: 'player2',
+              phase: 'preGameSetup',
+              actionData: { subPhase: 'droneSelection', drones: aiResult }
+            });
+            break;
 
-      case 'placement':
-        aiResult = await aiPhaseProcessor.processPlacement();
-        await ctx.processCommitment({
-          playerId: 'player2',
-          phase: 'placement',
-          actionData: { placedSections: aiResult }
-        });
+          case 'placement':
+            aiResult = await aiPhaseProcessor.processPlacement();
+            await ctx.processCommitment({
+              playerId: 'player2',
+              phase: 'preGameSetup',
+              actionData: { subPhase: 'placement', placedSections: aiResult }
+            });
+            break;
+
+          default:
+            debugLog('COMMITMENTS', `No AI handler for preGameSetup sub-phase: ${subPhase}`);
+        }
         break;
+      }
 
       case 'mandatoryDiscard':
         aiResult = await aiPhaseProcessor.executeMandatoryDiscardTurn(currentState);
@@ -283,19 +368,6 @@ export async function handleAICommitment(phase, currentState, ctx) {
         });
         break;
 
-      case 'determineFirstPlayer':
-        await new Promise(resolve => {
-          setTimeout(async () => {
-            await ctx.processCommitment({
-              playerId: 'player2',
-              phase: 'determineFirstPlayer',
-              actionData: { acknowledged: true }
-            });
-            resolve();
-          }, 1000);
-        });
-        break;
-
       default:
         debugLog('COMMITMENTS', `No AI handler for phase: ${phase}`);
     }
@@ -303,6 +375,77 @@ export async function handleAICommitment(phase, currentState, ctx) {
   } catch (error) {
     debugLog('COMMITMENTS', 'AI commitment error:', error);
     throw error;
+  }
+}
+
+/**
+ * Apply a single player's commitment immediately during preGameSetup.
+ * Called per-player as each sub-phase completes, rather than waiting for both.
+ *
+ * @param {string} subPhase - 'deckSelection' | 'droneSelection' | 'placement'
+ * @param {string} playerId - 'player1' | 'player2'
+ * @param {Object} commitmentData - The data for this sub-phase
+ * @param {Object} ctx - ActionContext from ActionProcessor
+ */
+export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
+  const currentState = ctx.getState();
+  const stateUpdates = {};
+
+  switch (subPhase) {
+    case 'deckSelection': {
+      stateUpdates[playerId] = {
+        ...currentState[playerId],
+        deck: commitmentData.deck,
+        deckDronePool: commitmentData.drones || [],
+        selectedShipComponents: commitmentData.shipComponents || {},
+        discard: []
+      };
+
+      // Initialize drone selection trio/pool for this player
+      if (commitmentData.drones) {
+        const drones = extractDronesFromDeck(commitmentData.drones);
+        const rng = SeededRandom.forDroneSelection(currentState, playerId);
+        const droneData = initializeDroneSelection(drones, 2, rng);
+        stateUpdates[`${playerId}DroneSelectionTrio`] = droneData.droneSelectionTrio;
+        stateUpdates[`${playerId}DroneSelectionPool`] = droneData.droneSelectionPool;
+      }
+
+      debugLog('COMMITMENTS', `✅ Applied deckSelection for ${playerId} (immediate)`);
+      break;
+    }
+
+    case 'droneSelection': {
+      const drones = commitmentData.drones;
+      const upgrades = currentState[playerId]?.appliedUpgrades || {};
+      stateUpdates[playerId] = {
+        ...currentState[playerId],
+        activeDronePool: drones,
+        deployedDroneCounts: drones.reduce((acc, drone) => {
+          acc[drone.name] = 0;
+          return acc;
+        }, {}),
+        droneAvailability: initializeDroneAvailability(drones, upgrades)
+      };
+      debugLog('COMMITMENTS', `✅ Applied droneSelection for ${playerId} (immediate)`);
+      break;
+    }
+
+    case 'placement': {
+      if (playerId === 'player1') {
+        stateUpdates.placedSections = commitmentData.placedSections;
+      } else {
+        stateUpdates.opponentPlacedSections = commitmentData.placedSections;
+      }
+      debugLog('COMMITMENTS', `✅ Applied placement for ${playerId} (immediate)`);
+      break;
+    }
+
+    default:
+      debugLog('COMMITMENTS', `No per-player apply logic for sub-phase: ${subPhase}`);
+  }
+
+  if (Object.keys(stateUpdates).length > 0) {
+    ctx.setState(stateUpdates, 'COMMITMENT_APPLICATION');
   }
 }
 
@@ -329,75 +472,6 @@ export function applyPhaseCommitments(phase, ctx) {
   const stateUpdates = {};
 
   switch(phase) {
-    case 'droneSelection':
-      if (phaseCommitments.player1?.drones) {
-        const p1Drones = phaseCommitments.player1.drones;
-        const p1Upgrades = currentState.player1?.appliedUpgrades || {};
-        stateUpdates.player1 = {
-          ...currentState.player1,
-          activeDronePool: p1Drones,
-          deployedDroneCounts: p1Drones.reduce((acc, drone) => {
-            acc[drone.name] = 0;
-            return acc;
-          }, {}),
-          droneAvailability: initializeDroneAvailability(p1Drones, p1Upgrades)
-        };
-      }
-      if (phaseCommitments.player2?.drones) {
-        const p2Drones = phaseCommitments.player2.drones;
-        const p2Upgrades = currentState.player2?.appliedUpgrades || {};
-        stateUpdates.player2 = {
-          ...currentState.player2,
-          activeDronePool: p2Drones,
-          deployedDroneCounts: p2Drones.reduce((acc, drone) => {
-            acc[drone.name] = 0;
-            return acc;
-          }, {}),
-          droneAvailability: initializeDroneAvailability(p2Drones, p2Upgrades)
-        };
-      }
-      debugLog('COMMITMENTS', '✅ Applied drone selections to player states');
-      break;
-
-    case 'deckSelection':
-      if (phaseCommitments.player1?.deck) {
-        stateUpdates.player1 = {
-          ...currentState.player1,
-          deck: phaseCommitments.player1.deck,
-          deckDronePool: phaseCommitments.player1.drones || [],
-          selectedShipComponents: phaseCommitments.player1.shipComponents || {},
-          discard: []
-        };
-      }
-      if (phaseCommitments.player2?.deck) {
-        stateUpdates.player2 = {
-          ...currentState.player2,
-          deck: phaseCommitments.player2.deck,
-          deckDronePool: phaseCommitments.player2.drones || [],
-          selectedShipComponents: phaseCommitments.player2.shipComponents || {},
-          discard: []
-        };
-      }
-      debugLog('COMMITMENTS', '✅ Applied deck selections (cards + drones + ship components) to player states');
-      break;
-
-    case 'placement':
-      if (phaseCommitments.player1?.placedSections) {
-        stateUpdates.placedSections = phaseCommitments.player1.placedSections;
-      }
-      if (phaseCommitments.player2?.placedSections) {
-        stateUpdates.opponentPlacedSections = phaseCommitments.player2.placedSections;
-      }
-      debugLog('COMMITMENTS', '✅ Applied ship placements:', {
-        player1: stateUpdates.placedSections,
-        player2: stateUpdates.opponentPlacedSections
-      });
-      break;
-
-    case 'determineFirstPlayer':
-      debugLog('COMMITMENTS', '✅ First player determination (handled separately)');
-      break;
-
     case 'mandatoryDiscard':
     case 'optionalDiscard':
       debugLog('COMMITMENTS', '✅ Discard commitments (handled via card actions)');
@@ -413,22 +487,6 @@ export function applyPhaseCommitments(phase, ctx) {
 
     default:
       debugLog('COMMITMENTS', `No commitment application logic for phase: ${phase}`);
-  }
-
-  if (stateUpdates.player2) {
-    debugLog('COMMIT_TRACE', '[4b/6] Post-commit player2 snapshot', {
-      phase,
-      p2DeckCount: stateUpdates.player2.deck?.length || 0,
-      p2ShipComponents: Object.keys(stateUpdates.player2.selectedShipComponents || {}),
-      p2DronePool: stateUpdates.player2.activeDronePool?.length || 0,
-    });
-  }
-  if (stateUpdates.placedSections || stateUpdates.opponentPlacedSections) {
-    debugLog('COMMIT_TRACE', '[4b/6] Post-commit placement snapshot', {
-      phase,
-      placedSections: stateUpdates.placedSections?.length || 0,
-      opponentPlacedSections: stateUpdates.opponentPlacedSections?.length || 0,
-    });
   }
 
   return stateUpdates;

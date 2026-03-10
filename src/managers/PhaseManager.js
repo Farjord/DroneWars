@@ -20,9 +20,9 @@ import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 class PhaseManager {
   // Valid phase names - transitions to invalid phases will be rejected
   static VALID_PHASES = [
-    'deckSelection', 'droneSelection', 'placement', 'roundInitialization',
+    'preGameSetup', 'roundInitialization',
     'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
-    'mandatoryDroneRemoval', 'deployment', 'action', 'determineFirstPlayer'
+    'mandatoryDroneRemoval', 'deployment', 'action'
   ];
 
   // Sequential phases: players take turns passing
@@ -30,8 +30,8 @@ class PhaseManager {
 
   // Simultaneous phases: both players commit at once
   static SIMULTANEOUS_PHASES = [
-    'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
-    'mandatoryDroneRemoval', 'droneSelection', 'deckSelection', 'determineFirstPlayer'
+    'preGameSetup', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
+    'mandatoryDroneRemoval'
   ];
   constructor(gameStateManager, { isAuthority = true } = {}) {
     this.gameStateManager = gameStateManager;
@@ -332,7 +332,7 @@ class PhaseManager {
 
     // Reset authoritative phase state to defaults
     this.phaseState = {
-      turnPhase: 'deckSelection',
+      turnPhase: 'preGameSetup',
       gameStage: 'preGame',
       roundNumber: 1,
       turn: 1,

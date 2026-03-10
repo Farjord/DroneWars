@@ -46,7 +46,7 @@ vi.mock('../../logic/availability/DroneAvailabilityManager.js', () => ({
 }));
 
 
-describe('ActionProcessor — processCommitment', () => {
+describe('ActionProcessor — processCommitment (round-loop phases)', () => {
   let ap;
   let storedState;
   let gsm;
@@ -56,7 +56,7 @@ describe('ActionProcessor — processCommitment', () => {
     storedState = {
       gameMode: 'local',
       currentPlayer: 'player1',
-      turnPhase: 'droneSelection',
+      turnPhase: 'allocateShields',
       turn: 1, roundNumber: 1, actionsTakenThisTurn: 0,
       winner: null,
       passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
@@ -64,19 +64,21 @@ describe('ActionProcessor — processCommitment', () => {
       player1: {
         name: 'Player 1',
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
-        hand: [], energy: 5, shipSections: {},
-        shieldsToAllocate: 0
+        hand: [], energy: 5,
+        shipSections: { core: { allocatedShields: 0 }, left: { allocatedShields: 0 }, right: { allocatedShields: 0 } },
+        shieldsToAllocate: 3
       },
       player2: {
         name: 'Player 2',
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
-        hand: [], energy: 5, shipSections: {},
-        shieldsToAllocate: 0
+        hand: [], energy: 5,
+        shipSections: { core: { allocatedShields: 0 }, left: { allocatedShields: 0 }, right: { allocatedShields: 0 } },
+        shieldsToAllocate: 2
       },
       placedSections: [null, null, null],
       opponentPlacedSections: [null, null, null],
-      shieldsToAllocate: 0,
-      opponentShieldsToAllocate: 0
+      shieldsToAllocate: 3,
+      opponentShieldsToAllocate: 2
     };
     gsm = {
       getState: vi.fn(() => storedState),
@@ -105,115 +107,37 @@ describe('ActionProcessor — processCommitment', () => {
   it('stores commitment and returns bothPlayersComplete=false when only one player commits', async () => {
     const result = await ap.processCommitment({
       playerId: 'player1',
-      phase: 'droneSelection',
-      actionData: { drones: [{ name: 'Drone1' }] }
+      phase: 'allocateShields',
+      actionData: { shieldAllocations: { core: 3 } }
     });
 
     expect(result.success).toBe(true);
     expect(result.data.bothPlayersComplete).toBe(false);
     expect(result.data.playerId).toBe('player1');
-    expect(result.data.phase).toBe('droneSelection');
-    // Commitment should be stored in state
-    expect(storedState.commitments.droneSelection.player1.completed).toBe(true);
+    expect(result.data.phase).toBe('allocateShields');
+    expect(storedState.commitments.allocateShields.player1.completed).toBe(true);
   });
 
   it('returns bothPlayersComplete=true when both players commit', async () => {
     // Player 1 commits
     await ap.processCommitment({
       playerId: 'player1',
-      phase: 'placement',
-      actionData: { placedSections: ['bridge', 'powerCell', 'droneControlHub'] }
+      phase: 'allocateShields',
+      actionData: { shieldAllocations: { core: 3 } }
     });
 
-    // Manually set player2 commitment (simulating non-local mode)
-    storedState.commitments.placement.player2 = { completed: true, placedSections: ['bridge', 'powerCell', 'droneControlHub'] };
     // Prevent AI auto-commit by making isPlayerAI return false
     ap.setGameServer({ isPlayerAI: () => false });
 
     // Player 2 commits
     const result = await ap.processCommitment({
       playerId: 'player2',
-      phase: 'placement',
-      actionData: { placedSections: ['bridge', 'powerCell', 'droneControlHub'] }
+      phase: 'allocateShields',
+      actionData: { shieldAllocations: { left: 2 } }
     });
 
     expect(result.success).toBe(true);
     expect(result.data.bothPlayersComplete).toBe(true);
-  });
-});
-
-describe('ActionProcessor — applyPhaseCommitments', () => {
-  let ap;
-  let gsm;
-
-  beforeEach(() => {
-    ActionProcessor.reset();
-    const state = {
-      gameMode: 'local',
-      currentPlayer: 'player1',
-      turnPhase: 'droneSelection',
-      turn: 1, roundNumber: 1, actionsTakenThisTurn: 0,
-      winner: null,
-      passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
-      commitments: {
-        droneSelection: {
-          player1: { completed: true, drones: [{ name: 'Alpha' }, { name: 'Beta' }] },
-          player2: { completed: true, drones: [{ name: 'Gamma' }] }
-        },
-        placement: {
-          player1: { completed: true, placedSections: ['bridge', 'powerCell', 'droneControlHub'] },
-          player2: { completed: true, placedSections: ['droneControlHub', 'bridge', 'powerCell'] }
-        }
-      },
-      player1: {
-        name: 'Player 1', appliedUpgrades: {},
-        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
-        hand: [], energy: 5, shipSections: {}
-      },
-      player2: {
-        name: 'Player 2', appliedUpgrades: {},
-        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
-        hand: [], energy: 5, shipSections: {}
-      },
-      placedSections: [null, null, null],
-      opponentPlacedSections: [null, null, null]
-    };
-    gsm = {
-      getState: vi.fn(() => state),
-      get: vi.fn((key) => state[key]),
-      setState: vi.fn(), setPlayerStates: vi.fn(), updatePlayerState: vi.fn(),
-      setTurnPhase: vi.fn(), setCurrentPlayer: vi.fn(), setPassInfo: vi.fn(),
-      setWinner: vi.fn(), addLogEntry: vi.fn(),
-      getLocalPlayerId: vi.fn(() => 'player1'),
-      getLocalPlacedSections: vi.fn(() => [null, null, null]),
-      _updateContext: null
-    };
-    ap = ActionProcessor.getInstance(gsm);
-    ap.setAnimationManager(null);
-  });
-
-  afterEach(() => {
-    ActionProcessor.reset();
-    vi.clearAllMocks();
-  });
-
-  it('transfers droneSelection commitments to activeDronePool with availability', () => {
-    const updates = ap.applyPhaseCommitments('droneSelection');
-
-    expect(updates.player1.activeDronePool).toEqual([{ name: 'Alpha' }, { name: 'Beta' }]);
-    expect(updates.player2.activeDronePool).toEqual([{ name: 'Gamma' }]);
-    // deployedDroneCounts initialized to 0 for each drone
-    expect(updates.player1.deployedDroneCounts).toEqual({ Alpha: 0, Beta: 0 });
-    expect(updates.player2.deployedDroneCounts).toEqual({ Gamma: 0 });
-    // droneAvailability should be initialized
-    expect(updates.player1.droneAvailability).toBeTruthy();
-  });
-
-  it('transfers placement commitments to placedSections and opponentPlacedSections', () => {
-    const updates = ap.applyPhaseCommitments('placement');
-
-    expect(updates.placedSections).toEqual(['bridge', 'powerCell', 'droneControlHub']);
-    expect(updates.opponentPlacedSections).toEqual(['droneControlHub', 'bridge', 'powerCell']);
   });
 });
 

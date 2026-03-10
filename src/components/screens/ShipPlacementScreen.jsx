@@ -4,9 +4,9 @@
 // Complete ship placement phase implementation extracted from App.jsx
 // Handles ship section placement with state management and phase completion tracking
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
-import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
+import { SubmittingOverlay } from './WaitingForOpponentScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../managers/GameStateManager.js';
@@ -22,32 +22,18 @@ import ConfirmationModal from '../modals/ConfirmationModal.jsx';
  * Complete ship placement phase management with state and phase completion tracking.
  * Extracted from App.jsx with all original logic preserved.
  */
-function ShipPlacementScreen() {
+function ShipPlacementScreen({ onStepComplete }) {
   const {
     gameState,
     getLocalPlayerId,
-    getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
     getLocalPlacedSections
   } = useGameState();
 
-  const { turnPhase, unplacedSections } = gameState;
+  const { unplacedSections } = gameState;
   const localPlayerState = getLocalPlayerState();
   const initialPlacedSections = getLocalPlacedSections();
-
-  // Diagnostic: log what the placement screen sees (once per phase)
-  const lastLoggedPhaseRef = useRef(null);
-  if (turnPhase !== lastLoggedPhaseRef.current) {
-    lastLoggedPhaseRef.current = turnPhase;
-    debugLog('MP_GAME_TRACE', 'ShipPlacementScreen render state', {
-      localPlayerId: getLocalPlayerId(),
-      shipSections: localPlayerState?.shipSections?.length || 0,
-      selectedShipComponents: Object.keys(localPlayerState?.selectedShipComponents || {}),
-      localPlacedSections: initialPlacedSections?.filter(s => s !== null).length || 0,
-      gameMode: gameState.gameMode,
-    });
-  }
 
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
@@ -113,9 +99,6 @@ function ShipPlacementScreen() {
    * @param {string} sectionName - Name of the section being selected
    */
   const handleSelectSectionForPlacement = (sectionName) => {
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
     debugLog('PLACEMENT', '🔧 handleSelectSectionForPlacement called with:', sectionName, 'localPlayerId:', getLocalPlayerId());
 
     // If clicking a section in the top "unplaced" row
@@ -144,9 +127,6 @@ function ShipPlacementScreen() {
    * @param {number} laneIndex - Index of the lane (0, 1, 2)
    */
   const handleLaneSelectForPlacement = (laneIndex) => {
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
     debugLog('PLACEMENT', '🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'localPlayerId:', getLocalPlayerId());
 
     if (selectedSectionForPlacement) {
@@ -187,25 +167,21 @@ function ShipPlacementScreen() {
    * Validates placement and delegates to PhaseManager for processing.
    */
   const handleConfirmPlacement = async () => {
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
     debugLog('PLACEMENT', `🔧 handleConfirmPlacement called`);
 
     // Validate that all sections are placed
     const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
     if (hasEmptySections) {
       debugLog('PLACEMENT', '⚠️ Cannot confirm placement: All ship sections must be placed');
-      // See FUTURE_IMPROVEMENTS #40 — error UI for placement failures
       return;
     }
 
     debugLog('PLACEMENT', `🔧 Submitting placement to PhaseManager:`, localPlacedSections);
 
     const payload = {
-      phase: 'placement',
+      phase: 'preGameSetup',
       playerId: getLocalPlayerId(),
-      actionData: { placedSections: localPlacedSections }
+      actionData: { subPhase: 'placement', placedSections: localPlacedSections }
     };
 
     // Remote player: Send action to host with immediate UI feedback
@@ -221,31 +197,7 @@ function ShipPlacementScreen() {
       setIsSubmitting(true);
 
       p2pManager.sendActionToHost('commitment', payload);
-
-      // OPTIMISTIC UPDATE: Mark remote client's own commitment locally before cascade check
-      // Remote client is certain it just committed (user clicked button)
-      // Host will confirm this in broadcast milliseconds later
-      // Uses spread pattern to match ActionProcessor structure
-      gameStateManager.setState({
-        commitments: {
-          ...gameState.commitments,
-          placement: {
-            ...gameState.commitments.placement,
-            player2: {
-              completed: true,
-              ...payload.actionData  // Spread to match ActionProcessor pattern
-            }
-          }
-        }
-      });
-
-      debugLog('PLACEMENT_CASCADE', '✅ [REMOTE CONFIRM] Optimistically updated local commitment state');
-      debugLog('PLACEMENT_CASCADE', '⏸️ [REMOTE CONFIRM] Cascade will be triggered by useEffect watcher when host commits');
-
-      // NOTE: Cascade trigger moved to useEffect (lines 292-317)
-      // The useEffect watches for both players' commitments and triggers cascade automatically
-      // This handles both cases: remote client commits first OR host commits first
-
+      onStepComplete?.();
       return;
     }
 
@@ -255,14 +207,11 @@ function ShipPlacementScreen() {
 
       if (!submissionResult.success) {
         debugLog('PLACEMENT', '❌ Placement submission failed:', submissionResult.error);
-        // See FUTURE_IMPROVEMENTS #40 — error UI for placement failures
         return;
       }
 
       debugLog('PLACEMENT', '✅ Placement submitted to PhaseManager');
-
-      // Waiting screen will be shown automatically if in multiplayer and opponent not complete
-      // No modal needed - WaitingForOpponentScreen component handles this
+      onStepComplete?.();
 
     } catch (error) {
       debugLog('PLACEMENT', '❌ Error submitting placement:', error);
@@ -270,79 +219,10 @@ function ShipPlacementScreen() {
     }
   };
 
-  // Reset submitting state when host confirms commitment
-  useEffect(() => {
-    const localPlayerId = getLocalPlayerId();
-    const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
-
-    if (localPlayerCompleted && isSubmitting) {
-      debugLog('PLACEMENT', '✅ Host confirmed remote client commitment, resetting isSubmitting');
-      setIsSubmitting(false);
-    }
-  }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
-
-  // Check completion status directly from gameState.commitments
-  const localPlayerId = getLocalPlayerId();
-  const opponentPlayerId = getOpponentPlayerId();
-  const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
-  const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
-
-  // Log commitment state changes (not every render)
-  const lastCommitStateRef = useRef(null);
-  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
-  if (commitKey !== lastCommitStateRef.current) {
-    lastCommitStateRef.current = commitKey;
-    debugLog('PLACEMENT', 'Render check:', {
-      localPlayerId,
-      isMultiplayer: isMultiplayer(),
-      opponentPlayerId,
-      localPlayerCompleted,
-      opponentCompleted,
-      isSubmitting,
-      fullCommitmentsObject: gameState.commitments?.placement,
-      turnPhase,
-      willShowSubmitting: isSubmitting && !localPlayerCompleted,
-      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-    });
-  }
-
-  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
-
-  // State 1: SUBMITTING - Client sent action, waiting for server confirmation
-  if (isSubmitting && !localPlayerCompleted) {
+  // Show submitting overlay while remote client is waiting for host confirmation
+  if (isSubmitting) {
     return <SubmittingOverlay />;
   }
-
-  // State 2: WAITING - Player confirmed, waiting for opponent to complete
-  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
-    const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
-    return (
-      <WaitingForOpponentScreen
-        phase="placement"
-        localPlayerStatus={`Your ship layout: ${localSectionNames}`}
-      />
-    );
-  }
-
-  // State 3: TRANSITIONING - Both players complete, automatic phase cascade starting
-  // This prevents the "black screen" during automatic phases (determineFirstPlayer → energyReset → draw)
-  if (isMultiplayer() && localPlayerCompleted && opponentCompleted && turnPhase === 'placement') {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-center p-8">
-          <div className="w-16 h-16 mx-auto mb-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Game Starting...
-          </h2>
-          <p className="text-gray-400 text-lg">
-            Preparing the battlefield
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // State 4: SELECTING - Active placement interface (default)
 
   // Helper to calculate effective stats for a section in a specific lane
   const getEffectiveStatsForSection = (sectionName, laneIndex) => {
@@ -459,7 +339,7 @@ function ShipPlacementScreen() {
                     isInteractive={true}
                     isInMiddleLane={laneIndex === 1}
                     gameEngine={gameEngine}
-                    turnPhase={turnPhase}
+                    turnPhase={'preGameSetup'}
                     isMyTurn={() => true}
                     passInfo={{}}
                     getLocalPlayerId={getLocalPlayerId}
@@ -502,7 +382,7 @@ function ShipPlacementScreen() {
                   isPlayer={true}
                   isInteractive={true}
                   gameEngine={gameEngine}
-                  turnPhase={turnPhase}
+                  turnPhase={'preGameSetup'}
                   isMyTurn={() => true}
                   passInfo={{}}
                   getLocalPlayerId={getLocalPlayerId}

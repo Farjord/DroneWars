@@ -12,6 +12,7 @@
 export const getPhaseDisplayName = (phase) => {
   const names = {
     preGame: "Pre-Game Setup",
+    preGameSetup: "Pre-Game Setup",
     gameInitializing: "Initialising Game",
     deckSelection: "Deck Selection",
     droneSelection: "Drone Selection",
@@ -39,8 +40,8 @@ export const getPhaseDisplayName = (phase) => {
  * These phases use direct GameStateManager updates for parallel execution
  */
 export const SIMULTANEOUS_PHASES = [
-  'preGame', 'droneSelection', 'deckSelection', 'deckBuilding',
-  'placement', 'initialDraw', 'allocateShields', 'optionalDiscard'
+  'preGameSetup', 'mandatoryDiscard', 'optionalDiscard',
+  'allocateShields', 'mandatoryDroneRemoval'
 ];
 
 /**

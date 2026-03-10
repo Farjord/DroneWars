@@ -2,8 +2,8 @@
  * GameStateManager Consecutive Combat Tests
  * Tests for allowing null -> roundInitialization phase transition
  *
- * BUG: GameStateManager.validateTurnPhaseTransition (line 551) only allows
- * null -> ['deckSelection', 'preGame'], but SinglePlayerCombatInitializer
+ * BUG: GameStateManager.validateTurnPhaseTransition only allows
+ * null -> ['preGameSetup', 'preGame', 'roundInitialization'], but SinglePlayerCombatInitializer
  * needs to transition directly to 'roundInitialization' for SP combat.
  * This causes console warnings during combat initialization.
  */
@@ -41,7 +41,7 @@ describe('GameStateManager - SP combat phase transitions', () => {
 
     it('should still flag other invalid null transitions', () => {
       // Test the valid transitions map directly: 'action' is NOT valid from null
-      // The internal validTransitions map defines null -> ['deckSelection', 'preGame', 'roundInitialization']
+      // The internal validTransitions map defines null -> ['preGameSetup', 'preGame', 'roundInitialization']
       // 'action' is not in that list, so validateTurnPhaseTransition should fire a warning
 
       gameStateManager.resetGameState();

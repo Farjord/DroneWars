@@ -156,7 +156,7 @@ class GameStateManager {
   // --- REMOTE CLIENT SYNC METHODS ---
 
   // Milestone phases where remote client stops and validates state with host
-  static MILESTONE_PHASES = ['droneSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'];
+  static MILESTONE_PHASES = ['preGameSetup', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'];
 
   isMilestonePhase(phase) {
     return GameStateManager.MILESTONE_PHASES.includes(phase);
@@ -512,7 +512,7 @@ class GameStateManager {
       gameSeed: gameSeed,
 
       // Initialize game flow
-      turnPhase: 'deckSelection',
+      turnPhase: 'preGameSetup',
       turn: 1,
       gameStage: 'preGame',
       roundNumber: 0,
@@ -840,7 +840,7 @@ class GameStateManager {
     const result = this.isRemoteClient() ? this.state.placedSections : this.state.opponentPlacedSections;
 
     // Only debug during placement phase when there's actual data
-    if (this.state.turnPhase === 'placement' && result.some(s => s !== null)) {
+    if (this.state.turnPhase === 'preGameSetup' && result.some(s => s !== null)) {
       debugLog('STATE_SYNC', '🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
         localPlayerId: this.getLocalPlayerId(),
         result,

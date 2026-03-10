@@ -99,12 +99,9 @@ class StateValidationService {
     }
 
     const validTransitions = {
-      null: ['deckSelection', 'preGame', 'roundInitialization'],
-      'preGame': ['deckSelection', 'droneSelection'],
-      'deckSelection': ['droneSelection'],
-      'droneSelection': ['placement'],
-      'placement': ['gameInitializing', 'roundInitialization', 'roundAnnouncement'],
-      'gameInitializing': ['determineFirstPlayer'],
+      null: ['preGameSetup', 'preGame', 'roundInitialization'],
+      'preGame': ['preGameSetup'],
+      'preGameSetup': ['roundInitialization'],
       'roundInitialization': ['mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'roundAnnouncement': ['roundInitialization', 'deployment'],
       'energyReset': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
@@ -112,13 +109,12 @@ class StateValidationService {
       'mandatoryDiscard': ['optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'optionalDiscard': ['draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'draw': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'determineFirstPlayer': ['energyReset'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd', 'actionComplete'],
+      'action': ['deployment', 'roundEnd', 'gameEnd', 'actionComplete'],
       'actionComplete': ['roundAnnouncement'],
-      'roundEnd': ['determineFirstPlayer', 'deployment', 'gameEnd'],
+      'roundEnd': ['deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -150,12 +146,12 @@ class StateValidationService {
       return;
     }
 
-    const simultaneousPhases = ['droneSelection', 'deckSelection', 'placement', 'gameInitializing', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    const simultaneousPhases = ['preGameSetup', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     if (simultaneousPhases.includes(prevState.turnPhase)) {
       return;
     }
 
-    const automaticPhases = ['energyReset', 'draw', 'determineFirstPlayer', 'roundInitialization'];
+    const automaticPhases = ['energyReset', 'draw', 'roundInitialization'];
     if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
       return;
     }
@@ -179,7 +175,7 @@ class StateValidationService {
     );
 
     const isGameFlowManagerUpdate = this.gsm._updateContext === 'GameFlowManager' || (stack && stack.includes('GameFlowManager'));
-    const isAutomaticPhaseUpdate = ['energyReset', 'draw', 'determineFirstPlayer'].includes(prevState.turnPhase) ||
+    const isAutomaticPhaseUpdate = ['energyReset', 'draw'].includes(prevState.turnPhase) ||
                                     ['deployment', 'action'].includes(prevState.turnPhase);
     const isPlayerStateUpdate = criticalUpdates.every(update =>
       ['player1', 'player2'].includes(update)
@@ -353,8 +349,8 @@ class StateValidationService {
 
   isInitializationPhase(turnPhase) {
     const initPhases = [
-      null, 'preGame', 'droneSelection', 'deckSelection',
-      'deckBuilding', 'placement', 'gameInitializing', 'initialDraw'
+      null, 'preGame', 'preGameSetup',
+      'deckBuilding', 'gameInitializing', 'initialDraw'
     ];
     return initPhases.includes(turnPhase);
   }

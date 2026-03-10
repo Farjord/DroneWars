@@ -4,8 +4,6 @@
 // Master game flow controller - owns canonical phase state and transitions
 // Handles conditional phase logic and round loop management
 
-import { initializeDroneSelection, extractDronesFromDeck } from '../utils/droneSelectionUtils.js';
-import { SeededRandom } from '../utils/seededRandom.js';
 import { initializeShipPlacement } from '../logic/map/shipPlacementUtils.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
@@ -15,6 +13,7 @@ import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
 import { countDrones as _countDrones } from '../utils/stateHelpers.js';
 import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
+import { isPreGameComplete } from '../logic/actions/CommitmentStrategy.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
 
@@ -41,11 +40,11 @@ class GameFlowManager {
     GameFlowManager.instance = this;
 
     // Game flow phase definitions
-    this.PRE_GAME_PHASES = ['deckSelection', 'droneSelection', 'placement', 'roundInitialization'];
+    this.PRE_GAME_PHASES = ['preGameSetup', 'roundInitialization'];
     this.ROUND_PHASES = ['mandatoryDiscard', 'optionalDiscard', 'roundInitialization', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    this.SIMULTANEOUS_PHASES = ['preGameSetup', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = SEQUENTIAL_PHASES;
     this.AUTOMATIC_PHASES = ['roundInitialization']; // Automatic phase handled directly by GameFlowManager
 
@@ -394,7 +393,7 @@ class GameFlowManager {
    * Start the game flow with initial phase
    * @param {string} startingPhase - Initial phase to start with
    */
-  async startGameFlow(startingPhase = 'deckSelection') {
+  async startGameFlow(startingPhase = 'preGameSetup') {
     // Guard: Non-authority does not run game flow logic
     if (!this.isPhaseAuthority) {
       debugLog('PHASE_TRANSITIONS', '🔒 Non-authority: Skipping game flow logic (waiting for host state)');
@@ -410,8 +409,8 @@ class GameFlowManager {
 
     // Initialize phase-specific data when entering phases
     let phaseData = {};
-    if (startingPhase === 'deckSelection') {
-      debugLog('PHASE_TRANSITIONS', '🎲 GameFlowManager initializing deck selection phase data');
+    if (startingPhase === 'preGameSetup') {
+      debugLog('PHASE_TRANSITIONS', '🎲 GameFlowManager initializing pre-game setup phase data');
       // Initialize ship placement data (used later in placement phase)
       const placementData = initializeShipPlacement();
       phaseData = { ...placementData };
@@ -452,9 +451,28 @@ class GameFlowManager {
     }
 
     debugLog('PHASE_TRACE', '[4/8] onSimultaneousPhaseComplete', {
-      phase, applyingCommitments: true,
+      phase, applyingCommitments: phase !== 'preGameSetup',
     });
     debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Simultaneous phase '${phase}' completed`, data);
+
+    // preGameSetup: commitments already applied per-player — skip batch apply,
+    // emit round announcement, and transition to roundInitialization
+    // (first player determination is handled within roundInitialization)
+    if (phase === 'preGameSetup') {
+      debugLog('PHASE_TRANSITIONS', '🎯 preGameSetup complete — transitioning to roundInitialization');
+
+      // Emit round announcement before first round
+      if (this.actionProcessor) {
+        await this.actionProcessor.executeAndCaptureAnimations([{
+          animationName: 'PHASE_ANNOUNCEMENT',
+          timing: 'independent',
+          payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null }
+        }], true);
+      }
+
+      await this.transitionToPhase('roundInitialization');
+      return;
+    }
 
     // Apply commitments to permanent game state before transitioning
     if (this.actionProcessor) {
@@ -463,78 +481,9 @@ class GameFlowManager {
         phase, stateUpdatesApplied: Object.keys(stateUpdates).length,
       });
 
-      // Initialize drone selection data when deckSelection completes
-      // This must happen on host so data gets broadcast to remote client
-      if (phase === 'deckSelection') {
-        debugLog('PHASE_TRANSITIONS', '🎲 GameFlowManager: Initializing drone selection data for both players after deck selection');
-        const commitments = this.gameStateManager.get('commitments');
-        const deckCommitments = commitments?.deckSelection;
-
-        debugLog('DRONE_SELECTION', 'Deck commitments:', {
-          hasCommitments: !!deckCommitments,
-          player1HasDrones: !!deckCommitments?.player1?.drones,
-          player2HasDrones: !!deckCommitments?.player2?.drones,
-          player1DroneCount: deckCommitments?.player1?.drones?.length,
-          player2DroneCount: deckCommitments?.player2?.drones?.length,
-          player1Drones: deckCommitments?.player1?.drones,
-          player2Drones: deckCommitments?.player2?.drones
-        });
-
-        if (deckCommitments) {
-          const gameState = this.gameStateManager.getState();
-
-          // Initialize for player1
-          if (deckCommitments.player1?.drones) {
-            const player1Drones = extractDronesFromDeck(deckCommitments.player1.drones);
-            const player1Rng = SeededRandom.forDroneSelection(gameState, 'player1');
-            const player1DroneData = initializeDroneSelection(player1Drones, 2, player1Rng);
-            stateUpdates.player1DroneSelectionTrio = player1DroneData.droneSelectionTrio;
-            stateUpdates.player1DroneSelectionPool = player1DroneData.droneSelectionPool;
-            debugLog('PHASE_TRANSITIONS', `🎲 Player1 deck has ${player1Drones.length} drones for selection`);
-            debugLog('DRONE_SELECTION', 'Created player1DroneSelectionTrio:',
-              player1DroneData.droneSelectionTrio.map(d => d.name));
-          } else {
-            debugLog('DRONE_SELECTION', 'No drones found in player1 deck commitment');
-          }
-
-          // Initialize for player2
-          if (deckCommitments.player2?.drones) {
-            const player2Drones = extractDronesFromDeck(deckCommitments.player2.drones);
-            const player2Rng = SeededRandom.forDroneSelection(gameState, 'player2');
-            const player2DroneData = initializeDroneSelection(player2Drones, 2, player2Rng);
-            stateUpdates.player2DroneSelectionTrio = player2DroneData.droneSelectionTrio;
-            stateUpdates.player2DroneSelectionPool = player2DroneData.droneSelectionPool;
-            debugLog('PHASE_TRANSITIONS', `🎲 Player2 deck has ${player2Drones.length} drones for selection`);
-            debugLog('DRONE_SELECTION', 'Created player2DroneSelectionTrio:',
-              player2DroneData.droneSelectionTrio.map(d => d.name));
-          } else {
-            debugLog('DRONE_SELECTION', 'No drones found in player2 deck commitment');
-          }
-
-          debugLog('DRONE_SELECTION', 'stateUpdates keys:', Object.keys(stateUpdates));
-        } else {
-          debugLog('DRONE_SELECTION', 'No deck commitments found - cannot initialize drone selection');
-        }
-      }
-
       if (Object.keys(stateUpdates).length > 0) {
         this._setStateAsGFM(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
         debugLog('PHASE_TRANSITIONS', `📋 GameFlowManager: Applied ${phase} commitments to game state`);
-      }
-    }
-
-    // Emit ROUND announcement through server pipeline when transitioning from placement to first round phase (Round 1)
-    // The cascade from transitionToPhase below provides roundInitialization and deployment announcements
-    if (phase === 'placement') {
-      const nextPhase = this.getNextPhase(phase);
-      // Check if next phase is any round phase (entering round loop)
-      if (nextPhase && this.ROUND_PHASES.includes(nextPhase)) {
-        debugLog('PHASE_TRANSITIONS', `🎯 Emitting round announcement through server pipeline before first round phase: ${nextPhase}`);
-        await this.actionProcessor.executeAndCaptureAnimations([{
-          animationName: 'PHASE_ANNOUNCEMENT',
-          timing: 'independent',
-          payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null }
-        }], true);
       }
     }
 
@@ -595,6 +544,19 @@ class GameFlowManager {
     // Only check for simultaneous phases
     if (!this.SIMULTANEOUS_PHASES.includes(currentPhase)) {
       debugLog('PHASE_TRANSITIONS', '🔍 Early return: Not a simultaneous phase', { currentPhase, simultaneousPhases: this.SIMULTANEOUS_PHASES });
+      return;
+    }
+
+    // preGameSetup: check all 6 sub-commitments instead of single-phase check
+    if (currentPhase === 'preGameSetup') {
+      const allComplete = isPreGameComplete(state.commitments);
+      debugLog('PHASE_TRANSITIONS', '🔍 preGameSetup completion check:', { allComplete, commitmentKeys: Object.keys(state.commitments) });
+
+      if (allComplete) {
+        debugLog('PHASE_TRANSITIONS', '🎯 GameFlowManager: All pre-game sub-phases complete');
+        this.emit('bothPlayersComplete', { phase: currentPhase, commitments: state.commitments });
+        this._pendingActionCompletion = this.onSimultaneousPhaseComplete(currentPhase, state.commitments);
+      }
       return;
     }
 
@@ -790,7 +752,7 @@ class GameFlowManager {
    * Process the roundInitialization phase
    * Combines: gameInitializing → determineFirstPlayer → energyReset → draw
    * This atomic phase handles all round setup in one transition
-   * @param {string} previousPhase - The phase we're transitioning from (should be 'placement')
+   * @param {string} previousPhase - The phase we're transitioning from (should be 'preGameSetup' for first round)
    */
   async processRoundInitialization(previousPhase) {
     debugLog('PHASE_TRACE', '[6/8] processRoundInitialization entry', {

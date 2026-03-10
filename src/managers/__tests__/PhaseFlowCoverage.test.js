@@ -18,9 +18,7 @@ vi.mock('../../utils/debugLogger.js', () => ({
  * - RB: Round Boundary
  * - QD: Quick Deploy
  * - OD: optionalDiscard
- * - DS: deckSelection
- * - DR: droneSelection
- * - PL: placement
+ * - PGS: preGameSetup
  * - DP: deployment gaps
  * - AC: action gaps
  */
@@ -196,10 +194,10 @@ describe('Phase Flow Coverage - Round Boundary Tests', () => {
     });
 
     it('RB-3: roundInitialization runs in ROUND_PHASES but skipped in PRE_GAME', () => {
-      // In PRE_GAME stage, roundInitialization runs once after placement
+      // In PRE_GAME stage, roundInitialization runs once after preGameSetup
       mockGameStateManager._setState({
         gameStage: 'preGame',
-        turnPhase: 'placement',
+        turnPhase: 'preGameSetup',
         roundNumber: 0
       });
 
@@ -1014,319 +1012,91 @@ describe('Phase Flow Coverage - PRE_GAME_PHASES Tests', () => {
     vi.clearAllMocks();
   });
 
-  describe('deckSelection', () => {
+  describe('preGameSetup', () => {
     describe('Local Mode', () => {
       beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'deckSelection' });
+        mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'preGameSetup' });
         phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
       });
 
-      it('DS-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
+      it('PGS-1-L: Both commit simultaneously', () => {
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'preGameSetup' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'preGameSetup' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
-      it('DS-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
+      it('PGS-2-L: P1 commits first, then P2', () => {
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'preGameSetup' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'preGameSetup' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
-      it('DS-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
+      it('PGS-3-L: P2 commits first, then P1', () => {
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'preGameSetup' });
         expect(phaseManager.checkReadyToTransition()).toBe(false);
 
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'preGameSetup' });
         expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('DS-4-L: Invalid deck validation (wrong size)', () => {
-        // Deck validation is done by ActionProcessor, not PhaseManager
-        // PhaseManager just tracks commitments
-        mockGameStateManager._setState({
-          player1: createMockPlayer('P1', { deckSize: 35 }) // Invalid: should be 40
-        });
-
-        const state = mockGameStateManager.getState();
-        expect(state.player1.deckSize).toBe(35);
-        // Validation would reject this in ActionProcessor
       });
     });
 
     describe('Host Mode', () => {
       beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'deckSelection' });
+        mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'preGameSetup' });
         phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
       });
 
-      it('DS-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
+      it('PGS-1-H: Both commit simultaneously', () => {
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'preGameSetup' });
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'preGameSetup' });
 
         expect(phaseManager.checkReadyToTransition()).toBe(true);
       });
 
-      it('DS-2-H: player1 commits first, waits for player2', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'deckSelection' });
-        expect(phaseManager.getPlayer1State().commitments.deckSelection?.completed).toBe(true);
+      it('PGS-2-H: player1 commits first, waits for player2', () => {
+        phaseManager.notifyPlayerAction('player1','commit', { phase: 'preGameSetup' });
+        expect(phaseManager.getPlayer1State().commitments.preGameSetup?.completed).toBe(true);
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
-      it('DS-3-H: player2 commits first, player1 sees player2 ready', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'deckSelection' });
-        expect(phaseManager.getPlayer2State().commitments.deckSelection?.completed).toBe(true);
+      it('PGS-3-H: player2 commits first, player1 sees player2 ready', () => {
+        phaseManager.notifyPlayerAction('player2','commit', { phase: 'preGameSetup' });
+        expect(phaseManager.getPlayer2State().commitments.preGameSetup?.completed).toBe(true);
         expect(phaseManager.checkReadyToTransition()).toBe(false);
       });
 
-      it('DS-4-H: Invalid deck rejected', () => {
-        // Same as local - validation happens in ActionProcessor
+      it('PGS-4-H: Invalid state check', () => {
         const state = mockGameStateManager.getState();
-        expect(state.turnPhase).toBe('deckSelection');
+        expect(state.turnPhase).toBe('preGameSetup');
       });
     });
 
     describe('Guest Mode', () => {
       beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'deckSelection' });
+        mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'preGameSetup' });
         phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
       });
 
-      it('DS-1-G: Guest receives host broadcast', () => {
-        phaseManager.applyMasterState({ turnPhase: 'droneSelection' });
-        expect(phaseManager.getPhaseState().turnPhase).toBe('droneSelection');
-      });
-
-      it('DS-2-G: Guest commits → sent to host', () => {
-        // Non-authority cannot directly modify PhaseManager
-        const result = phaseManager.transitionToPhase('droneSelection');
-        expect(result).toBe(false);
-      });
-
-      it('DS-3-G: Guest waits for host transition', () => {
-        expect(phaseManager.getPhaseState().turnPhase).toBe('deckSelection');
-        // Non-authority must wait for applyMasterState
-      });
-
-      it('DS-4-G: Guest validation done by host', () => {
-        // Non-authority sends deck to host, host validates
-        const state = mockGameStateManager.getState();
-        expect(state.gameMode).toBe('guest');
-      });
-    });
-  });
-
-  describe('droneSelection', () => {
-    describe('Local Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
-        // Transition PhaseManager to droneSelection phase
-        phaseManager.transitionToPhase('droneSelection');
-      });
-
-      it('DR-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('DR-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('DR-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('DR-4-L: Invalid drone count validation', () => {
-        // Drone selection must be exactly 5 from pool of 10
-        mockGameStateManager._setState({
-          player1: createMockPlayer('P1', { selectedDrones: 3 }) // Invalid: should be 5
-        });
-
-        expect(mockGameStateManager.getState().player1.selectedDrones).toBe(3);
-      });
-    });
-
-    describe('Host Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
-        // Transition PhaseManager to droneSelection phase
-        phaseManager.transitionToPhase('droneSelection');
-      });
-
-      it('DR-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('DR-2-H: Host commits first', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'droneSelection' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-      });
-
-      it('DR-3-H: player2 commits first', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'droneSelection' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-      });
-
-      it('DR-4-H: Invalid selection rejected', () => {
-        const state = mockGameStateManager.getState();
-        expect(state.turnPhase).toBe('droneSelection');
-      });
-    });
-
-    describe('Guest Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'droneSelection' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
-        // Non-authority uses applyMasterState to sync phase
-        phaseManager.applyMasterState({ turnPhase: 'droneSelection' });
-      });
-
-      it('DR-1-G: Guest receives host broadcast', () => {
-        phaseManager.applyMasterState({ turnPhase: 'placement' });
-        expect(phaseManager.getPhaseState().turnPhase).toBe('placement');
-      });
-
-      it('DR-2-G: Guest commits → sent to host', () => {
-        const result = phaseManager.transitionToPhase('placement');
-        expect(result).toBe(false);
-      });
-
-      it('DR-3-G: Guest waits for host', () => {
-        expect(phaseManager.getPhaseState().turnPhase).toBe('droneSelection');
-      });
-
-      it('DR-4-G: Guest validation done by host', () => {
-        expect(mockGameStateManager.getState().gameMode).toBe('guest');
-      });
-    });
-  });
-
-  describe('placement', () => {
-    describe('Local Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'local', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
-        // Transition PhaseManager to placement phase
-        phaseManager.transitionToPhase('placement');
-      });
-
-      it('PL-1-L: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('PL-2-L: P1 commits first, then P2', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('PL-3-L: P2 commits first, then P1', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('PL-4-L: Placement positions valid', () => {
-        mockGameStateManager._setState({
-          player1: createMockPlayer('P1', {
-            shipPlacement: { bridge: 'front', engineering: 'middle', weapons: 'rear' }
-          })
-        });
-
-        expect(mockGameStateManager.getState().player1.shipPlacement).toBeDefined();
-      });
-    });
-
-    describe('Host Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'host', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: true });
-        // Transition PhaseManager to placement phase
-        phaseManager.transitionToPhase('placement');
-      });
-
-      it('PL-1-H: Both commit simultaneously', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-
-        expect(phaseManager.checkReadyToTransition()).toBe(true);
-      });
-
-      it('PL-2-H: Host commits first', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-      });
-
-      it('PL-3-H: player2 commits first', () => {
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-        expect(phaseManager.checkReadyToTransition()).toBe(false);
-      });
-
-      it('PL-4-H: Host broadcasts immediately after both commit', () => {
-        phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-        phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
-
-        // Transition triggers broadcast
-        phaseManager.transitionToPhase('roundInitialization');
-        expect(phaseManager.getPhaseState().turnPhase).toBe('roundInitialization');
-      });
-    });
-
-    describe('Guest Mode', () => {
-      beforeEach(() => {
-        mockGameStateManager._setState({ gameMode: 'guest', turnPhase: 'placement' });
-        phaseManager = createMockPhaseManager(mockGameStateManager, { isAuthority: false });
-        // Non-authority uses applyMasterState to sync phase (can't call transitionToPhase)
-        phaseManager.applyMasterState({ turnPhase: 'placement' });
-      });
-
-      it('PL-1-G: Guest receives host broadcast', () => {
+      it('PGS-1-G: Guest receives host broadcast to roundInitialization', () => {
         phaseManager.applyMasterState({ turnPhase: 'roundInitialization' });
         expect(phaseManager.getPhaseState().turnPhase).toBe('roundInitialization');
       });
 
-      it('PL-2-G: Guest commits → sent to host', () => {
+      it('PGS-2-G: Guest cannot directly transition', () => {
         const result = phaseManager.transitionToPhase('roundInitialization');
         expect(result).toBe(false);
       });
 
-      it('PL-3-G: Guest waits for host', () => {
-        expect(phaseManager.getPhaseState().turnPhase).toBe('placement');
+      it('PGS-3-G: Guest waits for host transition', () => {
+        expect(phaseManager.getPhaseState().turnPhase).toBe('preGameSetup');
       });
 
-      it('PL-4-G: Guest receives broadcast timing', () => {
-        // Non-authority should receive broadcast promptly after both commit
-        phaseManager.applyMasterState({
-          turnPhase: 'roundInitialization',
-          gameStage: 'roundLoop',
-          roundNumber: 1
-        });
-
-        expect(phaseManager.getPhaseState().turnPhase).toBe('roundInitialization');
+      it('PGS-4-G: Guest validation done by host', () => {
+        const state = mockGameStateManager.getState();
+        expect(state.gameMode).toBe('guest');
       });
     });
   });

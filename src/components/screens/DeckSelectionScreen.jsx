@@ -4,9 +4,9 @@
 // Complete deck selection phase implementation extracted from App.jsx
 // Handles choice between standard deck and custom deck building
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
-import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
+import { SubmittingOverlay } from './WaitingForOpponentScreen.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
@@ -28,17 +28,15 @@ import '../../styles/phase-screens.css';
  * Complete deck selection phase management with state and phase completion tracking.
  * Extracted from App.jsx with all original logic preserved.
  */
-function DeckSelectionScreen() {
+function DeckSelectionScreen({ onStepComplete }) {
   const {
     gameState,
     getLocalPlayerId,
-    getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
     addLogEntry
   } = useGameState();
 
-  const { turnPhase } = gameState;
   const localPlayerState = getLocalPlayerState();
 
   // Local state for deck building UI
@@ -102,7 +100,7 @@ function DeckSelectionScreen() {
    * Builds the selected VS deck and submits it as a commitment.
    */
   const handleConfirmSelectedDeck = async () => {
-    if (!selectedDeck || turnPhase !== 'deckSelection') return;
+    if (!selectedDeck) return;
 
     debugLog('DECK_SELECTION', '🔧 Confirming VS deck:', selectedDeck.name);
 
@@ -111,9 +109,10 @@ function DeckSelectionScreen() {
     const droneNames = [...selectedDeck.dronePool];
 
     const payload = {
-      phase: 'deckSelection',
+      phase: 'preGameSetup',
       playerId: localPlayerId,
       actionData: {
+        subPhase: 'deckSelection',
         deck: builtDeck,
         drones: droneNames,
         shipComponents: selectedDeck.shipComponents
@@ -133,6 +132,7 @@ function DeckSelectionScreen() {
 
       setIsSubmitting(true);
       p2pManager.sendActionToHost('commitment', payload);
+      onStepComplete?.();
       return;
     }
 
@@ -153,6 +153,8 @@ function DeckSelectionScreen() {
       target: 'N/A',
       outcome: `Player selected the ${selectedDeck.name} deck.`
     }, 'handleConfirmSelectedDeck');
+
+    onStepComplete?.();
   };
 
   /**
@@ -161,7 +163,6 @@ function DeckSelectionScreen() {
    * @param {string} choice - 'custom'
    */
   const handleDeckChoice = (choice) => {
-    if (turnPhase !== 'deckSelection') return;
 
     if (choice === 'custom') {
       debugLog('DECK_SELECTION', '🔧 Opening custom deck builder');
@@ -249,9 +250,10 @@ function DeckSelectionScreen() {
     debugLog('DECK_SELECTION', `🎲 Custom deck includes ${droneNames.length} drones:`, droneNames.join(', '));
 
     const payload = {
-      phase: 'deckSelection',
+      phase: 'preGameSetup',
       playerId: localPlayerId,
       actionData: {
+        subPhase: 'deckSelection',
         deck: shuffledDeck,
         drones: droneNames,
         shipComponents: selectedShipComponents
@@ -274,6 +276,7 @@ function DeckSelectionScreen() {
 
       p2pManager.sendActionToHost('commitment', payload);
       setShowDeckBuilder(false);
+      onStepComplete?.();
       return;
     }
 
@@ -296,6 +299,7 @@ function DeckSelectionScreen() {
     }, 'handleConfirmDeck');
 
     setShowDeckBuilder(false);
+    onStepComplete?.();
   };
 
   /**
@@ -315,61 +319,10 @@ function DeckSelectionScreen() {
     return { success: true };
   };
 
-  // Reset submitting state when host confirms commitment
-  useEffect(() => {
-    const localPlayerId = getLocalPlayerId();
-    const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
-
-    if (localPlayerCompleted && isSubmitting) {
-      debugLog('DECK_SELECTION', '✅ Host confirmed remote client commitment, resetting isSubmitting');
-      setIsSubmitting(false);
-    }
-  }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
-
-  // Check completion status directly from gameState.commitments
-  const localPlayerId = getLocalPlayerId();
-  const opponentPlayerId = getOpponentPlayerId();
-  const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
-  const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
-
-  // Log commitment state changes (not every render)
-  const lastCommitStateRef = useRef(null);
-  const commitKey = `${localPlayerCompleted}-${opponentCompleted}-${isSubmitting}`;
-  if (commitKey !== lastCommitStateRef.current) {
-    lastCommitStateRef.current = commitKey;
-    debugLog('DECK_SELECTION', 'Render check:', {
-      localPlayerId,
-      isMultiplayer: isMultiplayer(),
-      opponentPlayerId,
-      localPlayerCompleted,
-      opponentCompleted,
-      isSubmitting,
-      fullCommitmentsObject: gameState.commitments?.deckSelection,
-      turnPhase,
-      localPlayerDeckLength: localPlayerState.deck?.length,
-      willShowSubmitting: isSubmitting && !localPlayerCompleted,
-      willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
-    });
-  }
-
-  // UI STATE MACHINE: Show appropriate screen based on remote client submission state
-
-  // State 1: SUBMITTING - Client sent action, waiting for server confirmation
-  if (isSubmitting && !localPlayerCompleted) {
+  // Show submitting overlay while remote client is waiting for host confirmation
+  if (isSubmitting) {
     return <SubmittingOverlay />;
   }
-
-  // State 2: WAITING - Player confirmed, waiting for opponent to complete
-  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
-    return (
-      <WaitingForOpponentScreen
-        phase="deckSelection"
-        localPlayerStatus="You have selected your deck and are ready to begin."
-      />
-    );
-  }
-
-  // State 3: SELECTING - Active selection interface (default)
 
   // Show deck builder if custom deck option selected
   if (showDeckBuilder) {

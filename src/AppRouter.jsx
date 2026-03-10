@@ -13,9 +13,7 @@ import aiPhaseProcessor from './managers/AIPhaseProcessor.js';
 import ActionProcessor from './managers/ActionProcessor.js';
 import MenuScreen from './components/screens/MenuScreen.jsx';
 import LobbyScreen from './components/screens/LobbyScreen.jsx';
-import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
-import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
-import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
+import PreGameWizard from './components/screens/PreGameWizard.jsx';
 import ModalShowcaseScreen from './components/screens/ModalShowcaseScreen.jsx';
 import TestingSetupScreen from './components/screens/TestingSetupScreen.jsx';
 import StandaloneDeckBuilder from './components/screens/StandaloneDeckBuilder.jsx';
@@ -335,7 +333,7 @@ function AppRouter() {
   // Show it for menu, lobby, and all pre-game selection screens
   const shouldShowCyanGlowBackground = !(
     gameState.appState === 'inGame' &&
-    !['droneSelection', 'placement'].includes(gameState.turnPhase)
+    gameState.turnPhase !== 'preGameSetup'
   );
 
   // Route based on application state and game phase
@@ -400,16 +398,8 @@ function AppRouter() {
     case 'inGame':
       // Route based on game phase when in game
       switch (gameState.turnPhase) {
-        case 'droneSelection':
-          currentScreen = <DroneSelectionScreen />;
-          break;
-
-        case 'deckSelection':
-          currentScreen = <DeckSelectionScreen />;
-          break;
-
-        case 'placement':
-          currentScreen = <ShipPlacementScreen />;
+        case 'preGameSetup':
+          currentScreen = <PreGameWizard />;
           break;
 
         case 'gameInitializing':

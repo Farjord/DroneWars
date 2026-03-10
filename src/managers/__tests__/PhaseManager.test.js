@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PhaseManager from '../PhaseManager.js';
+import { getPhaseDisplayName } from '../../logic/phase/phaseDisplayUtils.js';
 import { createMockGameStateManager, simulatePass, simulateCommitment } from '../../test/helpers/phaseTestHelpers.js';
 
 // ========================================
@@ -44,7 +45,7 @@ describe('PhaseManager', () => {
       const result = phaseManager.transitionToPhase('action');
 
       expect(result).toBe(false);
-      expect(phaseManager.phaseState.turnPhase).toBe('deckSelection'); // Should not change
+      expect(phaseManager.phaseState.turnPhase).toBe('preGameSetup'); // Should not change
     });
 
     it('local mode allows transitionToPhase()', () => {
@@ -154,33 +155,33 @@ describe('PhaseManager', () => {
   describe('State Tracking - Simultaneous Phases', () => {
     beforeEach(() => {
       phaseManager = new PhaseManager(mockGameStateManager, { isAuthority: true });
-      phaseManager.transitionToPhase('placement');
+      phaseManager.transitionToPhase('allocateShields');
     });
 
     it('tracks host commitment correctly', () => {
-      // EXPLANATION: In simultaneous phases (placement, discard), players commit independently.
-      // Expected: notifyPlayerAction('player1', 'commit', {phase: 'placement'}) marks host as committed
+      // EXPLANATION: In simultaneous phases (allocateShields, discard), players commit independently.
+      // Expected: notifyPlayerAction('player1', 'commit', {phase: 'allocateShields'}) marks host as committed
 
-      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
 
-      expect(phaseManager.player1State.commitments.placement?.completed).toBe(true);
+      expect(phaseManager.player1State.commitments.allocateShields?.completed).toBe(true);
     });
 
     it('tracks player2 commitment correctly', () => {
       // EXPLANATION: Player2 commitments come via network.
-      // Expected: notifyPlayerAction('player2', 'commit', {phase: 'placement'}) marks player2 as committed
+      // Expected: notifyPlayerAction('player2', 'commit', {phase: 'allocateShields'}) marks player2 as committed
 
-      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'allocateShields' });
 
-      expect(phaseManager.player2State.commitments.placement?.completed).toBe(true);
+      expect(phaseManager.player2State.commitments.allocateShields?.completed).toBe(true);
     });
 
     it('checkReadyToTransition returns true when both committed', () => {
       // EXPLANATION: Simultaneous phases transition when both commit.
       // Expected: After both commitments, checkReadyToTransition() returns true
 
-      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'allocateShields' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -191,7 +192,7 @@ describe('PhaseManager', () => {
       // EXPLANATION: Must wait for both commitments.
       // Expected: Single commitment means checkReadyToTransition() returns false
 
-      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
 
       const ready = phaseManager.checkReadyToTransition();
 
@@ -236,15 +237,15 @@ describe('PhaseManager', () => {
       // EXPLANATION: Commitment state must clear when leaving simultaneous phase.
       // Expected: After transitionToPhase(), commitments for that phase cleared
 
-      phaseManager.transitionToPhase('placement');
-      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
+      phaseManager.transitionToPhase('allocateShields');
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'allocateShields' });
 
-      phaseManager.transitionToPhase('roundInitialization');
+      phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Commitments should be reset for next use of this phase
-      expect(phaseManager.player1State.commitments.placement?.completed).toBe(false);
-      expect(phaseManager.player2State.commitments.placement?.completed).toBe(false);
+      expect(phaseManager.player1State.commitments.allocateShields?.completed).toBe(false);
+      expect(phaseManager.player2State.commitments.allocateShields?.completed).toBe(false);
     });
 
     it('records transition in history log', () => {
@@ -349,7 +350,7 @@ describe('PhaseManager', () => {
       // Should be blocked or return false
       expect(result).toBe(false);
       // Phase should not change
-      expect(phaseManager.phaseState.turnPhase).toBe('deckSelection');
+      expect(phaseManager.phaseState.turnPhase).toBe('preGameSetup');
     });
 
     it('non-authority state matches host state after broadcast', () => {
@@ -528,18 +529,18 @@ describe('PhaseManager', () => {
       // non-authority doesn't, phase transitions will fail or happen prematurely.
       // Expected: Mismatch in commitment state is detectable
 
-      hostPhaseManager.transitionToPhase('placement');
-      guestPhaseManager.transitionToPhase('placement');
+      hostPhaseManager.transitionToPhase('allocateShields');
+      guestPhaseManager.applyMasterState({ turnPhase: 'allocateShields' });
 
       // Host: player1 has committed
-      hostPhaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
+      hostPhaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
 
       // Non-authority: player1 has NOT committed (desync)
-      // guestPhaseManager.player1State.commitments.placement remains uncommitted
+      // guestPhaseManager.player1State.commitments.allocateShields remains uncommitted
 
       // Verify states are different
-      const hostCommitted = hostPhaseManager.player1State.commitments.placement?.completed;
-      const guestThinksCommitted = guestPhaseManager.player1State.commitments.placement?.completed;
+      const hostCommitted = hostPhaseManager.player1State.commitments.allocateShields?.completed;
+      const guestThinksCommitted = guestPhaseManager.player1State.commitments.allocateShields?.completed;
 
       expect(hostCommitted).toBe(true);
       expect(guestThinksCommitted).toBeFalsy(); // undefined or false
@@ -554,7 +555,7 @@ describe('PhaseManager', () => {
       // Expected: Mismatch in gameStage is detectable via PhaseManager state
 
       // Host: transitioned through setup phases to roundLoop
-      hostPhaseManager.transitionToPhase('placement');
+      hostPhaseManager.transitionToPhase('allocateShields');
       hostPhaseManager.phaseState.gameStage = 'roundLoop';
 
       // Non-authority: still thinks it's in preGame (desync)
@@ -755,25 +756,25 @@ describe('PhaseManager', () => {
       // Non-authority should receive ONE broadcast with the FINAL coherent state, not intermediate states.
       // Expected: After transition, all state fields are consistent with final phase
 
-      // Start in placement phase with commitments
-      phaseManager.transitionToPhase('placement');
-      phaseManager.notifyPlayerAction('player1','commit', { phase: 'placement' });
-      phaseManager.notifyPlayerAction('player2','commit', { phase: 'placement' });
+      // Start in allocateShields phase with commitments
+      phaseManager.transitionToPhase('allocateShields');
+      phaseManager.notifyPlayerAction('player1','commit', { phase: 'allocateShields' });
+      phaseManager.notifyPlayerAction('player2','commit', { phase: 'allocateShields' });
 
       // Capture state before complex transition
       const preTransitionPhase = phaseManager.phaseState.turnPhase;
-      expect(preTransitionPhase).toBe('placement');
+      expect(preTransitionPhase).toBe('allocateShields');
 
-      // Execute complex transition (placement → roundInitialization)
+      // Execute complex transition (allocateShields → mandatoryDroneRemoval)
       // This involves: checking commitments, resetting state, changing phase
-      phaseManager.transitionToPhase('roundInitialization');
+      phaseManager.transitionToPhase('mandatoryDroneRemoval');
 
       // Verify final state is coherent (all fields consistent with new phase)
-      expect(phaseManager.phaseState.turnPhase).toBe('roundInitialization');
+      expect(phaseManager.phaseState.turnPhase).toBe('mandatoryDroneRemoval');
 
-      // Commitments for placement should be reset (ready for next time)
-      expect(phaseManager.player1State.commitments.placement?.completed).toBe(false);
-      expect(phaseManager.player2State.commitments.placement?.completed).toBe(false);
+      // Commitments for allocateShields should be reset (ready for next time)
+      expect(phaseManager.player1State.commitments.allocateShields?.completed).toBe(false);
+      expect(phaseManager.player2State.commitments.allocateShields?.completed).toBe(false);
 
       // No intermediate state where turnPhase changed but commitments weren't reset
       // This is the "single coherent state" guarantee
@@ -826,22 +827,22 @@ describe('PhaseManager', () => {
       // DESIGN: "validateActionForPhase rejects pass in simultaneous phases"
       // Pass actions only make sense in sequential phases (deployment, action)
 
-      // Set up simultaneous phase (placement)
-      phaseManager.transitionToPhase('placement');
+      // Set up simultaneous phase (allocateShields)
+      phaseManager.transitionToPhase('allocateShields');
 
       // Track state before action
       expect(phaseManager.player1State.passInfo.passed).toBe(false);
 
       // Attempt pass in simultaneous phase - should be rejected
-      const result = phaseManager.notifyPlayerAction('player1','pass', { phase: 'placement' });
+      const result = phaseManager.notifyPlayerAction('player1','pass', { phase: 'allocateShields' });
 
       // Validation rejects pass in simultaneous phase
       expect(result).toBe(false);
       expect(phaseManager.player1State.passInfo.passed).toBe(false); // Unchanged
 
-      // Verify placement is correctly identified as simultaneous
-      expect(PhaseManager.SEQUENTIAL_PHASES.includes('placement')).toBe(false);
-      expect(PhaseManager.SIMULTANEOUS_PHASES.includes('placement')).toBe(true);
+      // Verify allocateShields is correctly identified as simultaneous
+      expect(PhaseManager.SEQUENTIAL_PHASES.includes('allocateShields')).toBe(false);
+      expect(PhaseManager.SIMULTANEOUS_PHASES.includes('allocateShields')).toBe(true);
     });
 
     it('commit action in sequential phase is rejected by validation', () => {
@@ -959,7 +960,7 @@ describe('PhaseManager', () => {
 
       phaseManager.reset();
 
-      expect(phaseManager.phaseState.turnPhase).toBe('deckSelection');
+      expect(phaseManager.phaseState.turnPhase).toBe('preGameSetup');
       expect(phaseManager.phaseState.gameStage).toBe('preGame');
       expect(phaseManager.phaseState.roundNumber).toBe(1);
       expect(phaseManager.phaseState.turn).toBe(1);
@@ -1015,7 +1016,39 @@ describe('PhaseManager', () => {
 
       // State should be at defaults
       expect(freshPhaseManager.transitionHistory).toEqual([]);
-      expect(freshPhaseManager.phaseState.turnPhase).toBe('deckSelection');
+      expect(freshPhaseManager.phaseState.turnPhase).toBe('preGameSetup');
+    });
+  });
+
+  // ========================================
+  // PHASE CONSTANTS - preGameSetup consolidation
+  // ========================================
+
+  describe('Phase Constants - preGameSetup consolidation', () => {
+    it('VALID_PHASES includes preGameSetup', () => {
+      expect(PhaseManager.VALID_PHASES).toContain('preGameSetup');
+    });
+
+    it('VALID_PHASES excludes old pre-game phases', () => {
+      expect(PhaseManager.VALID_PHASES).not.toContain('deckSelection');
+      expect(PhaseManager.VALID_PHASES).not.toContain('droneSelection');
+      expect(PhaseManager.VALID_PHASES).not.toContain('placement');
+      expect(PhaseManager.VALID_PHASES).not.toContain('determineFirstPlayer');
+    });
+
+    it('SIMULTANEOUS_PHASES includes preGameSetup', () => {
+      expect(PhaseManager.SIMULTANEOUS_PHASES).toContain('preGameSetup');
+    });
+
+    it('SIMULTANEOUS_PHASES excludes old pre-game phases', () => {
+      expect(PhaseManager.SIMULTANEOUS_PHASES).not.toContain('deckSelection');
+      expect(PhaseManager.SIMULTANEOUS_PHASES).not.toContain('droneSelection');
+      expect(PhaseManager.SIMULTANEOUS_PHASES).not.toContain('placement');
+      expect(PhaseManager.SIMULTANEOUS_PHASES).not.toContain('determineFirstPlayer');
+    });
+
+    it('getPhaseDisplayName returns display text for preGameSetup', () => {
+      expect(getPhaseDisplayName('preGameSetup')).toBe('Pre-Game Setup');
     });
   });
 });

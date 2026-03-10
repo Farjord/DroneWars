@@ -86,7 +86,7 @@ class CombatStateManager {
       gameActive: true,
 
       // Turn state
-      turnPhase: 'placement',
+      turnPhase: 'preGameSetup',
       roundNumber: 1,
       turn: 1,
       currentPlayer: null,
