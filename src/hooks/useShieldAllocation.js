@@ -14,9 +14,7 @@ import { calculateRoundStartReset } from '../logic/shields/ShieldResetUtils.js';
  * @param {Object} deps.localPlacedSections - Local player's placed ship sections
  * @param {Object} deps.gameDataService - Game data service instance
  * @param {Function} deps.getLocalPlayerId - Returns local player ID
- * @param {Function} deps.getOpponentPlayerId - Returns opponent player ID
  * @param {Function} deps.submitAction - Action routing function
- * @param {Function} deps.setWaitingForPlayerPhase - Sets waiting overlay
  * @param {Function} deps.setShipAbilityConfirmation - Shows ship ability confirmation modal
  */
 const useShieldAllocation = ({
@@ -25,9 +23,7 @@ const useShieldAllocation = ({
   localPlacedSections,
   gameDataService,
   getLocalPlayerId,
-  getOpponentPlayerId,
   submitAction,
-  setWaitingForPlayerPhase,
   setShipAbilityConfirmation,
 }) => {
   const { turnPhase, shieldsToAllocate } = gameState;
@@ -116,26 +112,7 @@ const useShieldAllocation = ({
       fullResult: result
     });
     debugLog('SHIELD_CLICKS', '📥 Commitment result:', result);
-
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.allocateShields || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    debugLog('SHIELD_CLICKS', '🔍 Checking opponent commitment:', {
-      hasCommitments: !!commitments,
-      hasPhaseCommitments: !!phaseCommitments,
-      opponentCommitted
-    });
-
-    if (!opponentCommitted) {
-      debugLog('COMMITMENTS', '✋ Opponent not committed yet, showing waiting overlay');
-      debugLog('SHIELD_CLICKS', '⏳ Setting waiting overlay');
-      setWaitingForPlayerPhase('allocateShields');
-    } else {
-      debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
-      debugLog('SHIELD_CLICKS', '✅ Both players committed, proceeding');
-    }
-  }, [submitAction, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations, setWaitingForPlayerPhase]);
+  }, [submitAction, getLocalPlayerId, pendingShieldAllocations]);
 
   const handleAllocateShield = async (sectionName) => {
     debugLog('SHIELD_CLICKS', `🟢 handleAllocateShield called`, {
@@ -301,15 +278,10 @@ const useShieldAllocation = ({
       fullResult: result
     });
 
-    if (result.data && !result.data.bothPlayersComplete) {
-      debugLog('COMMITMENTS', '✋ Setting waiting overlay for allocateShields phase');
-      setWaitingForPlayerPhase('allocateShields');
-    } else {
-      debugLog('COMMITMENTS', '✅ Both players complete or no data, not showing waiting overlay', {
-        hasData: !!result.data,
-        bothComplete: result.data?.bothPlayersComplete
-      });
-    }
+    debugLog('COMMITMENTS', result.data?.bothPlayersComplete
+      ? '✅ Both players complete'
+      : '⏳ Waiting for opponent — useWaitingForOpponent will handle overlay');
+
   };
 
   const handleShieldAction = (actionType, payload) => {

@@ -28,6 +28,7 @@ vi.mock('../../../../logic/statsCalculator.js', () => ({
 // Now import the processor
 import DestroyEffectProcessor from '../../DestroyEffectProcessor.js';
 import { gameEngine } from '../../../gameLogic.js';
+import { stripChainFields } from '../../../cards/chainConstants.js';
 
 describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
   let processor;
@@ -372,5 +373,72 @@ describe('DestroyEffectProcessor - ALL scope (Purge Protocol)', () => {
 
       expect(result.additionalEffects).toEqual([]);
     });
+  });
+});
+
+describe('DestroyEffectProcessor — stripChainFields integration (Shrieker Missiles bug)', () => {
+  let processor;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    processor = new DestroyEffectProcessor();
+  });
+
+  it('should destroy filtered drones even after effect passes through stripChainFields', () => {
+    const playerStates = {
+      player1: {
+        energy: 10,
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        shipSections: {},
+        deployedDroneCounts: {}
+      },
+      player2: {
+        energy: 10,
+        dronesOnBoard: {
+          lane1: [
+            { id: 'dart_1', name: 'Dart', hull: 2, attack: 1, speed: 6 },
+            { id: 'slow_1', name: 'SlowDrone', hull: 2, attack: 1, speed: 3 },
+            { id: 'osiris_1', name: 'Osiris', hull: 2, attack: 1, speed: 5 }
+          ],
+          lane2: [],
+          lane3: []
+        },
+        shipSections: {},
+        deployedDroneCounts: {}
+      }
+    };
+
+    // Simulate what the chain does: effect has targeting, then gets stripped
+    const chainEffect = {
+      type: 'DESTROY',
+      targeting: {
+        type: 'LANE',
+        affinity: 'ENEMY',
+        affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+      }
+    };
+
+    const strippedEffect = stripChainFields(chainEffect);
+
+    const context = {
+      target: { id: 'lane1' },
+      actingPlayerId: 'player1',
+      playerStates,
+      placedSections: { player1: [], player2: [] },
+      callbacks: { logCallback: vi.fn() },
+      card: {
+        id: 'CARD_SHRIEKER',
+        name: 'Shrieker Missiles',
+        instanceId: 'inst_shrieker'
+        // No top-level targeting on card — mirrors real cardData structure
+      }
+    };
+
+    const result = processor.process(strippedEffect, context);
+
+    const lane1Drones = result.newPlayerStates.player2.dronesOnBoard.lane1;
+    // Only SlowDrone (speed 3) should survive
+    expect(lane1Drones).toHaveLength(1);
+    expect(lane1Drones[0].id).toBe('slow_1');
   });
 });

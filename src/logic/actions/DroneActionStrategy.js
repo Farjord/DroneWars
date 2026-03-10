@@ -411,11 +411,24 @@ export async function processAiAction(payload, ctx) {
             card: chosenAction.card.name, targetId: chosenAction.target?.id,
             playerId: 'player2', isAI: true,
           });
-          const cardResult = await ctx.processCardPlay({
+
+          const payload = {
             card: chosenAction.card,
             targetId: chosenAction.target?.id,
             playerId: 'player2'
-          });
+          };
+
+          // For movement cards, build chain selections from AI moveData
+          if (chosenAction.moveData) {
+            const { drone, fromLane, toLane } = chosenAction.moveData;
+            payload.chainSelections = [{
+              target: drone,
+              lane: fromLane,
+              destination: toLane
+            }];
+          }
+
+          const cardResult = await ctx.processCardPlay(payload);
           debugLog('CARD_PLAY_TRACE', '[10] Card play resolved', {
             card: chosenAction.card.name, success: cardResult?.success !== false, isAI: true,
           });

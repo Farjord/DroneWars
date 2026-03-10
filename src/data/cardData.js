@@ -1144,7 +1144,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
     effects: [
-      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'SAME_LANE', maxTargets: 3, restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', maxTargets: 3, restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
     ],
   },
   {

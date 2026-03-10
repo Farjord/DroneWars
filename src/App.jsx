@@ -33,7 +33,7 @@ import { useExplosions } from './hooks/useExplosions';
 import { useAnimationSetup } from './hooks/useAnimationSetup';
 import useShieldAllocation from './hooks/useShieldAllocation.js';
 import useInterception from './hooks/useInterception.js';
-import useMultiplayerSync from './hooks/useMultiplayerSync.js';
+import useWaitingForOpponent from './hooks/useWaitingForOpponent.js';
 import useCardSelection from './hooks/useCardSelection.js';
 import useDragMechanics from './hooks/useDragMechanics.js';
 import useClickHandlers from './hooks/useClickHandlers.js';
@@ -500,17 +500,14 @@ const App = ({ phaseAnimationQueue }) => {
   const [draggedDrone, setDraggedDrone] = useState(null);
   const [costReminderArrowState, setCostReminderArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
 
-  // --- MULTIPLAYER SYNC HOOK ---
+  // --- WAITING FOR OPPONENT HOOK ---
   const {
     waitingForPlayerPhase,
-    setWaitingForPlayerPhase,
-  } = useMultiplayerSync({
+  } = useWaitingForOpponent({
     gameState,
     turnPhase,
-    isMultiplayer,
     getLocalPlayerId,
     getOpponentPlayerId,
-    p2pManager,
     gameStateManager,
     phaseAnimationQueue,
     passInfo,
@@ -543,9 +540,7 @@ const App = ({ phaseAnimationQueue }) => {
     localPlacedSections,
     gameDataService,
     getLocalPlayerId,
-    getOpponentPlayerId,
     submitAction,
-    setWaitingForPlayerPhase,
     setShipAbilityConfirmation,
   });
 
@@ -873,7 +868,7 @@ const App = ({ phaseAnimationQueue }) => {
     setMandatoryAction, setShowMandatoryActionModal, setConfirmationModal,
     setSelectedCard, setValidCardTargets, setCardConfirmation,
     setShowWinnerModal, setShowAbandonRunModal, setShowAddCardModal,
-    setOptionalDiscardCount, setWaitingForPlayerPhase, setDeck, setCardToView,
+    setOptionalDiscardCount, setDeck, setCardToView,
     // Functions
     submitAction, getLocalPlayerId, getOpponentPlayerId,
     cancelAllActions, resetGame, endGame,
@@ -884,7 +879,7 @@ const App = ({ phaseAnimationQueue }) => {
     // UI modal state
     setSelectedBackground, setViewShipSectionModal, setViewTechDetailModal, setShowOpponentDronesModal,
     // External
-    gameStateManager, phaseAnimationQueue, gameLog,
+    gameStateManager, gameLog,
   });
 
   // --- CLICK HANDLERS HOOK ---

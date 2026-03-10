@@ -93,8 +93,8 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     const { actingPlayerId, playerStates, placedSections, target, callbacks, card } = context;
 
     // Handle filtered lane damage (targeting.affectedFilter or targetSelection)
-    const affectedFilter = card?.targeting?.affectedFilter;
-    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    const affectedFilter = effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter;
+    const targetSelection = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if ((affectedFilter || targetSelection) && target?.id?.startsWith('lane')) {
       return this.processFilteredDamage(effect, context);
     }
@@ -120,9 +120,9 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     // Snapshot the drones to avoid modification during iteration
     const droneSnapshot = dronesInLane.map(d => ({ ...d }));
 
-    // Read filter from targeting.affectedFilter
-    const filter = card?.targeting?.affectedFilter?.[0] || {};
-    const maxTargets = card?.targeting?.maxTargets;
+    // Read filter from targeting.affectedFilter (effect-level takes precedence over card-level)
+    const filter = (effect?.targeting?.affectedFilter || card?.targeting?.affectedFilter)?.[0] || {};
+    const maxTargets = effect?.targeting?.maxTargets || card?.targeting?.maxTargets;
 
     debugLog('COMBAT', `[DAMAGE FILTERED] Processing filtered damage in ${laneId} (${droneSnapshot.length} drones)`);
 
@@ -182,7 +182,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     }
 
     // Apply targetSelection (RANDOM, HIGHEST, LOWEST)
-    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    const targetSelection = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if (targetSelection) {
       if (targetSelection.method === 'RANDOM') {
         return this.processRandomDamage(effect, context, affectedDrones, dronesInLane, laneId, targetPlayerId, targetPlayerState, newPlayerStates);
@@ -258,7 +258,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
    */
   processRandomDamage(effect, context, candidateDrones, dronesInLane, laneId, targetPlayerId, targetPlayerState, newPlayerStates) {
     const { card } = context;
-    const targetSelection = card?.targeting?.targetSelection || effect?.targeting?.targetSelection;
+    const targetSelection = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     const discriminator = card?.instanceId || candidateDrones.length;
     const rng = SeededRandom.forTargetSelection(
       { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },

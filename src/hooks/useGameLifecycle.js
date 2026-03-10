@@ -44,7 +44,6 @@ export default function useGameLifecycle({
   setShowAbandonRunModal,
   setShowAddCardModal,
   setOptionalDiscardCount,
-  setWaitingForPlayerPhase,
   setDeck,
   setCardToView,
 
@@ -71,7 +70,6 @@ export default function useGameLifecycle({
 
   // --- External ---
   gameStateManager,
-  phaseAnimationQueue,
   gameLog,
 }) {
 
@@ -290,24 +288,12 @@ export default function useGameLifecycle({
       phase: 'optionalDiscard',
       actionData: { completed: true }
     });
-
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.optionalDiscard || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-      setWaitingForPlayerPhase('optionalDiscard');
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
   };
 
   // --- Shared mandatory phase commitment ---
 
   /**
-   * Commit a mandatory phase and show waiting overlay if opponent hasn't committed.
-   * Waits for the animation queue to drain before showing the overlay.
+   * Commit a mandatory phase.
    * Shared by handleMandatoryDiscardContinue and handleMandatoryDroneRemovalContinue.
    */
   const commitMandatoryPhase = async (phaseName, logLabel) => {
@@ -318,34 +304,6 @@ export default function useGameLifecycle({
       phase: phaseName,
       actionData: { completed: true }
     });
-
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments[phaseName] || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-
-      if (phaseAnimationQueue) {
-        const queueLength = phaseAnimationQueue.getQueueLength();
-        const isPlaying = phaseAnimationQueue.isPlaying();
-
-        if (queueLength > 0 || isPlaying) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase(phaseName);
-            unsubscribe();
-            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
-          });
-        } else {
-          setWaitingForPlayerPhase(phaseName);
-        }
-      } else {
-        setWaitingForPlayerPhase(phaseName);
-      }
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
   };
 
   // --- handleMandatoryDiscardContinue ---

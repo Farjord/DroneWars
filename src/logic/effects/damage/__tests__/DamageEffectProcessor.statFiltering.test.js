@@ -271,4 +271,111 @@ describe('DamageEffectProcessor stat-based filtering', () => {
       expect(dart.hull).toBe(2); // 2 damage - 1 shield = 1 hull damage
     });
   });
+
+  describe('processFilteredDamage with targeting on effect (not card)', () => {
+    it('should use effect.targeting.affectedFilter when card has no targeting', () => {
+      const slowDrone = {
+        id: 'mammoth_1',
+        name: 'Mammoth',
+        hull: 5,
+        currentShields: 2,
+        speed: 2,
+        attack: 3,
+        owner: 'player2',
+        isExhausted: false
+      };
+      const fastDrone = {
+        id: 'dart_1',
+        name: 'Dart',
+        hull: 3,
+        currentShields: 1,
+        speed: 6,
+        attack: 1,
+        owner: 'player2',
+        isExhausted: false
+      };
+      mockPlayerStates.player2.dronesOnBoard.lane1 = [slowDrone, fastDrone];
+
+      // Effect carries targeting (as it would after stripChainFields preserves it)
+      const effect = {
+        type: 'DAMAGE',
+        value: 2,
+        targeting: {
+          type: 'LANE',
+          affinity: 'ENEMY',
+          affectedFilter: [{ stat: 'speed', comparison: 'LTE', value: 4 }]
+        }
+      };
+
+      const context = {
+        target: { id: 'lane1', owner: 'player2' },
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        placedSections: { player1: ['bridge'], player2: ['bridge'] },
+        callbacks: { logCallback: vi.fn() },
+        card: {
+          id: 'SIDEWINDER_MISSILES', name: 'Sidewinder Missiles', instanceId: 'inst_1'
+          // No targeting on card — it's on the effect
+        }
+      };
+
+      const result = processor.process(effect, context);
+
+      const lane1Drones = result.newPlayerStates.player2.dronesOnBoard.lane1;
+      const mammoth = lane1Drones.find(d => d.id === 'mammoth_1');
+      const dart = lane1Drones.find(d => d.id === 'dart_1');
+
+      // Mammoth (speed 2) SHOULD be damaged (meets LTE 4)
+      expect(mammoth.currentShields).toBe(0);
+      expect(mammoth.hull).toBe(5);
+
+      // Dart (speed 6) should NOT be damaged
+      expect(dart.currentShields).toBe(1);
+      expect(dart.hull).toBe(3);
+    });
+
+    it('should use effect.targeting.maxTargets when card has no targeting', () => {
+      // Fill lane with 4 slow drones
+      mockPlayerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'd1', name: 'D1', hull: 5, currentShields: 0, speed: 2, attack: 1, owner: 'player2', isExhausted: false },
+        { id: 'd2', name: 'D2', hull: 5, currentShields: 0, speed: 2, attack: 1, owner: 'player2', isExhausted: false },
+        { id: 'd3', name: 'D3', hull: 5, currentShields: 0, speed: 2, attack: 1, owner: 'player2', isExhausted: false },
+        { id: 'd4', name: 'D4', hull: 5, currentShields: 0, speed: 2, attack: 1, owner: 'player2', isExhausted: false }
+      ];
+
+      // Strafe Run: damage up to 3 drones with hull >= 0
+      const effect = {
+        type: 'DAMAGE',
+        value: 1,
+        targeting: {
+          type: 'LANE',
+          affinity: 'ENEMY',
+          affectedFilter: [{ stat: 'hull', comparison: 'GTE', value: 0 }],
+          maxTargets: 3
+        }
+      };
+
+      const context = {
+        target: { id: 'lane1', owner: 'player2' },
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        placedSections: { player1: ['bridge'], player2: ['bridge'] },
+        callbacks: { logCallback: vi.fn() },
+        card: {
+          id: 'STRAFE_RUN', name: 'Strafe Run', instanceId: 'inst_1'
+          // No targeting on card
+        }
+      };
+
+      const result = processor.process(effect, context);
+
+      const lane1Drones = result.newPlayerStates.player2.dronesOnBoard.lane1;
+      // First 3 drones should be damaged (hull 4), 4th should be untouched (hull 5)
+      const damaged = lane1Drones.filter(d => d.hull < 5);
+      const untouched = lane1Drones.filter(d => d.hull === 5);
+      expect(damaged).toHaveLength(3);
+      expect(untouched).toHaveLength(1);
+      expect(untouched[0].id).toBe('d4');
+    });
+  });
 });

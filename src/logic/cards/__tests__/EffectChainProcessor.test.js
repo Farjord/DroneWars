@@ -303,7 +303,7 @@ describe('resolveRefFromSelections', () => {
 // --- Unit Tests: stripChainFields ---
 
 describe('stripChainFields', () => {
-  it('strips targeting, conditionals, prompt, destination', () => {
+  it('strips conditionals, prompt, destination but preserves targeting', () => {
     const chainEffect = {
       type: 'DAMAGE', value: 3,
       targeting: { type: 'DRONE' },
@@ -311,12 +311,29 @@ describe('stripChainFields', () => {
       prompt: 'Select target',
       destination: { type: 'LANE' },
     };
-    expect(stripChainFields(chainEffect)).toEqual({ type: 'DAMAGE', value: 3 });
+    expect(stripChainFields(chainEffect)).toEqual({ type: 'DAMAGE', value: 3, targeting: { type: 'DRONE' } });
   });
 
-  it('preserves all non-chain fields', () => {
+  it('preserves targeting with affectedFilter for filtered effects', () => {
+    const chainEffect = {
+      type: 'DESTROY',
+      targeting: {
+        type: 'LANE',
+        affinity: 'ENEMY',
+        affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+      }
+    };
+    const stripped = stripChainFields(chainEffect);
+    expect(stripped.targeting).toEqual({
+      type: 'LANE',
+      affinity: 'ENEMY',
+      affectedFilter: [{ stat: 'speed', comparison: 'GTE', value: 5 }]
+    });
+  });
+
+  it('preserves all non-chain fields including targeting', () => {
     const chainEffect = { type: 'DAMAGE', value: 2, damageType: 'ION', markedBonus: 2, targeting: { type: 'DRONE' } };
-    expect(stripChainFields(chainEffect)).toEqual({ type: 'DAMAGE', value: 2, damageType: 'ION', markedBonus: 2 });
+    expect(stripChainFields(chainEffect)).toEqual({ type: 'DAMAGE', value: 2, damageType: 'ION', markedBonus: 2, targeting: { type: 'DRONE' } });
   });
 });
 
