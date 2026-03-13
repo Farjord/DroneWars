@@ -7,11 +7,8 @@
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
 import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 
-const SECTION_TO_LANE = {
-  'left': 'lane1',
-  'middle': 'lane2',
-  'right': 'lane3'
-};
+const LANE_SHORT_TO_LANE_ID = { 'l': 'lane1', 'm': 'lane2', 'r': 'lane3' };
+const LANE_SHORT_TO_POSITION = { 'l': 'left', 'm': 'middle', 'r': 'right' };
 
 /**
  * ShipSectionTargetingProcessor - Handles ship section targeting
@@ -106,18 +103,21 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
     const player2State = context.player2;
     const laneControl = LaneControlCalculator.calculateLaneControl(player1State, player2State);
 
-    // If card has validSections (predetermined targets like Crossfire, Breach, Encirclement)
+    // If card has validSections (predetermined targets like Breach the Line)
     if (targeting.validSections) {
-      return targets.filter(t => targeting.validSections.includes(t.id));
+      return targets.filter(t => {
+        const position = t.lane ? LANE_SHORT_TO_POSITION[t.lane] : null;
+        return position && targeting.validSections.includes(position);
+      });
     }
 
     // If card has CONTROL_LANE_EMPTY condition (Overrun) - filter dynamically
-    if (definition.effect?.condition?.type === 'CONTROL_LANE_EMPTY') {
+    if (definition.effects?.[0]?.condition?.type === 'CONTROL_LANE_EMPTY') {
       return targets.filter(t => {
-        const lane = SECTION_TO_LANE[t.id];
-        if (!lane) return false;
+        const laneId = t.lane ? LANE_SHORT_TO_LANE_ID[t.lane] : null;
+        if (!laneId) return false;
         return LaneControlCalculator.checkLaneControlEmpty(
-          actingPlayerId, lane, player1State, player2State, laneControl
+          actingPlayerId, laneId, player1State, player2State, laneControl
         );
       });
     }

@@ -205,7 +205,7 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       const context = {
         actingPlayerId: 'player1',
-        target: { id: 'left' },  // Targeting left section (corresponds to lane1)
+        target: { id: 'bridge', lane: 'l' },  // Targeting bridge section (lane 'l' -> lane1)
         playerStates: {
           player1: {
             dronesOnBoard: {
@@ -221,29 +221,81 @@ describe('ConditionalSectionDamageProcessor', () => {
               lane3: []
             },
             shipSections: {
-              LEFT_SECTION: { hull: 10, allocatedShields: 2 },
-              MIDDLE_SECTION: { hull: 10, allocatedShields: 2 },
-              RIGHT_SECTION: { hull: 10, allocatedShields: 2 }
+              bridge: { hull: 10, allocatedShields: 2, lane: 'l' },
+              powerCell: { hull: 10, allocatedShields: 2, lane: 'm' },
+              droneControlHub: { hull: 10, allocatedShields: 2, lane: 'r' }
             }
           }
         },
         placedSections: {
-          player1: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION'],
-          player2: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION']
+          player1: ['bridge', 'powerCell', 'droneControlHub'],
+          player2: ['bridge', 'powerCell', 'droneControlHub']
         },
         card: { name: 'Overrun' }
       };
 
       const result = processor.process(effect, context);
 
-      // Left section (corresponds to lane1): 2 damage to shields
-      expect(result.newPlayerStates.player2.shipSections.LEFT_SECTION.allocatedShields).toBe(0);
-      expect(result.newPlayerStates.player2.shipSections.LEFT_SECTION.hull).toBe(10);
+      // Bridge section (corresponds to lane1): 2 damage to shields
+      expect(result.newPlayerStates.player2.shipSections.bridge.allocatedShields).toBe(0);
+      expect(result.newPlayerStates.player2.shipSections.bridge.hull).toBe(10);
 
       // Other sections unchanged
-      expect(result.newPlayerStates.player2.shipSections.MIDDLE_SECTION.hull).toBe(10);
+      expect(result.newPlayerStates.player2.shipSections.powerCell.hull).toBe(10);
 
       // 2 animation events
+      expect(result.animationEvents).toHaveLength(2);
+    });
+
+    it('should derive lane from placedSections when target has no lane property (instance ID)', () => {
+      const effect = {
+        type: 'CONDITIONAL_SECTION_DAMAGE',
+        condition: {
+          type: 'CONTROL_LANE_EMPTY',
+          lane: 'TARGET'
+        },
+        damage: 2,
+        targets: 'CORRESPONDING_SECTION',
+        damageType: 'NORMAL'
+      };
+
+      // target has instance ID and name but NO lane shortcode — mimics real processCardPlay targets
+      const context = {
+        actingPlayerId: 'player1',
+        target: { id: 'BRIDGE_001', name: 'bridge' },
+        playerStates: {
+          player1: {
+            dronesOnBoard: {
+              lane1: [{id: 'd1'}, {id: 'd2'}],
+              lane2: [],
+              lane3: []
+            }
+          },
+          player2: {
+            dronesOnBoard: {
+              lane1: [],
+              lane2: [],
+              lane3: []
+            },
+            shipSections: {
+              bridge: { hull: 10, allocatedShields: 2, lane: 'l' },
+              powerCell: { hull: 10, allocatedShields: 2, lane: 'm' },
+              droneControlHub: { hull: 10, allocatedShields: 2, lane: 'r' }
+            }
+          }
+        },
+        placedSections: {
+          player1: ['bridge', 'powerCell', 'droneControlHub'],
+          player2: ['bridge', 'powerCell', 'droneControlHub']
+        },
+        card: { name: 'Overrun' }
+      };
+
+      const result = processor.process(effect, context);
+
+      // Bridge is at index 0 in placedSections → lane1 → player1 controls & empty → condition met
+      expect(result.newPlayerStates.player2.shipSections.bridge.allocatedShields).toBe(0);
+      expect(result.newPlayerStates.player2.shipSections.bridge.hull).toBe(10);
       expect(result.animationEvents).toHaveLength(2);
     });
 
@@ -260,7 +312,7 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       const context = {
         actingPlayerId: 'player1',
-        target: { id: 'left' },
+        target: { id: 'bridge', lane: 'l' },
         playerStates: {
           player1: {
             dronesOnBoard: {
@@ -276,13 +328,13 @@ describe('ConditionalSectionDamageProcessor', () => {
               lane3: []
             },
             shipSections: {
-              LEFT_SECTION: { hull: 10, allocatedShields: 2 }
+              bridge: { hull: 10, allocatedShields: 2, lane: 'l' }
             }
           }
         },
         placedSections: {
-          player1: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION'],
-          player2: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION']
+          player1: ['bridge', 'powerCell', 'droneControlHub'],
+          player2: ['bridge', 'powerCell', 'droneControlHub']
         },
         card: { name: 'Overrun' }
       };
@@ -290,8 +342,8 @@ describe('ConditionalSectionDamageProcessor', () => {
       const result = processor.process(effect, context);
 
       // No damage
-      expect(result.newPlayerStates.player2.shipSections.LEFT_SECTION.hull).toBe(10);
-      expect(result.newPlayerStates.player2.shipSections.LEFT_SECTION.allocatedShields).toBe(2);
+      expect(result.newPlayerStates.player2.shipSections.bridge.hull).toBe(10);
+      expect(result.newPlayerStates.player2.shipSections.bridge.allocatedShields).toBe(2);
       expect(result.animationEvents).toHaveLength(0);
     });
   });

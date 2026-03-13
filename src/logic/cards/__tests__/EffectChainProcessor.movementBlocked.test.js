@@ -98,7 +98,7 @@ describe('EffectChainProcessor - movement blocked pass-through', () => {
     expect(result.animationEvents).toEqual(blockedEvents);
   });
 
-  it('should not record failed movements in cardMovements (processEffectChain integration)', () => {
+  it('should not include failed movements in intermediate snapshots (processEffectChain integration)', () => {
     // Effect 0: successful SINGLE_MOVE (d1 from lane1 to lane2)
     // Effect 1: failed SINGLE_MOVE (d2 to lane3 — lane full)
     const successStates = {

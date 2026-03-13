@@ -432,8 +432,8 @@ export const analyzeConditions = () => {
   fullCardCollection.forEach(card => {
     if (!card.effects) return;
     card.effects.forEach(effect => {
-      if (effect.condition) {
-        const condType = effect.condition;
+      if (effect.repeatCondition) {
+        const condType = effect.repeatCondition;
 
         if (!conditions.has(condType)) {
           conditions.set(condType, {

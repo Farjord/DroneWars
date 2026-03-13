@@ -546,17 +546,18 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- CARD SELECTION HOOK ---
   const {
-    selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds,
+    selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds, affectedSectionIds,
     hoveredLane, cardConfirmation,
     destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal,
-    setSelectedCard, setValidCardTargets, setValidAbilityTargets, setAffectedDroneIds,
+    setSelectedCard, setValidCardTargets, setValidAbilityTargets, setAffectedDroneIds, setAffectedSectionIds,
     setHoveredLane, setCardConfirmation,
     setDestroyUpgradeModal, setUpgradeSelectionModal, setViewUpgradesModal,
     cancelCardSelection,
     cancelCardState,
     // Effect chain (unified sequential effect selection)
     effectChainState, startEffectChain, selectChainTarget, selectChainDestination,
-    selectChainMultiTarget, confirmChainMultiSelect, cancelEffectChain,
+    selectChainMultiTarget, confirmChainMultiSelect, setPendingChainTarget, confirmChainTarget,
+    cancelEffectChain,
   } = useCardSelection({
     submitAction,
     getLocalPlayerId,
@@ -587,7 +588,7 @@ const App = ({ phaseAnimationQueue }) => {
   const interceptionRef = useRef({});
 
   const {
-    resolveAttack, resolveAbility, resolveShipAbility, resolveCardPlay,
+    resolveAttack, resolveAbility, resolveCardPlay,
     handleCardSelection, resolveMultiMove, resolveSingleMove,
     cancelAbilityMode, handleCloseAiCardReport,
     moveConfirmation, attackConfirmation, abilityConfirmation, aiCardPlayReport,
@@ -603,12 +604,12 @@ const App = ({ phaseAnimationQueue }) => {
     interceptionRef,
     localPlayerState, opponentPlayerState, winner, turnPhase, currentPlayer,
     gameStateManager,
-    setSelectedDrone, setAbilityMode, setValidAbilityTargets, setMandatoryAction,
-    setFooterView, setShipAbilityMode, setDraggedDrone,
+    setSelectedDrone, setAbilityMode, setValidAbilityTargets,
+    setShipAbilityMode, setDraggedDrone,
     setCardSelectionModal, setShipAbilityConfirmation, shipAbilityConfirmation,
     cancelCardSelection, setSelectedCard, setValidCardTargets,
     setCardConfirmation,
-    setAffectedDroneIds,
+    setAffectedDroneIds, setAffectedSectionIds,
     cardConfirmation,
     pendingShieldChanges, clearReallocationState,
   });
@@ -685,7 +686,7 @@ const App = ({ phaseAnimationQueue }) => {
     roundNumber, totalLocalPlayerDrones, localPlayerState, localPlayerEffectiveStats,
     gameEngine, setSelectedDrone, setModalContent, executeDeployment,
     // From useCardSelection
-    setAffectedDroneIds, setHoveredLane, setSelectedCard,
+    setAffectedDroneIds, setAffectedSectionIds, setHoveredLane, setSelectedCard,
     cancelCardSelection, setCardConfirmation,
     setUpgradeSelectionModal, setDestroyUpgradeModal,
     setValidCardTargets, validCardTargets,
@@ -799,6 +800,38 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [winner, showWinnerModal]);
 
+  // --- 8.4 CARD SELECTION PENDING (STATE-BASED DELIVERY) ---
+  // Monitors cardSelectionPending for multiplayer search_and_draw modal display.
+  // Follows the interceptionPending pattern: server sets state → broadcast → client useEffect shows modal.
+  useEffect(() => {
+    if (!gameState.cardSelectionPending) return;
+    const { playerId, card, ...selectionData } = gameState.cardSelectionPending;
+    if (playerId !== getLocalPlayerId()) return;
+
+    setCardSelectionModal({
+      ...selectionData,
+      onConfirm: async (selectedCards) => {
+        setCardSelectionModal(null);
+        await handleCardSelection(selectedCards, selectionData, card, null, playerId, null, null);
+      },
+      onCancel: () => {
+        setCardSelectionModal(null);
+        cancelCardSelection('user-cancel-card-selection-modal');
+        setCardConfirmation(null);
+      }
+    });
+  }, [gameState.cardSelectionPending, getLocalPlayerId, handleCardSelection, cancelCardSelection, setCardSelectionModal, setCardConfirmation]);
+
+  // --- 8.5 MANDATORY ACTION PENDING (STATE-BASED DELIVERY) ---
+  // Monitors mandatoryActionPending for multiplayer Recalculate ability.
+  // Follows the interceptionPending pattern: server sets state → broadcast → client useEffect shows UI.
+  useEffect(() => {
+    if (!gameState.mandatoryActionPending) return;
+    if (gameState.mandatoryActionPending.actingPlayerId !== getLocalPlayerId()) return;
+    setMandatoryAction(gameState.mandatoryActionPending);
+    setFooterView('hand');
+  }, [gameState.mandatoryActionPending, getLocalPlayerId]);
+
   // ========================================
   // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
   // ========================================
@@ -908,7 +941,7 @@ const App = ({ phaseAnimationQueue }) => {
     cancelCardSelection,
     // From useCardSelection — effect chain
     effectChainState, selectChainTarget, selectChainDestination,
-    selectChainMultiTarget,
+    selectChainMultiTarget, setPendingChainTarget,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
     setReallocationPhase, setShieldsToRemove, setShieldsToAdd,
@@ -1085,6 +1118,7 @@ const App = ({ phaseAnimationQueue }) => {
         // Effect chain props
         effectChainState={effectChainState}
         handleConfirmChainMultiSelect={confirmChainMultiSelect}
+        handleConfirmChainTarget={confirmChainTarget}
         handleCancelEffectChain={() => cancelCardSelection('header-cancel-effect-chain')}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
@@ -1103,6 +1137,7 @@ const App = ({ phaseAnimationQueue }) => {
         selectedCard={selectedCard}
         validCardTargets={validCardTargets}
         affectedDroneIds={affectedDroneIds}
+        affectedSectionIds={affectedSectionIds}
         abilityMode={abilityMode}
         validAbilityTargets={validAbilityTargets}
         effectChainState={effectChainState}
@@ -1187,6 +1222,8 @@ const App = ({ phaseAnimationQueue }) => {
         roundNumber={roundNumber}
         passInfo={passInfo}
         validCardTargets={validCardTargets}
+        effectChainState={effectChainState}
+        setPendingChainTarget={setPendingChainTarget}
         gameEngine={gameEngine}
         opponentPlayerState={opponentPlayerState}
         setAiDecisionLogToShow={setAiDecisionLogToShow}

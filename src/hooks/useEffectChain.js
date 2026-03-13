@@ -401,6 +401,27 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   }, [chainState, actingPlayerId, makeContext]);
 
   /**
+   * Set a pending target for single-target selection (no immediate advance).
+   * User must confirm via confirmChainTarget before the chain advances.
+   */
+  const setPendingChainTarget = useCallback((target, lane) => {
+    if (!chainState || chainState.subPhase !== 'target') return;
+    setChainState(prev => ({
+      ...prev,
+      pendingTarget: target,
+      pendingLane: lane,
+    }));
+  }, [chainState]);
+
+  /**
+   * Confirm the pending single target and advance the chain.
+   */
+  const confirmChainTarget = useCallback(() => {
+    if (!chainState || chainState.subPhase !== 'target' || !chainState.pendingTarget) return;
+    selectChainTarget(chainState.pendingTarget, chainState.pendingLane);
+  }, [chainState, selectChainTarget]);
+
+  /**
    * Cancel the effect chain — resets all state.
    */
   const cancelEffectChain = useCallback(() => {
@@ -414,6 +435,8 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     selectChainDestination,
     selectChainMultiTarget,
     confirmChainMultiSelect,
+    setPendingChainTarget,
+    confirmChainTarget,
     cancelEffectChain,
   };
 };

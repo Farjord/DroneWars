@@ -252,8 +252,8 @@ export default function useGameLifecycle({
         };
     }
 
-    await submitAction('optionalDiscard', discardPayload);
     setConfirmationModal(null);
+    await submitAction('optionalDiscard', discardPayload);
 
     if (isLastDiscard && isAbilityBased) {
         setMandatoryAction(null);
@@ -268,13 +268,13 @@ export default function useGameLifecycle({
   // --- handleRoundStartDiscard ---
 
   const handleRoundStartDiscard = async (card) => {
+    setOptionalDiscardCount(prev => prev + 1);
+    setConfirmationModal(null);
     await submitAction('optionalDiscard', {
       playerId: getLocalPlayerId(),
       cardsToDiscard: [card],
       isMandatory: false
     });
-    setOptionalDiscardCount(prev => prev + 1);
-    setConfirmationModal(null);
   };
 
   // --- handleRoundStartDraw ---

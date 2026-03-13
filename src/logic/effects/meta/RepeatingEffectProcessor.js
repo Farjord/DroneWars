@@ -38,7 +38,7 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
    * @param {Object} effect - Effect definition
    * @param {string} effect.type - Must be 'REPEATING_EFFECT'
    * @param {Array<Object>} effect.effects - Sub-effects to repeat
-   * @param {string} effect.condition - Condition determining repeat count
+   * @param {string} effect.repeatCondition - Condition determining repeat count
    * @param {Object} context - Effect context
    * @param {string} context.actingPlayerId - Player performing the action
    * @param {Object} context.playerStates - Current player states
@@ -57,10 +57,10 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
     const allAnimationEvents = [];
 
     // Calculate how many times to repeat based on condition
-    const repeatCount = this.calculateRepeatCount(effect.condition, actingPlayerId, currentStates);
+    const repeatCount = this.calculateRepeatCount(effect.repeatCondition, actingPlayerId, currentStates);
 
     debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] ${actingPlayerId} executing ${effect.effects.length} sub-effects × ${repeatCount} times`, {
-      condition: effect.condition,
+      repeatCondition: effect.repeatCondition,
       repeatCount,
       subEffects: effect.effects.map(e => e.type)
     });

@@ -18,8 +18,6 @@ import {
   processSearchAndDrawCompletion as _processSearchAndDrawCompletion
 } from '../logic/actions/CardActionStrategy.js';
 import {
-  processShipAbility as _processShipAbility,
-  processShipAbilityCompletion as _processShipAbilityCompletion,
   processRecallAbility as _processRecallAbility,
   processTargetLockAbility as _processTargetLockAbility,
   processRecalculateAbility as _processRecalculateAbility,
@@ -77,8 +75,6 @@ const ACTION_STRATEGIES = {
   deployment: 'processDeployment',
   cardPlay: 'processCardPlay',
   searchAndDrawCompletion: 'processSearchAndDrawCompletion',
-  shipAbility: 'processShipAbility',
-  shipAbilityCompletion: 'processShipAbilityCompletion',
   recallAbility: 'processRecallAbility',
   targetLockAbility: 'processTargetLockAbility',
   recalculateAbility: 'processRecalculateAbility',
@@ -157,8 +153,6 @@ class ActionProcessor {
       ability: false,
       deployment: false,
       cardPlay: false,
-      shipAbility: false,
-      shipAbilityCompletion: false,
       turnTransition: false,
       phaseTransition: false,
       roundStart: false,
@@ -241,11 +235,7 @@ class ActionProcessor {
             };
           }
           const animDef = ap.animationManager?.animations[event.type];
-          let timing = animDef?.timing || 'pre-state';
-          // TELEPORT_IN preceded by STATE_SNAPSHOT: drone already in DOM from snapshot
-          if (event.type === 'TELEPORT_IN' && idx > 0 && events[idx - 1]?.type === 'STATE_SNAPSHOT') {
-            timing = 'pre-state';
-          }
+          const timing = animDef?.timing || 'pre-state';
           return {
             animationName: event.type,
             timing,
@@ -454,7 +444,7 @@ setAnimationManager(animationManager) {
     // PASS STATE VALIDATION - Prevent actions after players have passed
     if (currentState.passInfo) {
       // Actions that should be blocked if current player has passed
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
       if (playerActionTypes.includes(type)) {
         // Determine the current player for this action
         let actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -477,7 +467,7 @@ setAnimationManager(animationManager) {
     // Sequential phases (deployment, action) are turn-based - only currentPlayer can act
     const sequentialPhases = ['deployment', 'action'];
     if (sequentialPhases.includes(currentState.turnPhase)) {
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'searchAndDrawCompletion'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'searchAndDrawCompletion'];
       if (playerActionTypes.includes(type)) {
         // Determine which player is attempting this action
         const actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -557,7 +547,7 @@ setAnimationManager(animationManager) {
       this.lastActionType = type;
 
       // Increment action counter for qualifying action types (for NOT_FIRST_ACTION ability condition)
-      const actionCountingTypes = ['attack', 'cardPlay', 'move', 'ability', 'deployment', 'shipAbility'];
+      const actionCountingTypes = ['attack', 'cardPlay', 'move', 'ability', 'deployment'];
       if (actionCountingTypes.includes(type) && result && result.success !== false) {
         const currentCount = this.gameStateManager.getState().actionsTakenThisTurn || 0;
         this.gameStateManager.setState({ actionsTakenThisTurn: currentCount + 1 }, 'ACTION_COUNT_INCREMENT');
@@ -568,7 +558,6 @@ setAnimationManager(animationManager) {
       // Emit action_completed for GameFlowManager (player actions only)
       const playerActionTypes = [
         'attack', 'ability', 'move', 'deployment', 'cardPlay',
-        'shipAbility', 'shipAbilityCompletion',
         'movementCompletion', 'searchAndDrawCompletion',
         'aiAction', 'aiTurn', 'playerPass', 'turnTransition',
         'recallAbility', 'targetLockAbility',
@@ -608,8 +597,6 @@ setAnimationManager(animationManager) {
     return _processCardPlay(payload, this._getActionContext());
   }
   async processSearchAndDrawCompletion(payload) { return _processSearchAndDrawCompletion(payload, this._getActionContext()); }
-  async processShipAbility(payload) { return _processShipAbility(payload, this._getActionContext()); }
-  async processShipAbilityCompletion(payload) { return _processShipAbilityCompletion(payload, this._getActionContext()); }
   async processRecallAbility(payload) { return _processRecallAbility(payload, this._getActionContext()); }
   async processTargetLockAbility(payload) { return _processTargetLockAbility(payload, this._getActionContext()); }
   validateShipAbilityActivationLimit(sectionName, playerId, playerStates) { return _validateShipAbilityActivationLimit(sectionName, playerId, playerStates); }

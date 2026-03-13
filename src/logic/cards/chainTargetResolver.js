@@ -182,10 +182,10 @@ function computeCardInHandTargets(targeting, actingPlayerId, playerStates, posit
 
 function computeShipSectionTargets(targeting, actingPlayerId, playerStates) {
   const targetPlayerId = getTargetPlayerId(targeting.affinity || 'ENEMY', actingPlayerId);
-  const sections = playerStates[targetPlayerId]?.placedSections || {};
+  const sections = playerStates[targetPlayerId]?.shipSections || {};
   return Object.entries(sections)
     .filter(([, section]) => !section.destroyed)
-    .map(([name, section]) => ({ id: name, owner: targetPlayerId, ...section }));
+    .map(([name, section]) => ({ ...section, id: name, name, owner: targetPlayerId }));
 }
 
 // --- Main Target Computation ---

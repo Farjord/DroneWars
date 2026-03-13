@@ -87,6 +87,7 @@ const renderDronesOnBoard = ({
               onAbilityClick={handleAbilityIconClick}
               isSelected={selectedDrone && selectedDrone.id === drone.id}
               isSelectedForMove={
+                (effectChainState?.subPhase === 'target' && effectChainState.pendingTarget?.id === drone.id) ||
                 (effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id)) ||
                 (effectChainState?.subPhase === 'destination' && (
                   effectChainState.pendingTarget?.id === drone.id ||
@@ -110,12 +111,15 @@ const renderDronesOnBoard = ({
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
               onDragStart={
-                (isPlayer || (effectChainState?.subPhase === 'destination' && (
-                  effectChainState.pendingTarget?.id === drone.id ||
-                  (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
-                )))
-                  ? handleDroneDragStart
-                  : undefined
+                // During chain target/multi-target selection, clicks only — no drag
+                (effectChainState?.subPhase === 'target' || effectChainState?.subPhase === 'multi-target')
+                  ? undefined
+                  : (isPlayer || (effectChainState?.subPhase === 'destination' && (
+                    effectChainState.pendingTarget?.id === drone.id ||
+                    (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
+                  )))
+                    ? handleDroneDragStart
+                    : undefined
               }
               onDragDrop={!isPlayer && draggedDrone ?
                 (targetDrone) => {
@@ -133,6 +137,7 @@ const renderDronesOnBoard = ({
               isHovered={
                 hoveredTarget?.target?.id === drone.id &&
                 !(selectedDrone && selectedDrone.id === drone.id) &&
+                !(effectChainState?.subPhase === 'target' && effectChainState.pendingTarget?.id === drone.id) &&
                 !(effectChainState?.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === drone.id))
               }
               draggedActionCard={draggedActionCard}

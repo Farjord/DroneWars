@@ -1,16 +1,14 @@
-// Ship ability strategies: processShipAbility, processShipAbilityCompletion,
-// processRecallAbility, processTargetLockAbility, processRecalculateAbility,
-// processRecalculateComplete, processReallocateShieldsAbility,
-// processReallocateShieldsComplete, validateShipAbilityActivationLimit
+// Ship ability strategies: processRecallAbility, processTargetLockAbility,
+// processRecalculateAbility, processRecalculateComplete,
+// processReallocateShieldsAbility, processReallocateShieldsComplete,
+// validateShipAbilityActivationLimit
 // Extracted from ActionProcessor.js — handles all ship section ability flows.
 
-import AbilityResolver from '../abilities/AbilityResolver.js';
 import RecallAbilityProcessor from '../abilities/ship/RecallAbilityProcessor.js';
 import TargetLockAbilityProcessor from '../abilities/ship/TargetLockAbilityProcessor.js';
 import RecalculateAbilityProcessor from '../abilities/ship/RecalculateAbilityProcessor.js';
 import ReallocateShieldsAbilityProcessor from '../abilities/ship/ReallocateShieldsAbilityProcessor.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
-import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Validate ship ability activation limit
@@ -37,93 +35,6 @@ export function validateShipAbilityActivationLimit(sectionName, playerId, player
     }
   }
   return null;
-}
-
-/**
- * Process ship ability action
- * @param {Object} payload - { ability, sectionName, targetId, playerId }
- * @param {Object} ctx - ActionContext from ActionProcessor
- */
-export async function processShipAbility(payload, ctx) {
-  const { ability, sectionName, targetId, playerId } = payload;
-
-  const currentState = ctx.getState();
-  const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-  const placedSections = ctx.getPlacedSections();
-
-  const callbacks = {
-    logCallback: (entry) => ctx.addLogEntry(entry),
-    resolveAttackCallback: async (attackPayload) => {
-      return await ctx.processAttack(attackPayload);
-    }
-  };
-
-  const result = AbilityResolver.resolveShipAbility(
-    ability,
-    sectionName,
-    targetId,
-    playerStates,
-    placedSections,
-    callbacks,
-    playerId,
-    { isPlayerAI: ctx.isPlayerAI }
-  );
-
-  const animations = ctx.mapAnimationEvents(result.animationEvents);
-  ctx.captureAnimations(animations);
-
-  return {
-    ...result,
-    animations: {
-      actionAnimations: animations,
-      systemAnimations: []
-    }
-  };
-}
-
-/**
- * Process ship ability completion (after UI confirmation)
- * Used for abilities that require multi-step UI interactions
- * Deducts energy cost and ends turn without re-executing ability logic
- * @param {Object} payload - { ability, sectionName, playerId }
- * @param {Object} ctx - ActionContext from ActionProcessor
- */
-export async function processShipAbilityCompletion(payload, ctx) {
-  const { ability, sectionName, playerId } = payload;
-
-  const currentState = ctx.getState();
-  const playerState = currentState[playerId];
-
-  const newPlayerState = {
-    ...playerState,
-    energy: playerState.energy - ability.cost.energy
-  };
-
-  ctx.updatePlayerState(playerId, newPlayerState);
-
-  ctx.addLogEntry({
-    player: playerState.name,
-    actionType: 'SHIP_ABILITY',
-    source: `${sectionName}'s ${ability.name}`,
-    target: 'N/A',
-    outcome: `Completed ${ability.name}.`
-  });
-
-  debugLog('ENERGY', `💰 Ship ability completion: ${ability.name} cost ${ability.cost.energy} energy`, {
-    playerId,
-    previousEnergy: playerState.energy,
-    newEnergy: newPlayerState.energy
-  });
-
-  return {
-    success: true,
-    shouldEndTurn: true,
-    newPlayerStates: {
-      player1: currentState.player1,
-      player2: currentState.player2,
-      [playerId]: newPlayerState
-    }
-  };
 }
 
 /**
@@ -207,6 +118,11 @@ export async function processRecalculateAbility(payload, ctx) {
     ctx.updatePlayerState('player2', result.newPlayerStates.player2);
   }
 
+  // State-based delivery: broadcast mandatoryAction via game state so guests receive it
+  if (result.mandatoryAction) {
+    ctx.setState({ mandatoryActionPending: result.mandatoryAction });
+  }
+
   return result;
 }
 
@@ -222,6 +138,8 @@ export async function processRecalculateComplete(payload, ctx) {
     payload,
     { player1: currentState.player1, player2: currentState.player2 }
   );
+
+  ctx.setState({ mandatoryActionPending: null });
 
   return result;
 }

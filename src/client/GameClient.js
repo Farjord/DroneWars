@@ -71,6 +71,7 @@ class GameClient extends GameServer {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnimations = this._collectAnimations(animations);
+
     flowCheckpoint('CLIENT_RECEIVED', {
       anims: allAnimations.length,
       phase: newPhase,

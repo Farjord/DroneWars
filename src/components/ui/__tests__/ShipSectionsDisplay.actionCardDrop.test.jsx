@@ -232,6 +232,38 @@ describe('BattleColumn ship section action card drop', () => {
     });
   });
 
+  describe('effect-chain cards with targeting in effects array', () => {
+    const mockEffectChainCard = {
+      id: 'EMERGENCY_PATCH',
+      instanceId: 'EMERGENCY_PATCH-inst-1',
+      name: 'Emergency Patch',
+      cost: 2,
+      type: 'Support',
+      // No top-level targeting — targeting is inside effects[0]
+      effects: [{ type: 'HEAL_HULL', value: 1, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } }],
+    };
+
+    it('should call handleActionCardDragEnd for card with effects[0].targeting.type SHIP_SECTION', () => {
+      const mockHandleActionCardDragEnd = vi.fn();
+      const { container } = render(
+        <BattleColumn
+          {...defaultProps}
+          draggedActionCard={{ card: mockEffectChainCard }}
+          handleActionCardDragEnd={mockHandleActionCardDragEnd}
+        />
+      );
+
+      const playerSection = getPlayerSectionWrapper(container);
+      fireEvent.mouseUp(playerSection);
+
+      expect(mockHandleActionCardDragEnd).toHaveBeenCalledWith(
+        { id: 'bridge', name: 'bridge' },
+        'section',
+        'player1'
+      );
+    });
+  });
+
   describe('non-SHIP_SECTION targeting cards', () => {
     it('should NOT call handleActionCardDragEnd for DRONE targeting card on section', () => {
       const mockHandleActionCardDragEnd = vi.fn();

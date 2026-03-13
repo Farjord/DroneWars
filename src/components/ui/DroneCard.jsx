@@ -125,13 +125,13 @@ const DroneCard = ({
   const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
 
   // 3D tilt parallax during drag + hover
-  const glowFilter = isDisabled ? null
-    : `drop-shadow(0 0 6px var(--card-tactic-glow-dim)) drop-shadow(0 0 12px var(--card-tactic-glow-dim))`;
-  const tiltRef = useCardTilt(isDragging, { glowFilter });
+  const glowShadow = isDisabled ? null
+    : `0 0 6px var(--card-tactic-glow-dim), 0 0 12px var(--card-tactic-glow-dim)`;
+  const tiltRef = useCardTilt(isDragging, { glowShadow });
 
   return (
+    <div ref={tiltRef} style={{ width: '225px', height: '275px', flexShrink: 0, ...scaleStyle }}>
     <div
-      ref={tiltRef}
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
         rounded-lg p-[2px] relative group
@@ -143,10 +143,9 @@ const DroneCard = ({
         ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
       `}
       style={{
-        width: '225px',
-        height: '275px',
+        width: '100%',
+        height: '100%',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
-        ...scaleStyle
       }}
     >
       <div
@@ -247,7 +246,7 @@ const DroneCard = ({
           </div>
 
           {/* Abilities Section */}
-          <div className="mx-2 mt-auto mb-2 max-h-48 bg-black/60 backdrop-blur-sm border border-cyan-800/70 p-2 flex flex-col space-y-2 overflow-y-auto rounded-md">
+          <div className="mx-2 mt-auto mb-2 max-h-48 bg-black/80 border border-cyan-800/70 p-2 flex flex-col space-y-2 overflow-y-auto rounded-md">
             {abilities && abilities.length > 0 ? (
               abilities.map((ability, index) => (
                 <div key={index}>
@@ -330,6 +329,7 @@ const DroneCard = ({
           zIndex: 20,
         }}
       />
+    </div>
     </div>
   );
 };

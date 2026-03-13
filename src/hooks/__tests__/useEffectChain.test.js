@@ -405,6 +405,77 @@ describe('useEffectChain — auto-skipping', () => {
   });
 });
 
+// --- Pending Target (Single-Target Confirmation) ---
+
+describe('useEffectChain — pending target confirmation', () => {
+  const damageCard = {
+    name: 'Ion Pulse',
+    effects: [{ type: 'DAMAGE', value: 3, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } }],
+  };
+
+  it('setPendingChainTarget sets pendingTarget without advancing', () => {
+    const { result } = renderChainHook();
+    act(() => result.current.startEffectChain(damageCard));
+
+    act(() => result.current.setPendingChainTarget({ id: 'p2d1', owner: 'player2' }, 'lane1'));
+
+    const state = result.current.effectChainState;
+    expect(state.pendingTarget.id).toBe('p2d1');
+    expect(state.pendingLane).toBe('lane1');
+    expect(state.subPhase).toBe('target');
+    expect(state.currentIndex).toBe(0);
+    expect(state.complete).toBe(false);
+  });
+
+  it('confirmChainTarget commits pending target and advances', () => {
+    const { result } = renderChainHook();
+    act(() => result.current.startEffectChain(damageCard));
+    act(() => result.current.setPendingChainTarget({ id: 'p2d1', owner: 'player2' }, 'lane1'));
+
+    act(() => result.current.confirmChainTarget());
+
+    const state = result.current.effectChainState;
+    expect(state.complete).toBe(true);
+    expect(state.selections).toHaveLength(1);
+    expect(state.selections[0].target.id).toBe('p2d1');
+  });
+
+  it('clicking a different drone updates pendingTarget', () => {
+    const { result } = renderChainHook();
+    act(() => result.current.startEffectChain(damageCard));
+
+    act(() => result.current.setPendingChainTarget({ id: 'p2d1', owner: 'player2' }, 'lane1'));
+    expect(result.current.effectChainState.pendingTarget.id).toBe('p2d1');
+
+    act(() => result.current.setPendingChainTarget({ id: 'p2d2', owner: 'player2' }, 'lane3'));
+    expect(result.current.effectChainState.pendingTarget.id).toBe('p2d2');
+    expect(result.current.effectChainState.pendingLane).toBe('lane3');
+    // Still in target subPhase, hasn't advanced
+    expect(result.current.effectChainState.subPhase).toBe('target');
+    expect(result.current.effectChainState.currentIndex).toBe(0);
+  });
+
+  it('confirmChainTarget is a no-op when no pendingTarget', () => {
+    const { result } = renderChainHook();
+    act(() => result.current.startEffectChain(damageCard));
+
+    // No pending target set — confirm should do nothing
+    act(() => result.current.confirmChainTarget());
+
+    const state = result.current.effectChainState;
+    expect(state.subPhase).toBe('target');
+    expect(state.currentIndex).toBe(0);
+    expect(state.complete).toBe(false);
+  });
+
+  it('setPendingChainTarget is a no-op when not in target subPhase', () => {
+    const { result } = renderChainHook();
+    // No chain active
+    act(() => result.current.setPendingChainTarget({ id: 'p2d1' }, 'lane1'));
+    expect(result.current.effectChainState).toBeNull();
+  });
+});
+
 // --- Edge Cases ---
 
 describe('useEffectChain — edge cases', () => {

@@ -166,8 +166,8 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       if (card.playCondition) {
         if (!isCardConditionMet(card, 'player2', playerStates)) return false;
       }
-      // Check lane control conditions (ex-Doctrine cards with effect.condition)
-      if (card.effects[0]?.condition) {
+      // Check lane control conditions (ex-Doctrine cards with effect.condition object)
+      if (card.effects[0]?.condition && typeof card.effects[0].condition === 'object') {
         if (!isLaneControlCardPlayable(card, 'player2', playerStates)) return false;
       }
       // Skip NONE-type cards that require modal interaction (upgrades, System Sabotage)

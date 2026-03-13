@@ -720,12 +720,7 @@ const fullCardCollection = [
         damage: 3,
         targets: 'FLANK_SECTIONS',
         damageType: 'KINETIC',
-        targeting: {
-          type: 'SHIP_SECTION',
-          affinity: 'ENEMY',
-          restrictions: ['REQUIRES_LANE_CONTROL'],
-          validSections: ['left', 'right'],
-        },
+        targeting: { type: 'NONE' },
       },
     ],
 
@@ -810,12 +805,7 @@ const fullCardCollection = [
         damage: 3,
         targets: 'ALL_SECTIONS',
         damageType: 'KINETIC',
-        targeting: {
-          type: 'SHIP_SECTION',
-          affinity: 'ENEMY',
-          restrictions: ['REQUIRES_LANE_CONTROL'],
-          validSections: ['left', 'middle', 'right'],
-        },
+        targeting: { type: 'NONE' },
       },
     ],
 
@@ -1125,7 +1115,7 @@ const fullCardCollection = [
           { type: 'DRAW', value: 1 },
           { type: 'GAIN_ENERGY', value: 1 },
         ],
-        condition: 'OWN_DAMAGED_SECTIONS',
+        repeatCondition: 'OWN_DAMAGED_SECTIONS',
         goAgain: true,
         targeting: { type: 'NONE' },
       },
@@ -1329,7 +1319,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/TacticalAdvantage.png',
     description: 'Draw a card for each lane you control.',
     effects: [
-      { type: 'REPEATING_EFFECT', effects: [ { type: 'DRAW', value: 1 }, ], condition: 'LANES_CONTROLLED', targeting: { type: 'NONE' } },
+      { type: 'REPEATING_EFFECT', effects: [ { type: 'DRAW', value: 1 }, ], repeatCondition: 'LANES_CONTROLLED', targeting: { type: 'NONE' } },
     ],
 
   },
@@ -1344,7 +1334,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/StrategicDominance.png',
     description: 'Gain 1 energy for each lane you control.',
     effects: [
-      { type: 'REPEATING_EFFECT', effects: [ { type: 'GAIN_ENERGY', value: 1 }, ], condition: 'LANES_CONTROLLED', targeting: { type: 'NONE' } },
+      { type: 'REPEATING_EFFECT', effects: [ { type: 'GAIN_ENERGY', value: 1 }, ], repeatCondition: 'LANES_CONTROLLED', targeting: { type: 'NONE' } },
     ],
 
   },
@@ -1517,7 +1507,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
-    description: 'Move target class 2 or less ready enemy drone  to an adjacent lane.',
+    description: 'Move target class 2 or less ready enemy drone to an adjacent lane.',
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 2 }, 'NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
@@ -1707,7 +1697,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/ForcedRepositioning.png',
-    description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
+    description: 'Move a friendly drone to an adjacent lane. Then move an enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
@@ -1756,7 +1746,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/SacrificeforPower.png',
-    description: 'Discard a card from your hand to give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
+    description: 'Discard a card from your hand. Then give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
     visualEffect: { type: 'BUFF' },
     effects: [
       { type: 'DISCARD_CARD', targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' }, prompt: 'Discard a card from your hand' },
@@ -1776,6 +1766,21 @@ const fullCardCollection = [
     description: 'Immediately trigger the Round Start ability of every Signal Beacon drone currently on the board.',
     effects: [
       { type: 'INCREASE_THREAT', value: 2, perDrone: 'Signal Beacon', targeting: { type: 'NONE' } },
+    ],
+  },
+
+    {
+    id: 'MARK_ENEMY',
+    baseCardId: 'MARK_ENEMY',
+    name: 'Mark Enemy',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 0,
+    image: '/DroneWars/cards/MarkEnemy.png',
+    description: 'Mark an enemy drone.',
+    effects: [
+     { type: 'MARK_DRONE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
 
   },

@@ -104,11 +104,16 @@ function applyPassiveAbilitiesToInitializedDrones(dronesOnBoard) {
  * @returns {Object} Ship sections object with deep-cloned component data
  */
 function createDefaultShipSections() {
-  return {
-    bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge') ?? {})),
-    powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell') ?? {})),
-    droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub') ?? {}))
-  };
+  const keys = ['bridge', 'powerCell', 'droneControlHub'];
+  const lanes = ['l', 'm', 'r'];
+  const sections = {};
+  keys.forEach((key, i) => {
+    sections[key] = {
+      ...JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === key) ?? {})),
+      lane: lanes[i]
+    };
+  });
+  return sections;
 }
 
 /**

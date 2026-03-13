@@ -5,7 +5,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
  * CardInHandTargetingProcessor
  * Handles targeting cards in the acting player's hand
  *
- * Used for cards with additional costs that require discarding a card from hand
+ * Used for effects that target cards in the acting player's hand
  */
 class CardInHandTargetingProcessor extends BaseTargetingProcessor {
   /**

@@ -25,9 +25,10 @@ function ActionPhaseButtons({
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
-  // Effect chain multi-target props
+  // Effect chain props
   effectChainState,
   handleConfirmChainMultiSelect,
+  handleConfirmChainTarget,
   handleCancelEffectChain
 }) {
   return (
@@ -104,6 +105,18 @@ function ActionPhaseButtons({
           >
             Cancel
           </button>
+
+          {effectChainState.subPhase === 'target' && effectChainState.pendingTarget && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleConfirmChainTarget();
+              }}
+              className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
+            >
+              Confirm
+            </button>
+          )}
 
           {effectChainState.subPhase === 'multi-target' && (
             <button

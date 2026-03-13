@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
-import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
+
 
 // Delay before resolving move/card action to let UI settle (ms)
 const MOVE_RESOLUTION_DELAY = 400;
@@ -34,8 +34,6 @@ const useResolvers = ({
   setSelectedDrone,
   setAbilityMode,
   setValidAbilityTargets,
-  setMandatoryAction,
-  setFooterView,
   setShipAbilityMode,
   setDraggedDrone,
   setCardSelectionModal,
@@ -48,6 +46,7 @@ const useResolvers = ({
   setValidCardTargets,
   setCardConfirmation,
   setAffectedDroneIds,
+  setAffectedSectionIds,
   cardConfirmation,
 
   // --- From useShieldAllocation ---
@@ -123,59 +122,19 @@ const useResolvers = ({
 
   // --- Resolve Ability ---
   const resolveAbility = useCallback(async (ability, userDrone, targetDrone) => {
+    const abilityIndex = userDrone.abilities.findIndex(a => a.name === ability.name);
+    const targetId = targetDrone?.id || null;
+    cancelAbilityMode();
     try {
       await submitAction('ability', {
         droneId: userDrone.id,
-        abilityIndex: userDrone.abilities.findIndex(a => a.name === ability.name),
-        targetId: targetDrone?.id || null
+        abilityIndex,
+        targetId
       });
-      cancelAbilityMode();
     } catch (error) {
       debugLog('COMBAT', 'Error in resolveAbility:', error);
-      cancelAbilityMode();
     }
   }, [submitAction, cancelAbilityMode]);
-
-  // --- Resolve Ship Ability ---
-  const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
-    try {
-      const result = await submitAction('shipAbility', {
-        ability: ability,
-        sectionName: sectionName,
-        targetId: target?.id || null,
-        playerId: getLocalPlayerId()
-      });
-
-      if (result.mandatoryAction) {
-        setMandatoryAction(result.mandatoryAction);
-        setFooterView('hand');
-        setShipAbilityMode(null);
-        setShipAbilityConfirmation(null);
-        return;
-      }
-
-      if (result.requiresShieldReallocation) {
-        setShipAbilityMode(null);
-        setShipAbilityConfirmation(null);
-        return;
-      }
-
-      await submitAction('shipAbilityCompletion', {
-        ability: ability,
-        sectionName: sectionName,
-        playerId: getLocalPlayerId()
-      });
-
-      setShipAbilityMode(null);
-      setShipAbilityConfirmation(null);
-
-      return result;
-    } catch (error) {
-      debugLog('COMBAT', 'Error in resolveShipAbility:', error);
-      setShipAbilityMode(null);
-      setShipAbilityConfirmation(null);
-    }
-  }, [submitAction, getLocalPlayerId]);
 
   // --- Resolve Card Play ---
   const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null) => {
@@ -208,48 +167,28 @@ const useResolvers = ({
     debugLog('CARD_PLAY_TRACE', '[1] Card play confirmed', { card: card.name, cardId: card.id, targetId: target?.id, isAI: aiContext !== null });
     debugLog('CARD_PLAY_TRACE', '[2] Dispatching cardPlay action', { card: card.name, targetId: target?.id, playerId: actingPlayerId, isAI: aiContext !== null });
 
-    const result = await submitAction('cardPlay', {
-      card: card,
-      targetId: target?.id || null,
-      playerId: actingPlayerId
-    });
-
-    if (result.needsCardSelection) {
-      if (result.needsCardSelection.type === 'single_move' || result.needsCardSelection.type === 'multi_move') {
-        if (result.needsCardSelection.type === 'single_move') {
-          const actingPlayerState = actingPlayerId === getLocalPlayerId()
-            ? localPlayerState
-            : opponentPlayerState;
-          const friendlyDrones = getFriendlyDroneTargets(actingPlayerState, actingPlayerId);
-          setValidCardTargets(friendlyDrones);
-        }
-
-        return;
-      }
-
-      setCardSelectionModal({
-        ...result.needsCardSelection,
-        onConfirm: async (selectedCards) => {
-          await handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext, null);
-          setCardSelectionModal(null);
-        },
-        onCancel: () => {
-          setCardSelectionModal(null);
-          if (actingPlayerId === getLocalPlayerId()) {
-            cancelCardSelection('user-cancel-card-selection-modal');
-            setCardConfirmation(null);
-          }
-        }
-      });
-      return;
-    }
-
     if (actingPlayerId === getLocalPlayerId()) {
       cancelCardSelection();
       setCardConfirmation(null);
     }
 
-    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved', { card: card.name, success: result?.success !== false });
+    let result;
+    try {
+      result = await submitAction('cardPlay', {
+        card: card,
+        targetId: target?.id || null,
+        targetOwner: target?.owner || null,
+        playerId: actingPlayerId
+      });
+    } catch (err) {
+      debugLog('CARD_PLAY_TRACE', '[3] submitAction ERROR', { card: card.name, error: err.message, stack: err.stack });
+      return;
+    }
+
+    debugLog('CARD_PLAY_TRACE', '[3] submitAction result', {
+      card: card.name,
+      success: result?.success !== false,
+    });
 
     return result;
   }, [submitAction, getLocalPlayerId, localPlayerState, opponentPlayerState]);
@@ -378,10 +317,10 @@ const useResolvers = ({
 
     if (wasSnared) {
       debugLog('CONSUMPTION_DEBUG', '[1] Calling processAction snaredConsumption', { droneId, owner });
-      await submitAction('snaredConsumption', { droneId, playerId: owner });
       setSelectedDrone(null);
       setDraggedDrone(null);
       setValidCardTargets([]);
+      await submitAction('snaredConsumption', { droneId, playerId: owner });
       return;
     }
 
@@ -390,15 +329,15 @@ const useResolvers = ({
         debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 9: Calling resolveSingleMove', {
           card: card.name, droneId, owner, fromLane: from, toLane: to
         });
-        await resolveSingleMove(card, droneId, owner, from, to);
         setSelectedDrone(null);
         setDraggedDrone(null);
         setValidCardTargets([]);
+        await resolveSingleMove(card, droneId, owner, from, to);
       } else {
+        setSelectedDrone(null);
         await submitAction('move', {
           droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId()
         });
-        setSelectedDrone(null);
       }
     }, MOVE_RESOLUTION_DELAY);
   };
@@ -442,11 +381,13 @@ const useResolvers = ({
     if (!cardConfirmation) return;
     const { card, target, chainSelections } = cardConfirmation;
     setCardConfirmation(null);
+    setAffectedSectionIds([]);
     setTimeout(async () => {
       if (chainSelections) {
         await submitAction('cardPlay', {
           card,
           targetId: target?.id || null,
+          targetOwner: target?.owner || null,
           playerId: getLocalPlayerId(),
           chainSelections,
         });
@@ -487,14 +428,10 @@ const useResolvers = ({
         });
         debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
       } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
-        const result = await submitAction('recalculateAbility', {
+        await submitAction('recalculateAbility', {
           sectionName, playerId: getLocalPlayerId()
         });
-        if (result.mandatoryAction) {
-          setMandatoryAction(result.mandatoryAction);
-          setFooterView('hand');
-        }
-        debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
+        // mandatoryAction delivery: handled by mandatoryActionPending useEffect in App.jsx
       } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
         const result = await submitAction('reallocateShieldsComplete', {
           playerId: getLocalPlayerId(), pendingChanges: pendingShieldChanges
@@ -516,7 +453,6 @@ const useResolvers = ({
     // --- Resolve functions ---
     resolveAttack,
     resolveAbility,
-    resolveShipAbility,
     resolveCardPlay,
     handleCardSelection,
     resolveMultiMove,

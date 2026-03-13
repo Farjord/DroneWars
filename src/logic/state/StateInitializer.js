@@ -118,7 +118,9 @@ class StateInitializer {
     // Build ship sections with computed base stats from Ship Card + Section modifiers
     const computedShipSections = {};
     const defaultSectionKeys = ['bridge', 'powerCell', 'droneControlHub'];
-    for (const key of defaultSectionKeys) {
+    const defaultLanes = ['l', 'm', 'r'];
+    for (let i = 0; i < defaultSectionKeys.length; i++) {
+      const key = defaultSectionKeys[i];
       const sectionTemplate = shipComponentCollection.find(c => c.key === key);
       if (sectionTemplate) {
         const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
@@ -129,7 +131,8 @@ class StateInitializer {
           maxHull: baseStats.maxHull,
           shields: baseStats.shields,
           allocatedShields: baseStats.allocatedShields,
-          thresholds: baseStats.thresholds
+          thresholds: baseStats.thresholds,
+          lane: defaultLanes[i]
         };
       }
     }

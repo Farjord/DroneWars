@@ -6,7 +6,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
-import { calculateAllValidTargets, calculateAffectedDroneIds } from '../logic/targeting/uiTargetingHelpers.js';
+import { calculateAllValidTargets, calculateAffectedDroneIds, calculateAffectedSections } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
 import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
@@ -15,9 +15,11 @@ import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 function isNoTargetCard(card) {
   const effect0 = card.effects?.[0];
   if (effect0?.type === 'SINGLE_MOVE' || effect0?.type === 'MULTI_MOVE') return false;
+  // Multi-effect cards where effect[0] needs no board target — drop anywhere to play
+  const firstTargetType = effect0?.targeting?.type;
+  if (firstTargetType === 'CARD_IN_HAND' || firstTargetType === 'NONE') return true;
   if (card.effects?.length > 1 || (effect0 && isCompoundEffect(effect0))) return false;
   if (!effect0?.targeting) return true;
-  if (effect0.targeting.type === 'NONE') return true;
   return false;
 }
 
@@ -44,7 +46,7 @@ const useDragMechanics = ({
   setModalContent,
   executeDeployment,
   // From useCardSelection
-  setAffectedDroneIds, setHoveredLane, setSelectedCard,
+  setAffectedDroneIds, setAffectedSectionIds, setHoveredLane, setSelectedCard,
   cancelCardSelection, setCardConfirmation,
   setUpgradeSelectionModal, setDestroyUpgradeModal,
   setValidCardTargets, validCardTargets,
@@ -223,17 +225,34 @@ const useDragMechanics = ({
     if (passInfo[`${getLocalPlayerId()}Passed`]) return;
     if (localPlayerState.energy < card.cost) return;
 
-    debugLog('DRAG_DROP_DEPLOY', '🎯 Action card drag start', { cardName: card.name, cardId: card.id });
+    debugLog('DRAG_DROP_DEPLOY', '🎯 Action card drag start', {
+      cardName: card.name, cardId: card.id,
+      effectType: card.effects?.[0]?.type,
+      targetingType: card.effects?.[0]?.targeting?.type,
+      hasTopLevelTargeting: !!card.targeting,
+    });
 
     cancelAllActions();
     // Normalize: promote effects[0].targeting to top-level for UI consumption
     const normalizedCard = card.targeting ? card : { ...card, targeting: card.effects?.[0]?.targeting };
     const mode = isNoTargetCard(normalizedCard) ? 'card-drag' : 'arrow';
+
     setDraggedActionCard({ card: normalizedCard, mode });
     actionCardDragHandledRef.current = false;
 
     // Calculate effect targets for the dragged card
-    if (card.effects[0]?.targeting) {
+    if (mode === 'card-drag') {
+      // No board target needed (CARD_IN_HAND, NONE, no targeting) — skip target calculation
+      setValidCardTargets([]);
+      setAffectedDroneIds([]);
+      // Compute affected sections for CONDITIONAL_SECTION_DAMAGE cards (Crossfire, Encirclement)
+      const localPlayerId = getLocalPlayerId();
+      const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
+      const placedSections = getPlacedSectionsForEngine();
+      const opponentSections = placedSections[opponentId];
+      const affected = calculateAffectedSections(card, opponentSections);
+      setAffectedSectionIds(affected || []);
+    } else if (card.effects[0]?.targeting) {
       const { validCardTargets: targets } = calculateAllValidTargets(
         null,  // abilityMode
         null,  // shipAbilityMode
@@ -289,7 +308,9 @@ const useDragMechanics = ({
    * @param {string|null} targetOwner - The owner of the target (player ID)
    */
   const handleActionCardDragEnd = (target = null, targetType = null, targetOwner = null) => {
-    if (!draggedActionCard) return;
+    if (!draggedActionCard) {
+      return;
+    }
     actionCardDragHandledRef.current = true;
     suppressNextClickRef.current = true;
 
@@ -307,7 +328,6 @@ const useDragMechanics = ({
       const effect0 = card.effects[0];
       const isMultiEffect = card.effects.length > 1;
       const isCompound = isCompoundEffect(effect0);
-
       if (isMultiEffect || isCompound) {
         const firstTargetType = effect0.targeting?.type;
 
@@ -447,6 +467,15 @@ const useDragMechanics = ({
       return;
     }
 
+    // Compute valid targets inline — validCardTargets state may be stale/empty
+    // since selectedCard isn't set during drag-drop (useEffect hasn't fired)
+    const { validCardTargets: dragCardTargets } = calculateAllValidTargets(
+      null, null, card,
+      gameState.player1, gameState.player2,
+      getLocalPlayerId(),
+      gameDataService.getEffectiveStats.bind(gameDataService)
+    );
+
     // Case 1: No-target cards - show confirmation
     if (!card.effects[0]?.targeting) {
       setCardConfirmation({ card, target: null });
@@ -456,11 +485,11 @@ const useDragMechanics = ({
     // Case 2: NONE-type cards — dispatch based on card subtype
     if (card.effects[0]?.targeting?.type === 'NONE') {
       if (card.type === 'Upgrade') {
-        setUpgradeSelectionModal({ card, targets: validCardTargets });
+        setUpgradeSelectionModal({ card, targets: dragCardTargets });
         return;
       }
       if (card.effects[0]?.type === 'DESTROY_UPGRADE') {
-        setDestroyUpgradeModal({ card, targets: validCardTargets, opponentState: opponentPlayerState });
+        setDestroyUpgradeModal({ card, targets: dragCardTargets, opponentState: opponentPlayerState });
         return;
       }
       if (card.effects[0]?.scope === 'ALL') {
@@ -473,13 +502,13 @@ const useDragMechanics = ({
 
     // Case 3: Targeted cards (drone, lane, section) - validate and show confirmation
     if (target && targetType) {
-      const isValidTarget = validCardTargets.some(t =>
+      const isValidTarget = dragCardTargets.some(t =>
         (t.id === target.id || t.id === target.name) && t.owner === targetOwner
       );
       if (isValidTarget) {
         setCardConfirmation({ card, target: { ...target, owner: targetOwner } });
       } else {
-        debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, validCardTargets });
+        debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, dragCardTargets });
         cancelCardSelection('drag-invalid-target');
       }
     } else {
@@ -543,6 +572,12 @@ const useDragMechanics = ({
           end: { x: startX, y: startY }
         });
       }
+      return;
+    }
+
+    // During chain target/multi-target selection, block drag — clicks only
+    if (effectChainState && !effectChainState.complete &&
+        (effectChainState.subPhase === 'target' || effectChainState.subPhase === 'multi-target')) {
       return;
     }
 
@@ -921,15 +956,19 @@ const useDragMechanics = ({
   // 8.4g ACTION CARD DRAG GLOBAL MOUSE UP
   // Handle mouseup for action cards - always trigger cleanup/cancel
   useEffect(() => {
-    if (!draggedActionCard) return;
+    if (!draggedActionCard) {
+      return;
+    }
 
     const handleGlobalMouseUp = (e) => {
+
       // Set suppress flag synchronously so the browser's synthesized click
       // (which fires before the deferred setTimeout) gets absorbed immediately
       suppressNextClickRef.current = true;
       setTimeout(() => { suppressNextClickRef.current = false; }, 300);
       // Capture footer check before setTimeout (event target may be gone)
       const releasedInFooter = e.target.closest('[data-footer]');
+
       // setTimeout ensures drop zone handlers fire first.
       // The ref guard prevents this fallback from cancelling a drag that was
       // already handled by a drop zone — the closure-captured draggedActionCard
@@ -940,6 +979,7 @@ const useDragMechanics = ({
           if (draggedActionCard?.mode === 'card-drag' && releasedInFooter) {
             setDraggedActionCard(null);
             setAffectedDroneIds([]);
+            setAffectedSectionIds([]);
             return;
           }
           handleActionCardDragEnd(null, null, null);

@@ -415,6 +415,7 @@ export async function processAiAction(payload, ctx) {
           const payload = {
             card: chosenAction.card,
             targetId: chosenAction.target?.id,
+            targetOwner: chosenAction.target?.owner || null,
             playerId: 'player2'
           };
 

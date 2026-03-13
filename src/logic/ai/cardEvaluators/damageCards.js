@@ -428,8 +428,8 @@ export const evaluateConditionalSectionDamageCard = (card, target, context) => {
     );
   } else if (effect.condition.type === 'CONTROL_LANE_EMPTY') {
     // For Overrun, check the specific section's corresponding lane
-    const sectionToLane = { 'left': 'lane1', 'middle': 'lane2', 'right': 'lane3' };
-    const lane = sectionToLane[target.id];
+    const laneShortMap = { 'l': 'lane1', 'm': 'lane2', 'r': 'lane3' };
+    const lane = target.lane ? laneShortMap[target.lane] : null;
     if (lane) {
       conditionMet = LaneControlCalculator.checkLaneControlEmpty(
         actingPlayerId, lane, player1, player2, laneControl

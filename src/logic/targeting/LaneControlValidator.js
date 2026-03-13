@@ -21,6 +21,12 @@ export function isLaneControlCardPlayable(card, actingPlayerId, playerStates) {
     return true;
   }
 
+  // String conditions (e.g. 'LANES_CONTROLLED') are repeat-count conditions
+  // for REPEATING_EFFECT cards, not play requirements — always playable
+  if (typeof card.effects[0].condition !== 'object') {
+    return true;
+  }
+
   // Calculate current lane control
   const laneControl = LaneControlCalculator.calculateLaneControl(
     playerStates.player1,
@@ -86,7 +92,7 @@ export function getLaneControlPlayabilityMap(cards, actingPlayerId, playerStates
   const playabilityMap = new Map();
 
   cards.forEach(card => {
-    if (card.effects[0]?.condition) {
+    if (card.effects[0]?.condition && typeof card.effects[0].condition === 'object') {
       playabilityMap.set(card.id, isLaneControlCardPlayable(card, actingPlayerId, playerStates));
     }
   });

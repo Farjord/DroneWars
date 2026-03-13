@@ -12,10 +12,19 @@ class StateRedactor {
    */
   static redactForPlayer(state, viewerPlayerId) {
     const opponentId = viewerPlayerId === 'player1' ? 'player2' : 'player1';
-    return {
+    const redacted = {
       ...state,
       [opponentId]: this.redactPlayerState(state[opponentId]),
     };
+    // Hide card selection data from non-acting player
+    if (redacted.cardSelectionPending?.playerId !== viewerPlayerId) {
+      redacted.cardSelectionPending = null;
+    }
+    // Hide mandatory action data from non-acting player
+    if (redacted.mandatoryActionPending?.actingPlayerId !== viewerPlayerId) {
+      redacted.mandatoryActionPending = null;
+    }
+    return redacted;
   }
 
   static redactPlayerState(playerState) {

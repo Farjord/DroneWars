@@ -1047,8 +1047,7 @@ describe('evaluateRepeatingEffectCard', () => {
     const card = {
       id: 'DESPERATE_MEASURES',
       cost: 1,
-      condition: 'OWN_DAMAGED_SECTIONS',
-      effects: [{ type: 'REPEATING_EFFECT' }]
+      effects: [{ type: 'REPEATING_EFFECT', repeatCondition: 'OWN_DAMAGED_SECTIONS' }]
     };
 
     const context = createMockContext({
@@ -1078,8 +1077,7 @@ describe('evaluateRepeatingEffectCard', () => {
     const card = {
       id: 'DESPERATE_MEASURES',
       cost: 1,
-      condition: 'OWN_DAMAGED_SECTIONS',
-      effects: [{ type: 'REPEATING_EFFECT' }]
+      effects: [{ type: 'REPEATING_EFFECT', repeatCondition: 'OWN_DAMAGED_SECTIONS' }]
     };
 
     const context = createMockContext({

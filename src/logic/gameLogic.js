@@ -79,11 +79,9 @@ export const gameEngine = {
   getLaneOfDrone,          // Get lane containing specific drone
 
   // --- ABILITY SYSTEM ---
-  // Drone and ship ability resolution (AbilityResolver)
+  // Drone ability resolution (AbilityResolver)
   resolveAbility: AbilityResolver.resolveAbility.bind(AbilityResolver),
-  resolveShipAbility: AbilityResolver.resolveShipAbility.bind(AbilityResolver),
   resolveDroneAbilityEffect: AbilityResolver.resolveDroneAbilityEffect.bind(AbilityResolver),
-  resolveShipAbilityEffect: AbilityResolver.resolveShipAbilityEffect.bind(AbilityResolver),
 
   // --- COMBAT SYSTEM ---
   // Attack resolution and interception (AttackProcessor, InterceptionProcessor)

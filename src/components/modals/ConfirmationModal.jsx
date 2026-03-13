@@ -19,7 +19,7 @@ const ConfirmationModal = ({ confirmationModal, show }) => {
   const subtitle = confirmationModal.type === 'discard' ? 'This action cannot be undone' : 'Permanent action';
 
   return (
-    <div className="dw-modal-overlay">
+    <div className="dw-modal-overlay" onClick={(e) => e.stopPropagation()}>
       <div className="dw-modal-content dw-modal--sm dw-modal--danger">
         {/* Header */}
         <div className="dw-modal-header">

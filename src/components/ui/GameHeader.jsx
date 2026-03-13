@@ -134,6 +134,7 @@ function GameHeader({
   // Effect chain props
   effectChainState,
   handleConfirmChainMultiSelect,
+  handleConfirmChainTarget,
   handleCancelEffectChain,
   // Extraction mode props
   currentRunState,
@@ -502,7 +503,7 @@ function GameHeader({
         <div style={{ height: '0.6vh' }} />
 
         {/* ─── Tier 3: Action buttons ─── */}
-        <div style={{ position: 'relative', zIndex: 4 }}>
+        <div style={{ position: 'relative', zIndex: 4, display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
           {(turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) ? (
             <ActionPhaseButtons
               isMyTurn={isMyTurn}
@@ -521,6 +522,7 @@ function GameHeader({
               handleConfirmInterception={handleConfirmInterception}
               effectChainState={effectChainState}
               handleConfirmChainMultiSelect={handleConfirmChainMultiSelect}
+              handleConfirmChainTarget={handleConfirmChainTarget}
               handleCancelEffectChain={handleCancelEffectChain}
             />
           ) : (

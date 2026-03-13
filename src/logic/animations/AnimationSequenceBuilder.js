@@ -30,10 +30,10 @@ export function buildAnimationSequence(steps) {
 
     sequence.push(...actionEvents);
 
-    if (triggerEvents.length > 0 || postSnapshotEvents.length > 0) {
-      if (intermediateState) {
-        sequence.push({ type: 'STATE_SNAPSHOT', snapshotPlayerStates: intermediateState });
-      }
+    if (intermediateState) {
+      sequence.push({ type: 'STATE_SNAPSHOT', snapshotPlayerStates: intermediateState });
+    }
+    if (postSnapshotEvents.length > 0) {
       sequence.push(...postSnapshotEvents);
     }
 

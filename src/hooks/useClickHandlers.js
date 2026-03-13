@@ -59,6 +59,7 @@ export default function useClickHandlers({
   selectChainTarget,
   selectChainDestination,
   selectChainMultiTarget,
+  setPendingChainTarget,
 
   // --- From useShieldAllocation ---
   shipAbilityMode,
@@ -262,6 +263,13 @@ export default function useClickHandlers({
           // For multi-target, also check already-selected drones (for toggle-off)
           const isValidChainTarget = validCardTargets.some(t => t.id === token.id && t.owner === tokenOwnerChain)
               || (effectChainState.subPhase === 'multi-target' && effectChainState.pendingMultiTargets?.some(d => d.id === token.id));
+          debugLog('CARD_PLAY_TRACE', '[CHAIN-CLICK] Drone click during effect chain', {
+              tokenId: token.id, tokenOwner: tokenOwnerChain,
+              chainIndex: effectChainState.currentIndex, subPhase: effectChainState.subPhase,
+              validTargetCount: validCardTargets.length,
+              validTargetIds: validCardTargets.slice(0, 5).map(t => `${t.id}:${t.owner}`),
+              isValidChainTarget,
+          });
           if (isValidChainTarget) {
               const droneState = tokenOwnerChain === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
               const droneLane = Object.entries(droneState.dronesOnBoard).find(([_, drones]) =>
@@ -270,7 +278,7 @@ export default function useClickHandlers({
               if (effectChainState.subPhase === 'multi-target') {
                   selectChainMultiTarget({ ...token, owner: tokenOwnerChain }, droneLane);
               } else {
-                  selectChainTarget({ ...token, owner: tokenOwnerChain }, droneLane);
+                  setPendingChainTarget({ ...token, owner: tokenOwnerChain }, droneLane);
               }
               return;
           }

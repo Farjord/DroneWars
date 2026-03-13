@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock TriggerProcessor (imported by EffectChainProcessor for ON_CARD_PLAY)
 // Configurable: set mockTriggerResult before a test to simulate ON_CARD_PLAY triggers
 let mockTriggerResult = null;
+let capturedPreCondContext = null;
 vi.mock('../../triggers/TriggerProcessor.js', () => ({
   default: class MockTriggerProcessor {
     constructor() {
@@ -95,9 +96,21 @@ vi.mock('../../EffectRouter.js', () => {
           newStates[context.actingPlayerId].energy += effect.value || 0;
           return { newPlayerStates: newStates, animationEvents: [], additionalEffects: [] };
         }
+        // CREATE_TOKENS: place a token drone and emit TELEPORT_IN
+        if (effect.type === 'CREATE_TOKENS') {
+          const newStates = JSON.parse(JSON.stringify(context.playerStates));
+          const lane = context.target?.id || 'lane1';
+          const token = { id: `token_${Date.now()}`, name: effect.tokenName || 'Token', hull: 1, attack: 1, isToken: true };
+          newStates[context.actingPlayerId].dronesOnBoard[lane].push(token);
+          return {
+            newPlayerStates: newStates,
+            animationEvents: [{ type: 'TELEPORT_IN', sourceId: token.id, lane, playerId: context.actingPlayerId }],
+            additionalEffects: [],
+          };
+        }
         return null;
       }
-      hasProcessor(type) { return ['DAMAGE', 'DRAW', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GAIN_ENERGY'].includes(type); }
+      hasProcessor(type) { return ['DAMAGE', 'DRAW', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GAIN_ENERGY', 'CREATE_TOKENS'].includes(type); }
     }
   };
 });
@@ -107,6 +120,7 @@ vi.mock('../../effects/conditional/ConditionalEffectProcessor.js', () => {
   return {
     default: class MockConditionalProcessor {
       processPreConditionals(conditionals, effect, context) {
+        capturedPreCondContext = context;
         let modifiedEffect = { ...effect };
         const additionalEffects = [];
         for (const c of (conditionals || []).filter(x => x.timing === 'PRE')) {
@@ -389,6 +403,7 @@ describe('EffectChainProcessor', () => {
     mockMovePerEffect = {};
     mockMoveEffectCounter = 0;
     mockTriggerResult = null;
+    capturedPreCondContext = null;
   });
 
   describe('payCardCosts', () => {
@@ -604,6 +619,23 @@ describe('EffectChainProcessor', () => {
       // Effect should execute (not be skipped) — energy increases by 1
       expect(result.newPlayerStates.player1.energy).toBe(11);
     });
+
+    it('does not skip effects when target has instance ID but name matches shipSections key', () => {
+      // Ship section targets from processCardPlay have instance IDs (e.g., 'BRIDGE_001')
+      // but shipSections is keyed by section name (e.g., 'bridge')
+      const sectionTarget = { id: 'BRIDGE_001', name: 'bridge', hull: 10, owner: 'player2' };
+      const card = {
+        id: 'test_section', instanceId: 'inst_section', name: 'Section Target', cost: 0,
+        effects: [{ type: 'GAIN_ENERGY', value: 1, targeting: { type: 'SHIP_SECTION' } }],
+      };
+      const states = createGameState({ hand: [card] });
+      // Opponent has the section keyed by name
+      states.player2.shipSections = { bridge: { hull: 10, allocatedShields: 5, maxShields: 5 } };
+      const result = processor.processEffectChain(card, [{ target: sectionTarget }], 'player1', createCtx(states));
+
+      // Effect should execute — target found via target.name fallback
+      expect(result.newPlayerStates.player1.energy).toBe(11);
+    });
   });
 
   describe('processEffectChain — conditionals', () => {
@@ -644,6 +676,29 @@ describe('EffectChainProcessor', () => {
       const result = processor.processEffectChain(card, [{ target, lane: 'lane1' }], 'player1', createCtx(states));
 
       expect(result.shouldEndTurn).toBe(false);
+    });
+
+    it('forwards actionsTakenThisTurn from callbacks to PRE conditional context', () => {
+      const target = createDrone({ id: 'e1', hull: 10, owner: 'player2' });
+      const card = {
+        id: 'test_momentum', instanceId: 'inst_momentum', name: 'Momentum Card', cost: 0,
+        effects: [{
+          type: 'DAMAGE', value: 2,
+          targeting: { type: 'DRONE' },
+          conditionals: [{ timing: 'PRE', condition: { type: 'NOT_FIRST_ACTION' }, grantedEffect: { type: 'BONUS_DAMAGE', value: 2 } }],
+        }],
+      };
+      const states = createGameState(
+        { hand: [card] },
+        { dronesOnBoard: { lane1: [target], lane2: [], lane3: [] } },
+      );
+      const ctx = createCtx(states, {
+        callbacks: { logCallback: vi.fn(), resolveAttackCallback: vi.fn(), actionsTakenThisTurn: 2 },
+      });
+      processor.processEffectChain(card, [{ target, lane: 'lane1' }], 'player1', ctx);
+
+      expect(capturedPreCondContext).not.toBeNull();
+      expect(capturedPreCondContext.actionsTakenThisTurn).toBe(2);
     });
   });
 
@@ -872,11 +927,11 @@ describe('EffectChainProcessor', () => {
     });
   });
 
-  describe('processEffectChain — forward-propagation of card movements', () => {
-    it('stateBeforeTriggers shows enemy drone in new lane after Forced Reposition', () => {
-      // Forced Repositioning: effect[0] moves friendly (triggers mine on friendly),
-      // effect[1] moves enemy. stateBeforeTriggers is captured during effect[0] and
-      // must be patched to include effect[1]'s enemy movement.
+  describe('processEffectChain — multi-effect snapshot isolation', () => {
+    it('Effect 0 snapshot does not leak Effect 1 movement', () => {
+      // Forced Repositioning: effect[0] moves friendly (triggers mine),
+      // effect[1] moves enemy. Effect 0's STATE_SNAPSHOT must show enemy
+      // in its ORIGINAL lane, not its destination.
       const friendly = createDrone({ id: 'f1', owner: 'player1' });
       const enemy = createDrone({ id: 'e1', owner: 'player2' });
       const card = {
@@ -895,7 +950,7 @@ describe('EffectChainProcessor', () => {
         { target: enemy, lane: 'lane1', destination: 'lane3' },
       ];
 
-      // effect[0] triggers a mine (so stateBeforeTriggers gets captured)
+      // effect[0] triggers a mine (so intermediateState gets captured)
       mockMovePerEffect = {
         0: {
           triggerEvents: [{ type: 'TRIGGER_FIRED', triggerName: 'Proximity Mine', timestamp: Date.now() }],
@@ -906,21 +961,17 @@ describe('EffectChainProcessor', () => {
 
       const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
 
-      // stateBeforeTriggers (exposed via STATE_SNAPSHOT in animationEvents) must show
-      // enemy drone in lane3, not lane1
+      // Effect 0's STATE_SNAPSHOT must show enemy drone in lane1 (original), NOT lane3
       const snapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
       expect(snapshot).toBeDefined();
       const snapshotP2Board = snapshot.snapshotPlayerStates.player2.dronesOnBoard;
-      expect(snapshotP2Board.lane1).toHaveLength(0);
-      expect(snapshotP2Board.lane3).toHaveLength(1);
-      expect(snapshotP2Board.lane3[0].id).toBe('e1');
-
-      // stateBeforeTriggers is only returned when actionSteps exist (none here),
-      // so the STATE_SNAPSHOT assertion above covers the propagation path.
+      expect(snapshotP2Board.lane1).toHaveLength(1);
+      expect(snapshotP2Board.lane1[0].id).toBe('e1');
+      expect(snapshotP2Board.lane3).toHaveLength(0);
     });
 
-    it('no forward-propagation needed for single-effect cards', () => {
-      // Single move with triggers — no later effects to propagate
+    it('single-effect cards produce correct snapshots', () => {
+      // Single move with triggers — snapshot shows drone in new lane
       const friendly = createDrone({ id: 'f1', owner: 'player1' });
       const card = {
         id: 'move_card', instanceId: 'inst_single', name: 'Single Move', cost: 0,
@@ -942,12 +993,53 @@ describe('EffectChainProcessor', () => {
 
       const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
 
-      // Snapshot should show drone in lane2 (normal — captured from effect[0]'s postMovementState)
+      // Snapshot should show drone in lane2 (captured from effect[0]'s postMovementState)
       const snapshot = result.animationEvents.find(e => e.type === 'STATE_SNAPSHOT');
       expect(snapshot).toBeDefined();
       const board = snapshot.snapshotPlayerStates.player1.dronesOnBoard;
       expect(board.lane1).toHaveLength(0);
       expect(board.lane2).toHaveLength(1);
+    });
+
+    it('multi-effect chain without triggers: each step gets STATE_SNAPSHOT', () => {
+      // Two SINGLE_MOVE effects with no triggers. Each step should still get
+      // a STATE_SNAPSHOT between them so the UI updates between animations.
+      const friendly = createDrone({ id: 'f1', owner: 'player1' });
+      const enemy = createDrone({ id: 'e1', owner: 'player2' });
+      const card = {
+        id: 'forced_repo', instanceId: 'inst_fr_multi', name: 'Forced Repo', cost: 1,
+        effects: [
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+          { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY' }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+        ],
+      };
+      const states = createGameState(
+        { energy: 5, hand: [card], dronesOnBoard: { lane1: [friendly], lane2: [], lane3: [] } },
+        { dronesOnBoard: { lane1: [enemy], lane2: [], lane3: [] } },
+      );
+      const selections = [
+        { target: friendly, lane: 'lane1', destination: 'lane2' },
+        { target: enemy, lane: 'lane1', destination: 'lane3' },
+      ];
+
+      // No triggers on either effect
+      mockMovePerEffect = {
+        0: { triggerEvents: [], mineEvents: [] },
+        1: { triggerEvents: [], mineEvents: [] },
+      };
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+
+      // There should be a STATE_SNAPSHOT between Effect 0's DRONE_MOVEMENT and Effect 1's DRONE_MOVEMENT
+      const eventTypes = result.animationEvents.map(e => e.type);
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBeGreaterThanOrEqual(2);
+
+      // First snapshot should appear after first movement events, before second movement
+      const firstSnapshotIdx = eventTypes.indexOf('STATE_SNAPSHOT');
+      const secondSnapshotIdx = eventTypes.indexOf('STATE_SNAPSHOT', firstSnapshotIdx + 1);
+      expect(firstSnapshotIdx).toBeGreaterThan(-1);
+      expect(secondSnapshotIdx).toBeGreaterThan(firstSnapshotIdx);
     });
   });
 
@@ -1030,6 +1122,47 @@ describe('EffectChainProcessor', () => {
       // Effect trigger should come before ON_CARD_PLAY trigger
       expect(triggers[0].triggerName).toBe('Effect Trigger');
       expect(triggers[1].triggerName).toBe('ON_CARD_PLAY Trigger');
+    });
+  });
+
+  // --- CREATE_TOKENS: STATE_SNAPSHOT should only appear when needed ---
+  describe('CREATE_TOKENS — STATE_SNAPSHOT conditions', () => {
+    it('single CREATE_TOKENS with no triggers and zero cost: no STATE_SNAPSHOT', () => {
+      const target = { id: 'lane1' };
+      const card = {
+        id: 'scramble-dart', name: 'Scramble Dart', cost: 0,
+        effects: [{ type: 'CREATE_TOKENS', tokenName: 'Dart', targeting: { type: 'LANE', affinity: 'FRIENDLY' } }],
+      };
+      const selections = [{ target, lane: 'lane1' }];
+      const states = createGameState();
+
+      mockTriggerResult = null; // No ON_CARD_PLAY triggers
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+      const types = result.animationEvents.map(e => e.type);
+
+      expect(types).toContain('TELEPORT_IN');
+      expect(types).not.toContain('STATE_SNAPSHOT');
+    });
+
+    it('CREATE_TOKENS with ON_CARD_PLAY triggers: STATE_SNAPSHOT IS present', () => {
+      const target = { id: 'lane1' };
+      const card = {
+        id: 'scramble-dart', name: 'Scramble Dart', cost: 1,
+        effects: [{ type: 'CREATE_TOKENS', tokenName: 'Dart', targeting: { type: 'LANE', affinity: 'FRIENDLY' } }],
+      };
+      const selections = [{ target, lane: 'lane1' }];
+      const states = createGameState();
+
+      mockTriggerResult = {
+        animationEvents: [{ type: 'TRIGGER_FIRED', triggerName: 'Deploy Bonus' }],
+      };
+
+      const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
+      const types = result.animationEvents.map(e => e.type);
+
+      expect(types).toContain('STATE_SNAPSHOT');
+      expect(types).toContain('TELEPORT_IN');
     });
   });
 });

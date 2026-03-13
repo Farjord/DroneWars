@@ -47,6 +47,8 @@ function GameFooter({
   roundNumber,
   passInfo,
   validCardTargets,
+  effectChainState,
+  setPendingChainTarget,
   gameEngine,
   opponentPlayerState,
   setAiDecisionLogToShow,
@@ -86,6 +88,8 @@ function GameFooter({
                 setConfirmationModal={setConfirmationModal}
                 passInfo={passInfo}
                 validCardTargets={validCardTargets}
+                effectChainState={effectChainState}
+                setPendingChainTarget={setPendingChainTarget}
                 gameEngine={gameEngine}
                 opponentPlayerState={opponentPlayerState}
                 handleActionCardDragStart={handleActionCardDragStart}

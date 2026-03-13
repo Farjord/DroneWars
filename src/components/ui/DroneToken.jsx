@@ -203,12 +203,12 @@ const DroneToken = ({
 
   // 3D tilt parallax during drag + hover (subtler than ActionCard)
   const glowColor = isVisuallyOwned ? 'rgba(34, 211, 238, 0.35)' : 'rgba(239, 68, 68, 0.35)';
-  const glowFilter = drone.isExhausted ? null
-    : `drop-shadow(0 0 6px ${glowColor}) drop-shadow(0 0 12px ${glowColor})`;
+  const glowShadow = drone.isExhausted ? null
+    : `0 0 6px ${glowColor}, 0 0 12px ${glowColor}`;
   const tiltRef = useCardTilt(isDragging, {
     maxTiltDrag: 10,
     maxTiltHover: 5,
-    glowFilter
+    glowShadow
   });
 
   // Performance logging for drag investigation - only log when dragging is active
@@ -248,7 +248,7 @@ const DroneToken = ({
 
   // --- Dynamic Class Calculation ---
   const borderColor = isVisuallyOwned ? 'border-cyan-400' : 'border-red-500';
-  const isToken = baseDrone?.isToken;
+  const isToken = drone.isToken;
   const nameBgColor = isToken
     ? (isVisuallyOwned ? 'bg-slate-600' : 'bg-stone-700')
     : (isVisuallyOwned ? 'bg-cyan-900' : 'bg-red-950');

@@ -431,10 +431,27 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
     }
 
     case 'placement': {
+      const placedArr = commitmentData.placedSections;
+      const laneShorts = ['l', 'm', 'r'];
+
+      // Update lane property on each section to match placement position
+      const playerState = currentState[playerId];
+      const updatedSections = {};
+      Object.keys(playerState.shipSections).forEach(key => {
+        updatedSections[key] = { ...playerState.shipSections[key] };
+      });
+      placedArr.forEach((sectionKey, index) => {
+        if (updatedSections[sectionKey]) {
+          updatedSections[sectionKey].lane = laneShorts[index];
+        }
+      });
+      stateUpdates[playerId] = { ...currentState[playerId], shipSections: updatedSections };
+
+      // Store placedSections array
       if (playerId === 'player1') {
-        stateUpdates.placedSections = commitmentData.placedSections;
+        stateUpdates.placedSections = placedArr;
       } else {
-        stateUpdates.opponentPlacedSections = commitmentData.placedSections;
+        stateUpdates.opponentPlacedSections = placedArr;
       }
       debugLog('COMMITMENTS', `✅ Applied placement for ${playerId} (immediate)`);
       break;

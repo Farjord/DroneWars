@@ -371,6 +371,50 @@ describe('isLaneControlCardPlayable', () => {
     });
   });
 
+  describe('REPEATING_EFFECT cards with string conditions (not play requirements)', () => {
+    it('should return true for card with repeatCondition (not a play requirement)', () => {
+      const tacticalAdvantageCard = {
+        type: 'Tactic',
+        name: 'Tactical Advantage',
+        effects: [{
+          type: 'REPEATING_EFFECT',
+          effects: [{ type: 'DRAW', value: 1 }],
+          repeatCondition: 'LANES_CONTROLLED',
+          targeting: { type: 'NONE' }
+        }]
+      };
+
+      const playerStates = {
+        player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
+        player2: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
+      };
+
+      // repeatCondition determines repeat count, not playability — should always be playable
+      expect(isLaneControlCardPlayable(tacticalAdvantageCard, 'player1', playerStates)).toBe(true);
+    });
+
+    it('should return true even if a legacy string condition field exists (defense in depth)', () => {
+      // Defense in depth: even if a string condition somehow appears, the type guard catches it
+      const cardWithStringCondition = {
+        type: 'Tactic',
+        name: 'Desperate Measures',
+        effects: [{
+          type: 'REPEATING_EFFECT',
+          effects: [{ type: 'DRAW', value: 1 }, { type: 'GAIN_ENERGY', value: 1 }],
+          condition: 'OWN_DAMAGED_SECTIONS',
+          targeting: { type: 'NONE' }
+        }]
+      };
+
+      const playerStates = {
+        player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
+        player2: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
+      };
+
+      expect(isLaneControlCardPlayable(cardWithStringCondition, 'player1', playerStates)).toBe(true);
+    });
+  });
+
   describe('Unknown condition types', () => {
     it('should return false for unknown condition types', () => {
       const unknownCard = {

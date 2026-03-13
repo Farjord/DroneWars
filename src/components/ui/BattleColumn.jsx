@@ -32,6 +32,7 @@ const ShipSectionSlot = ({
   onViewFullCard,
   isInteractive,
   validCardTargets,
+  affectedSectionIds,
   selectedDrone,
   reallocationPhase,
   pendingShieldAllocations,
@@ -100,6 +101,7 @@ const ShipSectionSlot = ({
   // Targeting mode prevents modal from opening during targeting
   const isTargetingMode = validCardTargets.length > 0 || (selectedDrone && !isPlayer);
   const isCardTarget = validCardTargets.some(t => t.id === sectionName && t.owner === currentPlayerId);
+  const isAffectedSection = !isPlayer && affectedSectionIds.includes(sectionName);
 
   // Shield reallocation visual state
   let reallocationState = null;
@@ -121,7 +123,8 @@ const ShipSectionSlot = ({
       onMouseUp={() => {
         if (draggedActionCard && handleActionCardDragEnd) {
           const card = draggedActionCard.card;
-          if (card?.targeting?.type === 'SHIP_SECTION') {
+          const targetingType = card?.targeting?.type || card?.effects?.[0]?.targeting?.type;
+          if (targetingType === 'SHIP_SECTION') {
             const targetSection = { id: sectionName, name: sectionName };
             debugLog('DRAG_DROP_DEPLOY', '🎯 Ship section action card drop detected', { sectionName, card: card.name });
             handleActionCardDragEnd(targetSection, 'section', currentPlayerId);
@@ -177,6 +180,7 @@ const ShipSectionSlot = ({
         }}
         isInteractive={isInteractive || (turnPhase === 'action' && isPlayer && sectionStats.ability && localPlayerState.energy >= sectionStats.ability.cost.energy)}
         isCardTarget={isCardTarget}
+        isAffectedSection={isAffectedSection}
         isInMiddleLane={sectionIndex === 1}
         isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName && hoveredTarget?.isOpponent === !isPlayer}
         onMouseEnter={() => setHoveredTarget({ target: { ...sectionStats, name: sectionName }, type: 'section', isOpponent: !isPlayer })}
@@ -216,6 +220,7 @@ const BattleColumn = ({
   selectedCard,
   validCardTargets,
   affectedDroneIds,
+  affectedSectionIds = [],
   abilityMode,
   validAbilityTargets,
   effectChainState,
@@ -321,6 +326,7 @@ const BattleColumn = ({
     sectionIndex,
     columnIndex: sectionIndex,
     validCardTargets,
+    affectedSectionIds,
     selectedDrone,
     gameEngine,
     turnPhase,
@@ -373,6 +379,9 @@ const BattleColumn = ({
           onTechClick={validCardTargets.some(t => t.isTech)
             ? (tech) => handleTargetClick({ ...tech, owner: getOpponentPlayerId() })
             : onViewTechDetail}
+          draggedActionCard={draggedActionCard}
+          onActionCardDrop={handleActionCardDragEnd}
+          owner={getOpponentPlayerId()}
         />
       </div>
 
@@ -401,6 +410,9 @@ const BattleColumn = ({
           onTechClick={validCardTargets.some(t => t.isTech)
             ? (tech) => handleTargetClick({ ...tech, owner: getLocalPlayerId() })
             : onViewTechDetail}
+          draggedActionCard={draggedActionCard}
+          onActionCardDrop={handleActionCardDragEnd}
+          owner={getLocalPlayerId()}
         />
       </div>
 

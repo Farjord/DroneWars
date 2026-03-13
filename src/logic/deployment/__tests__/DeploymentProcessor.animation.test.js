@@ -98,4 +98,36 @@ describe('DeploymentProcessor animation ordering', () => {
     const triggerIdx = types.indexOf('TRIGGER_FIRED');
     expect(triggerIdx).toBeGreaterThan(pauseIdx);
   });
+
+  it('TELEPORT_IN is NOT preceded by STATE_SNAPSHOT (timing override guard)', () => {
+    // Deployment places TELEPORT_IN in actionEvents (before STATE_SNAPSHOT).
+    // This ensures the mapAnimationEvents timing override (if it existed) would never trigger.
+    mockFireTrigger.mockImplementation((triggerType, context) => {
+      if (triggerType === 'ON_DEPLOY') {
+        return {
+          triggered: true,
+          newPlayerStates: context.playerStates,
+          animationEvents: [{ type: 'TRIGGER_FIRED', abilityName: 'ShieldBoost' }],
+        };
+      }
+      return { triggered: false, newPlayerStates: null, animationEvents: [] };
+    });
+
+    const drone = { name: 'Bastion', class: 1, hull: 4, attack: 1, shields: 5 };
+    const result = processor.executeDeployment(
+      drone, 'lane1', 2,
+      makePlayerState(), makeOpponentState(),
+      { player1: [], player2: [] },
+      vi.fn(), 'player1'
+    );
+
+    const types = result.animationEvents.map(e => e.type);
+    const teleportIdx = types.indexOf('TELEPORT_IN');
+    expect(teleportIdx).toBeGreaterThanOrEqual(0);
+
+    // The event immediately before TELEPORT_IN must NOT be STATE_SNAPSHOT
+    if (teleportIdx > 0) {
+      expect(types[teleportIdx - 1]).not.toBe('STATE_SNAPSHOT');
+    }
+  });
 });

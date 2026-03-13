@@ -50,6 +50,9 @@ function HandView({
   validCardTargets,
   gameEngine,
   opponentPlayerState,
+  // Effect chain targeting props
+  effectChainState,
+  setPendingChainTarget,
   // Action card drag-and-drop props
   handleActionCardDragStart,
   draggedActionCard,
@@ -74,6 +77,10 @@ function HandView({
     player1State,
     player2State
   );
+
+  // Detect effect chain CARD_IN_HAND targeting mode
+  const isChainCardInHandTargeting = effectChainState && !effectChainState.complete &&
+    effectChainState.effects[effectChainState.currentIndex]?.targeting?.type === 'CARD_IN_HAND';
 
   // Dynamic overlap calculation
   const handSectionRef = useRef(null);
@@ -264,7 +271,7 @@ function HandView({
 
               // Check lane control conditions (cards with effect.condition)
               let laneControlPlayable = true;
-              if (card.effects?.[0]?.condition) {
+              if (card.effects?.[0]?.condition && typeof card.effects[0].condition === 'object') {
                 // Construct playerStates object from local and opponent states
                 const playerStates = localPlayerId === 'player1'
                   ? { player1: localPlayerState, player2: opponentPlayerState }
@@ -312,6 +319,20 @@ function HandView({
               const isDragging = draggedActionCard?.card?.instanceId === card.instanceId;
               const isElevated = isHovered || isDragging;
 
+              // Check if this card is a valid target for effect chain CARD_IN_HAND targeting.
+              // Exclude selectedCard — the played card must stay highlighted, not be a discard target.
+              const isEffectChainTarget = isChainCardInHandTargeting &&
+                card.instanceId !== selectedCard?.instanceId &&
+                validCardTargets.some(t => t.instanceId === card.instanceId);
+
+              // Check if this card is the pending chain target (awaiting header Confirm)
+              const isChainPendingTarget = isChainCardInHandTargeting &&
+                effectChainState.pendingTarget?.instanceId === card.instanceId;
+
+              // Reuse mandatory discard mechanism — effect chain discard IS ability-triggered
+              const effectiveDiscardAction = mandatoryAction ||
+                (isEffectChainTarget ? { type: 'discard', fromAbility: true } : null);
+
               // Check if momentum bonus is active for this card
               const isMomentumActive = actionsTakenThisTurn >= 1;
               const showMomentumGlow = hasMomentumBonus(card) && isMomentumActive;
@@ -331,9 +352,9 @@ function HandView({
                 ...(isCardDragging && { opacity: 0.3 })
               };
 
-              // Apply pulse effect during mandatory discard (all cards), optional discard (only selectable cards),
-              // or cost selection (valid cost targets). Applied to wrapper div to avoid CSS conflicts with rarity animations.
-              const shouldPulse = mandatoryAction?.type === 'discard' ||
+              // Apply pulse effect during mandatory/effect-chain discard (all target cards), optional discard (only selectable cards).
+              // Applied to wrapper div to avoid CSS conflicts with rarity animations.
+              const shouldPulse = effectiveDiscardAction?.type === 'discard' ||
                 (turnPhase === 'optionalDiscard' && cardIsPlayable);
 
               return (
@@ -370,10 +391,10 @@ function HandView({
                   }}
                   onMouseLeave={() => { setHoveredCardId(null); onCardPlayWarningClear?.(); }}
                   onMouseDown={(e) => {
-                    // Initiate drag for playable cards during action phase (not during mandatory action or cost selection)
+                    // Initiate drag for playable cards during action phase (not during mandatory action)
                     // Uses threshold detection to distinguish click from drag
-                    // Cost selection targets use click, not drag, so exclude them
-                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && handleActionCardDragStart) {
+                    // Effect chain targets use click, not drag, so exclude them
+                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isEffectChainTarget && handleActionCardDragStart) {
                       e.preventDefault();
 
                       // Store start position and card rect immediately (before React nullifies event)
@@ -410,30 +431,36 @@ function HandView({
                 >
                   <ActionCard
                     card={card}
-                    isSelected={selectedCard?.instanceId === card.instanceId}
+                    isSelected={isChainPendingTarget || selectedCard?.instanceId === card.instanceId}
                     isDimmed={selectedCard &&
-                      selectedCard.instanceId !== card.instanceId}
+                      selectedCard.instanceId !== card.instanceId &&
+                      !isEffectChainTarget &&
+                      !isChainPendingTarget}
                     isDragging={draggedActionCard?.card?.instanceId === card.instanceId}
                     isPlayable={cardIsPlayable}
                     hasMomentumGlow={showMomentumGlow}
-                    mandatoryAction={mandatoryAction}
+                    mandatoryAction={effectiveDiscardAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}
                     onClick={
-                      mandatoryAction?.type === 'discard'
+                      effectiveDiscardAction?.type === 'discard'
                         ? (c) => {
                             // For phase-based mandatory discards, check if limit reached
-                            if (!mandatoryAction.fromAbility && excessCards <= 0) {
+                            if (!effectiveDiscardAction.fromAbility && excessCards <= 0) {
                               debugLog('DISCARD', '🚫 Cannot discard - already at hand limit');
                               return;
                             }
-                            setConfirmationModal({
-                              type: 'discard',
-                              target: c,
-                              onConfirm: () => handleConfirmMandatoryDiscard(c),
-                              onCancel: () => setConfirmationModal(null),
-                              text: `Are you sure you want to discard ${c.name}?`
-                            });
+                            if (isEffectChainTarget) {
+                              setPendingChainTarget(c, null);
+                            } else {
+                              setConfirmationModal({
+                                type: 'discard',
+                                target: c,
+                                onConfirm: () => handleConfirmMandatoryDiscard(c),
+                                onCancel: () => setConfirmationModal(null),
+                                text: `Are you sure you want to discard ${c.name}?`
+                              });
+                            }
                           }
                         : turnPhase === 'optionalDiscard'
                           ? (c) => setConfirmationModal({

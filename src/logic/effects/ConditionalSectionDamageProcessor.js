@@ -46,7 +46,8 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
       actingPlayerId,
       laneControl,
       target,
-      playerStates
+      playerStates,
+      placedSections
     );
 
     if (!conditionMet) {
@@ -90,7 +91,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
           type: 'SECTION_DAMAGED',
           targetId: sectionName,         // Fixed: targetSection → targetId
           targetPlayer: opponentId,
-          targetLane: this.mapSectionToLane(sectionName),  // Added: required for positioning
+          targetLane: this.mapSectionToLane(sectionName, opponentPlacedSections),  // Derive lane from placement
           targetType: 'section',         // Added: required for element lookup
           config: { size: 'large' },     // Added: explosion size config
           delay: i * 200,                // Keep: 200ms stagger between explosions
@@ -113,7 +114,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
    * @param {Object} playerStates - Player states
    * @returns {boolean} True if condition met
    */
-  checkCondition(condition, actingPlayerId, laneControl, target, playerStates) {
+  checkCondition(condition, actingPlayerId, laneControl, target, playerStates, placedSections) {
     switch (condition.type) {
       case 'CONTROL_LANES':
         // Check if player controls all/any of the specified lanes
@@ -124,13 +125,24 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
           condition.operator || 'ALL'
         );
 
-      case 'CONTROL_LANE_EMPTY':
+      case 'CONTROL_LANE_EMPTY': {
         // Check if player controls the target lane AND no enemy drones present
-        // target.id is now a section name (e.g., 'left') - convert to lane
-        const sectionToLaneMap = { 'left': 'lane1', 'middle': 'lane2', 'right': 'lane3' };
-        const targetLane = condition.lane === 'TARGET'
-          ? (sectionToLaneMap[target.id] || target.id)
-          : condition.lane;
+        const laneShortMap = { 'l': 'lane1', 'm': 'lane2', 'r': 'lane3' };
+        let targetLane;
+        if (condition.lane === 'TARGET') {
+          if (target?.lane) {
+            targetLane = laneShortMap[target.lane];
+          } else {
+            // Ship section targets: derive lane from placedSections position
+            const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+            const sectionKey = target?.name || target?.id;
+            const idx = placedSections?.[opponentId]?.indexOf(sectionKey);
+            if (idx !== -1 && idx !== undefined) targetLane = `lane${idx + 1}`;
+          }
+        } else {
+          targetLane = condition.lane;
+        }
+        if (!targetLane) return false;
         return LaneControlCalculator.checkLaneControlEmpty(
           actingPlayerId,
           targetLane,
@@ -138,6 +150,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
           playerStates.player2,
           laneControl
         );
+      }
 
       default:
         debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Unknown condition type: ${condition.type}`);
@@ -163,12 +176,13 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
         // Middle section only (lane 2)
         return [placedSections[1]];
 
-      case 'CORRESPONDING_SECTION':
-        // Section corresponding to the targeted section name
-        // target.id is now a section name (e.g., 'left', 'middle', 'right')
-        const sectionIndexMap = { 'left': 0, 'middle': 1, 'right': 2 };
-        const sectionIndex = sectionIndexMap[target.id];
-        return sectionIndex !== undefined ? [placedSections[sectionIndex]] : [];
+      case 'CORRESPONDING_SECTION': {
+        // Section corresponding to the targeted section key (e.g., 'bridge')
+        // target.name is the section key; target.id may be an instance ID like 'BRIDGE_001'
+        const sectionKey = target.name || target.id;
+        const idx = placedSections.indexOf(sectionKey);
+        return idx !== -1 ? [placedSections[idx]] : [];
+      }
 
       case 'ALL_SECTIONS':
         // All three sections
@@ -204,17 +218,17 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
   }
 
   /**
-   * Maps section name to corresponding lane
-   * @param {string} sectionName - 'left', 'middle', or 'right'
+   * Maps section key to corresponding lane using placedSections array
+   * @param {string} sectionName - Section key (e.g., 'bridge', 'powerCell')
+   * @param {Array} placedSections - Ordered array of section keys [left, middle, right]
    * @returns {string} - 'lane1', 'lane2', or 'lane3'
    */
-  mapSectionToLane(sectionName) {
-    const sectionToLane = {
-      'left': 'lane1',
-      'middle': 'lane2',
-      'right': 'lane3'
-    };
-    return sectionToLane[sectionName] || 'lane2';  // Default to middle if unknown
+  mapSectionToLane(sectionName, placedSections) {
+    if (placedSections) {
+      const idx = placedSections.indexOf(sectionName);
+      if (idx !== -1) return `lane${idx + 1}`;
+    }
+    return 'lane2';  // Default to middle if unknown
   }
 }
 

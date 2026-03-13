@@ -12,15 +12,18 @@ describe('buildAnimationSequence', () => {
       expect(result).toEqual([{ type: 'DRONE_MOVEMENT', droneId: 'd1' }]);
     });
 
-    it('does not insert STATE_SNAPSHOT or TRIGGER_CHAIN_PAUSE when no triggers', () => {
+    it('emits STATE_SNAPSHOT when intermediateState is provided, even without triggers', () => {
+      const intermediateState = { player1: {}, player2: {} };
       const steps = [{
         actionEvents: [{ type: 'DRONE_ATTACK' }],
         triggerEvents: [],
-        intermediateState: { player1: {}, player2: {} },
+        intermediateState,
       }];
       const result = buildAnimationSequence(steps);
-      expect(result).toEqual([{ type: 'DRONE_ATTACK' }]);
-      expect(result.find(e => e.type === 'STATE_SNAPSHOT')).toBeUndefined();
+      expect(result).toEqual([
+        { type: 'DRONE_ATTACK' },
+        { type: 'STATE_SNAPSHOT', snapshotPlayerStates: intermediateState },
+      ]);
       expect(result.find(e => e.type === 'TRIGGER_CHAIN_PAUSE')).toBeUndefined();
     });
 
@@ -118,7 +121,7 @@ describe('buildAnimationSequence', () => {
       ]);
     });
 
-    it('skips snapshot and pause for steps with no triggers', () => {
+    it('emits STATE_SNAPSHOT after step 0 action events when intermediateState is provided, even without triggers', () => {
       const state1 = { player1: {}, player2: {} };
       const steps = [
         {
@@ -135,6 +138,7 @@ describe('buildAnimationSequence', () => {
       const result = buildAnimationSequence(steps);
       expect(result).toEqual([
         { type: 'EFFECT_1' },
+        { type: 'STATE_SNAPSHOT', snapshotPlayerStates: state1 },
         { type: 'EFFECT_2' },
         { type: 'STATE_SNAPSHOT', snapshotPlayerStates: state1 },
         { type: 'TRIGGER_CHAIN_PAUSE', duration: 400 },
@@ -159,6 +163,7 @@ describe('buildAnimationSequence', () => {
       const result = buildAnimationSequence(steps);
       expect(result).toEqual([
         { type: 'DAMAGE_EFFECT' },
+        { type: 'STATE_SNAPSHOT', snapshotPlayerStates: state1 },
         { type: 'TRIGGER_CHAIN_PAUSE', duration: 400 },
         { type: 'TRIGGER_FIRED', source: 'ON_CARD_PLAY' },
       ]);

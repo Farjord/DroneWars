@@ -26,6 +26,13 @@ function _findTargetLane(target, playerStates) {
       if ((board[lane] || []).some(d => d.id === target.id)) return lane;
     }
   }
+  // Check tech slots
+  for (const pid of ['player1', 'player2']) {
+    const techSlots = playerStates[pid]?.techSlots || {};
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      if ((techSlots[lane] || []).some(t => t.id === target.id)) return lane;
+    }
+  }
   return null;
 }
 
@@ -94,6 +101,27 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     roundNumber: currentState.roundNumber,
   });
 
+  // If chain needs client-side selection (e.g. SEARCH_AND_DRAW), return without updating state
+  if (result.needsCardSelection) {
+    debugLog('CARD_PLAY_TRACE', '[5c] Chain paused — needsCardSelection', {
+      card: card.name, type: result.needsCardSelection.type,
+      searchedCardsCount: result.needsCardSelection.searchedCards?.length,
+    });
+
+    // State-based delivery for multiplayer (follows interceptionPending pattern)
+    if (result.needsCardSelection.type === 'search_and_draw') {
+      ctx.setState({
+        cardSelectionPending: {
+          ...result.needsCardSelection,
+          card,
+          playerId,
+        }
+      });
+    }
+
+    return { needsCardSelection: result.needsCardSelection };
+  }
+
   debugLog('CARD_PLAY_TRACE', '[5b] Animation path: flat', {
     card: card.name,
     animCount: result.animationEvents?.length || 0,
@@ -119,11 +147,11 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
 
 /**
  * Process card play action
- * @param {Object} payload - { card, targetId, playerId, chainSelections? }
+ * @param {Object} payload - { card, targetId, targetOwner?, playerId, chainSelections? }
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processCardPlay(payload, ctx) {
-  const { card, targetId, playerId } = payload;
+  const { card, targetId, targetOwner, playerId } = payload;
 
   debugLog('CARD_PLAY_TRACE', '[4] Resolving target from targetId', { card: card.name, targetId, playerId });
 
@@ -149,16 +177,33 @@ export async function processCardPlay(payload, ctx) {
 
     // If not found in drones, check ship sections
     if (!target) {
-      for (const pid of ['player1', 'player2']) {
+      const sectionSearchOrder = targetOwner ? [targetOwner] : ['player1', 'player2'];
+      for (const pid of sectionSearchOrder) {
         const sections = playerStates[pid].shipSections;
         if (sections[targetId]) {
           target = {
             ...sections[targetId],
+            id: targetId,
             name: targetId,
             owner: pid
           };
           break;
         }
+      }
+    }
+
+    // If not found in drones or ship sections, check tech slots
+    if (!target) {
+      for (const pid of ['player1', 'player2']) {
+        const techSlots = playerStates[pid]?.techSlots || {};
+        for (const lane of ['lane1', 'lane2', 'lane3']) {
+          const tech = (techSlots[lane] || []).find(t => t.id === targetId);
+          if (tech) {
+            target = { ...tech, owner: pid, lane };
+            break;
+          }
+        }
+        if (target) break;
       }
     }
 
@@ -187,6 +232,7 @@ export async function processCardPlay(payload, ctx) {
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processSearchAndDrawCompletion(payload, ctx) {
+  ctx.setState({ cardSelectionPending: null });
   const { card, selectedCards, selectionData, playerId } = payload;
 
   debugLog('CARD_PLAY_TRACE', '[6] SearchAndDraw completion — costs paid', {

@@ -11,7 +11,7 @@ const FloatingDragCard = ({ card, floatingCardRef, renderCard }) => {
         pointerEvents: 'none',
         zIndex: 50,
         transform: 'translate(-50%, -50%)',
-        filter: 'drop-shadow(0 0 12px rgba(34, 211, 238, 0.6))',
+        boxShadow: '0 0 12px rgba(34, 211, 238, 0.6)',
         opacity: 0.85,
       }}
     >

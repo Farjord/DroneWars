@@ -229,3 +229,31 @@ export const calculateAffectedDroneIds = (
     return affectedIds;
 };
 
+/**
+ * Calculate which opponent ship sections a CONDITIONAL_SECTION_DAMAGE card will affect.
+ *
+ * Used for visual feedback — glowing affected sections when a NONE-targeting
+ * lane control card (Crossfire Pattern, Encirclement) is being dragged.
+ *
+ * @param {Object} card - Card definition with effects
+ * @param {Array} opponentPlacedSections - Opponent's placed section names [left, middle, right]
+ * @returns {Array|null} Array of section names, or null if not applicable
+ */
+export const calculateAffectedSections = (card, opponentPlacedSections) => {
+    const effect = card?.effects?.[0];
+    if (effect?.type !== 'CONDITIONAL_SECTION_DAMAGE' || !opponentPlacedSections) return null;
+
+    switch (effect.targets) {
+        case 'FLANK_SECTIONS':
+            return [opponentPlacedSections[0], opponentPlacedSections[2]].filter(Boolean);
+        case 'MIDDLE_SECTION':
+            return [opponentPlacedSections[1]].filter(Boolean);
+        case 'ALL_SECTIONS':
+            return [...opponentPlacedSections];
+        case 'CORRESPONDING_SECTION':
+            return null; // Needs target selection — handled by SHIP_SECTION targeting flow
+        default:
+            return null;
+    }
+};
+

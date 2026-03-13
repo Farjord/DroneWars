@@ -28,7 +28,7 @@ const DEBUG_CONFIG = {
     AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
     ANIMATIONS: false,           // Animation system
     COMMITMENTS: false,          // Simultaneous phase commitments
-    COMBAT: false,              // Combat resolution
+    COMBAT: true,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
     STATE_SYNC: false,          // State synchronization
     ENERGY: false,              // Energy management (shield allocation)
@@ -78,7 +78,7 @@ const DEBUG_CONFIG = {
     EFFECT_CHAIN_DEBUG: false,   // Temporary: effect chain auto-commit investigation
 
     // Card Play Pipeline
-    CARD_PLAY_TRACE: false,       // End-to-end card play milestone trace (10 numbered steps)
+    CARD_PLAY_TRACE: true,       // End-to-end card play milestone trace (10 numbered steps)
 
     // Client-Server Architecture Traces
     INIT_TRACE: false,             // End-to-end game initialization trace (8 numbered steps)
@@ -100,12 +100,13 @@ const DEBUG_CONFIG = {
     STATE_CHECKPOINT: false,       // Master game state snapshots at key moments
 
     // Effect System - Modular Processor Logging
-    EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
+    EFFECT_PROCESSING: true,    // Effect processor execution (DrawEffectProcessor, etc.)
 
     // Targeting System Refactoring - Modular Processor Logging
     TARGETING_ROUTING: false,    // Targeting router decisions
     TARGETING_PROCESSING: false, // Targeting processor execution
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function
+    LANE_CONTROL: false,          // Lane control condition checks (ConditionalSectionDamage, LaneControlCalculator, LaneControlValidator)
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
     MOVEMENT_EFFECT: false,        // Movement effect execution (DO_NOT_EXHAUST, drone state changes)

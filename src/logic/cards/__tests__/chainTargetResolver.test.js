@@ -72,7 +72,7 @@ function makePlayerStates() {
         { id: 'card1', name: 'Ion Pulse', cost: 2 },
         { id: 'card2', name: 'Repair', cost: 1 },
       ],
-      placedSections: {
+      shipSections: {
         bridge: { destroyed: false },
         engines: { destroyed: true },
       },
@@ -84,7 +84,7 @@ function makePlayerStates() {
         lane3: [{ id: 'p2d2', name: 'Bomber', attack: 5, speed: 1, hull: 5 }],
       },
       hand: [],
-      placedSections: {
+      shipSections: {
         bridge: { destroyed: false },
         engines: { destroyed: false },
       },
@@ -360,6 +360,23 @@ describe('computeChainTargets', () => {
     // player1: bridge undestroyed, engines destroyed
     expect(targets).toHaveLength(1);
     expect(targets[0].id).toBe('bridge');
+  });
+
+  it('uses section key as id/name even when section template has its own id field', () => {
+    const effect = { type: 'HEAL_HULL', targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } };
+    const states = makePlayerStates();
+    // Simulate real game data where sections have template ids
+    states.player1.shipSections = {
+      bridge: { id: 'BRIDGE_001', destroyed: false, hull: 5, maxHull: 8 },
+      engines: { id: 'ENGINES_001', destroyed: false, hull: 3, maxHull: 6 },
+    };
+    const targets = computeChainTargets(effect, 0, [], null, makeContext({ playerStates: states }));
+    expect(targets).toHaveLength(2);
+    // id and name must be the section key, not the template id
+    expect(targets[0].id).toBe('bridge');
+    expect(targets[0].name).toBe('bridge');
+    expect(targets[1].id).toBe('engines');
+    expect(targets[1].name).toBe('engines');
   });
 });
 

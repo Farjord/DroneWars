@@ -24,6 +24,7 @@ export class LaneControlCalculator {
    */
   static calculateLaneControl(player1State, player2State) {
     const laneControl = {};
+    const counts = {};
 
     // Calculate control for each lane independently
     ['lane1', 'lane2', 'lane3'].forEach(lane => {
@@ -40,8 +41,10 @@ export class LaneControlCalculator {
         laneControl[lane] = null;  // Tie or both empty
       }
 
-      debugLog('LANE_CONTROL', `${lane}: P1=${p1Count} drones, P2=${p2Count} drones, Control=${laneControl[lane]}`);
+      counts[lane] = { p1: p1Count, p2: p2Count, control: laneControl[lane] };
     });
+
+    debugLog('LANE_CONTROL', 'Lane control calculated', counts);
 
     return laneControl;
   }

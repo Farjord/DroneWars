@@ -63,7 +63,7 @@ const fullTechCollection = [
         trigger: 'ON_LANE_ATTACK',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
-        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'permanent' }, scope: 'TRIGGERING_DRONE' }]
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'temporary' }, scope: 'TRIGGERING_DRONE' }]
       }
     ]
   },

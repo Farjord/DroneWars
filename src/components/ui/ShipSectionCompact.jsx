@@ -22,6 +22,7 @@ const ShipSectionCompact = ({
   onMouseEnter,
   onMouseLeave,
   isCardTarget,
+  isAffectedSection,
   columnIndex,
   isTargetingMode,
   reallocationState,
@@ -119,6 +120,24 @@ const ShipSectionCompact = ({
           shipImage={stats.image}
         />
       </div>
+
+      {/* Affected section overlay — red glow for NONE-targeting cards (Crossfire, Encirclement) */}
+      {isAffectedSection && (
+        <div
+          className="animate-pulse"
+          style={{
+            position: 'absolute', inset: 0,
+            pointerEvents: 'none',
+            filter: 'drop-shadow(0 0 8px rgba(239,68,68,0.8)) drop-shadow(0 0 18px rgba(239,68,68,0.5))',
+          }}
+        >
+          <div style={{
+            width: '100%', height: '100%',
+            clipPath,
+            background: 'rgba(239,68,68,0.25)',
+          }} />
+        </div>
+      )}
 
       {/* Content layer — unclipped, interactive, constrained to safe zone */}
       <div style={{

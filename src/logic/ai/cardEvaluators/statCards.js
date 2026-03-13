@@ -154,7 +154,7 @@ export const evaluateRepeatingEffectCard = (card, target, context) => {
   let score = 0;
 
   let repeatCount = 0;
-  const condition = card.effects[0]?.condition || card.condition;
+  const condition = card.effects[0]?.repeatCondition;
 
   if (condition === 'OWN_DAMAGED_SECTIONS') {
     // Base of 1, plus additional for each damaged section

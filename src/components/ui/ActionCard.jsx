@@ -46,7 +46,6 @@ const ActionCard = ({
   isSelected,
   isDimmed,
   isDragging = false,
-  isCostSelectionTarget = false,
   hasMomentumGlow = false,
   mandatoryAction = null,
   excessCards = 0,
@@ -70,15 +69,14 @@ const ActionCard = ({
   const scaleStyle = scale !== 1.0 ? {
     transform: `scale(${scale})`,
     transformOrigin: 'center center',
-    backfaceVisibility: 'hidden',
-    WebkitFontSmoothing: 'antialiased'
+    backfaceVisibility: 'hidden'
   } : {};
 
   // 3D tilt parallax during drag + hover, with type-colored glow
   const typeKey = type?.toLowerCase() || 'upgrade';
-  const glowFilter = isDisabled ? null
-    : `drop-shadow(0 0 6px var(--card-${typeKey}-glow-dim)) drop-shadow(0 0 12px var(--card-${typeKey}-glow-dim))`;
-  const tiltRef = useCardTilt(isDragging, { glowFilter });
+  const glowShadow = isDisabled ? null
+    : `0 0 6px var(--card-${typeKey}-glow-dim), 0 0 12px var(--card-${typeKey}-glow-dim)`;
+  const tiltRef = useCardTilt(isDragging, { glowShadow });
 
   // Debug logging for ALL renders to diagnose re-rendering issue
   debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
@@ -100,11 +98,10 @@ const ActionCard = ({
           cardName: card.name,
           isPlayable,
           isMandatoryTarget,
-          isCostSelectionTarget,
-          willCallOnClick: isPlayable || isMandatoryTarget || isCostSelectionTarget
+          willCallOnClick: isPlayable || isMandatoryTarget
         });
 
-        if ((isPlayable || isMandatoryTarget || isCostSelectionTarget) && onClick && !isDragging) {
+        if ((isPlayable || isMandatoryTarget) && onClick && !isDragging) {
           onClick(card);
         } else if (!onClick || isDragging) {
           debugLog('CARD_PLAY', `🚫 Card click blocked - ${!onClick ? 'onClick is null' : 'drag in progress'}: ${card.name}`, {
@@ -127,7 +124,6 @@ const ActionCard = ({
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
         ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
-        ${isCostSelectionTarget ? 'ring-2 ring-cyan-400' : ''}
       `}
       style={{
         width: '100%',
@@ -182,7 +178,7 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 rounded-md flex flex-col ${colors.descBorder}`}>
+          <div className={`mx-1 mb-1 flex-grow bg-black/80 border p-2 rounded-md flex flex-col ${colors.descBorder}`}>
             <div className="flex-grow">
               <ScalingText text={description} className="text-sm text-white leading-tight text-center font-exo font-normal" />
             </div>
@@ -194,7 +190,7 @@ const ActionCard = ({
               </div>
             )}
             {/* Dynamic Helper Text for lane control cards */}
-            {effect?.condition === 'LANES_CONTROLLED' && lanesControlled !== undefined && (
+            {effect?.repeatCondition === 'LANES_CONTROLLED' && lanesControlled !== undefined && (
               <div className="text-[10px] text-cyan-300 text-center mt-1">
                 (Currently {lanesControlled * (effect.effects?.[0]?.value || 1)} {getEffectLabel(card)})
               </div>

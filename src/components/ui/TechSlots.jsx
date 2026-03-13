@@ -9,6 +9,7 @@
 import React from 'react';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
 import fullTechCollection from '../../data/techData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 const SLOT_COUNT = 5;
 
@@ -66,7 +67,7 @@ if (typeof document !== 'undefined') {
  * Circular image + faction-colored border + optional glow.
  * Exposes data-drone-id for animation system targeting.
  */
-const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick }) => {
+const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick, draggedActionCard, onActionCardDrop, owner }) => {
   const fc = FACTION_COLORS[faction];
 
   return (
@@ -97,6 +98,13 @@ const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick }) =
             : 'techSlotShimmer 3s ease-in-out infinite',
       }}
       onClick={onClick ? () => onClick(techDrone) : undefined}
+      onMouseUp={(e) => {
+        if (draggedActionCard && onActionCardDrop) {
+          debugLog('DRAG_DROP_DEPLOY', '🎯 Tech slot action card drop detected', { techName: techDrone.name, owner });
+          onActionCardDrop(techDrone, 'tech', owner);
+          e.stopPropagation();
+        }
+      }}
       title={techDrone.name}
     >
       <img
@@ -117,7 +125,7 @@ const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick }) =
   );
 };
 
-export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], onTechClick }) {
+export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], onTechClick, draggedActionCard, onActionCardDrop, owner }) {
   return (
     <div style={getContainerStyle(faction)}>
       {Array.from({ length: SLOT_COUNT }, (_, i) => {
@@ -136,6 +144,9 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
               highlighted={highlightedSlots.includes(tech.id)}
               exhausted={isExhausted}
               onClick={onTechClick}
+              draggedActionCard={draggedActionCard}
+              onActionCardDrop={onActionCardDrop}
+              owner={owner}
             />
           );
         }

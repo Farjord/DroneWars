@@ -42,6 +42,7 @@ describe('processAiAction: play_card with moveData', () => {
     expect(mockCtx.processCardPlay).toHaveBeenCalledWith({
       card,
       targetId: undefined,
+      targetOwner: null,
       playerId: 'player2',
       chainSelections: [{
         target: drone,
@@ -70,6 +71,7 @@ describe('processAiAction: play_card with moveData', () => {
     expect(callArg).toEqual({
       card,
       targetId: 'drone-2',
+      targetOwner: null,
       playerId: 'player2',
     });
     expect(callArg).not.toHaveProperty('chainSelections');

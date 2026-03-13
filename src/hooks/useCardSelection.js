@@ -23,6 +23,7 @@ const useCardSelection = ({
   const [validCardTargets, setValidCardTargets] = useState([]);
   const [validAbilityTargets, setValidAbilityTargets] = useState([]);
   const [affectedDroneIds, setAffectedDroneIds] = useState([]);
+  const [affectedSectionIds, setAffectedSectionIds] = useState([]);
   const [hoveredLane, setHoveredLane] = useState(null);
   const [cardConfirmation, setCardConfirmation] = useState(null);
   const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null);
@@ -37,6 +38,8 @@ const useCardSelection = ({
     selectChainDestination,
     selectChainMultiTarget,
     confirmChainMultiSelect,
+    setPendingChainTarget,
+    confirmChainTarget,
     cancelEffectChain,
   } = useEffectChain({
     playerStates: gameState ? { player1: gameState.player1, player2: gameState.player2 } : {},
@@ -58,6 +61,7 @@ const useCardSelection = ({
     setSelectedCard(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
+    setAffectedSectionIds([]);
     cancelEffectChain();
   }, [selectedCard, cancelEffectChain]);
 
@@ -66,6 +70,7 @@ const useCardSelection = ({
     setSelectedCard(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
+    setAffectedSectionIds([]);
   }, []);
 
   // --- Effects ---
@@ -88,6 +93,12 @@ const useCardSelection = ({
 
     // Effect chain phase — valid targets computed by useEffectChain
     if (effectChainState && !effectChainState.complete) {
+      debugLog('CARD_PLAY_TRACE', '[CHAIN-TARGETS] Syncing validCardTargets from chain', {
+        chainIndex: effectChainState.currentIndex,
+        subPhase: effectChainState.subPhase,
+        targetCount: effectChainState.validTargets.length,
+        targetIds: effectChainState.validTargets.slice(0, 5).map(t => `${t.id}:${t.owner}`),
+      });
       setValidAbilityTargets([]);
       setValidCardTargets(effectChainState.validTargets);
       return;
@@ -157,6 +168,7 @@ const useCardSelection = ({
     validCardTargets,
     validAbilityTargets,
     affectedDroneIds,
+    affectedSectionIds,
     hoveredLane,
     cardConfirmation,
     destroyUpgradeModal,
@@ -168,6 +180,7 @@ const useCardSelection = ({
     setValidCardTargets,
     setValidAbilityTargets,
     setAffectedDroneIds,
+    setAffectedSectionIds,
     setHoveredLane,
     setCardConfirmation,
     setDestroyUpgradeModal,
@@ -185,6 +198,8 @@ const useCardSelection = ({
     selectChainDestination,
     selectChainMultiTarget,
     confirmChainMultiSelect,
+    setPendingChainTarget,
+    confirmChainTarget,
     cancelEffectChain,
   };
 };

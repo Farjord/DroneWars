@@ -103,10 +103,10 @@ function resolveEffectValues(effectData, effectResults) {
   return resolved;
 }
 
-// Checks board entities (drones) and ship sections. Non-board targets (cards in hand, lanes) always pass.
+// Checks board entities (drones, tech) and ship sections. Non-board targets (cards in hand, lanes) always pass.
 function isTargetAlive(target, playerStates) {
   if (!target || !target.id) return true;
-  // Only drones/ship sections have hull — skip alive check for non-hull targets (cards, lanes)
+  // Only drones/ship sections/tech have hull — skip alive check for non-hull targets (cards, lanes)
   if (!('hull' in target)) return true;
   for (const playerId of ['player1', 'player2']) {
     // Check drones on board
@@ -114,35 +114,16 @@ function isTargetAlive(target, playerStates) {
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       if ((board[lane] || []).some(d => d.id === target.id)) return true;
     }
-    // Check ship sections
-    if (playerStates[playerId]?.shipSections?.[target.id]) return true;
-  }
-  return false;
-}
-
-// --- Forward-Propagation Helper ---
-
-/**
- * Move a drone by ID to a new lane within a playerStates snapshot.
- * Mutates playerStates in-place. Used to forward-propagate card movements
- * into earlier snapshots that were captured before the move occurred.
- */
-function _applyDroneMovement(playerStates, droneId, toLane) {
-  for (const pid of ['player1', 'player2']) {
-    const board = playerStates[pid]?.dronesOnBoard;
-    if (!board) continue;
+    // Check ship sections (target.id may be instance ID like 'BRIDGE_001', target.name is section key like 'bridge')
+    const sections = playerStates[playerId]?.shipSections;
+    if (sections?.[target.id] || sections?.[target.name]) return true;
+    // Check tech slots
+    const techSlots = playerStates[playerId]?.techSlots || {};
     for (const lane of ['lane1', 'lane2', 'lane3']) {
-      const drones = board[lane] || [];
-      const idx = drones.findIndex(d => d.id === droneId);
-      if (idx !== -1) {
-        if (lane === toLane) return;
-        const [drone] = drones.splice(idx, 1);
-        if (!board[toLane]) board[toLane] = [];
-        board[toLane].push(drone);
-        return;
-      }
+      if ((techSlots[lane] || []).some(t => t.id === target.id)) return true;
     }
   }
+  return false;
 }
 
 // --- Main Processor ---
@@ -222,9 +203,9 @@ class EffectChainProcessor {
     });
     const cardPreambleEvents = [];        // CARD_REVEAL, CARD_VISUAL (prepended to first step)
     const effectAnimSteps = [];            // per-effect animation steps for buildAnimationSequence
+    const isMultiEffectChain = effects.length > 1;
     let dynamicGoAgain = false;
     const effectResults = [];
-    const cardMovements = [];              // {droneId, toLane, effectIndex} for forward-propagation
 
     // CARD_REVEAL animation
     cardPreambleEvents.push({
@@ -295,6 +276,19 @@ class EffectChainProcessor {
       }
     }
 
+    // Post-cost STATE_SNAPSHOT: when a card has a cost, emit an intermediate state
+    // so usePrevious-based KPI popups can detect the energy/momentum decrease before
+    // effects (which may restore resources) apply.
+    const hasCost = (card.cost > 0) || (card.momentumCost > 0);
+    if (hasCost) {
+      effectAnimSteps.push({
+        actionEvents: [...cardPreambleEvents],
+        triggerEvents: [],
+        intermediateState: JSON.parse(JSON.stringify(currentStates)),
+        postSnapshotEvents: [],
+      });
+    }
+
     // 2. Process each effect in order
     for (let i = 0; i < effects.length; i++) {
       const chainEffect = effects[i];
@@ -326,7 +320,7 @@ class EffectChainProcessor {
       if (conditionals && conditionals.length > 0) {
         const preResult = this.conditionalProcessor.processPreConditionals(
           conditionals, effectData,
-          { target: selection.target, actingPlayerId: playerId, playerStates: currentStates, placedSections, callbacks, card }
+          { target: selection.target, actingPlayerId: playerId, playerStates: currentStates, placedSections, callbacks, card, actionsTakenThisTurn: callbacks?.actionsTakenThisTurn || 0 }
         );
         effectData = preResult.modifiedEffect;
         currentStates = preResult.newPlayerStates;
@@ -349,20 +343,6 @@ class EffectChainProcessor {
       let result;
       if (effectData.type === 'SINGLE_MOVE' || effectData.type === 'MULTI_MOVE') {
         result = this.executeChainMovement(effectData, selection, playerId, currentStates, ctx);
-        // Record card movements for forward-propagation into earlier snapshots
-        // Only record movements that actually succeeded — failed moves (effectResult: null)
-        // must not corrupt intermediate visual state snapshots
-        if (result.effectResult) {
-          if (effectData.type === 'SINGLE_MOVE') {
-            cardMovements.push({ droneId: selection.target.id, toLane: selection.destination, effectIndex: i });
-          } else {
-            // MULTI_MOVE: all drones share the same destination lane
-            const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
-            for (const d of drones) {
-              cardMovements.push({ droneId: d.id, toLane: selection.destination, effectIndex: i });
-            }
-          }
-        }
       } else if (effectData.type === 'DISCARD_CARD') {
         result = this.executeChainDiscard(selection, playerId, currentStates);
       } else {
@@ -384,6 +364,16 @@ class EffectChainProcessor {
           effectResults.push(null);
           continue;
         }
+
+        // If effect needs client-side selection (e.g. SEARCH_AND_DRAW for human), pause the chain
+        if (result.needsCardSelection) {
+          return {
+            newPlayerStates: playerStates, // Return ORIGINAL states (pre-cost) — completion handler pays costs
+            shouldEndTurn: false,
+            animationEvents: [],
+            needsCardSelection: result.needsCardSelection,
+          };
+        }
       }
 
       currentStates = result.newPlayerStates;
@@ -399,6 +389,7 @@ class EffectChainProcessor {
           placedSections,
           callbacks,
           card,
+          actionsTakenThisTurn: callbacks?.actionsTakenThisTurn || 0,
         };
         const postResult = this.conditionalProcessor.processPostConditionals(
           conditionals, postContext, result.effectResult || null
@@ -432,7 +423,7 @@ class EffectChainProcessor {
       const nonTeleportEvents = allEffectActionEvents.filter(e => e.type !== 'TELEPORT_IN');
 
       // Capture intermediate state for this effect's STATE_SNAPSHOT
-      const intermediateState = (effectTriggerEvents.length > 0 || teleportEvents.length > 0)
+      const intermediateState = (isMultiEffectChain || effectTriggerEvents.length > 0)
         ? (result.preTriggerState || JSON.parse(JSON.stringify(currentStates)))
         : null;
 
@@ -461,20 +452,6 @@ class EffectChainProcessor {
         processor: this.effectRouter.processors?.[effectData.type]?.constructor.name,
       });
 
-    }
-
-    // Forward-propagate later card movements into earlier steps' intermediateState.
-    // When effect[0] captures intermediateState but effect[1] moves a drone, the snapshot is stale.
-    // This patches all earlier snapshots so drones appear in their correct lanes before triggers fire.
-    if (cardMovements.length > 0) {
-      for (let si = 0; si < effectAnimSteps.length; si++) {
-        const step = effectAnimSteps[si];
-        if (!step.intermediateState) continue;
-        const laterMoves = cardMovements.filter(m => m.effectIndex > step.effectIndex);
-        for (const move of laterMoves) {
-          _applyDroneMovement(step.intermediateState, move.droneId, move.toLane);
-        }
-      }
     }
 
     // Fire ON_CARD_PLAY triggers after effects resolve, before finalizing.

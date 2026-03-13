@@ -71,6 +71,7 @@ class GameEngine {
         actionAnims: animations.actionAnimations?.length || 0,
         systemAnims: animations.systemAnimations?.length || 0,
       });
+
       await this._emitToClients(state, animations);
 
       return { state, animations, result };
@@ -111,6 +112,7 @@ class GameEngine {
         systemAnimations: (animations.systemAnimations || []).map(redactAnim),
       };
       this._personalizeAnnouncements(clientAnimations, playerId, state);
+
       promises.push(
         Promise.resolve(callback({ state: redactedState, animations: clientAnimations }))
           .catch(err => debugLog('STATE_SYNC', `Client ${playerId} delivery failed`, { error: err.message }))
