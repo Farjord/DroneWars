@@ -9,11 +9,7 @@
 
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
-
-// Total phase display duration: 1500ms display + 300ms fade out
-const PHASE_DISPLAY_DURATION = 1800;
-// Compound scramble: 1200ms hold + 500ms scramble + 1600ms hold + 300ms fade out
-const COMPOUND_DISPLAY_DURATION = 3600;
+import { PHASE_DISPLAY_DURATION, computeCompoundDuration, SCRAMBLE_DURATION_MS, STAGE_HOLD_MS, FADE_OUT_MS } from '../config/announcementTiming.js';
 
 class AnnouncementQueue {
   constructor() {
@@ -22,6 +18,7 @@ class AnnouncementQueue {
     this.currentAnimation = null;
     this.listeners = new Map();
     this._held = true; // Start held — release() called when UI subscriber mounts
+    this._idleWaiters = [];
   }
 
   /**
@@ -66,6 +63,26 @@ class AnnouncementQueue {
     return this.queue.length;
   }
 
+  /**
+   * Returns a Promise that resolves when the queue is empty and not playing.
+   * Resolves immediately if already idle.
+   */
+  waitUntilIdle() {
+    if (this._held || (!this.isPlayingAnimations && this.queue.length === 0)) {
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      this._idleWaiters.push(resolve);
+    });
+  }
+
+  _resolveIdleWaiters() {
+    if (this._idleWaiters.length === 0) return;
+    const waiters = this._idleWaiters;
+    this._idleWaiters = [];
+    waiters.forEach(resolve => resolve());
+  }
+
   clear() {
     debugLog('TIMING', '🗑️ [ANNOUNCEMENT QUEUE] Clearing queue', {
       clearedCount: this.queue.length,
@@ -74,6 +91,7 @@ class AnnouncementQueue {
     this.isPlayingAnimations = false;
     this.currentAnimation = null;
     this._held = true; // Re-hold on clear — next game must call release() after UI mounts
+    this._resolveIdleWaiters();
     this.emit('playbackStateChanged', false);
     // Note: Do NOT clear listeners — UI subscriptions persist across game resets.
   }
@@ -144,26 +162,67 @@ class AnnouncementQueue {
       this.currentAnimation = null;
       this.emit('playbackStateChanged', false);
       this.emit('complete');
+      this._resolveIdleWaiters();
       return;
     }
 
-    this.currentAnimation = this.queue.shift();
+    // Auto-merge: when 2+ items are queued, merge into a single compound chain
+    if (this.queue.length >= 2) {
+      const items = this.queue.splice(0);
+      this.currentAnimation = {
+        id: `chain-${crypto.randomUUID()}`,
+        phaseName: items.map(i => i.phaseName).join('+'),
+        compound: true,
+        stages: items.map(item => ({
+          phaseText: item.phaseText,
+          subtitle: item.subtitle,
+          variant: item.variant || null,
+          subtitleVariant: item.subtitleVariant || null,
+        })),
+      };
+    } else {
+      this.currentAnimation = this.queue.shift();
+    }
+
     flowCheckpoint('ANNOUNCEMENT_PLAYING', {
       name: this.currentAnimation.phaseName,
-      text: this.currentAnimation.phaseText,
+      text: this.currentAnimation.phaseText || this.currentAnimation.stages?.[0]?.phaseText,
       remaining: this.queue.length,
     });
 
     debugLog('ANNOUNCE_TRACE', `🎬 PLAYING: ${this.currentAnimation.phaseName}`, {
-      phaseText: this.currentAnimation.phaseText,
+      phaseText: this.currentAnimation.phaseText || this.currentAnimation.stages?.[0]?.phaseText,
       subtitle: this.currentAnimation.subtitle || 'none',
+      compound: this.currentAnimation.compound || false,
+      stageCount: this.currentAnimation.stages?.length || 1,
       remaining: this.queue.length,
     });
 
     this.emit('animationStarted', this.currentAnimation);
 
-    const duration = this.currentAnimation.compound ? COMPOUND_DISPLAY_DURATION : PHASE_DISPLAY_DURATION;
+    const stages = this.currentAnimation.stages;
+    const duration = this.currentAnimation.compound
+      ? computeCompoundDuration(stages.length)
+      : PHASE_DISPLAY_DURATION;
+
+    debugLog('ANNOUNCE_TRACE', `⏱️ QUEUE TIMER: waiting ${duration}ms`, {
+      compound: this.currentAnimation.compound || false,
+      stageCount: stages?.length || 1,
+      formula: this.currentAnimation.compound
+        ? `${stages.length} * (${SCRAMBLE_DURATION_MS} + ${STAGE_HOLD_MS}) + ${FADE_OUT_MS} = ${duration}`
+        : `PHASE_DISPLAY_DURATION = ${duration}`,
+      phaseText: this.currentAnimation.phaseText || null,
+      variant: this.currentAnimation.variant || null,
+      subtitleVariant: this.currentAnimation.subtitleVariant || null,
+      stages: stages?.map((s, i) => ({
+        i, text: s.phaseText, subtitle: s.subtitle, variant: s.variant, subtitleVariant: s.subtitleVariant,
+      })) || null,
+      startedAt: Date.now(),
+    });
+
     await new Promise(resolve => setTimeout(resolve, duration));
+
+    debugLog('ANNOUNCE_TRACE', '⏱️ QUEUE TIMER: resolved', { resolvedAt: Date.now() });
 
     // SAFETY: If clear() was called during the await, abort gracefully
     if (!this.currentAnimation) {

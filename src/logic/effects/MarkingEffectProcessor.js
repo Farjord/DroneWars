@@ -7,6 +7,8 @@
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
+import { selectTargets, hashString } from '../targeting/TargetSelector.js';
 
 /**
  * MarkingEffectProcessor
@@ -33,6 +35,9 @@ class MarkingEffectProcessor extends BaseEffectProcessor {
     this.logProcessStart(effect, context);
 
     if (effect.type === 'MARK_DRONE') {
+      if (effect.scope === 'ALL') {
+        return this.processMarkAllRandom(effect, context);
+      }
       return this.processMarkDrone(effect, context);
     }
 
@@ -82,6 +87,57 @@ class MarkingEffectProcessor extends BaseEffectProcessor {
         opponentId
       });
     }
+
+    return this.createResult(newPlayerStates);
+  }
+
+  /**
+   * Mark random unmarked enemy drones across all lanes
+   * Used by Target Acquisition card (scope: ALL, targeting.type: NONE)
+   *
+   * @param {Object} effect - Effect with targetSelection.count and targetSelection.method
+   * @param {Object} context - Effect execution context
+   * @returns {Object} Result with updated states
+   */
+  processMarkAllRandom(effect, context) {
+    const { actingPlayerId, playerStates, gameSeed, roundNumber, card } = context;
+    const newPlayerStates = this.clonePlayerStates(playerStates);
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+
+    // Gather all unmarked enemy drones across all lanes
+    const candidates = [];
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      for (const drone of newPlayerStates[opponentId].dronesOnBoard[lane]) {
+        if (!drone.isMarked) {
+          candidates.push(drone);
+        }
+      }
+    }
+
+    if (candidates.length === 0) {
+      debugLog('MARKING', '⚠️ No unmarked enemy drones to mark');
+      return this.createResult(newPlayerStates);
+    }
+
+    // Use seeded RNG for deterministic random selection
+    const discriminator = card?.instanceId || candidates.length;
+    const rng = SeededRandom.forTargetSelection(
+      { gameSeed: gameSeed ?? 12345, roundNumber },
+      typeof discriminator === 'string' ? hashString(discriminator) : discriminator
+    );
+
+    const selected = selectTargets(candidates, effect.targetSelection, rng);
+
+    // Mark the selected drones
+    for (const drone of selected) {
+      drone.isMarked = true;
+      debugLog('MARKING', `✅ Marked drone ${drone.id}`, { droneId: drone.id, opponentId });
+    }
+
+    debugLog('MARKING', `🎯 Target Acquisition marked ${selected.length} drones`, {
+      candidates: candidates.length,
+      marked: selected.length
+    });
 
     return this.createResult(newPlayerStates);
   }

@@ -324,6 +324,9 @@ export const CARD_EVALUATION = {
   THREAT_INCREASE_PER_POINT: 2,            // Per point of threat added
   THREAT_PER_DRONE_VALUE: 100,              // Per matching drone when perDrone is set
 
+  // Marking card evaluation
+  MARK_SYNERGY_BONUS_PER_CARD: 10,   // Bonus per mark-consuming card in hand
+
   // Status effect evaluation
   STATUS_MOVE_DENY_MULTIPLIER: 8,      // Per attack point (locked in place)
   STATUS_ATTACK_DENY_MULTIPLIER: 10,   // Per attack point (direct threat)

@@ -109,7 +109,7 @@ const fullDroneCollection = [
   upgradeSlots: 2 
 },
   {
-    name: 'Scorcher',
+    name: 'Manticore',
     class: 1,
     limit: 3,
     rebuildRate: 2.0,
@@ -118,13 +118,13 @@ const fullDroneCollection = [
     hull: 1,
     shields: 0,
     speed: 3,
-    image: '/DroneWars/img/Scorcher.png',
+    image: '/DroneWars/img/Manticore.png',
     abilities: [{
-      name: 'Lingering Burn',
-      description: 'End of round: Deal 1 damage to a random enemy drone in this lane.',
+      name: 'Stinger Missile',
+      description: 'End of round: Deal 2 damage to a random enemy drone in this lane.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_END',
-      effects: [{ type: 'DAMAGE', value: 1, targetSelection: { method: 'RANDOM', count: 1 }, scope: 'SAME_LANE', affinity: 'ENEMY' }]
+      effects: [{ type: 'DAMAGE', value: 2, targetSelection: { method: 'RANDOM', count: 1 }, scope: 'SAME_LANE', affinity: 'ENEMY' }]
     }],
     upgradeSlots: 1
   },

@@ -27,7 +27,7 @@ const DEBUG_CONFIG = {
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
     AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
     ANIMATIONS: false,           // Animation system
-    COMMITMENTS: false,          // Simultaneous phase commitments
+    COMMITMENTS: true,           // Simultaneous phase commitments
     COMBAT: true,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
     STATE_SYNC: false,          // State synchronization
@@ -44,7 +44,7 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details
     VALIDATION: false,           // State validation and reconciliation
     TIMING: false,               // High-resolution timing milestones with timestamps
-    ANNOUNCE_TRACE: false,       // Announcement queueing and playback tracing
+    ANNOUNCE_TRACE: true,        // Announcement queueing and playback tracing
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation
     FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending

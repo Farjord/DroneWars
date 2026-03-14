@@ -676,38 +676,6 @@ img {
   animation: cardRevealScanline 1.5s linear infinite;
 }
 
-/* Phase announcement animations */
-@keyframes phaseAnnouncementShine {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-@keyframes phaseAnnouncementScanline {
-  0% {
-    top: -10%;
-  }
-  100% {
-    top: 110%;
-  }
-}
-
-/* Phase announcement utility classes */
-.phase-announcement-text {
-  position: relative;
-}
-
-.phase-announcement-shine {
-  animation: phaseAnnouncementShine 2s linear infinite;
-}
-
-.phase-announcement-scanline-active {
-  animation: phaseAnnouncementScanline 2s linear infinite;
-}
-
 /* Game End Animations */
 @keyframes defeatGlow {
   0%, 100% {

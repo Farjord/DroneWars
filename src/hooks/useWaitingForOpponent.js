@@ -3,7 +3,7 @@
 // Monitors commitment status for simultaneous phases and shows/clears
 // the waiting overlay. Works uniformly for SP, VS, and multiplayer modes.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 
 const useWaitingForOpponent = ({
@@ -11,12 +11,9 @@ const useWaitingForOpponent = ({
   turnPhase,
   getLocalPlayerId,
   getOpponentPlayerId,
-  gameStateManager,
   phaseAnimationQueue,
-  passInfo,
 }) => {
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null);
-  const previousPhaseRef = useRef(null);
 
   // Ref mirrors state to avoid stale closures in event handlers
   const waitingPhaseRef = useRef(null);
@@ -25,96 +22,41 @@ const useWaitingForOpponent = ({
     setWaitingForPlayerPhase(value);
   };
 
-  // --- Effect 1: GameFlowManager subscription (host/local only) ---
-  // Clears waiting overlay when both players complete or when phase transitions
-  useEffect(() => {
-    if (gameStateManager.isRemoteClient()) return;
+  // Always-current ref so deferred onComplete closures can check if phase is still active
+  const turnPhaseRef = useRef(turnPhase);
+  turnPhaseRef.current = turnPhase;
 
-    const handlePhaseEvent = (event) => {
-      const { type, phase, playerId } = event;
+  // Tracks pending onComplete subscription so it can be cancelled on effect re-run
+  const pendingOnCompleteRef = useRef(null);
 
-      debugLog('PHASE_TRANSITIONS', `🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
+  // Derive a primitive string from commitments so React's shallow dep comparison
+  // always detects changes — even when the commitments object reference is reused.
+  const commitmentKey = useMemo(() => {
+    const c = gameState.commitments?.[turnPhase];
+    if (!c) return '';
+    const localId = getLocalPlayerId();
+    const opponentId = getOpponentPlayerId();
+    return `${turnPhase}:${c[localId]?.completed || false}-${c[opponentId]?.completed || false}`;
+  }, [turnPhase, gameState.commitments, getLocalPlayerId, getOpponentPlayerId]);
 
-      if (type === 'bothPlayersComplete') {
-        const { phase: completedPhase } = event;
-        debugLog('PHASE_TRANSITIONS', `🎯 Both players completed phase: ${completedPhase}`);
-
-        if (waitingPhaseRef.current === completedPhase) {
-          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay immediately for completed phase: ${completedPhase}`);
-          setWaitingPhase(null);
-        }
-      }
-
-      if (type === 'phaseTransition') {
-        const { newPhase, previousPhase } = event;
-        debugLog('PHASE_TRANSITIONS', `🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
-
-        debugLog('PHASE_TRANSITIONS', `🔍 Waiting overlay check: waitingForPlayerPhase="${waitingPhaseRef.current}", previousPhase="${previousPhase}", match=${waitingPhaseRef.current === previousPhase}`);
-        if (waitingPhaseRef.current === previousPhase) {
-          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay for phase: ${previousPhase}`);
-          setWaitingPhase(null);
-        } else if (waitingPhaseRef.current) {
-          debugLog('PHASE_TRANSITIONS', `⚠️ Waiting overlay NOT cleared: waiting for "${waitingPhaseRef.current}" but transition is from "${previousPhase}"`);
-        }
-      }
-    };
-
-    const unsubscribeGameFlow = gameStateManager.gameFlowManager?.subscribe(handlePhaseEvent);
-
-    return () => {
-      if (typeof unsubscribeGameFlow === 'function') {
-        unsubscribeGameFlow();
-      }
-    };
-  }, [gameStateManager]);
-
-  // --- Effect 2: Remote client phase transition detection ---
-  // Remote client watches turnPhase changes and synthesizes phaseTransition events locally
-  useEffect(() => {
-    if (!gameStateManager.isRemoteClient()) return;
-
-    const previousPhase = previousPhaseRef.current;
-
-    if (previousPhase === null) {
-      previousPhaseRef.current = turnPhase;
-      return;
-    }
-
-    if (previousPhase !== turnPhase) {
-      debugLog('PHASE_TRANSITIONS', `👁️ Remote client detected phase change: ${previousPhase} → ${turnPhase}`);
-
-      const syntheticEvent = {
-        type: 'phaseTransition',
-        newPhase: turnPhase,
-        previousPhase: previousPhase,
-        gameStage: gameState.gameStage,
-        roundNumber: gameState.roundNumber,
-        firstPlayerResult: null
-      };
-
-      const handlePhaseEvent = (event) => {
-        const { type } = event;
-
-        if (type === 'phaseTransition') {
-          const { newPhase, previousPhase } = event;
-          debugLog('PHASE_TRANSITIONS', `🔄 Remote client handling synthetic phase transition: ${previousPhase} → ${newPhase}`);
-
-          if (waitingPhaseRef.current === previousPhase) {
-            setWaitingPhase(null);
-          }
-        }
-      };
-
-      handlePhaseEvent(syntheticEvent);
-
-      previousPhaseRef.current = turnPhase;
-    }
-  }, [turnPhase, gameState.gameStage, gameState.roundNumber, passInfo, gameStateManager]);
-
-  // --- Effect 3: Simultaneous phase commitment monitoring (single source of truth) ---
+  // Commitment monitoring + failsafe clearing.
   // Shows waiting modal when local player committed but opponent hasn't.
-  // Clears it when both committed. No isMultiplayer guard — works for all modes.
+  // Clears it when both committed, or when phase advances past the waited phase.
   useEffect(() => {
+    debugLog('COMMITMENTS', 'useWaitingForOpponent effect fired', {
+      turnPhase,
+      commitmentKey,
+      waitingPhaseRef: waitingPhaseRef.current,
+      commitmentKeys: Object.keys(gameState.commitments || {}),
+      hasPendingOnComplete: !!pendingOnCompleteRef.current,
+    });
+
+    // Cancel any stale pending onComplete from previous effect run
+    if (pendingOnCompleteRef.current) {
+      pendingOnCompleteRef.current();
+      pendingOnCompleteRef.current = null;
+    }
+
     const localPlayerId = getLocalPlayerId();
     const opponentPlayerId = getOpponentPlayerId();
 
@@ -133,9 +75,14 @@ const useWaitingForOpponent = ({
             isPlaying: phaseAnimationQueue.isPlaying()
           });
           const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingPhase(phase);
+            // Guard: only show if phase hasn't advanced since we registered
+            if (turnPhaseRef.current === phase) {
+              setWaitingPhase(phase);
+            }
+            pendingOnCompleteRef.current = null;
             unsubscribe();
           });
+          pendingOnCompleteRef.current = unsubscribe;
         } else {
           setWaitingPhase(phase);
         }
@@ -150,7 +97,7 @@ const useWaitingForOpponent = ({
       debugLog('PHASE_TRANSITIONS', `Failsafe: clearing stale waiting modal for "${waitingPhaseRef.current}" — turnPhase is now "${turnPhase}"`);
       setWaitingPhase(null);
     }
-  }, [turnPhase, gameState.commitments, getLocalPlayerId, getOpponentPlayerId, phaseAnimationQueue]);
+  }, [turnPhase, commitmentKey, getLocalPlayerId, getOpponentPlayerId, phaseAnimationQueue]);
 
   return {
     waitingForPlayerPhase,

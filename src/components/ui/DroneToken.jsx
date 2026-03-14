@@ -233,7 +233,7 @@ const DroneToken = ({
     : getEffectiveStats(drone, lane);
   const { maxShields } = effectiveStats;
   const currentShields = drone.currentShields ?? maxShields;
-  const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');
+  const activeAbilities = baseDrone?.abilities?.filter(a => a.type === 'ACTIVE') ?? [];
 
   // Debug log interceptor glow state
   if (isPotentialInterceptor) {
@@ -383,7 +383,7 @@ const DroneToken = ({
                     ))}
                   </div>
                   <div className="flex w-full justify-center gap-0.5">
-                    {Array.from({ length: baseDrone.hull }).map((_, i) => {
+                    {Array.from({ length: baseDrone?.hull ?? drone.hull ?? 1 }).map((_, i) => {
                       const isFullHull = i < drone.hull;
                       const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-cyan-400';
                       const damagedHullColor = drone.isExhausted ? 'bg-gray-500' : 'bg-gray-400';

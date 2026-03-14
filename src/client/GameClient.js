@@ -7,7 +7,7 @@ import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
-import { extractAnnouncements, mergeCompoundAnnouncements } from '../utils/announcementUtils.js';
+import { extractAnnouncements } from '../utils/announcementUtils.js';
 
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
@@ -101,6 +101,13 @@ class GameClient extends GameServer {
 
     // Extract phase/pass announcements — route to AnnouncementQueue, not AnimationManager
     const { visualAnimations } = this._extractAndQueueAnnouncements(allAnimations);
+
+    // Announcements are integral to the phase lifecycle — wait for the overlay
+    // to complete before playing visual animations or applying state.
+    // Resolves immediately when no announcements were enqueued.
+    if (this.phaseAnimationQueue) {
+      await this.phaseAnimationQueue.waitUntilIdle();
+    }
 
     // Preserve local gameMode from current store state
     state = { ...state, gameMode: this.getState().gameMode, localPlayerId: this.playerId };
@@ -230,15 +237,14 @@ class GameClient extends GameServer {
    */
   _extractAndQueueAnnouncements(allAnimations) {
     const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
-    const merged = mergeCompoundAnnouncements(announcements);
 
     flowCheckpoint('ANNOUNCEMENTS_SPLIT', {
-      toQueue: merged.length,
+      toQueue: announcements.length,
       toVisual: visualAnimations.length,
     });
 
-    if (merged.length > 0 && this.phaseAnimationQueue) {
-      this.phaseAnimationQueue.enqueueAll(merged);
+    if (announcements.length > 0 && this.phaseAnimationQueue) {
+      this.phaseAnimationQueue.enqueueAll(announcements);
     }
 
     return { visualAnimations };

@@ -508,9 +508,7 @@ const App = ({ phaseAnimationQueue }) => {
     turnPhase,
     getLocalPlayerId,
     getOpponentPlayerId,
-    gameStateManager,
     phaseAnimationQueue,
-    passInfo,
   });
 
   // --- SHIELD ALLOCATION HOOK ---
@@ -749,11 +747,22 @@ const App = ({ phaseAnimationQueue }) => {
     if (!phaseAnimationQueue) return;
 
     const handleAnimationStarted = (animation) => {
+      debugLog('ANNOUNCE_TRACE', '⏱️ APP: animationStarted', {
+        phaseName: animation.phaseName,
+        compound: animation.compound || false,
+        stageCount: animation.stages?.length || 1,
+        phaseText: animation.phaseText,
+        variant: animation.variant,
+        subtitleVariant: animation.subtitleVariant,
+        stageVariants: animation.stages?.map(s => ({ text: s.phaseText, v: s.variant, sv: s.subtitleVariant })),
+      });
       setCurrentPhaseAnimation(animation);
       setPhaseAnnouncements([{
         id: animation.id,
         phaseText: animation.phaseText,
         subtitle: animation.subtitle,
+        variant: animation.variant || null,
+        subtitleVariant: animation.subtitleVariant || null,
         compound: animation.compound || false,
         stages: animation.stages || null,
         onComplete: () => {
@@ -763,6 +772,9 @@ const App = ({ phaseAnimationQueue }) => {
     };
 
     const handleAnimationEnded = (animation) => {
+      debugLog('ANNOUNCE_TRACE', '⏱️ APP: animationEnded — unmounting overlay', {
+        phaseName: animation.phaseName,
+      });
       setPhaseAnnouncements([]);
       setCurrentPhaseAnimation(null);
     };

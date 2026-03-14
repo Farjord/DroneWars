@@ -17,7 +17,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { personalizeAnnouncements, extractAnnouncements, mergeCompoundAnnouncements } from '../../utils/announcementUtils.js';
+import { personalizeAnnouncements, extractAnnouncements } from '../../utils/announcementUtils.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/slotDamageUtils.js';
 import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
@@ -260,10 +260,9 @@ class SinglePlayerCombatInitializer {
         personalizeAnnouncements(captured, 'player1', gameStateManager.getState());
         const allAnims = [...(captured.actionAnimations || []), ...(captured.systemAnimations || [])];
         const { announcements } = extractAnnouncements(allAnims);
-        const merged = mergeCompoundAnnouncements(announcements);
 
-        if (merged.length > 0) {
-          gfm.phaseAnimationQueue.enqueueAll(merged);
+        if (announcements.length > 0) {
+          gfm.phaseAnimationQueue.enqueueAll(announcements);
         }
       }
 

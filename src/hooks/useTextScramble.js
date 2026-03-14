@@ -12,11 +12,12 @@ const DEFAULT_DURATION_MS = 500;
  * @param {Object} options
  * @param {boolean} options.isActive - When true, begins scrambling from previous text to target
  * @param {number} [options.duration=500] - Scramble duration in milliseconds
+ * @param {string} [options.initialSource] - Override initial source text (e.g. '' for scramble-in from empty)
  * @returns {string} The current display text (scrambled or settled)
  */
-export default function useTextScramble(targetText, { isActive, duration = DEFAULT_DURATION_MS }) {
-  const [displayText, setDisplayText] = useState(targetText);
-  const sourceRef = useRef(targetText);
+export default function useTextScramble(targetText, { isActive, duration = DEFAULT_DURATION_MS, initialSource }) {
+  const [displayText, setDisplayText] = useState(initialSource ?? targetText);
+  const sourceRef = useRef(initialSource ?? targetText);
   const rafRef = useRef(null);
   const startTimeRef = useRef(null);
 
@@ -78,7 +79,18 @@ export default function useTextScramble(targetText, { isActive, duration = DEFAU
 
     rafRef.current = requestAnimationFrame(animate);
 
+    // Fallback: if rAF is throttled (background tab), force-complete after duration
+    const fallbackTimer = setTimeout(() => {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      setDisplayText(targetText);
+      sourceRef.current = targetText;
+    }, duration + 50);
+
     return () => {
+      clearTimeout(fallbackTimer);
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;

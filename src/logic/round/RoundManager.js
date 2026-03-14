@@ -167,10 +167,10 @@ class RoundManager {
    * Process ON_ROUND_END triggered abilities for all drones
    * Called during roundEnd phase after both players pass
    *
-   * Processing order:
-   * 1. First player of current round processes first
-   * 2. Other player processes second
-   * 3. Within each player, process lane1 → lane2 → lane3
+   * Processing order (lane-first):
+   * 1. Sweep lanes left-to-right: lane1 → lane2 → lane3
+   * 2. Within each lane: tech triggers before drone triggers
+   * 3. Within each card type: first player of round before second player
    *
    * Delegates to TriggerProcessor for effect routing and trigger resolution.
    *
@@ -187,11 +187,13 @@ class RoundManager {
     };
     const allAnimationEvents = [];
 
-    // Process first player of the round first, then the other player
+    // Lane-first ordering: sweep lanes left-to-right, tech before drones, first player before second
     const otherPlayer = firstPlayerOfRound === 'player1' ? 'player2' : 'player1';
-    for (const playerId of [firstPlayerOfRound, otherPlayer]) {
-      for (const lane of ['lane1', 'lane2', 'lane3']) {
-        // Process tech slots BEFORE drones (so e.g. TI auto-destructs before drone readying)
+    const playerOrder = [firstPlayerOfRound, otherPlayer];
+
+    for (const lane of ['lane1', 'lane2', 'lane3']) {
+      // Tech triggers — first player then second player
+      for (const playerId of playerOrder) {
         const techs = currentStates[playerId].techSlots?.[lane] || [];
         for (const tech of techs) {
           const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
@@ -212,7 +214,10 @@ class RoundManager {
             }
           }
         }
+      }
 
+      // Drone triggers — first player then second player
+      for (const playerId of playerOrder) {
         const drones = currentStates[playerId].dronesOnBoard?.[lane] || [];
 
         for (const drone of drones) {

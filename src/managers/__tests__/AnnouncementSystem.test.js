@@ -4,8 +4,7 @@ vi.mock('../../utils/debugLogger.js', () => ({ debugLog: vi.fn(), timingLog: vi.
 vi.mock('../../utils/flowVerification.js', () => ({ flowCheckpoint: vi.fn(), resetFlowSeq: vi.fn() }));
 
 import AnnouncementQueue from '../AnnouncementQueue.js';
-
-const PHASE_DISPLAY_DURATION = 1800;
+import { computeCompoundDuration, PHASE_DISPLAY_DURATION } from '../../config/announcementTiming.js';
 
 function makeAnnouncement(phaseName, phaseText, subtitle = null) {
   return { id: `test-${crypto.randomUUID()}`, phaseName, phaseText, subtitle };
@@ -22,7 +21,16 @@ function createMockConsumer(queue) {
     isShowingAnnouncement: false,
   };
   queue.on('animationStarted', (a) => {
-    consumer.currentDisplay = { phaseName: a.phaseName, phaseText: a.phaseText, subtitle: a.subtitle };
+    // Handle both standard and compound announcements
+    if (a.compound && a.stages) {
+      consumer.currentDisplay = {
+        phaseName: a.phaseName,
+        compound: true,
+        stages: a.stages,
+      };
+    } else {
+      consumer.currentDisplay = { phaseName: a.phaseName, phaseText: a.phaseText, subtitle: a.subtitle };
+    }
     consumer.isShowingAnnouncement = true;
   });
   queue.on('animationEnded', () => {
@@ -44,7 +52,7 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     queue = new AnnouncementQueue();
-    queue.release(); // Tests expect auto-play unless explicitly testing hold/release
+    queue.release();
     consumer = createMockConsumer(queue);
   });
 
@@ -64,19 +72,22 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
       expect(consumer.currentDisplay.phaseName).toBe('ACTION');
     });
 
-    it('plays items in FIFO order through the consumer', async () => {
-      const order = [];
-      queue.on('animationStarted', (a) => order.push(a.phaseName));
-
+    it('merges multiple enqueued items into compound with stages in FIFO order', async () => {
       queue.enqueueAll([
         makeAnnouncement('ACTION', 'Action Phase'),
         makeAnnouncement('UPKEEP', 'Upkeep Phase'),
         makeAnnouncement('DEPLOYMENT', 'Deployment Phase'),
       ]);
 
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 3);
+      expect(consumer.currentDisplay.compound).toBe(true);
+      expect(consumer.currentDisplay.stages).toHaveLength(3);
+      expect(consumer.currentDisplay.stages[0].phaseText).toBe('Action Phase');
+      expect(consumer.currentDisplay.stages[1].phaseText).toBe('Upkeep Phase');
+      expect(consumer.currentDisplay.stages[2].phaseText).toBe('Deployment Phase');
 
-      expect(order).toEqual(['ACTION', 'UPKEEP', 'DEPLOYMENT']);
+      // 3-stage compound completes
+      await vi.advanceTimersByTimeAsync(computeCompoundDuration(3));
+      expect(consumer.isShowingAnnouncement).toBe(false);
     });
 
     it('consumer sees idle state after last item finishes', async () => {
@@ -93,20 +104,24 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
   // =========================================
   describe('mid-playback enqueue', () => {
     it('new items wait for current, then play through consumer', async () => {
-      const order = [];
-      queue.on('animationStarted', (a) => order.push(a.phaseName));
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
 
       queue.enqueue(makeAnnouncement('ACTION', 'Action Phase'));
 
       // Halfway through first animation, enqueue another
       await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION / 2);
       queue.enqueue(makeAnnouncement('UPKEEP', 'Upkeep Phase'));
-      expect(order).toEqual(['ACTION']); // second hasn't started yet
+      expect(started).toHaveLength(1); // second hasn't started yet
 
-      // Finish both
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 2);
+      // Finish first
+      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION / 2);
+      // Now second should start as standard (solo item)
+      expect(started).toHaveLength(2);
+      expect(started[1].phaseName).toBe('UPKEEP');
 
-      expect(order).toEqual(['ACTION', 'UPKEEP']);
+      // Finish second
+      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
       expect(consumer.isShowingAnnouncement).toBe(false);
     });
   });
@@ -148,17 +163,18 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
   });
 
   // =========================================
-  // 4. Batch enqueue (enqueueAll)
+  // 4. Batch enqueue (enqueueAll) — auto-merge
   // =========================================
   describe('batch enqueue', () => {
-    it('plays all items and fires complete once', async () => {
+    it('plays batch as compound and fires complete once', async () => {
       queue.enqueueAll([
         makeAnnouncement('ROUND', 'Round 2'),
         makeAnnouncement('UPKEEP', 'Upkeep Phase'),
         makeAnnouncement('DEPLOYMENT', 'Deployment Phase'),
       ]);
 
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 3);
+      // 3-stage compound duration
+      await vi.advanceTimersByTimeAsync(computeCompoundDuration(3));
 
       expect(consumer.history).toEqual(['[playback-complete]']);
       expect(consumer.isShowingAnnouncement).toBe(false);
@@ -175,10 +191,10 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
   // 5. Event emission
   // =========================================
   describe('event emission', () => {
-    it('emits full lifecycle for each announcement', async () => {
+    it('emits full lifecycle for compound announcement', async () => {
       const events = [];
-      queue.on('animationStarted', (a) => events.push(`start:${a.phaseName}`));
-      queue.on('animationEnded', (a) => events.push(`end:${a.phaseName}`));
+      queue.on('animationStarted', (a) => events.push(`start:${a.compound ? 'compound' : a.phaseName}`));
+      queue.on('animationEnded', (a) => events.push(`end:${a.compound ? 'compound' : a.phaseName}`));
       queue.on('playbackStateChanged', (v) => events.push(`playing:${v}`));
       queue.on('complete', () => events.push('complete'));
 
@@ -187,14 +203,13 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
         makeAnnouncement('UPKEEP', 'Upkeep Phase'),
       ]);
 
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 2);
+      // 2-stage compound
+      await vi.advanceTimersByTimeAsync(computeCompoundDuration(2));
 
       expect(events).toEqual([
         'playing:true',
-        'start:ACTION',
-        'end:ACTION',
-        'start:UPKEEP',
-        'end:UPKEEP',
+        'start:compound',
+        'end:compound',
         'playing:false',
         'complete',
       ]);
@@ -219,28 +234,24 @@ describe('AnnouncementSystem (integration with mock consumer)', () => {
   // 6. End-to-end: full round transition
   // =========================================
   describe('end-to-end round transition', () => {
-    it('plays actionComplete -> round -> upkeep -> deployment in sequence', async () => {
-      const order = [];
-      queue.on('animationStarted', (a) => order.push(a.phaseName));
-
-      // Simulate server sending a batch of round-transition announcements
+    it('merges round transition batch into compound with all stages', async () => {
       queue.enqueueAll([
-        makeAnnouncement('ACTION_COMPLETE', 'All Actions Resolved'),
-        makeAnnouncement('ROUND', 'Round 3', 'You go first'),
+        makeAnnouncement('END_OF_ROUND', 'END OF ROUND', 'Action End of Round Triggers'),
+        makeAnnouncement('ROUND_TRANSITION', 'TRANSITIONING TO ROUND 3'),
         makeAnnouncement('UPKEEP', 'Upkeep Phase', 'Cards drawn, energy restored'),
         makeAnnouncement('DEPLOYMENT', 'Deployment Phase'),
       ]);
 
-      // Consumer sees first announcement immediately
-      expect(consumer.currentDisplay.phaseName).toBe('ACTION_COMPLETE');
+      // Consumer sees compound immediately
+      expect(consumer.currentDisplay.compound).toBe(true);
+      expect(consumer.currentDisplay.stages).toHaveLength(4);
+      expect(consumer.currentDisplay.stages[0].phaseText).toBe('END OF ROUND');
+      expect(consumer.currentDisplay.stages[0].subtitle).toBe('Action End of Round Triggers');
+      expect(consumer.currentDisplay.stages[1].phaseText).toBe('TRANSITIONING TO ROUND 3');
 
-      // Subtitle passes through for personalized announcements
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
-      expect(consumer.currentDisplay.subtitle).toBe('You go first');
+      // 4-stage compound completes
+      await vi.advanceTimersByTimeAsync(computeCompoundDuration(4));
 
-      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 3);
-
-      expect(order).toEqual(['ACTION_COMPLETE', 'ROUND', 'UPKEEP', 'DEPLOYMENT']);
       expect(consumer.history).toEqual(['[playback-complete]']);
       expect(consumer.isShowingAnnouncement).toBe(false);
     });

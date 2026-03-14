@@ -139,15 +139,12 @@ export async function processPhaseTransition(payload, ctx) {
     deployment: 'DEPLOYMENT PHASE',
     deploymentComplete: 'DEPLOYMENT COMPLETE',
     action: 'ACTION PHASE',
-    actionComplete: 'ACTION PHASE COMPLETE'
   };
 
   if (phaseTextMap[newPhase]) {
     const phaseText = phaseTextMap[newPhase];
     const subtitle = newPhase === 'roundInitialization'
       ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
-      : newPhase === 'actionComplete'
-      ? 'Transitioning to Next Round'
       : null;
 
     await ctx.executeAndCaptureAnimations([{

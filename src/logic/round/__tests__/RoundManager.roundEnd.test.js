@@ -209,6 +209,88 @@ describe('RoundManager - processRoundEndTriggers', () => {
 
       expect(callOrder).toEqual(['lane1', 'lane2', 'lane3']);
     });
+
+    it('should process triggers lane-first, not player-first', () => {
+      const callOrder = [];
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callOrder.push({ player: ctx.actingPlayerId, lane: ctx.lane });
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      // player1 has drone only in lane3, player2 has drone only in lane1
+      const player1State = createPlayerState({ lane3: [createDrone({ id: 'p1_l3' })] });
+      const player2State = createPlayerState({ lane1: [createDrone({ id: 'p2_l1' })] });
+
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, null, 'player1');
+
+      // Lane-first: lane1 processes before lane3, regardless of player order
+      expect(callOrder).toEqual([
+        { player: 'player2', lane: 'lane1' },
+        { player: 'player1', lane: 'lane3' }
+      ]);
+    });
+
+    it('should process all tech before any drones within each lane (across both players)', () => {
+      const callOrder = [];
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callOrder.push(ctx.triggeringDrone.id);
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      const player1State = {
+        ...createPlayerState({ lane1: [createDrone({ id: 'p1_drone' })] }),
+        techSlots: { lane1: [createDrone({ id: 'p1_tech', isTech: true })], lane2: [], lane3: [] }
+      };
+      const player2State = {
+        ...createPlayerState({ lane1: [createDrone({ id: 'p2_drone' })] }),
+        techSlots: { lane1: [createDrone({ id: 'p2_tech', isTech: true })], lane2: [], lane3: [] }
+      };
+
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, null, 'player1');
+
+      // All tech fires before any drones: p1_tech, p2_tech, then p1_drone, p2_drone
+      expect(callOrder).toEqual(['p1_tech', 'p2_tech', 'p1_drone', 'p2_drone']);
+    });
+
+    it('should apply full lane-first ordering across multiple lanes', () => {
+      const callOrder = [];
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callOrder.push(ctx.triggeringDrone.id);
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      const player1State = {
+        ...createPlayerState({
+          lane1: [createDrone({ id: 'p1_d_l1' })],
+          lane3: [createDrone({ id: 'p1_d_l3' })]
+        }),
+        techSlots: {
+          lane1: [createDrone({ id: 'p1_t_l1', isTech: true })],
+          lane2: [],
+          lane3: []
+        }
+      };
+      const player2State = {
+        ...createPlayerState({
+          lane1: [createDrone({ id: 'p2_d_l1' })],
+          lane2: [createDrone({ id: 'p2_d_l2' })]
+        }),
+        techSlots: {
+          lane1: [createDrone({ id: 'p2_t_l1', isTech: true })],
+          lane2: [],
+          lane3: []
+        }
+      };
+
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, null, 'player1');
+
+      expect(callOrder).toEqual([
+        'p1_t_l1', 'p2_t_l1',   // lane1 tech: first player then second
+        'p1_d_l1', 'p2_d_l1',   // lane1 drones: first player then second
+        'p2_d_l2',               // lane2 drones (only player2)
+        'p1_d_l3'                // lane3 drones (only player1)
+      ]);
+    });
   });
 
   describe('Return value', () => {

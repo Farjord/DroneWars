@@ -10,8 +10,7 @@ vi.mock('../../utils/flowVerification.js', () => ({
 }));
 
 import AnnouncementQueue from '../AnnouncementQueue.js';
-
-const PHASE_DISPLAY_DURATION = 1800;
+import { PHASE_DISPLAY_DURATION, computeCompoundDuration } from '../../config/announcementTiming.js';
 
 function mkAnnouncement(id, phaseName = 'action') {
   return { id, phaseName, phaseText: phaseName.toUpperCase() + ' PHASE', subtitle: null };
@@ -33,16 +32,17 @@ describe('AnnouncementQueue', () => {
 
   // --- FIFO ordering ---
 
-  it('plays enqueueAll items in FIFO order', async () => {
-    const played = [];
-    queue.on('animationStarted', (a) => played.push(a.id));
+  it('enqueueAll with 3 items merges into single compound preserving FIFO stage order', async () => {
+    const started = [];
+    queue.on('animationStarted', (a) => started.push(a));
 
     queue.enqueueAll([mkAnnouncement('a'), mkAnnouncement('b'), mkAnnouncement('c')]);
 
-    // Advance through all three durations
-    await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION * 3);
-
-    expect(played).toEqual(['a', 'b', 'c']);
+    expect(started).toHaveLength(1);
+    expect(started[0].compound).toBe(true);
+    expect(started[0].stages.map(s => s.phaseText)).toEqual([
+      'ACTION PHASE', 'ACTION PHASE', 'ACTION PHASE',
+    ]);
   });
 
   // --- Auto-play on enqueue (single) ---
@@ -60,11 +60,12 @@ describe('AnnouncementQueue', () => {
 
   // --- Auto-play on enqueueAll ---
 
-  it('enqueueAll batch auto-plays', async () => {
+  it('enqueueAll batch auto-plays as compound', async () => {
     queue.enqueueAll([mkAnnouncement('x'), mkAnnouncement('y')]);
 
     expect(queue.isPlaying()).toBe(true);
-    expect(queue.getCurrentAnimation().id).toBe('x');
+    expect(queue.getCurrentAnimation().compound).toBe(true);
+    expect(queue.getCurrentAnimation().stages).toHaveLength(2);
   });
 
   // --- Mid-playback enqueue safety ---
@@ -169,21 +170,22 @@ describe('AnnouncementQueue', () => {
     freshQueue.clear();
   });
 
-  it('release() starts playback of queued items', async () => {
+  it('release() starts playback of queued items (merged into compound)', async () => {
     const freshQueue = new AnnouncementQueue();
-    const played = [];
-    freshQueue.on('animationStarted', (a) => played.push(a.id));
+    const started = [];
+    freshQueue.on('animationStarted', (a) => started.push(a));
 
     freshQueue.enqueueAll([mkAnnouncement('a'), mkAnnouncement('b')]);
-    expect(played).toEqual([]);
+    expect(started).toEqual([]);
 
     freshQueue.release();
-    expect(played).toEqual(['a']);
+    // Both items merged into one compound
+    expect(started).toHaveLength(1);
+    expect(started[0].compound).toBe(true);
+    expect(started[0].stages).toHaveLength(2);
 
-    await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
-    expect(played).toEqual(['a', 'b']);
-
-    await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
+    // 2-stage compound
+    await vi.advanceTimersByTimeAsync(computeCompoundDuration(2));
     expect(freshQueue.isPlaying()).toBe(false);
     freshQueue.clear();
   });
@@ -253,7 +255,7 @@ describe('AnnouncementQueue', () => {
 
   // --- Compound announcement duration ---
 
-  it('compound items use COMPOUND_DISPLAY_DURATION (3600ms) instead of standard 1800ms', async () => {
+  it('compound items use computed duration instead of standard 1800ms', async () => {
     const events = [];
     queue.on('animationStarted', (a) => events.push(`started:${a.id}`));
     queue.on('animationEnded', (a) => events.push(`ended:${a.id}`));
@@ -275,8 +277,8 @@ describe('AnnouncementQueue', () => {
     expect(queue.isPlaying()).toBe(true);
     expect(events).toEqual(['started:compound-1']);
 
-    // After compound duration (3600ms total), should be complete
-    await vi.advanceTimersByTimeAsync(1800);
+    // After compound duration (3300ms total for 2 stages), should be complete
+    await vi.advanceTimersByTimeAsync(computeCompoundDuration(2) - 1800);
     expect(events).toEqual(['started:compound-1', 'ended:compound-1']);
     expect(queue.isPlaying()).toBe(false);
   });
@@ -291,6 +293,179 @@ describe('AnnouncementQueue', () => {
     expect(ended).toHaveBeenCalledTimes(1);
   });
 
+  // --- waitUntilIdle ---
+
+  describe('waitUntilIdle', () => {
+    it('resolves immediately when queue is empty and not playing', async () => {
+      await expect(queue.waitUntilIdle()).resolves.toBeUndefined();
+    });
+
+    it('waits for current playback to complete', async () => {
+      queue.enqueue(mkAnnouncement('a'));
+
+      let resolved = false;
+      queue.waitUntilIdle().then(() => { resolved = true; });
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(resolved).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION - 500);
+      expect(resolved).toBe(true);
+    });
+
+    it('waits for compound to complete (multiple items merged)', async () => {
+      queue.enqueueAll([mkAnnouncement('a'), mkAnnouncement('b'), mkAnnouncement('c')]);
+
+      let resolved = false;
+      queue.waitUntilIdle().then(() => { resolved = true; });
+
+      // 3-stage compound = 4800ms
+      await vi.advanceTimersByTimeAsync(3300);
+      expect(resolved).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1500); // 4800ms total
+      expect(resolved).toBe(true);
+    });
+
+    it('resolves immediately when queue is held (even with items)', async () => {
+      const freshQueue = new AnnouncementQueue();
+      // freshQueue starts held by default — do NOT release
+
+      freshQueue.enqueueAll([mkAnnouncement('a'), mkAnnouncement('b')]);
+      expect(freshQueue.getQueueLength()).toBe(2);
+      expect(freshQueue.isPlaying()).toBe(false);
+
+      // waitUntilIdle should resolve immediately — nothing can play while held
+      await expect(freshQueue.waitUntilIdle()).resolves.toBeUndefined();
+
+      // After release, queued items play as compound
+      const started = [];
+      freshQueue.on('animationStarted', (a) => started.push(a));
+      freshQueue.release();
+
+      // 2-stage compound
+      await vi.advanceTimersByTimeAsync(computeCompoundDuration(2));
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBe(true);
+      freshQueue.clear();
+    });
+
+    it('resolves when clear() is called during wait (deadlock prevention)', async () => {
+      queue.enqueue(mkAnnouncement('a'));
+
+      let resolved = false;
+      queue.waitUntilIdle().then(() => { resolved = true; });
+
+      await vi.advanceTimersByTimeAsync(500);
+      expect(resolved).toBe(false);
+
+      queue.clear();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(resolved).toBe(true);
+    });
+  });
+
+  // --- Auto-merge: consecutive items become compound ---
+
+  describe('auto-merge', () => {
+    it('merges 2+ queued items into a single compound announcement', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      queue.enqueueAll([
+        mkAnnouncement('a', 'deployment'),
+        mkAnnouncement('b', 'action'),
+      ]);
+
+      // Should emit one animationStarted with a compound
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBe(true);
+      expect(started[0].stages).toHaveLength(2);
+      expect(started[0].stages[0].phaseText).toBe('DEPLOYMENT PHASE');
+      expect(started[0].stages[1].phaseText).toBe('ACTION PHASE');
+    });
+
+    it('single item plays as standard (no compound wrapping)', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      queue.enqueue(mkAnnouncement('solo', 'action'));
+
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeFalsy();
+      expect(started[0].phaseText).toBe('ACTION PHASE');
+    });
+
+    it('compound duration scales with stage count', async () => {
+      const ended = vi.fn();
+      queue.on('animationEnded', ended);
+
+      queue.enqueueAll([
+        mkAnnouncement('a', 'deployment'),
+        mkAnnouncement('b', 'action'),
+        mkAnnouncement('c', 'roundEnd'),
+      ]);
+
+      // 3-stage compound: 4800ms — at 3300ms (2-stage duration) it should still play
+      await vi.advanceTimersByTimeAsync(3300);
+      expect(ended).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1500); // 4800ms total
+      expect(ended).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves subtitles in compound stages', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      const withSub = { id: 'ws', phaseName: 'action', phaseText: 'ACTION', subtitle: 'You Go First' };
+      const noSub = { id: 'ns', phaseName: 'roundEnd', phaseText: 'END', subtitle: null };
+
+      queue.enqueueAll([withSub, noSub]);
+
+      expect(started[0].stages[0].subtitle).toBe('You Go First');
+      expect(started[0].stages[1].subtitle).toBeNull();
+    });
+
+    it('preserves variant and subtitleVariant in compound stages', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      const playerPass = { id: 'pp', phaseName: 'playerPass', phaseText: 'YOU PASSED', subtitle: null, variant: 'player', subtitleVariant: null };
+      const action = { id: 'ap', phaseName: 'action', phaseText: 'ACTION PHASE', subtitle: 'You Go First', variant: null, subtitleVariant: 'player' };
+
+      queue.enqueueAll([playerPass, action]);
+
+      expect(started[0].stages[0].variant).toBe('player');
+      expect(started[0].stages[0].subtitleVariant).toBeNull();
+      expect(started[0].stages[1].variant).toBeNull();
+      expect(started[0].stages[1].subtitleVariant).toBe('player');
+    });
+
+    it('items arriving mid-playback play as new chain after current finishes', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      queue.enqueue(mkAnnouncement('first', 'deployment'));
+
+      // Mid-playback: add two more
+      await vi.advanceTimersByTimeAsync(500);
+      queue.enqueueAll([mkAnnouncement('second', 'action'), mkAnnouncement('third', 'roundEnd')]);
+
+      // first still playing solo
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeFalsy();
+
+      // Finish first (1800ms total)
+      await vi.advanceTimersByTimeAsync(1300);
+
+      // second+third should merge into compound
+      expect(started).toHaveLength(2);
+      expect(started[1].compound).toBe(true);
+      expect(started[1].stages).toHaveLength(2);
+    });
+  });
+
   // --- Accessor correctness ---
 
   it('isPlaying, getCurrentAnimation, getQueueLength return correct values', async () => {
@@ -298,14 +473,11 @@ describe('AnnouncementQueue', () => {
     expect(queue.getCurrentAnimation()).toBeNull();
     expect(queue.getQueueLength()).toBe(0);
 
-    queue.enqueueAll([mkAnnouncement('a'), mkAnnouncement('b')]);
+    // Single item — plays as standard
+    queue.enqueue(mkAnnouncement('a'));
 
     expect(queue.isPlaying()).toBe(true);
     expect(queue.getCurrentAnimation().id).toBe('a');
-    expect(queue.getQueueLength()).toBe(1); // 'a' shifted out, 'b' waiting
-
-    await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
-    expect(queue.getCurrentAnimation().id).toBe('b');
     expect(queue.getQueueLength()).toBe(0);
 
     await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);

@@ -65,6 +65,7 @@ describe('GameClient', () => {
       onComplete: vi.fn(),
       on: vi.fn().mockReturnValue(vi.fn()),
       off: vi.fn(),
+      waitUntilIdle: vi.fn().mockResolvedValue(undefined),
     };
     mockAnimMgr = {
       executeWithStateUpdate: vi.fn().mockResolvedValue(undefined),
@@ -419,6 +420,76 @@ describe('GameClient', () => {
         state: makeState(),
         animations: { actionAnimations: [], systemAnimations: [phaseAnim] },
       });
+    });
+  });
+
+  // --- Announcement blocking ---
+
+  describe('announcement blocking', () => {
+    it('waits for announcements to complete before playing visual animations', async () => {
+      let resolveWaitUntilIdle;
+      mockPAQ.waitUntilIdle = vi.fn(() => new Promise(resolve => {
+        resolveWaitUntilIdle = resolve;
+      }));
+
+      const phaseAnim = {
+        animationName: 'PHASE_ANNOUNCEMENT',
+        timing: 'independent',
+        payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
+      };
+      const attackAnim = { animationName: 'ATTACK', payload: {} };
+
+      const responsePromise = client._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [attackAnim], systemAnimations: [phaseAnim] },
+      });
+
+      // Let microtasks settle so _processResponse reaches the await
+      await Promise.resolve();
+
+      expect(mockPAQ.waitUntilIdle).toHaveBeenCalled();
+      // Visual animations should NOT have started yet
+      expect(mockAnimMgr.executeWithStateUpdate).not.toHaveBeenCalled();
+
+      resolveWaitUntilIdle();
+      await responsePromise;
+
+      expect(mockAnimMgr.executeWithStateUpdate).toHaveBeenCalledWith([attackAnim], client);
+    });
+
+    it('plays visual animations only after announcement overlay dismisses', async () => {
+      const order = [];
+      mockPAQ.waitUntilIdle = vi.fn(async () => {
+        order.push('announcements-done');
+      });
+      mockAnimMgr.executeWithStateUpdate = vi.fn(async () => {
+        order.push('visual-animations-done');
+      });
+
+      const phaseAnim = {
+        animationName: 'PHASE_ANNOUNCEMENT',
+        timing: 'independent',
+        payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
+      };
+
+      await client._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [{ animationName: 'ATTACK', payload: {} }], systemAnimations: [phaseAnim] },
+      });
+
+      expect(order).toEqual(['announcements-done', 'visual-animations-done']);
+    });
+
+    it('does not delay when no announcements are enqueued', async () => {
+      mockPAQ.waitUntilIdle = vi.fn().mockResolvedValue(undefined);
+
+      await client._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [{ animationName: 'ATTACK', payload: {} }], systemAnimations: [] },
+      });
+
+      expect(mockPAQ.waitUntilIdle).toHaveBeenCalled();
+      expect(mockAnimMgr.executeWithStateUpdate).toHaveBeenCalled();
     });
   });
 

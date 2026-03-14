@@ -10,23 +10,6 @@ import useWaitingForOpponent from '../useWaitingForOpponent.js';
 
 // --- Helpers ---
 
-function makeGameStateManager({ isRemote = false } = {}) {
-  const subscribers = [];
-  return {
-    isRemoteClient: () => isRemote,
-    gameFlowManager: {
-      subscribe: (fn) => {
-        subscribers.push(fn);
-        return () => {
-          const idx = subscribers.indexOf(fn);
-          if (idx >= 0) subscribers.splice(idx, 1);
-        };
-      },
-      _emit: (event) => subscribers.forEach(fn => fn(event)),
-    },
-  };
-}
-
 function makePhaseAnimationQueue({ queueLength = 0, playing = false } = {}) {
   const completeCallbacks = [];
   return {
@@ -34,7 +17,10 @@ function makePhaseAnimationQueue({ queueLength = 0, playing = false } = {}) {
     isPlaying: () => playing,
     onComplete: (fn) => {
       completeCallbacks.push(fn);
-      return () => {};
+      return () => {
+        const idx = completeCallbacks.indexOf(fn);
+        if (idx >= 0) completeCallbacks.splice(idx, 1);
+      };
     },
     _fireComplete: () => completeCallbacks.forEach(fn => fn()),
   };
@@ -46,9 +32,7 @@ function defaultProps(overrides = {}) {
     turnPhase: 'action',
     getLocalPlayerId: () => 'player1',
     getOpponentPlayerId: () => 'player2',
-    gameStateManager: makeGameStateManager(),
     phaseAnimationQueue: makePhaseAnimationQueue(),
-    passInfo: {},
     ...overrides,
   };
 }
@@ -172,7 +156,6 @@ describe('useWaitingForOpponent', () => {
     });
 
     it('works in local/SP mode (no isMultiplayer guard)', () => {
-      // This is the core bug fix test: SP mode should still show/clear the modal
       const props = defaultProps({
         turnPhase: 'allocateShields',
         gameState: {
@@ -213,14 +196,10 @@ describe('useWaitingForOpponent', () => {
       // Should clear
       expect(result.current.waitingForPlayerPhase).toBeNull();
     });
-  });
 
-  describe('stale closure fix', () => {
-
-    it('GameFlowManager bothPlayersComplete event clears the modal via ref', () => {
-      const gsm = makeGameStateManager();
-
-      const props = defaultProps({
+    it('clears overlay for remote client when both committed (no host-only branching)', () => {
+      // Verifies the unified effect handles remote clients identically
+      const initialProps = defaultProps({
         turnPhase: 'mandatoryDiscard',
         gameState: {
           commitments: {
@@ -231,29 +210,85 @@ describe('useWaitingForOpponent', () => {
           gameStage: 'combat',
           roundNumber: 1,
         },
-        gameStateManager: gsm,
       });
 
-      const { result } = renderHook(() => useWaitingForOpponent(props));
+      const { result, rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
 
-      // Modal is set by the commitment-monitoring effect
       expect(result.current.waitingForPlayerPhase).toBe('mandatoryDiscard');
 
-      // Simulate GameFlowManager firing bothPlayersComplete
-      act(() => {
-        gsm.gameFlowManager._emit({
-          type: 'bothPlayersComplete',
-          phase: 'mandatoryDiscard',
-        });
-      });
+      // Opponent commits (remote receives updated commitments via sync)
+      rerender(defaultProps({
+        turnPhase: 'mandatoryDiscard',
+        gameState: {
+          commitments: {
+            mandatoryDiscard: {
+              player1: { completed: true },
+              player2: { completed: true },
+            },
+          },
+          gameStage: 'combat',
+          roundNumber: 1,
+        },
+      }));
 
       expect(result.current.waitingForPlayerPhase).toBeNull();
     });
 
-    it('GameFlowManager phaseTransition event clears the modal via ref', () => {
-      const gsm = makeGameStateManager();
+    it('clears overlay when phase advances (covers former Effect 2 scenario)', () => {
+      // Verifies the failsafe handles what Effect 2 used to do for remote clients
+      const initialProps = defaultProps({
+        turnPhase: 'allocateShields',
+        gameState: {
+          commitments: {
+            allocateShields: {
+              player1: { completed: true },
+            },
+          },
+          gameStage: 'combat',
+          roundNumber: 1,
+        },
+      });
 
-      const props = defaultProps({
+      const { result, rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
+
+      expect(result.current.waitingForPlayerPhase).toBe('allocateShields');
+
+      // Phase advances (host pushed new phase via sync)
+      rerender(defaultProps({
+        turnPhase: 'action',
+        gameState: { commitments: {}, gameStage: 'combat', roundNumber: 1 },
+      }));
+
+      expect(result.current.waitingForPlayerPhase).toBeNull();
+    });
+  });
+
+  describe('deferred waiting modal race condition', () => {
+
+    it('does NOT show modal after onComplete fires if phase has already advanced', () => {
+      let queueLength = 1;
+      let playing = true;
+      const completeCallbacks = [];
+
+      const phaseAnimationQueue = {
+        getQueueLength: () => queueLength,
+        isPlaying: () => playing,
+        onComplete: (fn) => {
+          completeCallbacks.push(fn);
+          return () => {
+            const idx = completeCallbacks.indexOf(fn);
+            if (idx >= 0) completeCallbacks.splice(idx, 1);
+          };
+        },
+      };
+
+      const initialProps = defaultProps({
         turnPhase: 'optionalDiscard',
         gameState: {
           commitments: {
@@ -264,20 +299,152 @@ describe('useWaitingForOpponent', () => {
           gameStage: 'combat',
           roundNumber: 1,
         },
-        gameStateManager: gsm,
+        phaseAnimationQueue,
       });
 
-      const { result } = renderHook(() => useWaitingForOpponent(props));
+      const { result, rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
 
-      expect(result.current.waitingForPlayerPhase).toBe('optionalDiscard');
+      // Modal should NOT be set yet (deferred to onComplete)
+      expect(result.current.waitingForPlayerPhase).toBeNull();
+      expect(completeCallbacks.length).toBe(1);
 
+      // Phase advances before onComplete fires
+      queueLength = 0;
+      playing = false;
+      rerender(defaultProps({
+        turnPhase: 'deployment',
+        gameState: { commitments: {}, gameStage: 'combat', roundNumber: 1 },
+        phaseAnimationQueue,
+      }));
+
+      // Fire the stale onComplete callback
       act(() => {
-        gsm.gameFlowManager._emit({
-          type: 'phaseTransition',
-          newPhase: 'deployment',
-          previousPhase: 'optionalDiscard',
-        });
+        completeCallbacks.forEach(fn => fn());
       });
+
+      // Modal must NOT appear — phase has advanced past optionalDiscard
+      expect(result.current.waitingForPlayerPhase).toBeNull();
+    });
+
+    it('cancels pending onComplete when effect re-runs', () => {
+      let queueLength = 1;
+      let playing = true;
+      const completeCallbacks = [];
+
+      const phaseAnimationQueue = {
+        getQueueLength: () => queueLength,
+        isPlaying: () => playing,
+        onComplete: (fn) => {
+          completeCallbacks.push(fn);
+          return () => {
+            const idx = completeCallbacks.indexOf(fn);
+            if (idx >= 0) completeCallbacks.splice(idx, 1);
+          };
+        },
+      };
+
+      const initialProps = defaultProps({
+        turnPhase: 'optionalDiscard',
+        gameState: {
+          commitments: {
+            optionalDiscard: {
+              player1: { completed: true },
+            },
+          },
+          gameStage: 'combat',
+          roundNumber: 1,
+        },
+        phaseAnimationQueue,
+      });
+
+      const { rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
+
+      expect(completeCallbacks.length).toBe(1);
+
+      // Re-render with phase change triggers effect re-run; old subscription should be cleaned up
+      queueLength = 0;
+      playing = false;
+      rerender(defaultProps({
+        turnPhase: 'deployment',
+        gameState: { commitments: {}, gameStage: 'combat', roundNumber: 1 },
+        phaseAnimationQueue,
+      }));
+
+      // The old callback should have been unsubscribed
+      expect(completeCallbacks.length).toBe(0);
+    });
+  });
+
+  describe('engine batch processing (commitments cleared + phase advanced in one update)', () => {
+
+    it('clears overlay when state jumps from "local committed" to "phase advanced + commitments cleared"', () => {
+      // This is the core bug scenario: the engine processes both commits and advances
+      // the phase in a single cycle, so React never sees an intermediate state with
+      // both players committed. The overlay must still clear via the failsafe.
+      const initialProps = defaultProps({
+        turnPhase: 'allocateShields',
+        gameState: {
+          commitments: {
+            allocateShields: {
+              player1: { completed: true },
+            },
+          },
+          gameStage: 'combat',
+          roundNumber: 1,
+        },
+      });
+
+      const { result, rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
+
+      expect(result.current.waitingForPlayerPhase).toBe('allocateShields');
+
+      // Engine batches: both commit + phase advances + commitments cleared — single update
+      rerender(defaultProps({
+        turnPhase: 'action',
+        gameState: { commitments: {}, gameStage: 'combat', roundNumber: 1 },
+      }));
+
+      expect(result.current.waitingForPlayerPhase).toBeNull();
+    });
+
+    it('clears overlay when commitments object reference is reused (same empty object)', () => {
+      // Edge case: state management reuses the same empty commitments reference
+      const sharedEmptyCommitments = {};
+
+      const initialProps = defaultProps({
+        turnPhase: 'allocateShields',
+        gameState: {
+          commitments: {
+            allocateShields: {
+              player1: { completed: true },
+            },
+          },
+          gameStage: 'combat',
+          roundNumber: 1,
+        },
+      });
+
+      const { result, rerender } = renderHook(
+        (props) => useWaitingForOpponent(props),
+        { initialProps }
+      );
+
+      expect(result.current.waitingForPlayerPhase).toBe('allocateShields');
+
+      // Phase advances with the shared empty object — commitmentKey changes even if ref doesn't
+      rerender(defaultProps({
+        turnPhase: 'action',
+        gameState: { commitments: sharedEmptyCommitments, gameStage: 'combat', roundNumber: 1 },
+      }));
 
       expect(result.current.waitingForPlayerPhase).toBeNull();
     });

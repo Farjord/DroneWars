@@ -1797,6 +1797,26 @@ const fullCardCollection = [
 
   },
 
+  {
+    id: 'TARGET_ACQUISITION',
+    baseCardId: 'TARGET_ACQUISITION',
+    name: 'Target Acquisition',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 1,
+    image: '/DroneWars/cards/TargetAcquisition.png',
+    description: 'Mark 3 random enemy drones.',
+    effects: [
+      {
+        type: 'MARK_DRONE',
+        scope: 'ALL',
+        targeting: { type: 'NONE', affinity: 'ENEMY' },
+        targetSelection: { method: 'RANDOM', count: 3 },
+      },
+    ],
+  },
+
   // --- Upgrade Cards ---
 
   {

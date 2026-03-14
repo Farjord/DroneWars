@@ -635,18 +635,6 @@ class GameFlowManager {
       // End of action phase - transition to roundEnd phase
       if (phase === 'action') {
         debugLog('STATE_CHECKPOINT', '[ACTION_END]', _buildStateSnapshot(this.gameStateManager.getState()));
-        // Queue ACTION PHASE COMPLETE announcement before roundEnd phase
-        await this.actionProcessor.executeAndCaptureAnimations([{
-          animationName: 'PHASE_ANNOUNCEMENT',
-          timing: 'independent',
-          payload: { phase: 'actionComplete', text: 'ACTION PHASE COMPLETE', subtitle: 'Transitioning to Next Round' }
-        }], true);
-        if (this._isRoundTransition) {
-          debugLog('ROUND_TRANSITION_TRACE', '[RT-03] actionComplete pseudo-phase announcement queued', {
-            utc: new Date().toISOString(), role: 'SERVER',
-          });
-        }
-
         await this.transitionToPhase('roundEnd');
       }
     }
@@ -832,7 +820,7 @@ class GameFlowManager {
     await this.actionProcessor.executeAndCaptureAnimations([{
       animationName: 'PHASE_ANNOUNCEMENT',
       timing: 'independent',
-      payload: { phase: 'roundEnd', text: 'END OF ROUND', subtitle: null }
+      payload: { phase: 'roundEnd', text: 'END OF ROUND', subtitle: 'Action End of Round Triggers' }
     }], true);
 
     // Process ON_ROUND_END triggers
@@ -1350,11 +1338,11 @@ class GameFlowManager {
       });
     }
 
-    // Emit ROUND announcement through server pipeline; cascade provides UPKEEP and DEPLOYMENT
+    // Emit round transition announcement through server pipeline
     await this.actionProcessor.executeAndCaptureAnimations([{
       animationName: 'PHASE_ANNOUNCEMENT',
       timing: 'independent',
-      payload: { phase: 'roundAnnouncement', text: 'ROUND', subtitle: null }
+      payload: { phase: 'roundTransition', text: 'TRANSITIONING TO ROUND', subtitle: null }
     }], true);
 
     if (this._isRoundTransition) {

@@ -112,8 +112,7 @@ class StateValidationService {
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'gameEnd', 'actionComplete'],
-      'actionComplete': ['roundAnnouncement'],
+      'action': ['deployment', 'roundEnd', 'gameEnd'],
       'roundEnd': ['mandatoryDiscard', 'optionalDiscard', 'roundInitialization', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
       'gameEnd': []
     };

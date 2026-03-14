@@ -3,101 +3,81 @@
 // ========================================
 // Displays a full-screen phase announcement when transitioning between game phases
 // Shows phase name with Drone Wars gradient styling and shine effect
-// Supports compound announcements with character-scramble morph between stages
-// Auto-dismisses after display duration (1.5s standard, 3.6s compound)
+// All text scrambles in from empty on mount; compound announcements chain-morph between N stages
+// Auto-dismisses after display duration (1.8s standard, dynamic for compounds)
 
 import React, { useState, useEffect, useRef } from 'react';
-import { timingLog, getTimestamp } from '../../utils/debugLogger.js';
+import { debugLog, timingLog, getTimestamp } from '../../utils/debugLogger.js';
 import useTextScramble from '../../hooks/useTextScramble.js';
+import {
+  SCRAMBLE_DURATION_MS,
+  STAGE_HOLD_MS,
+  FADE_OUT_MS,
+} from '../../config/announcementTiming.js';
 
-// Compound scramble morph timing (ms)
-const STAGE1_HOLD_MS = 1200;
-const SCRAMBLE_DURATION_MS = 500;
-const STAGE2_HOLD_MS = 1600;
-const FADE_OUT_MS = 300;
-// Fade-out starts at: STAGE1_HOLD + SCRAMBLE + STAGE2_HOLD = 3300ms
-const COMPOUND_FADE_START_MS = STAGE1_HOLD_MS + SCRAMBLE_DURATION_MS + STAGE2_HOLD_MS;
-
-const gradientStyle = {
+const playerGradientStyle = {
   background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
-  backgroundSize: '300% auto',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   backgroundClip: 'text',
   textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
-  filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
 };
 
-/**
- * Renders the phase text heading and optional subtitle for a single stage.
- * Used both for standard announcements and as layers within compound announcements.
- */
-function StageContent({ phaseText, subtitle, isVisible, className = '' }) {
-  return (
-    <div className={`flex flex-col items-center ${className}`}>
-      <h1
-        className={`
-          text-6xl font-orbitron font-black uppercase tracking-widest text-center
-          phase-announcement-text
-          ${isVisible ? 'phase-announcement-shine' : ''}
-        `}
-        style={gradientStyle}
-      >
-        {phaseText}
-      </h1>
-
-      {subtitle && (
-        <p
-          className={`
-            text-2xl font-orbitron font-medium uppercase tracking-wider text-center
-            text-cyan-300/80 mt-4
-            transition-all duration-300
-            ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
-          `}
-        >
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
+const opponentGradientStyle = {
+  background: 'linear-gradient(90deg, #ef4444, #f87171, #ffffff, #f87171, #ef4444)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+  textShadow: '0 0 30px rgba(239, 68, 68, 0.5), 0 0 60px rgba(248, 113, 113, 0.3)',
+};
 
 /**
  * PhaseAnnouncementOverlay - Shows phase name during phase transitions
  * @param {string} phaseText - The text to display (standard mode)
  * @param {string} subtitle - Optional subtitle text (standard mode)
+ * @param {string} variant - 'player' or 'opponent' for heading color (standard mode)
+ * @param {string} subtitleVariant - 'player' or 'opponent' for subtitle color (standard mode)
  * @param {boolean} compound - Whether this is a compound scramble-morph announcement
- * @param {Array} stages - Array of {phaseText, subtitle} for compound mode
+ * @param {Array} stages - Array of {phaseText, subtitle, variant, subtitleVariant} for compound mode
  * @param {Function} onComplete - Callback when animation completes
  */
-const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onComplete }) => {
+const PhaseAnnouncementOverlay = ({ phaseText, subtitle, variant, subtitleVariant, compound, stages, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [scrambleActive, setScrambleActive] = useState(false);
-
+  const [stageIndex, setStageIndex] = useState(0);
   const containerRef = useRef(null);
+  const headingRef = useRef(null);
   const mountTimeRef = useRef(null);
+  const lastLoggedRef = useRef({ stageIndex: -1, isVisible: false });
 
-  // Scramble hook — called unconditionally (rules of hooks).
-  // When scrambleActive becomes true, morphs from stage 0 text to stage 1 text.
-  const scrambleTarget = (compound && stages)
-    ? (scrambleActive ? stages[1].phaseText : stages[0].phaseText)
-    : (phaseText || '');
-  const displayPhaseText = useTextScramble(scrambleTarget, {
-    isActive: scrambleActive,
+  // Compute scramble targets and variants based on current stage
+  const currentStage = (compound && stages) ? stages[stageIndex] : null;
+  const headingTarget = currentStage ? currentStage.phaseText : (phaseText || '');
+  const subtitleTarget = currentStage ? (currentStage.subtitle || '') : (subtitle || '');
+  const headingVariant = currentStage ? currentStage.variant : variant;
+  const currentSubtitleVariant = currentStage ? currentStage.subtitleVariant : subtitleVariant;
+
+  // Both hooks start from empty (initialSource: '') and are always active for scramble-in
+  // When stageIndex changes, targetText changes -> hook re-scrambles from previous settled text
+  const isActive = true;
+  const displayHeading = useTextScramble(headingTarget, {
+    isActive,
     duration: SCRAMBLE_DURATION_MS,
+    initialSource: '',
   });
-
-  // Subtitle scramble hook — morphs subtitle text alongside the heading
-  const subtitleTarget = (compound && stages)
-    ? (scrambleActive ? stages[1].subtitle : stages[0].subtitle)
-    : '';
   const displaySubtitle = useTextScramble(subtitleTarget, {
-    isActive: scrambleActive,
+    isActive,
     duration: SCRAMBLE_DURATION_MS,
+    initialSource: '',
   });
+
+  // Select gradient style based on variant
+  const headingGradient = headingVariant === 'opponent' ? opponentGradientStyle : playerGradientStyle;
+  const subtitleColorClass = currentSubtitleVariant === 'opponent'
+    ? 'text-red-400/80'
+    : 'text-cyan-300/80';
 
   // Create unique performance mark ID for this instance
-  const markId = useRef(`phase-announcement-${Date.now()}`).current;
+  const markId = useRef(`phase-announcement-${crypto.randomUUID()}`).current;
 
   // Detect browser state on mount
   if (!mountTimeRef.current) {
@@ -107,19 +87,30 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
     }
   }
 
-  if (import.meta.env.DEV) {
-    const browserState = {
-      hasFocus: document.hasFocus(),
-      visibilityState: document.visibilityState,
-      hidden: document.hidden
-    };
-
-    timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
-      phaseText,
-      subtitle,
-      compound: compound || false,
+  // Only log on meaningful state changes, not every 60fps scramble frame
+  if (stageIndex !== lastLoggedRef.current.stageIndex || isVisible !== lastLoggedRef.current.isVisible) {
+    lastLoggedRef.current = { stageIndex, isVisible };
+    debugLog('ANNOUNCE_TRACE', '🎨 OVERLAY RENDER', {
+      stageIndex,
+      headingTarget,
+      subtitleTarget,
+      displayHeading,
+      displaySubtitle,
+      headingVariant,
+      currentSubtitleVariant,
       isVisible,
-      browserState,
+      compound: compound || false,
+      gradientIs: headingGradient === opponentGradientStyle ? 'opponent' : 'player',
+    });
+  }
+
+  if (import.meta.env.DEV) {
+    timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
+      phaseText: headingTarget,
+      subtitle: subtitleTarget,
+      compound: compound || false,
+      stageIndex,
+      isVisible,
       blockingReason: 'component_function_executing'
     });
   }
@@ -127,128 +118,132 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
   useEffect(() => {
     if (import.meta.env.DEV) {
       performance.mark(`${markId}-useEffect-start`);
-
       timingLog('[MODAL COMPONENT] useEffect triggered', {
-        phaseText,
+        phaseText: headingTarget,
         compound: compound || false,
-        browserState: {
-          hasFocus: document.hasFocus(),
-          visibilityState: document.visibilityState,
-          hidden: document.hidden
-        },
         blockingReason: 'requesting_animation_frame'
       });
     }
 
-    // Trigger fade-in immediately
+    // Trigger background/decoration fade-in (text scrambles in independently)
     requestAnimationFrame(() => {
       if (import.meta.env.DEV) {
         performance.mark(`${markId}-raf-callback`);
-
-        timingLog('[MODAL COMPONENT] requestAnimationFrame callback', {
-          phaseText,
-          blockingReason: 'setting_isVisible_true'
-        });
       }
-
       setIsVisible(true);
-
-      // Schedule another rAF to detect when browser has actually painted
-      requestAnimationFrame(() => {
-        if (import.meta.env.DEV) {
-          performance.mark(`${markId}-second-raf`);
-
-          timingLog('[MODAL COMPONENT] Second rAF (post-paint)', {
-            phaseText,
-            blockingReason: 'browser_should_have_painted'
-          });
-        }
-      });
     });
 
-    if (compound && stages) {
-      // Compound scramble morph: hold → scramble → hold → fade out
-      const scrambleTimer = setTimeout(() => {
-        setScrambleActive(true);
-      }, STAGE1_HOLD_MS);
+    const timers = [];
+    const stageInterval = SCRAMBLE_DURATION_MS + STAGE_HOLD_MS;
+    const mountTime = Date.now();
 
-      const fadeOutTimer = setTimeout(() => {
+    debugLog('ANNOUNCE_TRACE', '⏱️ OVERLAY EFFECT: scheduling', {
+      mountTime,
+      stageInterval,
+      compound: compound || false,
+      stageCount: stages?.length || 1,
+      headingTarget,
+    });
+
+    if (compound && stages && stages.length >= 2) {
+      // Compound: uniform stage transitions — each stage gets the same rhythm
+      for (let i = 1; i < stages.length; i++) {
+        const morphAt = i * stageInterval;
+        debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: morph ${i} scheduled at +${morphAt}ms`, {
+          phaseText: stages[i].phaseText, variant: stages[i].variant,
+        });
+        const targetIndex = i;
+        timers.push(setTimeout(() => {
+          debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: morph ${targetIndex} FIRED +${Date.now() - mountTime}ms (expected +${morphAt}ms)`, {
+            phaseText: stages[targetIndex].phaseText,
+          });
+          setStageIndex(targetIndex);
+        }, morphAt));
+      }
+
+      // Fade out after last stage completes its hold
+      const fadeAt = stages.length * stageInterval;
+      debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: fade at +${fadeAt}ms, total=${fadeAt + FADE_OUT_MS}ms`);
+      timers.push(setTimeout(() => {
+        debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: fade FIRED +${Date.now() - mountTime}ms (expected +${fadeAt}ms)`);
         setIsVisible(false);
-        setTimeout(() => onComplete?.(), FADE_OUT_MS);
-      }, COMPOUND_FADE_START_MS);
-
-      return () => {
-        clearTimeout(scrambleTimer);
-        clearTimeout(fadeOutTimer);
-      };
+        timers.push(setTimeout(() => {
+          debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: onComplete FIRED +${Date.now() - mountTime}ms (expected +${fadeAt + FADE_OUT_MS}ms)`);
+          onComplete?.();
+        }, FADE_OUT_MS));
+      }, fadeAt));
+    } else {
+      // Standard: scramble in, hold, fade out
+      debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: fade at +${stageInterval}ms, total=${stageInterval + FADE_OUT_MS}ms`);
+      timers.push(setTimeout(() => {
+        debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: fade FIRED +${Date.now() - mountTime}ms (expected +${stageInterval}ms)`);
+        setIsVisible(false);
+        timers.push(setTimeout(() => {
+          debugLog('ANNOUNCE_TRACE', `⏱️ OVERLAY: onComplete FIRED +${Date.now() - mountTime}ms (expected +${stageInterval + FADE_OUT_MS}ms)`);
+          onComplete?.();
+        }, FADE_OUT_MS));
+      }, stageInterval));
     }
 
-    // Standard: display for 1.5s then fade out
-    const displayTimer = setTimeout(() => {
-      setIsVisible(false);
+    return () => timers.forEach(clearTimeout);
+    // headingTarget intentionally excluded — it changes when stageIndex changes (driven by
+    // timers inside this effect). Including it would cancel and re-schedule all timers on
+    // every morph, causing later stages to barely display before the queue unmounts the overlay.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onComplete, markId, compound, stages]);
 
-      // Wait for fade-out animation to complete before cleanup
-      const cleanupTimer = setTimeout(() => {
-        onComplete?.();
-      }, FADE_OUT_MS);
-
-      return () => clearTimeout(cleanupTimer);
-    }, 1500);
-
-    return () => clearTimeout(displayTimer);
-  }, [onComplete, markId, phaseText, compound, stages]);
-
-  // Log when isVisible actually changes (React has applied the state update)
+  // Log when isVisible actually changes
   useEffect(() => {
     if (isVisible && import.meta.env.DEV) {
       performance.mark(`${markId}-visible-true`);
-
-      // Measure timing from component mount to visible
       try {
         performance.measure(
           `${markId}-mount-to-visible`,
           `${markId}-component-mount`,
           `${markId}-visible-true`
         );
-
         const measure = performance.getEntriesByName(`${markId}-mount-to-visible`)[0];
-
         timingLog('[MODAL COMPONENT] Modal NOW VISIBLE', {
-          phaseText,
+          phaseText: headingTarget,
           mountToVisibleMs: measure?.duration?.toFixed(2),
-          browserState: {
-            hasFocus: document.hasFocus(),
-            visibilityState: document.visibilityState,
-            hidden: document.hidden
-          },
           blockingReason: 'none_modal_visible_on_screen'
         });
       } catch (e) {
         timingLog('[MODAL COMPONENT] Modal NOW VISIBLE', {
-          phaseText,
+          phaseText: headingTarget,
           measureError: e.message,
-          browserState: {
-            hasFocus: document.hasFocus(),
-            visibilityState: document.visibilityState,
-            hidden: document.hidden
-          },
           blockingReason: 'none_modal_visible_on_screen'
         });
       }
     }
-  }, [isVisible, phaseText, markId]);
+  }, [isVisible, headingTarget, markId]);
+
+  // DOM inspection after stage transitions — diagnose backgroundClip: text compositor bug
+  useEffect(() => {
+    if (!headingRef.current) return;
+    const el = headingRef.current;
+    const timer = setTimeout(() => {
+      const cs = getComputedStyle(el);
+      debugLog('ANNOUNCE_TRACE', '🔍 H1 DOM INSPECTION', {
+        stageIndex,
+        textContent: el.textContent,
+        backgroundClip: cs.backgroundClip,
+        webkitTextFillColor: cs.webkitTextFillColor,
+        background: cs.background?.substring(0, 80),
+        variant: headingVariant,
+        gradientIs: headingGradient === opponentGradientStyle ? 'opponent' : 'player',
+        dimensions: `${el.offsetWidth}x${el.offsetHeight}`,
+      });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [stageIndex, headingVariant, headingGradient]);
 
   // Ref callback to detect when DOM element is actually created
   const handleContainerRef = (element) => {
     if (element && !containerRef.current) {
       containerRef.current = element;
-
       if (import.meta.env.DEV) {
         performance.mark(`${markId}-dom-element-created`);
-        timingLog('[MODAL COMPONENT] DOM element created', {
-          phaseText,
-          blockingReason: 'element_in_dom_awaiting_paint'
-        });
       }
     }
   };
@@ -273,9 +268,8 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
           ${isVisible ? 'scale-100 translate-y-0' : 'scale-90 translate-y-4'}
         `}
       >
-        {/* Background hex decorations - positioned behind text */}
+        {/* Background hex decorations */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          {/* Upper-left hex - larger */}
           <svg
             className={`absolute -translate-x-28 -translate-y-10 transition-all duration-500 ${isVisible ? 'opacity-20' : 'opacity-0'}`}
             width="100" height="115" viewBox="0 0 80 92"
@@ -287,7 +281,6 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
               strokeWidth="1"
             />
           </svg>
-          {/* Lower-right hex - medium */}
           <svg
             className={`absolute translate-x-24 translate-y-8 transition-all duration-500 ${isVisible ? 'opacity-15' : 'opacity-0'}`}
             width="80" height="92" viewBox="0 0 80 92"
@@ -299,7 +292,6 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
               strokeWidth="0.8"
             />
           </svg>
-          {/* Center-right small hex */}
           <svg
             className={`absolute translate-x-44 -translate-y-2 transition-all duration-500 ${isVisible ? 'opacity-10' : 'opacity-0'}`}
             width="50" height="58" viewBox="0 0 80 92"
@@ -311,7 +303,6 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
               strokeWidth="0.5"
             />
           </svg>
-          {/* Upper-right tiny hex */}
           <svg
             className={`absolute translate-x-16 -translate-y-14 transition-all duration-500 ${isVisible ? 'opacity-12' : 'opacity-0'}`}
             width="40" height="46" viewBox="0 0 80 92"
@@ -325,31 +316,23 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
           </svg>
         </div>
 
-        {/* Text content — compound scramble morph or standard */}
-        {compound && stages ? (
-          <div className="flex flex-col items-center">
-            <h1
-              className={`
-                text-6xl font-orbitron font-black uppercase tracking-widest text-center
-                phase-announcement-text
-                ${isVisible ? 'phase-announcement-shine' : ''}
-              `}
-              style={{ ...gradientStyle, fontVariantNumeric: 'tabular-nums' }}
-            >
-              {displayPhaseText}
-            </h1>
+        {/* Text content — unified scramble rendering */}
+        <div className="flex flex-col items-center">
+          <h1
+            key={headingVariant || 'player'}
+            ref={headingRef}
+            className="text-6xl font-orbitron font-black uppercase tracking-widest text-center"
+            style={{ ...headingGradient, fontVariantNumeric: 'tabular-nums' }}
+          >
+            {displayHeading}
+          </h1>
 
-            <p className="text-2xl font-orbitron font-medium uppercase tracking-wider text-center text-cyan-300/80 mt-4">
+          {displaySubtitle && (
+            <p className={`text-2xl font-orbitron font-medium uppercase tracking-wider text-center ${subtitleColorClass} mt-4`}>
               {displaySubtitle}
             </p>
-          </div>
-        ) : (
-          <StageContent
-            phaseText={phaseText}
-            subtitle={subtitle}
-            isVisible={isVisible}
-          />
-        )}
+          )}
+        </div>
 
         {/* Decorative line beneath text */}
         <div
@@ -361,11 +344,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
         />
 
         {/* Scan line effect */}
-        <div
-          className={`
-            absolute inset-0 pointer-events-none overflow-hidden
-          `}
-        >
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div
             className={`
               absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent

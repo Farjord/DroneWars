@@ -163,6 +163,42 @@ describe('useTextScramble', () => {
     expect(text).toHaveLength(5);
   });
 
+  it('initialSource: scrambles from empty to target when active from mount', () => {
+    const { result } = renderHook(() =>
+      useTextScramble('HELLO', { isActive: true, duration: 500, initialSource: '' })
+    );
+
+    // Initial render: display text is '' (from initialSource), not 'HELLO'
+    // (No rAF tick yet, so scramble hasn't started producing characters)
+
+    // After one frame: scramble produces characters from '' toward 'HELLO'
+    act(() => { vi.advanceTimersByTime(16); });
+    expect(result.current.length).toBeGreaterThan(0);
+    expect(result.current).not.toBe('HELLO'); // Still scrambling
+
+    // After completion: should show final target
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current).toBe('HELLO');
+  });
+
+  it('initialSource: sets sourceRef so deferred activation scrambles from initial source', () => {
+    let active = false;
+    const { result, rerender } = renderHook(() =>
+      useTextScramble('HELLO', { isActive: active, duration: 500, initialSource: '' })
+    );
+
+    // When inactive, display shows target (effect sets it)
+    expect(result.current).toBe('HELLO');
+
+    // Activate: should scramble from '' (initialSource) to 'HELLO'
+    active = true;
+    rerender();
+
+    // The scramble starts from sourceRef='' so characters resolve left-to-right
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(result.current).toBe('HELLO');
+  });
+
   it('left-to-right lock-in: earlier characters lock before later ones', () => {
     let target = 'HELLO WORLD';
     let active = false;

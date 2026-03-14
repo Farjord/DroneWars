@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { personalizeAnnouncements, extractAnnouncements, mergeCompoundAnnouncements } from '../announcementUtils.js';
+import { personalizeAnnouncements, extractAnnouncements } from '../announcementUtils.js';
 
 describe('personalizeAnnouncements', () => {
   const baseState = {
@@ -24,6 +24,20 @@ describe('personalizeAnnouncements', () => {
     personalizeAnnouncements(animations, 'player1', baseState);
 
     expect(animations.systemAnimations[0].payload.text).toBe('ROUND 3');
+  });
+
+  it('bakes round number into roundTransition text', () => {
+    const animations = {
+      actionAnimations: [],
+      systemAnimations: [{
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'roundTransition', text: 'TRANSITIONING TO ROUND', subtitle: null },
+      }],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.systemAnimations[0].payload.text).toBe('TRANSITIONING TO ROUND 3');
   });
 
   it('sets "You Go First" subtitle for first player on deployment', () => {
@@ -124,6 +138,92 @@ describe('personalizeAnnouncements', () => {
 
     expect(animations.systemAnimations[0].payload.text).toBe('ROUND 1');
   });
+
+  it('defaults roundTransition round number to 1 when state.roundNumber is falsy', () => {
+    const animations = {
+      actionAnimations: [],
+      systemAnimations: [{
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'roundTransition', text: 'TRANSITIONING TO ROUND', subtitle: null },
+      }],
+    };
+
+    personalizeAnnouncements(animations, 'player1', { roundNumber: 0 });
+
+    expect(animations.systemAnimations[0].payload.text).toBe('TRANSITIONING TO ROUND 1');
+  });
+
+  // --- Variant/subtitleVariant ---
+
+  it('sets variant: "player" on PASS_ANNOUNCEMENT for local player', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'PASS_ANNOUNCEMENT',
+        payload: { passedPlayerId: 'player1' },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.variant).toBe('player');
+  });
+
+  it('sets variant: "opponent" on PASS_ANNOUNCEMENT for opponent', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'PASS_ANNOUNCEMENT',
+        payload: { passedPlayerId: 'player2' },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.variant).toBe('opponent');
+  });
+
+  it('sets subtitleVariant: "player" on deployment for first player', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.subtitleVariant).toBe('player');
+  });
+
+  it('sets subtitleVariant: "opponent" on deployment for second player', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: null },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player2', baseState);
+
+    expect(animations.actionAnimations[0].payload.subtitleVariant).toBe('opponent');
+  });
+
+  it('sets subtitleVariant on action phase matching first-player status', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'action', text: 'ACTION PHASE', subtitle: null },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player2', baseState);
+
+    expect(animations.actionAnimations[0].payload.subtitleVariant).toBe('opponent');
+  });
 });
 
 describe('extractAnnouncements', () => {
@@ -169,116 +269,24 @@ describe('extractAnnouncements', () => {
     expect(announcements[1].id).toBeTruthy();
     expect(announcements[0].id).not.toBe(announcements[1].id);
   });
-});
 
-describe('mergeCompoundAnnouncements', () => {
-  function mkAnnouncement(phaseName, phaseText, subtitle = null) {
-    return { id: `phase-anim-${phaseName}`, phaseName, phaseText, subtitle };
-  }
-
-  it('merges [playerPass, deploymentComplete, action] into one compound item', () => {
-    const input = [
-      mkAnnouncement('playerPass', 'YOU PASSED'),
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
+  it('passes through variant and subtitleVariant from payload', () => {
+    const allAnimations = [
+      {
+        animationName: 'PASS_ANNOUNCEMENT',
+        payload: { text: 'OPPONENT PASSED', phase: 'playerPass', variant: 'opponent' },
+      },
+      {
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: { phase: 'deployment', text: 'DEPLOYMENT PHASE', subtitle: 'Opponent Goes First', subtitleVariant: 'opponent' },
+      },
     ];
 
-    const result = mergeCompoundAnnouncements(input);
+    const { announcements } = extractAnnouncements(allAnimations);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].compound).toBe(true);
-    expect(result[0].phaseName).toBe('compoundDeployToAction');
-    expect(result[0].stages).toEqual([
-      { phaseText: 'YOU PASSED', subtitle: 'Deployment Complete' },
-      { phaseText: 'ACTION PHASE', subtitle: 'You Go First' },
-    ]);
-  });
-
-  it('preserves "OPPONENT PASSED" text in stage 1', () => {
-    const input = [
-      mkAnnouncement('playerPass', 'OPPONENT PASSED'),
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-      mkAnnouncement('action', 'ACTION PHASE', 'Opponent Goes First'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].stages[0].phaseText).toBe('OPPONENT PASSED');
-    expect(result[0].stages[1].subtitle).toBe('Opponent Goes First');
-  });
-
-  it('does not merge when only 2 of 3 items match (partial match)', () => {
-    const input = [
-      mkAnnouncement('playerPass', 'YOU PASSED'),
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result).toHaveLength(2);
-    expect(result[0].compound).toBeFalsy();
-    expect(result[1].compound).toBeFalsy();
-  });
-
-  it('does not merge when sequence is in wrong order', () => {
-    const input = [
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-      mkAnnouncement('playerPass', 'YOU PASSED'),
-      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result).toHaveLength(3);
-    expect(result.every(a => !a.compound)).toBe(true);
-  });
-
-  it('passes through non-matching announcements unchanged', () => {
-    const input = [
-      mkAnnouncement('roundAnnouncement', 'ROUND 1'),
-      mkAnnouncement('deployment', 'DEPLOYMENT PHASE', 'You Go First'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result).toHaveLength(2);
-    expect(result[0].phaseName).toBe('roundAnnouncement');
-    expect(result[1].phaseName).toBe('deployment');
-  });
-
-  it('preserves surrounding items when pattern is embedded', () => {
-    const input = [
-      mkAnnouncement('roundAnnouncement', 'ROUND 1'),
-      mkAnnouncement('playerPass', 'YOU PASSED'),
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
-      mkAnnouncement('deployment', 'DEPLOYMENT PHASE'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result).toHaveLength(3);
-    expect(result[0].phaseName).toBe('roundAnnouncement');
-    expect(result[1].compound).toBe(true);
-    expect(result[1].phaseName).toBe('compoundDeployToAction');
-    expect(result[2].phaseName).toBe('deployment');
-  });
-
-  it('returns empty array for empty input', () => {
-    expect(mergeCompoundAnnouncements([])).toEqual([]);
-  });
-
-  it('generates a new id for the compound item', () => {
-    const input = [
-      mkAnnouncement('playerPass', 'YOU PASSED'),
-      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
-      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
-    ];
-
-    const result = mergeCompoundAnnouncements(input);
-
-    expect(result[0].id).toMatch(/^phase-anim-/);
-    expect(result[0].id).not.toBe(input[0].id);
+    expect(announcements[0].variant).toBe('opponent');
+    expect(announcements[0].subtitleVariant).toBeNull();
+    expect(announcements[1].variant).toBeNull();
+    expect(announcements[1].subtitleVariant).toBe('opponent');
   });
 });

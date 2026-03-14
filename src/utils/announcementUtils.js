@@ -7,9 +7,12 @@
 /**
  * Personalize announcement animations for a specific player.
  * Mutates animations in-place — caller should clone if immutability is needed.
- * - roundAnnouncement: bakes in round number → "ROUND 3"
- * - deployment/action: sets subtitle → "You Go First" / "Opponent Goes First"
- * - PASS_ANNOUNCEMENT: sets text → "YOU PASSED" / "OPPONENT PASSED"
+ * - roundAnnouncement: bakes in round number -> "ROUND 3"
+ * - roundTransition: bakes in round number -> "TRANSITIONING TO ROUND 3"
+ * - deployment/action: sets subtitle -> "You Go First" / "Opponent Goes First"
+ *   and subtitleVariant -> 'player' / 'opponent'
+ * - PASS_ANNOUNCEMENT: sets text -> "YOU PASSED" / "OPPONENT PASSED"
+ *   and variant -> 'player' / 'opponent'
  */
 export function personalizeAnnouncements(animations, playerId, state) {
   const personalizeAnim = (anim) => {
@@ -18,17 +21,24 @@ export function personalizeAnnouncements(animations, playerId, state) {
 
       if (phase === 'roundAnnouncement') {
         anim.payload = { ...anim.payload, text: `ROUND ${state.roundNumber || 1}` };
+      } else if (phase === 'roundTransition') {
+        anim.payload = { ...anim.payload, text: `TRANSITIONING TO ROUND ${state.roundNumber || 1}` };
       } else if (phase === 'deployment' || phase === 'action') {
         const isFirst = state.firstPlayerOfRound === playerId;
         const subtitle = state.firstPlayerOfRound
           ? (isFirst ? 'You Go First' : 'Opponent Goes First')
           : null;
-        anim.payload = { ...anim.payload, subtitle };
+        const subtitleVariant = state.firstPlayerOfRound
+          ? (isFirst ? 'player' : 'opponent')
+          : null;
+        anim.payload = { ...anim.payload, subtitle, subtitleVariant };
       }
     } else if (anim.animationName === 'PASS_ANNOUNCEMENT') {
       const { passedPlayerId } = anim.payload;
-      const text = passedPlayerId === playerId ? 'YOU PASSED' : 'OPPONENT PASSED';
-      anim.payload = { ...anim.payload, text, phase: 'playerPass' };
+      const isLocal = passedPlayerId === playerId;
+      const text = isLocal ? 'YOU PASSED' : 'OPPONENT PASSED';
+      const variant = isLocal ? 'player' : 'opponent';
+      anim.payload = { ...anim.payload, text, phase: 'playerPass', variant };
     }
   };
 
@@ -53,6 +63,8 @@ export function extractAnnouncements(allAnimations) {
         phaseName: anim.payload.phase || 'playerPass',
         phaseText: anim.payload.text,
         subtitle: anim.payload.subtitle || null,
+        variant: anim.payload.variant || null,
+        subtitleVariant: anim.payload.subtitleVariant || null,
       });
     } else {
       visualAnimations.push(anim);
@@ -60,44 +72,4 @@ export function extractAnnouncements(allAnimations) {
   }
 
   return { announcements, visualAnimations };
-}
-
-/**
- * Merge contiguous [playerPass, deploymentComplete, action] sequences
- * into a single compound announcement with two cross-fade stages.
- * Non-matching items pass through unchanged.
- */
-const DEPLOY_TO_ACTION_SEQUENCE = ['playerPass', 'deploymentComplete', 'action'];
-
-export function mergeCompoundAnnouncements(announcements) {
-  const result = [];
-  let i = 0;
-
-  while (i < announcements.length) {
-    if (
-      i + 2 < announcements.length &&
-      announcements[i].phaseName === DEPLOY_TO_ACTION_SEQUENCE[0] &&
-      announcements[i + 1].phaseName === DEPLOY_TO_ACTION_SEQUENCE[1] &&
-      announcements[i + 2].phaseName === DEPLOY_TO_ACTION_SEQUENCE[2]
-    ) {
-      const passItem = announcements[i];
-      const actionItem = announcements[i + 2];
-
-      result.push({
-        id: `phase-anim-${crypto.randomUUID()}`,
-        phaseName: 'compoundDeployToAction',
-        compound: true,
-        stages: [
-          { phaseText: passItem.phaseText, subtitle: 'Deployment Complete' },
-          { phaseText: actionItem.phaseText, subtitle: actionItem.subtitle },
-        ],
-      });
-      i += 3;
-    } else {
-      result.push(announcements[i]);
-      i++;
-    }
-  }
-
-  return result;
 }
