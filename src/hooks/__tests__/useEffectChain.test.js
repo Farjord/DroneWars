@@ -641,6 +641,135 @@ describe('useEffectChain — optional effects', () => {
   });
 });
 
+// --- Mandatory Effect Blocking ---
+
+describe('useEffectChain — mandatory effect blocking', () => {
+  // Player states: p1 has drone in lane1, p2 has NO drones in lane1
+  const noEnemyStates = {
+    player1: {
+      dronesOnBoard: {
+        lane1: [{ id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 }],
+        lane2: [],
+        lane3: [],
+      },
+      hand: [],
+    },
+    player2: {
+      dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+      hand: [],
+    },
+  };
+
+  // Player states: p2 HAS a drone in lane1
+  const withEnemyStates = {
+    player1: {
+      dronesOnBoard: {
+        lane1: [{ id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 }],
+        lane2: [],
+        lane3: [],
+      },
+      hand: [],
+    },
+    player2: {
+      dronesOnBoard: {
+        lane1: [{ id: 'p2d1', name: 'Fighter', attack: 3, speed: 5, hull: 4 }],
+        lane2: [],
+        lane3: [],
+      },
+      hand: [],
+    },
+  };
+
+  function makeMandatoryCard() {
+    return {
+      name: 'Mandatory Test',
+      effects: [
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' } }, mandatory: true },
+      ],
+    };
+  }
+
+  it('mandatory effect with 0 valid targets stalls chain', () => {
+    const { result } = renderHook(() => useEffectChain({
+      playerStates: noEnemyStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(makeMandatoryCard()));
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+
+    const state = result.current.effectChainState;
+    expect(state.complete).toBe(false);
+    expect(state.mandatoryEffectBlocked).toBe(true);
+    expect(state.validTargets).toHaveLength(0);
+    expect(state.currentIndex).toBe(1);
+  });
+
+  it('mandatory effect with valid targets proceeds normally', () => {
+    const { result } = renderHook(() => useEffectChain({
+      playerStates: withEnemyStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(makeMandatoryCard()));
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+
+    const state = result.current.effectChainState;
+    expect(state.mandatoryEffectBlocked).toBeFalsy();
+    expect(state.validTargets.length).toBeGreaterThan(0);
+    expect(state.subPhase).toBe('target');
+  });
+
+  it('optional effect with 0 valid targets auto-skips (existing behavior)', () => {
+    const card = {
+      name: 'Optional Test',
+      effects: [
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' } }, optional: true },
+      ],
+    };
+
+    const { result } = renderHook(() => useEffectChain({
+      playerStates: noEnemyStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(card));
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+
+    const state = result.current.effectChainState;
+    expect(state.complete).toBe(true);
+    expect(state.selections[1].skipped).toBe(true);
+  });
+
+  it('default effect (neither flag) with 0 valid targets auto-skips (backwards compat)', () => {
+    const card = {
+      name: 'Default Test',
+      effects: [
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
+        { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' } } },
+      ],
+    };
+
+    const { result } = renderHook(() => useEffectChain({
+      playerStates: noEnemyStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(card));
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+
+    const state = result.current.effectChainState;
+    expect(state.complete).toBe(true);
+    expect(state.selections[1].skipped).toBe(true);
+  });
+});
+
 // --- Edge Cases ---
 
 describe('useEffectChain — edge cases', () => {

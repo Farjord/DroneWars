@@ -5,6 +5,7 @@
 
 import { resolveRefFromSelections } from './EffectChainProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
 // --- Ref Resolution ---
 
@@ -127,7 +128,7 @@ function passesRestriction(drone, restriction, getEffectiveStats, lane) {
 
 // --- Per-Type Target Computation ---
 
-function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTracker, getEffectiveStats) {
+function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTracker, getEffectiveStats, effectType = null) {
   const targetPlayerId = getTargetPlayerId(targeting.affinity, actingPlayerId);
   const targetLanes = getTargetLanes(targeting.location);
   const board = playerStates[targetPlayerId]?.dronesOnBoard || {};
@@ -147,6 +148,12 @@ function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTr
           restrictionFailures++;
           continue;
         }
+      }
+
+      // Thruster Inhibitor: block friendly drones from being targeted for movement
+      // in lanes with an active inhibitor (enemy forced repositioning still works)
+      if (effectType === 'SINGLE_MOVE' && targeting.affinity === 'FRIENDLY') {
+        if (hasMovementInhibitorInLane(playerStates[targetPlayerId], virtualLane)) continue;
       }
 
       targets.push({ ...drone, owner: targetPlayerId, lane: virtualLane });
@@ -208,7 +215,7 @@ export function computeChainTargets(effect, effectIndex, selections, positionTra
 
   switch (targeting.type) {
     case 'DRONE':
-      return computeDroneTargets(targeting, actingPlayerId, playerStates, positionTracker, getEffectiveStats);
+      return computeDroneTargets(targeting, actingPlayerId, playerStates, positionTracker, getEffectiveStats, effect.type);
     case 'LANE':
       return computeLaneTargets(targeting, actingPlayerId);
     case 'CARD_IN_HAND':

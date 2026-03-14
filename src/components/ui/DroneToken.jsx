@@ -309,7 +309,7 @@ const DroneToken = ({
 
         // Allow drag for player-owned drones that aren't exhausted,
         // or for enemy drones selected as move targets during destination phase
-        const canDrag = (isSelectedForMove && !isPriorChainTarget) || (isPlayer && !drone.isExhausted);
+        const canDrag = (isSelectedForMove && !isPriorChainTarget) || (isPlayer && !drone.isExhausted) || (isActionTarget && !!onDragStart);
 
         if (onDragStart && canDrag) {
           e.preventDefault();

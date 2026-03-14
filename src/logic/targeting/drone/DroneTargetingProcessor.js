@@ -7,6 +7,7 @@
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
 import { getLaneOfDrone, hasJammerInLane, getJammerDronesInLane } from '../../utils/gameEngineUtils.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { hasMovementInhibitorInLane } from '../../../utils/gameUtils.js';
 
 /**
  * DroneTargetingProcessor - Handles drone targeting
@@ -187,7 +188,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         const jammers = getJammerDronesInLane(playerState, lane);
         jammers.forEach(drone => {
           // Check if this is a movement effect
-          const effectType = context?.definition?.effect?.type;
+          const effectType = context?.definition?.effect?.type || context?.definition?.effects?.[0]?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE';
 
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
@@ -199,6 +200,11 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           if (isMovementEffect && context?.getEffectiveStats) {
             const stats = context.getEffectiveStats(drone, lane);
             if (stats.keywords.has('INERT')) return;
+          }
+
+          // Thruster Inhibitor: block own drones from movement targeting
+          if (isMovementEffect && playerId === actingPlayerId) {
+            if (hasMovementInhibitorInLane(playerState, lane)) return;
           }
 
           if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {
@@ -209,7 +215,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         // Normal targeting (no Jammer interference or not an opponent card effect)
         drones.forEach(drone => {
           // Check if this is a movement effect
-          const effectType = context?.definition?.effect?.type;
+          const effectType = context?.definition?.effect?.type || context?.definition?.effects?.[0]?.type;
           const isMovementEffect = effectType === 'SINGLE_MOVE';
 
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
@@ -221,6 +227,11 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           if (isMovementEffect && context?.getEffectiveStats) {
             const stats = context.getEffectiveStats(drone, lane);
             if (stats.keywords.has('INERT')) return;
+          }
+
+          // Thruster Inhibitor: block own drones from movement targeting
+          if (isMovementEffect && playerId === actingPlayerId) {
+            if (hasMovementInhibitorInLane(playerState, lane)) return;
           }
 
           if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {

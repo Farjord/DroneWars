@@ -99,6 +99,23 @@ function advanceToNextSelection(state, context) {
     });
 
     if (validTargets.length === 0) {
+      if (effect.mandatory) {
+        // Mandatory effect with no valid targets — stall the chain
+        return {
+          ...state,
+          currentIndex: idx,
+          subPhase: 'target',
+          selections: sels,
+          pendingTarget: null,
+          pendingLane: null,
+          validTargets: [],
+          isCurrentEffectOptional: false,
+          mandatoryEffectBlocked: true,
+          prompt: effect.prompt || 'No valid targets — cancel to undo',
+          complete: false,
+        };
+      }
+      // Optional or default — auto-skip (existing behavior)
       sels.push({ target: null, lane: null, skipped: true });
       idx++;
       continue;

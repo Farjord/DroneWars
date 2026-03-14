@@ -28,7 +28,10 @@ class SoundEventBridge {
     // PhaseAnimationQueue - phase announcements and pass notifications
     if (phaseAnimationQueue) {
       const unsub = phaseAnimationQueue.on('animationStarted', (animation) => {
-        const soundId = getSoundForEvent('phaseAnimation', animation.phaseName);
+        const phaseName = animation.compound
+          ? animation.stages?.[0]?.phaseName
+          : animation.phaseName;
+        const soundId = getSoundForEvent('phaseAnimation', phaseName);
         if (soundId) {
           this.soundManager.play(soundId);
         }

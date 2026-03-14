@@ -427,6 +427,19 @@ describe('AnnouncementQueue', () => {
       expect(started[0].stages[1].subtitle).toBeNull();
     });
 
+    it('preserves phaseName in compound stages', async () => {
+      const started = [];
+      queue.on('animationStarted', (a) => started.push(a));
+
+      queue.enqueueAll([
+        mkAnnouncement('a', 'deployment'),
+        mkAnnouncement('b', 'action'),
+      ]);
+
+      expect(started[0].stages[0].phaseName).toBe('deployment');
+      expect(started[0].stages[1].phaseName).toBe('action');
+    });
+
     it('preserves variant and subtitleVariant in compound stages', async () => {
       const started = [];
       queue.on('animationStarted', (a) => started.push(a));

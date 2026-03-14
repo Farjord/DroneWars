@@ -352,14 +352,17 @@ export default function useClickHandlers({
           selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);
         }
         return;
-      } else if (effectChainState.subPhase === 'destination' && isPlayer) {
-        // Check if destination is locked to a specific lane
+      } else if (effectChainState.subPhase === 'destination') {
         const currentEffect = effectChainState.effects?.[effectChainState.currentIndex];
-        const resolvedDest = currentEffect ? resolveDestinationRefs(currentEffect.destination, effectChainState.selections) : null;
-        const lanes = ['lane1', 'lane2', 'lane3'];
-        if (resolvedDest?.location && lanes.includes(resolvedDest.location) && lane !== resolvedDest.location) {
-          setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
-          return;
+        const rawLocation = currentEffect?.destination?.location;
+        const isRefLocked = rawLocation && typeof rawLocation === 'object' && 'ref' in rawLocation;
+        if (isRefLocked) {
+          const resolvedDest = resolveDestinationRefs(currentEffect.destination, effectChainState.selections);
+          const lanes = ['lane1', 'lane2', 'lane3'];
+          if (resolvedDest?.location && lanes.includes(resolvedDest.location) && lane !== resolvedDest.location) {
+            setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
+            return;
+          }
         }
         if (isLaneFull(localPlayerState, lane, effectChainState?.selections)) {
           setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });

@@ -119,6 +119,12 @@ function ActionPhaseButtons({
             </button>
           )}
 
+          {effectChainState.mandatoryEffectBlocked && (
+            <button disabled className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm">
+              Confirm
+            </button>
+          )}
+
           {effectChainState.isCurrentEffectOptional && (
             <button
               onClick={(e) => {

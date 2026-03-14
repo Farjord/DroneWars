@@ -46,7 +46,7 @@ const renderDronesOnBoard = ({
 
           const isInvalidTarget = (() => {
             if (targetingType === 'DRONE' && !isActionTarget) {
-              if (currentEffect && isCompoundEffect(currentEffect)) return false;
+              if (currentEffect && isCompoundEffect(currentEffect) && effectChainState?.subPhase === 'destination') return false;
               return true;
             }
             if (affectedDroneIds === null) return false;

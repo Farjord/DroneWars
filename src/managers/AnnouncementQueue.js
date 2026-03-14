@@ -174,6 +174,7 @@ class AnnouncementQueue {
         phaseName: items.map(i => i.phaseName).join('+'),
         compound: true,
         stages: items.map(item => ({
+          phaseName: item.phaseName,
           phaseText: item.phaseText,
           subtitle: item.subtitle,
           variant: item.variant || null,

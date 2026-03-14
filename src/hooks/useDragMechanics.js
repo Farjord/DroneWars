@@ -682,7 +682,9 @@ const useDragMechanics = ({
             return;
           }
           // Destination is locked to a specific lane — reject if user dragged elsewhere
-          if (targetLane !== resolvedDest.location) {
+          const rawLocation = currentEffect.destination?.location;
+          const isRefLocked = rawLocation && typeof rawLocation === 'object' && 'ref' in rawLocation;
+          if (isRefLocked && targetLane !== resolvedDest.location) {
             setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
             return;
           }
