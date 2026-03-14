@@ -181,85 +181,6 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
     });
   });
 
-  describe('executeMultiMove - lane capacity', () => {
-    it('should return error when batch would exceed capacity (3 drones to lane with 3)', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(3, 'source');
-      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiCard, dronesToMove, 'lane1', 'lane2',
-        'player1', newPlayerStates, 'player2', mockContext
-      );
-
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('full');
-    });
-
-    it('should call logCallback with MOVE_BLOCKED when multi-move blocked by capacity', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(3, 'source');
-      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      processor.executeMultiMove(
-        multiCard, dronesToMove, 'lane1', 'lane2',
-        'player1', newPlayerStates, 'player2', mockContext
-      );
-
-      expect(mockContext.callbacks.logCallback).toHaveBeenCalledWith(
-        expect.objectContaining({
-          actionType: 'MOVE_BLOCKED',
-          outcome: expect.stringContaining('lane is full')
-        })
-      );
-    });
-
-    it('should include MOVEMENT_BLOCKED animation events when multi-move blocked', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(3, 'source');
-      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiCard, dronesToMove, 'lane1', 'lane2',
-        'player1', newPlayerStates, 'player2', mockContext
-      );
-
-      expect(result.animationEvents).toBeDefined();
-      expect(result.animationEvents.length).toBeGreaterThan(0);
-      result.animationEvents.forEach(event => {
-        expect(event.type).toBe('MOVEMENT_BLOCKED');
-        expect(event.droneName).toBeDefined();
-        expect(event.targetId).toBeDefined();
-      });
-    });
-
-    it('should allow batch when result is exactly at capacity (2 drones to lane with 3)', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = makeDrones(2, 'source');
-      mockPlayerStates.player1.dronesOnBoard.lane2 = makeDrones(3, 'existing');
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiCard, dronesToMove, 'lane1', 'lane2',
-        'player1', newPlayerStates, 'player2', mockContext
-      );
-
-      expect(result.error).toBeUndefined();
-      expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(5);
-    });
-  });
-
   describe('executeAIMovement - lane capacity', () => {
     it('should skip full destination lanes for AI SINGLE_MOVE', () => {
       // AI has drone in lane1, lane2 is full, lane3 is empty
@@ -290,29 +211,5 @@ describe('MovementEffectProcessor - lane capacity limit', () => {
       // The AI should have found no valid move (lane2 full, lane3 not adjacent to lane1)
     });
 
-    it('should skip full destination lanes for AI MULTI_MOVE', () => {
-      // AI has 3 drones in lane2, lane1 has 3 drones (can absorb 2 max), lane3 empty
-      mockPlayerStates.player2.dronesOnBoard.lane2 = makeDrones(3, 'ai');
-      mockPlayerStates.player2.dronesOnBoard.lane1 = makeDrones(3, 'existing');
-      mockPlayerStates.player2.dronesOnBoard.lane3 = [];
-
-      const effect = { type: 'MULTI_MOVE', count: 3, properties: [] };
-      const aiContext = {
-        ...mockContext,
-        actingPlayerId: 'player2',
-        localPlayerId: 'player1',
-        isPlayerAI: (pid) => pid === 'player2',
-        card: { ...mockCard, effects: [effect] },
-        playerStates: mockPlayerStates,
-      };
-
-      const result = processor.process(effect, aiContext);
-
-      // AI should not move 3 drones to lane1 (3+3>5). It should pick lane3 instead or skip.
-      if (result.newPlayerStates) {
-        // If it moved, it should NOT have put 6 drones in lane1
-        expect(result.newPlayerStates.player2.dronesOnBoard.lane1.length).toBeLessThanOrEqual(5);
-      }
-    });
-  });
+});
 });

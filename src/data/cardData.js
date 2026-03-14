@@ -1132,9 +1132,31 @@ const fullCardCollection = [
     cost: 5,
     momentumCost: 1,
     image: '/DroneWars/cards/Reposition.png',
-    description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
+    description: 'Move up to 3 friendly drones to the same adjacent lane. The moved drones are not exhausted.',
     effects: [
-      { type: 'MULTI_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', maxTargets: 3, restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE' }, properties: ['DO_NOT_EXHAUST'] },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] },
+        destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
+        properties: ['DO_NOT_EXHAUST'],
+        prompt: 'Move a friendly drone (1 of 3)',
+      },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] },
+        destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+        properties: ['DO_NOT_EXHAUST'],
+        optional: true,
+        prompt: 'Move another drone to the same lane (2 of 3)',
+      },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] },
+        destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+        properties: ['DO_NOT_EXHAUST'],
+        optional: true,
+        prompt: 'Move another drone to the same lane (3 of 3)',
+      },
     ],
   },
   {

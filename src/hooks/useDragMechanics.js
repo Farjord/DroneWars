@@ -8,13 +8,13 @@ import { debugLog } from '../utils/debugLogger.js';
 import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateAffectedSections } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter } from '../utils/gameUtils.js';
-import { isCompoundEffect } from '../logic/cards/chainTargetResolver.js';
+import { isCompoundEffect, resolveDestinationRefs } from '../logic/cards/chainTargetResolver.js';
 import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 
 /** Returns true when a card would flow to setCardConfirmation({ card, target: null }) — no arrow needed. */
 function isNoTargetCard(card) {
   const effect0 = card.effects?.[0];
-  if (effect0?.type === 'SINGLE_MOVE' || effect0?.type === 'MULTI_MOVE') return false;
+  if (effect0?.type === 'SINGLE_MOVE') return false;
   // Multi-effect cards where effect[0] needs no board target — drop anywhere to play
   const firstTargetType = effect0?.targeting?.type;
   if (firstTargetType === 'CARD_IN_HAND' || firstTargetType === 'NONE') return true;
@@ -56,6 +56,7 @@ const useDragMechanics = ({
   // From useCardSelection — effect chain
   startEffectChain,
   effectChainState,
+  selectChainTarget,
   selectChainDestination,
   // Hoisted to App.jsx to break circular dependency with useCardSelection/useInterception
   draggedDrone, setDraggedDrone,
@@ -198,7 +199,7 @@ const useDragMechanics = ({
       }
 
       debugLog('DRAG_DROP_DEPLOY', '🔍 Validating deployment', { droneName: droneToDeployFromDrag.name });
-      const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
+      const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats, lane);
       if (!validationResult.isValid) {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Validation failed', { reason: validationResult.reason, message: validationResult.message });
         setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
@@ -392,7 +393,7 @@ const useDragMechanics = ({
 
     // Case 0: Movement cards - check if dropped on target or needs multi-select
     // Must be checked before no-targeting case, since movement cards have no targeting property
-    if (card.effects[0]?.type === 'SINGLE_MOVE' || card.effects[0]?.type === 'MULTI_MOVE') {
+    if (card.effects[0]?.type === 'SINGLE_MOVE') {
       debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
 
       // Sub-case 0a: Movement card dropped on a valid target drone
@@ -575,6 +576,31 @@ const useDragMechanics = ({
       return;
     }
 
+    // Effect chain target phase for compound effects with resolved destination —
+    // allow drag. The drone becomes the pending target, and handleDroneDragEnd
+    // will route through selectChainTarget which auto-selects the destination.
+    if (effectChainState?.subPhase === 'target' && !effectChainState.complete) {
+      const currentEffect = effectChainState.effects[effectChainState.currentIndex];
+      if (currentEffect && isCompoundEffect(currentEffect)) {
+        debugLog('DRAG_DROP_DEPLOY', '🎯 Chain target drag start (compound effect)', { droneName: drone.name });
+        droneDragHandledRef.current = false;
+        setDraggedDrone({ drone, sourceLane, isChainTargetDrag: true });
+        if (gameAreaRef.current) {
+          const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+          const tokenElement = event.currentTarget;
+          const tokenRect = tokenElement.getBoundingClientRect();
+          const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+          const startY = tokenRect.top - gameAreaRect.top + 15;
+          setDroneDragArrowState({
+            visible: true,
+            start: { x: startX, y: startY },
+            end: { x: startX, y: startY }
+          });
+        }
+        return;
+      }
+    }
+
     // During chain target/multi-target selection, block drag — clicks only
     if (effectChainState && !effectChainState.complete &&
         (effectChainState.subPhase === 'target' || effectChainState.subPhase === 'multi-target')) {
@@ -638,6 +664,40 @@ const useDragMechanics = ({
     droneDragHandledRef.current = true;
     suppressNextClickRef.current = true;
 
+    // Chain target drag for compound effects — route through selectChainTarget
+    // which auto-selects the resolved destination
+    if (draggedDrone.isChainTargetDrag && effectChainState?.subPhase === 'target') {
+      const droneData = draggedDrone.drone;
+      const fromLane = draggedDrone.sourceLane;
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+      if (targetLane && targetLane !== fromLane) {
+        // Check if resolved destination would be full
+        const currentEffect = effectChainState.effects[effectChainState.currentIndex];
+        const resolvedDest = resolveDestinationRefs(currentEffect.destination, effectChainState.selections);
+        if (resolvedDest?.location && ['lane1', 'lane2', 'lane3'].includes(resolvedDest.location)) {
+          if (isLaneFull(localPlayerState, resolvedDest.location, effectChainState.selections)) {
+            setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
+            return;
+          }
+          // Destination is locked to a specific lane — reject if user dragged elsewhere
+          if (targetLane !== resolvedDest.location) {
+            setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
+            return;
+          }
+        }
+
+        // Find drone owner
+        const isLocalDrone = Object.entries(localPlayerState.dronesOnBoard)
+          .some(([_, drones]) => drones.some(d => d.id === droneData.id));
+        const opponentId = getLocalPlayerId() === 'player1' ? 'player2' : 'player1';
+        const droneOwner = isLocalDrone ? getLocalPlayerId() : opponentId;
+        selectChainTarget({ ...droneData, owner: droneOwner }, fromLane);
+      }
+      return;
+    }
+
     // Route drone drag through effect chain destination selection.
     // When the chain is waiting for a destination lane and the user drags
     // the drone to a lane, route through selectChainDestination instead
@@ -649,6 +709,8 @@ const useDragMechanics = ({
         const isValidDestination = effectChainState.validTargets?.some(t => t.id === targetLane);
         if (isValidDestination) {
           selectChainDestination(targetLane);
+        } else if (isLaneFull(localPlayerState, targetLane, effectChainState.selections)) {
+          setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
         }
       }
       return;

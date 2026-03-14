@@ -173,10 +173,6 @@ describe('isCompoundEffect', () => {
     expect(isCompoundEffect({ type: 'SINGLE_MOVE', destination: { type: 'LANE' } })).toBe(true);
   });
 
-  it('returns true for MULTI_MOVE with destination', () => {
-    expect(isCompoundEffect({ type: 'MULTI_MOVE', destination: { type: 'LANE' } })).toBe(true);
-  });
-
   it('returns false for DAMAGE', () => {
     expect(isCompoundEffect({ type: 'DAMAGE', value: 3 })).toBe(false);
   });
@@ -439,11 +435,10 @@ describe('computeDestinationTargets', () => {
     expect(targets[0].id).toBe('lane2');
   });
 
-  it('returns other lanes for generic destination', () => {
+  it('returns empty for generic destination with no location', () => {
     const dest = { type: 'LANE' };
     const targets = computeDestinationTargets(dest, { lane: 'lane2' }, 'player1');
-    expect(targets).toHaveLength(2);
-    expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane3']);
+    expect(targets).toHaveLength(0);
   });
 
   it('returns single target for concrete lane ID', () => {

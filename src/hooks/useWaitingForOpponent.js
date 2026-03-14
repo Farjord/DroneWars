@@ -43,14 +43,6 @@ const useWaitingForOpponent = ({
   // Shows waiting modal when local player committed but opponent hasn't.
   // Clears it when both committed, or when phase advances past the waited phase.
   useEffect(() => {
-    debugLog('COMMITMENTS', 'useWaitingForOpponent effect fired', {
-      turnPhase,
-      commitmentKey,
-      waitingPhaseRef: waitingPhaseRef.current,
-      commitmentKeys: Object.keys(gameState.commitments || {}),
-      hasPendingOnComplete: !!pendingOnCompleteRef.current,
-    });
-
     // Cancel any stale pending onComplete from previous effect run
     if (pendingOnCompleteRef.current) {
       pendingOnCompleteRef.current();
@@ -94,9 +86,10 @@ const useWaitingForOpponent = ({
 
     // Failsafe: clear stale waiting modal if turnPhase has moved past the waited phase
     if (waitingPhaseRef.current && turnPhase !== waitingPhaseRef.current) {
-      debugLog('PHASE_TRANSITIONS', `Failsafe: clearing stale waiting modal for "${waitingPhaseRef.current}" — turnPhase is now "${turnPhase}"`);
+      debugLog('COMMITMENTS', `Failsafe: clearing stale waiting modal for "${waitingPhaseRef.current}" — turnPhase is now "${turnPhase}"`);
       setWaitingPhase(null);
     }
+
   }, [turnPhase, commitmentKey, getLocalPlayerId, getOpponentPlayerId, phaseAnimationQueue]);
 
   return {

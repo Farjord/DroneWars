@@ -61,8 +61,6 @@ export const effectDescriptions = {
   // === MOVEMENT ===
   'SINGLE_MOVE': 'Moves one friendly drone from its current lane to an adjacent lane. The drone becomes exhausted unless the effect specifies otherwise.',
 
-  'MULTI_MOVE': 'Moves up to a specified number of friendly drones from one lane to another. Provides tactical repositioning for multiple units at once.',
-
   // === TOKEN CREATION ===
   'CREATE_TOKENS': 'Creates drone tokens (non-card drones) in specified lanes. Tokens function like deployed drones but weren\'t played from hand. Can bypass CPU limits if specified.',
 

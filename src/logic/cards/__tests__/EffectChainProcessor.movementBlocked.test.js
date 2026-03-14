@@ -27,12 +27,10 @@ vi.mock('../../EffectRouter.js', () => ({
 
 // Mock MovementEffectProcessor to return controlled results
 const mockExecuteSingleMove = vi.fn();
-const mockExecuteMultiMove = vi.fn();
 vi.mock('../../effects/MovementEffectProcessor.js', () => ({
   default: class MockMovementEffectProcessor {
     constructor() {
       this.executeSingleMove = mockExecuteSingleMove;
-      this.executeMultiMove = mockExecuteMultiMove;
     }
   }
 }));
@@ -74,24 +72,6 @@ describe('EffectChainProcessor - movement blocked pass-through', () => {
 
     const effectData = { type: 'SINGLE_MOVE', properties: [] };
     const selection = { target: { id: 'd1' }, lane: 'lane1', destination: 'lane2' };
-
-    const result = processor.executeChainMovement(effectData, selection, 'player1', playerStates, ctx);
-
-    expect(result.animationEvents).toEqual(blockedEvents);
-  });
-
-  it('should pass through animationEvents from MULTI_MOVE error result', () => {
-    const blockedEvents = [
-      { type: 'MOVEMENT_BLOCKED', droneName: 'Drone1', targetId: 'd1' },
-      { type: 'MOVEMENT_BLOCKED', droneName: 'Drone2', targetId: 'd2' },
-    ];
-    mockExecuteMultiMove.mockReturnValue({
-      error: 'Cannot move — lane is full',
-      animationEvents: blockedEvents
-    });
-
-    const effectData = { type: 'MULTI_MOVE', count: 2, properties: [] };
-    const selection = { target: [{ id: 'd1' }, { id: 'd2' }], lane: 'lane1', destination: 'lane2' };
 
     const result = processor.executeChainMovement(effectData, selection, 'player1', playerStates, ctx);
 

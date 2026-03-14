@@ -51,7 +51,7 @@ export function resolveDestinationRefs(destination, selections) {
  * Check if an effect is compound (needs target + destination selection).
  */
 export function isCompoundEffect(effect) {
-  return (effect.type === 'SINGLE_MOVE' || effect.type === 'MULTI_MOVE') && !!effect.destination;
+  return effect.type === 'SINGLE_MOVE' && !!effect.destination;
 }
 
 /**
@@ -221,7 +221,7 @@ export function computeChainTargets(effect, effectIndex, selections, positionTra
 }
 
 /**
- * Compute valid destination targets for compound effects (SINGLE_MOVE, MULTI_MOVE).
+ * Compute valid destination targets for compound effects (SINGLE_MOVE).
  *
  * @param {Object} destination - { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }
  * @param {Object} selection - { target, lane } — the primary selection for this effect
@@ -247,12 +247,5 @@ export function computeDestinationTargets(destination, selection, actingPlayerId
       .map(laneId => ({ id: laneId, owner: actingPlayerId, type: 'lane' }));
   }
 
-  // Generic: any other lane (MULTI_MOVE destination)
-  if (selection.lane) {
-    return lanes
-      .filter(laneId => laneId !== selection.lane)
-      .map(laneId => ({ id: laneId, owner: actingPlayerId, type: 'lane' }));
-  }
-
-  return lanes.map(laneId => ({ id: laneId, owner: actingPlayerId, type: 'lane' }));
+  return [];
 }

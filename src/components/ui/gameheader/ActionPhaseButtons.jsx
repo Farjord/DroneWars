@@ -29,6 +29,7 @@ function ActionPhaseButtons({
   effectChainState,
   handleConfirmChainMultiSelect,
   handleConfirmChainTarget,
+  handleSkipOptionalEffects,
   handleCancelEffectChain
 }) {
   return (
@@ -115,6 +116,18 @@ function ActionPhaseButtons({
               className="dw-btn-hud dw-btn-hud-cyan dw-btn--sm"
             >
               Confirm
+            </button>
+          )}
+
+          {effectChainState.isCurrentEffectOptional && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSkipOptionalEffects();
+              }}
+              className="dw-btn-hud dw-btn-hud-yellow dw-btn--sm"
+            >
+              Done
             </button>
           )}
 

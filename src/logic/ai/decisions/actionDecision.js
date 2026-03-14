@@ -199,7 +199,57 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
           }
         }
       }
-      // SINGLE_MOVE
+      // Multi-SINGLE_MOVE cards (Reposition: 3 effects, effects 2+ optional)
+      else if (card.effects[0]?.type === 'SINGLE_MOVE' && card.effects.length > 1 && card.effects.every(e => e.type === 'SINGLE_MOVE')) {
+        const maxMoves = card.effects.length;
+        // For each adjacent destination lane, find the best set of drones to move
+        for (const destLane of ['lane1', 'lane2', 'lane3']) {
+          // Find which source lanes are adjacent to this destination
+          const destIdx = parseInt(destLane.slice(-1));
+          const adjacentSourceLanes = ['lane1', 'lane2', 'lane3'].filter(l => {
+            const srcIdx = parseInt(l.slice(-1));
+            return Math.abs(srcIdx - destIdx) === 1;
+          });
+
+          const destCapacity = MAX_DRONES_PER_LANE - (player2.dronesOnBoard[destLane]?.length || 0);
+          if (destCapacity <= 0) continue;
+
+          // Collect eligible drones from all adjacent lanes (not already in dest)
+          const candidates = readyAiDrones.filter(d => {
+            if (d.lane === destLane) return false; // Already in destination
+            if (!adjacentSourceLanes.includes(d.lane)) return false;
+            if (hasMovementInhibitorInLane(player2, d.lane)) return false;
+            const bd = fullDroneCollection.find(b => b.name === d.name);
+            if (bd?.maxPerLane && countDroneTypeInLane(player2, d.name, destLane) >= bd.maxPerLane) return false;
+            return true;
+          });
+
+          if (candidates.length === 0) continue;
+
+          // Take up to min(maxMoves, destCapacity) drones
+          const moveCount = Math.min(maxMoves, destCapacity, candidates.length);
+          const dronesToMove = candidates.slice(0, moveCount);
+
+          // Build multiMoveData for chain selections
+          const multiMoveData = dronesToMove.map(d => ({
+            drone: d, fromLane: d.lane, toLane: destLane
+          }));
+
+          const uniqueKey = `card-${card.id}-multi-${destLane}-${dronesToMove.map(d => d.id).join(',')}`;
+          if (!uniqueCardPlays.has(uniqueKey)) {
+            possibleActions.push({
+              type: 'play_card',
+              card,
+              target: null,
+              moveData: multiMoveData[0], // First move for evaluator
+              multiMoveData,
+              score: 0
+            });
+            uniqueCardPlays.add(uniqueKey);
+          }
+        }
+      }
+      // SINGLE_MOVE (single-effect cards like Maneuver)
       else if (card.effects[0]?.type === 'SINGLE_MOVE') {
         for (const drone of readyAiDrones) {
           const fromLaneIndex = parseInt(drone.lane.slice(-1));
@@ -359,9 +409,14 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
 
       // Customize display for SINGLE_MOVE cards
       if (action.type === 'play_card' && action.card?.effects[0]?.type === 'SINGLE_MOVE' && action.moveData) {
-        const { drone, fromLane, toLane } = action.moveData;
-        action.instigator = `${action.card.name} (${drone.name})`;
-        action.targetName = `${fromLane}→${toLane}`;
+        if (action.multiMoveData) {
+          action.instigator = `${action.card.name} (${action.multiMoveData.length} drones)`;
+          action.targetName = action.multiMoveData.map(m => `${m.drone.name}:${m.fromLane}→${m.toLane}`).join(', ');
+        } else {
+          const { drone, fromLane, toLane } = action.moveData;
+          action.instigator = `${action.card.name} (${drone.name})`;
+          action.targetName = `${fromLane}→${toLane}`;
+        }
       }
 
       let score = 0;
@@ -369,7 +424,11 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
         case 'play_card': {
           const { card, target } = action;
           // Use modular card evaluator
-          const result = evaluateCardPlay(card, target, evaluationContext, action.moveData);
+          // For multi-SINGLE_MOVE, attach multiMoveData to the moveData for the evaluator
+          const evalMoveData = action.multiMoveData
+            ? { ...action.moveData, multiMoveData: action.multiMoveData }
+            : action.moveData;
+          const result = evaluateCardPlay(card, target, evaluationContext, evalMoveData);
           score = result.score;
           action.logic.push(...result.logic);
           action.score = score;

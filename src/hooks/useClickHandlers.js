@@ -1,4 +1,6 @@
 import { debugLog } from '../utils/debugLogger.js';
+import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
+import { resolveDestinationRefs } from '../logic/cards/chainTargetResolver.js';
 
 /**
  * @typedef {Object} AbilityHandlerConfig
@@ -350,6 +352,19 @@ export default function useClickHandlers({
           selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);
         }
         return;
+      } else if (effectChainState.subPhase === 'destination' && isPlayer) {
+        // Check if destination is locked to a specific lane
+        const currentEffect = effectChainState.effects?.[effectChainState.currentIndex];
+        const resolvedDest = currentEffect ? resolveDestinationRefs(currentEffect.destination, effectChainState.selections) : null;
+        const lanes = ['lane1', 'lane2', 'lane3'];
+        if (resolvedDest?.location && lanes.includes(resolvedDest.location) && lane !== resolvedDest.location) {
+          setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
+          return;
+        }
+        if (isLaneFull(localPlayerState, lane, effectChainState?.selections)) {
+          setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
+          return;
+        }
       }
     }
 

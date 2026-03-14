@@ -40,6 +40,7 @@ const useCardSelection = ({
     confirmChainMultiSelect,
     setPendingChainTarget,
     confirmChainTarget,
+    skipRemainingOptionalEffects,
     cancelEffectChain,
   } = useEffectChain({
     playerStates: gameState ? { player1: gameState.player1, player2: gameState.player2 } : {},
@@ -200,6 +201,7 @@ const useCardSelection = ({
     confirmChainMultiSelect,
     setPendingChainTarget,
     confirmChainTarget,
+    skipRemainingOptionalEffects,
     cancelEffectChain,
   };
 };

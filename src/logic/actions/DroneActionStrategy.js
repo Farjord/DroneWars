@@ -420,7 +420,19 @@ export async function processAiAction(payload, ctx) {
           };
 
           // For movement cards, build chain selections from AI moveData
-          if (chosenAction.moveData) {
+          if (chosenAction.multiMoveData) {
+            // Multi-SINGLE_MOVE cards (Reposition): build selections for each drone
+            payload.chainSelections = chosenAction.multiMoveData.map(m => ({
+              target: m.drone,
+              lane: m.fromLane,
+              destination: m.toLane
+            }));
+            // Pad with skipped entries for remaining optional effects
+            const effectCount = chosenAction.card.effects.length;
+            while (payload.chainSelections.length < effectCount) {
+              payload.chainSelections.push({ target: null, lane: null, skipped: true });
+            }
+          } else if (chosenAction.moveData) {
             const { drone, fromLane, toLane } = chosenAction.moveData;
             payload.chainSelections = [{
               target: drone,

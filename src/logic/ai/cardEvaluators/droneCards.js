@@ -349,7 +349,7 @@ const evaluateRallyBeaconCard = (card, target, context) => {
 
   // Movement cards in hand bonus
   const movementCards = player2.hand.filter(c =>
-    c.effect?.type === 'SINGLE_MOVE' || c.effect?.type === 'MULTI_MOVE'
+    c.effect?.type === 'SINGLE_MOVE'
   ).length;
   if (movementCards > 0) {
     const moveBonus = movementCards * CARD_EVALUATION.RALLY_BEACON_MOVEMENT_CARD_BONUS;

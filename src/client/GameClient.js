@@ -102,15 +102,26 @@ class GameClient extends GameServer {
     // Extract phase/pass announcements — route to AnnouncementQueue, not AnimationManager
     const { visualAnimations } = this._extractAndQueueAnnouncements(allAnimations);
 
-    // Announcements are integral to the phase lifecycle — wait for the overlay
-    // to complete before playing visual animations or applying state.
-    // Resolves immediately when no announcements were enqueued.
-    if (this.phaseAnimationQueue) {
-      await this.phaseAnimationQueue.waitUntilIdle();
-    }
-
     // Preserve local gameMode from current store state
     state = { ...state, gameMode: this.getState().gameMode, localPlayerId: this.playerId };
+
+    // No visual animations — apply state immediately.
+    // Announcement overlay (if any) covers the full screen, so background
+    // UI updates are invisible. This lets hooks react to phase transitions
+    // without waiting for the overlay to finish (~1.8s).
+    if (!this.animationManager || visualAnimations.length === 0) {
+      if (!this.animationManager && visualAnimations.length > 0) {
+        debugLog('STATE_SYNC', 'GameClient: animations skipped — AnimationManager not yet wired', {
+          animCount: visualAnimations.length,
+        });
+      }
+      this._applyState(state);
+      // Still await announcement completion to maintain response ordering
+      if (this.phaseAnimationQueue) {
+        await this.phaseAnimationQueue.waitUntilIdle();
+      }
+      return;
+    }
 
     if (visualAnimations.length > 0) {
       const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
@@ -129,14 +140,10 @@ class GameClient extends GameServer {
       });
     }
 
-    if (!this.animationManager || visualAnimations.length === 0) {
-      if (!this.animationManager && visualAnimations.length > 0) {
-        debugLog('STATE_SYNC', 'GameClient: animations skipped — AnimationManager not yet wired', {
-          animCount: visualAnimations.length,
-        });
-      }
-      this._applyState(state);
-      return;
+    // Visual animations present — wait for announcement overlay before
+    // playing animations or applying state (original behavior).
+    if (this.phaseAnimationQueue) {
+      await this.phaseAnimationQueue.waitUntilIdle();
     }
 
     // TELEPORT_IN handling

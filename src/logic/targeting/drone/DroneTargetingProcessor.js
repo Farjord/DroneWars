@@ -188,7 +188,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         jammers.forEach(drone => {
           // Check if this is a movement effect
           const effectType = context?.definition?.effect?.type;
-          const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
+          const isMovementEffect = effectType === 'SINGLE_MOVE';
 
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
           if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {
@@ -210,7 +210,7 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         drones.forEach(drone => {
           // Check if this is a movement effect
           const effectType = context?.definition?.effect?.type;
-          const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
+          const isMovementEffect = effectType === 'SINGLE_MOVE';
 
           // For movement costs, skip snared drones (snared drone can't pay a movement cost)
           if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {

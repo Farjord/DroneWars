@@ -1,7 +1,7 @@
 // ========================================
 // MOVEMENT EFFECT PROCESSOR TESTS
 // ========================================
-// TDD: Tests for cannotMove restriction in SINGLE_MOVE and MULTI_MOVE effects
+// TDD: Tests for cannotMove restriction in SINGLE_MOVE effects
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -185,146 +185,6 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
     });
   });
 
-  describe('executeMultiMove - cannotMove restriction', () => {
-    it('should return error when attempting to move drone with cannotMove flag', () => {
-      // Add multiple drones, one with cannotMove
-      mockPlayerStates.player1.dronesOnBoard.lane1 = [
-        {
-          id: 'drone_1',
-          name: 'Drone1',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: false
-        },
-        {
-          id: 'drone_2',
-          name: 'Drone2',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: true  // This drone cannot move
-        }
-      ];
-
-      const dronesToMove = [mockPlayerStates.player1.dronesOnBoard.lane1[1]]; // Try to move drone_2
-      const multiMoveCard = {
-        ...mockCard,
-        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
-      };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiMoveCard,
-        dronesToMove,
-        'lane1',
-        'lane2',
-        'player1',
-        newPlayerStates,
-        'player2',
-        mockContext
-      );
-
-      // Verify error is returned
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('cannot move');
-      expect(result.shouldShowErrorModal).toBe(true);
-
-      // Verify drones were NOT moved
-      expect(result.newPlayerStates.player1.dronesOnBoard.lane1).toHaveLength(2);
-      expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(0);
-    });
-
-    it('should allow movement when all drones have cannotMove false', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = [
-        {
-          id: 'drone_1',
-          name: 'Drone1',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: false
-        },
-        {
-          id: 'drone_2',
-          name: 'Drone2',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: false
-        }
-      ];
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiMoveCard = {
-        ...mockCard,
-        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
-      };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiMoveCard,
-        dronesToMove,
-        'lane1',
-        'lane2',
-        'player1',
-        newPlayerStates,
-        'player2',
-        mockContext
-      );
-
-      // Verify no error
-      expect(result.error).toBeUndefined();
-
-      // Verify drones were moved
-      expect(result.newPlayerStates.player1.dronesOnBoard.lane1).toHaveLength(0);
-      expect(result.newPlayerStates.player1.dronesOnBoard.lane2).toHaveLength(2);
-    });
-
-    it('should catch first drone with cannotMove in multi-move', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = [
-        {
-          id: 'drone_1',
-          name: 'AllowedDrone',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: false
-        },
-        {
-          id: 'drone_2',
-          name: 'BlockedDrone',
-          hull: 3,
-          isExhausted: false,
-          attack: 2,
-          cannotMove: true
-        }
-      ];
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1; // Try to move both
-      const multiMoveCard = {
-        ...mockCard,
-        effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }]
-      };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiMoveCard,
-        dronesToMove,
-        'lane1',
-        'lane2',
-        'player1',
-        newPlayerStates,
-        'player2',
-        mockContext
-      );
-
-      // Verify error contains the blocked drone's name
-      expect(result.error).toContain('BlockedDrone');
-      expect(result.error).toContain('cannot move');
-    });
-  });
-
   describe('Edge cases', () => {
     it('should handle drone without cannotMove property (undefined)', () => {
       // Remove cannotMove property entirely
@@ -382,33 +242,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       expect(result.postMovementState.player1.dronesOnBoard.lane1).toHaveLength(0);
     });
 
-    it('executeMultiMove returns postMovementState with pre-trigger board state', () => {
-      mockPlayerStates.player1.dronesOnBoard.lane1 = [
-        { id: 'drone_1', name: 'Drone1', hull: 3, isExhausted: false, attack: 2, cannotMove: false },
-        { id: 'drone_2', name: 'Drone2', hull: 3, isExhausted: false, attack: 2, cannotMove: false }
-      ];
-
-      const dronesToMove = mockPlayerStates.player1.dronesOnBoard.lane1;
-      const multiMoveCard = { ...mockCard, effects: [{ type: 'MULTI_MOVE', count: 3, properties: [] }] };
-      const newPlayerStates = processor.clonePlayerStates(mockPlayerStates);
-
-      const result = processor.executeMultiMove(
-        multiMoveCard,
-        dronesToMove,
-        'lane1',
-        'lane2',
-        'player1',
-        newPlayerStates,
-        'player2',
-        mockContext
-      );
-
-      expect(result.error).toBeUndefined();
-      expect(result.postMovementState).toBeDefined();
-      expect(result.postMovementState.player1.dronesOnBoard.lane2).toHaveLength(2);
-      expect(result.postMovementState.player1.dronesOnBoard.lane1).toHaveLength(0);
-    });
-  });
+});
 
   describe('ON_LANE_MOVEMENT_IN fires for enemy force-moves', () => {
     it('should successfully force-move an enemy drone into a new lane', () => {

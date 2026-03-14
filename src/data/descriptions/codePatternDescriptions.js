@@ -236,17 +236,6 @@ export const effectPatterns = {
     notes: 'Returns needsCardSelection for player to select drone and destination.'
   },
 
-  'MULTI_MOVE': {
-    validParameters: {
-      count: 'number (max drones to move)',
-      properties: ['DO_NOT_EXHAUST'],
-      goAgain: 'boolean (optional)'
-    },
-    requiredParameters: ['count'],
-    implementation: 'gameLogic.js:resolveMovementEffect',
-    notes: 'Returns needsCardSelection for player to select drones and destination.'
-  },
-
   'CREATE_TOKENS': {
     validParameters: {
       tokenName: 'string (name of drone type)',
@@ -409,7 +398,7 @@ export const scopePatterns = {
 
 export const specialProperties = {
   'DO_NOT_EXHAUST': {
-    usedWith: ['SINGLE_MOVE', 'MULTI_MOVE'],
+    usedWith: ['SINGLE_MOVE'],
     effect: 'Moved drones do not become exhausted.',
     notes: 'Allows tactical repositioning without penalty.'
   },

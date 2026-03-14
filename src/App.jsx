@@ -555,7 +555,7 @@ const App = ({ phaseAnimationQueue }) => {
     // Effect chain (unified sequential effect selection)
     effectChainState, startEffectChain, selectChainTarget, selectChainDestination,
     selectChainMultiTarget, confirmChainMultiSelect, setPendingChainTarget, confirmChainTarget,
-    cancelEffectChain,
+    skipRemainingOptionalEffects, cancelEffectChain,
   } = useCardSelection({
     submitAction,
     getLocalPlayerId,
@@ -587,7 +587,7 @@ const App = ({ phaseAnimationQueue }) => {
 
   const {
     resolveAttack, resolveAbility, resolveCardPlay,
-    handleCardSelection, resolveMultiMove, resolveSingleMove,
+    handleCardSelection, resolveSingleMove,
     cancelAbilityMode, handleCloseAiCardReport,
     moveConfirmation, attackConfirmation, abilityConfirmation, aiCardPlayReport,
     setMoveConfirmation, setAttackConfirmation, setAbilityConfirmation, setAiCardPlayReport,
@@ -692,6 +692,7 @@ const App = ({ phaseAnimationQueue }) => {
     // From useCardSelection — effect chain
     startEffectChain,
     effectChainState,
+    selectChainTarget,
     selectChainDestination,
     // From useInterception
     interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
@@ -963,7 +964,7 @@ const App = ({ phaseAnimationQueue }) => {
     // App.jsx functions
     cancelAllActions, cancelAbilityMode, isActionInProgress, isMyTurn,
     getLocalPlayerId, getOpponentPlayerId,
-    resolveAbility, resolveSingleMove, resolveMultiMove,
+    resolveAbility, resolveSingleMove,
     handleConfirmMandatoryDestroy,
     // Action dispatching
     submitAction,
@@ -1133,6 +1134,7 @@ const App = ({ phaseAnimationQueue }) => {
         effectChainState={effectChainState}
         handleConfirmChainMultiSelect={confirmChainMultiSelect}
         handleConfirmChainTarget={confirmChainTarget}
+        handleSkipOptionalEffects={skipRemainingOptionalEffects}
         handleCancelEffectChain={() => cancelCardSelection('header-cancel-effect-chain')}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}

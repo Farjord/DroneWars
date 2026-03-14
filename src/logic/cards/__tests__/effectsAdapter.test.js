@@ -54,8 +54,8 @@ describe('effectsAdapter — structural validation', () => {
     for (const card of fullCardCollection) {
       for (let i = 0; i < card.effects.length; i++) {
         const eff = card.effects[i];
-        if ((eff.type === 'SINGLE_MOVE' || eff.type === 'MULTI_MOVE') && !eff.destination) {
-          failures.push(`${card.id} effects[${i}] SINGLE_MOVE/MULTI_MOVE missing destination`);
+        if (eff.type === 'SINGLE_MOVE' && !eff.destination) {
+          failures.push(`${card.id} effects[${i}] SINGLE_MOVE missing destination`);
         }
       }
     }
@@ -190,13 +190,13 @@ describe('effectsAdapter — composite and special effects', () => {
     expect(card.effects[1].type).toBe('DRAIN_ENERGY');
   });
 
-  it('MULTI_MOVE (Reposition) produces single effect with maxTargets', () => {
+  it('Reposition produces 3 SINGLE_MOVE effects', () => {
     const card = findCard('REPOSITION');
-    expect(card.effects).toHaveLength(1);
-    expect(card.effects[0].type).toBe('MULTI_MOVE');
-    expect(card.effects[0].targeting.maxTargets).toBe(3);
-    expect(card.effects[0].destination).toBeDefined();
-    expect(card.effects[0].properties).toContain('DO_NOT_EXHAUST');
+    expect(card.effects).toHaveLength(3);
+    expect(card.effects.every(e => e.type === 'SINGLE_MOVE')).toBe(true);
+    expect(card.effects[0].optional).toBeUndefined();
+    expect(card.effects[1].optional).toBe(true);
+    expect(card.effects[2].optional).toBe(true);
   });
 
   it('REPEATING_EFFECT cards produce single effect entry', () => {

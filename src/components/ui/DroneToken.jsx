@@ -194,7 +194,11 @@ const DroneToken = ({
   getLocalPlayerId = () => 'player1',
   getOpponentPlayerId = () => 'player2',
   // Invalid target indicator prop
-  isInvalidTarget = false
+  isInvalidTarget = false,
+  // Prior chain target — highlighted but not draggable
+  isPriorChainTarget = false,
+  // Ghost drone preview for pending move
+  isGhost = false
 }) => {
   // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
   const isVisuallyOwned = drone.deployedBy
@@ -268,6 +272,7 @@ const DroneToken = ({
   const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
 
   // --- State Effects ---
+  const ghostEffect = isGhost ? 'opacity-40 pointer-events-none' : '';
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
   const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 selected-glow' : '';
@@ -304,7 +309,7 @@ const DroneToken = ({
 
         // Allow drag for player-owned drones that aren't exhausted,
         // or for enemy drones selected as move targets during destination phase
-        const canDrag = isSelectedForMove || (isPlayer && !drone.isExhausted);
+        const canDrag = (isSelectedForMove && !isPriorChainTarget) || (isPlayer && !drone.isExhausted);
 
         if (onDragStart && canDrag) {
           e.preventDefault();
@@ -354,7 +359,7 @@ const DroneToken = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)',

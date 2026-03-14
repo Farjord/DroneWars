@@ -171,7 +171,7 @@ export const calculateAffectedDroneIds = (
 
     // Movement/creation effects target lanes as DESTINATIONS - existing drones are not affected
     const effectType = card.effects[0]?.type;
-    if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE' || effectType === 'CREATE_TOKENS') {
+    if (effectType === 'SINGLE_MOVE' || effectType === 'CREATE_TOKENS') {
         return null;
     }
 

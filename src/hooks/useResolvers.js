@@ -211,21 +211,7 @@ const useResolvers = ({
     debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (after selection)', { card: originalCard.name });
   }, [submitAction, getLocalPlayerId, cancelCardSelection]);
 
-  // --- Resolve Multi Move ---
-  const resolveMultiMove = useCallback(async (card, dronesToMove, fromLane, toLane) => {
-    await submitAction('movementCompletion', {
-      card,
-      movementType: 'multi_move',
-      drones: dronesToMove,
-      fromLane,
-      toLane,
-      playerId: getLocalPlayerId()
-    });
 
-    cancelCardSelection('confirm-multi-move');
-
-    debugLog('CARD_PLAY_TRACE', '[10] Card play resolved (multi-move)', { card: card.name });
-  }, [submitAction, getLocalPlayerId]);
 
   // --- Resolve Single Move ---
   const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
@@ -455,7 +441,6 @@ const useResolvers = ({
     resolveAbility,
     resolveCardPlay,
     handleCardSelection,
-    resolveMultiMove,
     resolveSingleMove,
     cancelAbilityMode,
     handleCloseAiCardReport,

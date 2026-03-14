@@ -1,7 +1,7 @@
 // ========================================
 // MOVEMENT EFFECT PROCESSOR
 // ========================================
-// Handles SINGLE_MOVE and MULTI_MOVE card effects
+// Handles SINGLE_MOVE card effects
 // Extracted from gameLogic.js Phase 7B
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
@@ -18,7 +18,7 @@ import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
 /**
  * MovementEffectProcessor
- * Processes SINGLE_MOVE and MULTI_MOVE effects for movement cards
+ * Processes SINGLE_MOVE effects for movement cards
  *
  * For human players: Returns needsCardSelection to trigger multi-step UI flow
  * For AI players: Auto-executes optimal movement using lane scoring
@@ -35,7 +35,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
   /**
    * Process movement effect - routes to human or AI execution
    *
-   * @param {Object} effect - Effect configuration (type: 'SINGLE_MOVE' | 'MULTI_MOVE')
+   * @param {Object} effect - Effect configuration (type: 'SINGLE_MOVE')
    * @param {Object} context - Effect execution context
    * @returns {Object} Result with newPlayerStates or needsCardSelection
    */
@@ -70,13 +70,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       additionalEffects: [],
       animationEvents: [],
       needsCardSelection: {
-        type: effect.type === 'SINGLE_MOVE' ? 'single_move' : 'multi_move',
+        type: 'single_move',
         card: card,
         effect: effect,
-        maxDrones: effect.type === 'MULTI_MOVE' ? (effect.count || 3) : 1,
+        maxDrones: 1,
         doNotExhaust: effect.properties?.includes('DO_NOT_EXHAUST') || false,
         // UI will handle multi-step selection (source lane, drones, destination)
-        phase: effect.type === 'SINGLE_MOVE' ? 'select_drone' : 'select_source_lane'
+        phase: 'select_drone'
       }
     };
   }
@@ -115,11 +115,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
         // Check lane capacity — skip full destination lanes
         const destCount = aiState.dronesOnBoard[toLane]?.length || 0;
-        if (effect.type === 'SINGLE_MOVE' && destCount >= MAX_DRONES_PER_LANE) continue;
-        if (effect.type === 'MULTI_MOVE') {
-          const batchSize = Math.min(effect.count || 3, nonSnaredDrones.length);
-          if (destCount + batchSize > MAX_DRONES_PER_LANE) continue;
-        }
+        if (destCount >= MAX_DRONES_PER_LANE) continue;
 
         // For SINGLE_MOVE, check adjacency
         if (effect.type === 'SINGLE_MOVE') {
@@ -140,9 +136,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           bestMove = {
             fromLane,
             toLane,
-            drones: effect.type === 'SINGLE_MOVE'
-              ? [nonSnaredDrones[0]]  // Just pick first non-snared drone
-              : nonSnaredDrones.slice(0, Math.min(effect.count || 3, nonSnaredDrones.length))
+            drones: [nonSnaredDrones[0]]  // Just pick first non-snared drone
           };
         }
       }
@@ -154,21 +148,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     // Execute the movement
-    if (effect.type === 'SINGLE_MOVE') {
-      return this.executeSingleMoveForResult(
-        bestMove.drones[0],
-        bestMove.fromLane,
-        bestMove.toLane,
-        context
-      );
-    } else {
-      return this.executeMultiMoveForResult(
-        bestMove.drones,
-        bestMove.fromLane,
-        bestMove.toLane,
-        context
-      );
-    }
+    return this.executeSingleMoveForResult(
+      bestMove.drones[0],
+      bestMove.fromLane,
+      bestMove.toLane,
+      context
+    );
   }
 
   /**
@@ -189,45 +174,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const result = this.executeSingleMove(
       card,
       droneToMove,
-      fromLane,
-      toLane,
-      actingPlayerId,
-      newPlayerStates,
-      opponentPlayerId,
-      context
-    );
-
-    if (result.error) {
-      // Movement failed validation, return unchanged state
-      return this.createResult(playerStates, []);
-    }
-
-    const baseResult = this.createResult(result.newPlayerStates, []);
-    // Propagate goAgain from Rally Beacon for AI card play pipeline
-    if (!result.shouldEndTurn) {
-      baseResult.goAgain = true;
-    }
-    return baseResult;
-  }
-
-  /**
-   * Execute multiple drones movement and return result
-   * Used by AI auto-execution
-   *
-   * @param {Array} dronesToMove - Array of drones being moved
-   * @param {string} fromLane - Source lane
-   * @param {string} toLane - Destination lane
-   * @param {Object} context - Effect execution context
-   * @returns {Object} Result with updated states
-   */
-  executeMultiMoveForResult(dronesToMove, fromLane, toLane, context) {
-    const { actingPlayerId, playerStates, card } = context;
-    const newPlayerStates = this.clonePlayerStates(playerStates);
-    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-
-    const result = this.executeMultiMove(
-      card,
-      dronesToMove,
       fromLane,
       toLane,
       actingPlayerId,
@@ -432,178 +378,9 @@ class MovementEffectProcessor extends BaseEffectProcessor {
   }
 
   /**
-   * Execute multiple drones movement
-   * Called via gameLogic bindings after UI selection completes
-   *
-   * @param {Object} card - Card being played
-   * @param {Array} dronesToMove - Array of drones being moved
-   * @param {string} fromLane - Source lane ID
-   * @param {string} toLane - Destination lane ID
-   * @param {string} actingPlayerId - Player executing the move
-   * @param {Object} newPlayerStates - Cloned player states (already cloned by caller)
-   * @param {string} opponentPlayerId - Opponent player ID
-   * @param {Object} context - Effect execution context
-   * @returns {Object} Result with newPlayerStates or error
-   */
-  executeMultiMove(card, dronesToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context) {
-    const effect = card.effects[0];
-    const { callbacks, placedSections } = context;
-    const { logCallback } = callbacks;
-
-    const actingPlayerState = newPlayerStates[actingPlayerId];
-    const opponentPlayerState = newPlayerStates[opponentPlayerId];
-
-    // Check if any drone has cannotMove restriction or INERT keyword
-    for (const drone of dronesToMove) {
-      const effectiveStats = calculateEffectiveStats(drone, fromLane, actingPlayerState, opponentPlayerState, placedSections);
-      if (effectiveStats.keywords.has('INERT') || drone.cannotMove) {
-        return {
-          newPlayerStates: newPlayerStates,
-          error: `${drone.name} cannot move${effectiveStats.keywords.has('INERT') ? ' (Inert)' : ''}.`,
-          shouldShowErrorModal: true,
-          shouldCancelCardSelection: true,
-          shouldClearMultiSelectState: true
-        };
-      }
-    }
-
-    // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-    if (hasMovementInhibitorInLane(actingPlayerState, fromLane)) {
-      return {
-        newPlayerStates: newPlayerStates,
-        error: `Drones cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
-        shouldShowErrorModal: true,
-        shouldCancelCardSelection: true,
-        shouldClearMultiSelectState: true
-      };
-    }
-
-    // Check lane capacity limit for the entire batch
-    const currentCount = actingPlayerState.dronesOnBoard[toLane]?.length || 0;
-    if (currentCount + dronesToMove.length > MAX_DRONES_PER_LANE) {
-      logCallback({
-        player: actingPlayerState.name,
-        actionType: 'MOVE_BLOCKED',
-        source: card.name,
-        target: dronesToMove.map(d => d.name).join(', '),
-        outcome: `${dronesToMove.length} drone(s) could not move to ${toLane} — lane is full.`
-      });
-      return {
-        newPlayerStates: newPlayerStates,
-        error: `Cannot move ${dronesToMove.length} drone(s) to ${toLane} — lane is full (${currentCount}/${MAX_DRONES_PER_LANE} drones).`,
-        animationEvents: dronesToMove.map(drone => ({
-          type: 'MOVEMENT_BLOCKED',
-          droneName: drone.name,
-          targetId: drone.id,
-          timestamp: Date.now()
-        })),
-        shouldCancelCardSelection: true,
-        shouldClearMultiSelectState: true
-      };
-    }
-
-    // Check maxPerLane restriction for each drone type being moved
-    const droneTypeCount = {};
-    dronesToMove.forEach(drone => {
-      droneTypeCount[drone.name] = (droneTypeCount[drone.name] || 0) + 1;
-    });
-
-    for (const [droneName, movingCount] of Object.entries(droneTypeCount)) {
-      const baseDrone = fullDroneCollection.find(d => d.name === droneName);
-      if (baseDrone && baseDrone.maxPerLane) {
-        const currentCountInTargetLane = countDroneTypeInLane(actingPlayerState, droneName, toLane);
-        const isSameLane = fromLane === toLane;
-        const futureCount = isSameLane
-          ? currentCountInTargetLane  // Moving within same lane doesn't change count
-          : currentCountInTargetLane + movingCount;
-
-        if (futureCount > baseDrone.maxPerLane) {
-          return {
-            newPlayerStates: newPlayerStates,
-            error: `Only ${baseDrone.maxPerLane} ${droneName}${baseDrone.maxPerLane > 1 ? 's' : ''} allowed per lane. Cannot move ${movingCount} to ${toLane}.`,
-            shouldCancelCardSelection: true,
-            shouldClearMultiSelectState: true
-          };
-        }
-      }
-    }
-
-    // Remove drones from source lane
-    const dronesBeingMovedIds = new Set(dronesToMove.map(d => d.id));
-    actingPlayerState.dronesOnBoard[fromLane] = actingPlayerState.dronesOnBoard[fromLane].filter(
-      d => !dronesBeingMovedIds.has(d.id)
-    );
-
-    // Add drones to destination lane with proper exhaustion state
-    const movedDrones = dronesToMove.map(d => {
-      return {
-        ...d,
-        isExhausted: effect.properties?.includes('DO_NOT_EXHAUST')
-          ? d.isExhausted
-          : true
-      };
-    });
-    actingPlayerState.dronesOnBoard[toLane].push(...movedDrones);
-
-    // Log the movement
-    logCallback({
-      player: actingPlayerState.name,
-      actionType: 'MULTI_MOVE',
-      source: card.name,
-      target: `${dronesToMove.map(d => d.name).join(', ')}`,
-      outcome: `Moved ${dronesToMove.length} drone(s) from ${fromLane} to ${toLane}.`
-    }, 'executeMultiMove');
-
-    // Capture post-movement state before triggers fire
-    const postMovementState = JSON.parse(JSON.stringify(newPlayerStates));
-
-    // Build movement animation events (one per drone)
-    const movementAnimation = movedDrones.flatMap(d =>
-      buildDefaultMovementAnimation({
-        drone: d,
-        fromLane,
-        toLane,
-        actingPlayerId
-      })
-    );
-
-    // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
-    const postMoveResult = this._resolvePostMoveTriggers({
-      movedDrones,
-      fromLane,
-      toLane,
-      droneOwnerId: actingPlayerId,
-      actingPlayerId,
-      newPlayerStates,
-      placedSections,
-      logCallback,
-      cardGoAgain: card.effects[0]?.goAgain || false,
-      pairSet: context.pairSet,
-      chainDepth: context.chainDepth
-    });
-
-    return {
-      newPlayerStates,
-      postMovementState,
-      animationEvents: movementAnimation,
-      effectResult: {
-        movedDrones,
-        fromLane,
-        toLane,
-        wasSuccessful: true
-      },
-      shouldEndTurn: !(card.effects[0]?.goAgain || postMoveResult.goAgain),
-      shouldCancelCardSelection: true,
-      shouldClearMultiSelectState: true,
-      mineAnimationEvents: postMoveResult.mineAnimationEvents,
-      triggerAnimationEvents: postMoveResult.triggerAnimationEvents,
-    };
-  }
-
-  /**
    * Shared post-move trigger resolution.
    * Processes ON_MOVE triggers + aura updates + ON_LANE_MOVEMENT_IN triggers (mines + Rally Beacon).
-   * Used by both executeSingleMove and executeMultiMove.
+   * Used by executeSingleMove.
    *
    * ON_MOVE fires for ALL moved drones including force-moved enemy drones (PRD 3.3).
    * ON_LANE_MOVEMENT_IN fires for ALL moves (friendly and enemy force-moved).

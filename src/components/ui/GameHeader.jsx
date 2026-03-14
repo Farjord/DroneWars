@@ -135,6 +135,7 @@ function GameHeader({
   effectChainState,
   handleConfirmChainMultiSelect,
   handleConfirmChainTarget,
+  handleSkipOptionalEffects,
   handleCancelEffectChain,
   // Extraction mode props
   currentRunState,
@@ -523,6 +524,7 @@ function GameHeader({
               effectChainState={effectChainState}
               handleConfirmChainMultiSelect={handleConfirmChainMultiSelect}
               handleConfirmChainTarget={handleConfirmChainTarget}
+              handleSkipOptionalEffects={handleSkipOptionalEffects}
               handleCancelEffectChain={handleCancelEffectChain}
             />
           ) : (

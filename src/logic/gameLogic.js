@@ -139,8 +139,7 @@ export const gameEngine = {
 
   // --- MOVEMENT EFFECTS ---
   // Movement completion handlers (MovementEffectProcessor)
-  executeSingleMove: movementProcessor.executeSingleMove.bind(movementProcessor),
-  executeMultiMove: movementProcessor.executeMultiMove.bind(movementProcessor)
+  executeSingleMove: movementProcessor.executeSingleMove.bind(movementProcessor)
 };
 
 // Named exports for combat processors

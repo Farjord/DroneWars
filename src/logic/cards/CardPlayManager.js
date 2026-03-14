@@ -132,8 +132,7 @@ class CardPlayManager {
     // For these cards, costs will be paid after selection in the completion handler
     const willNeedSelection = actingPlayerId === localPlayerId && (
       card.effects[0].type === 'SEARCH_AND_DRAW' ||
-      card.effects[0].type === 'SINGLE_MOVE' ||
-      card.effects[0].type === 'MULTI_MOVE'
+      card.effects[0].type === 'SINGLE_MOVE'
     );
 
     // Pay card costs first (unless card needs selection - costs will be paid after selection)
@@ -179,7 +178,7 @@ class CardPlayManager {
     // after the player selects which drone to move
     let postAdditionalEffects = [];
     let dynamicGoAgain = false;
-    const isMovementCard = card.effects[0]?.type === 'SINGLE_MOVE' || card.effects[0]?.type === 'MULTI_MOVE';
+    const isMovementCard = card.effects[0]?.type === 'SINGLE_MOVE';
 
     if (!isMovementCard && card.effects[0]?.conditionals && card.effects[0].conditionals.length > 0) {
       const postContext = {
@@ -220,7 +219,7 @@ class CardPlayManager {
     const allAnimationEvents = [];
 
     // Only add CARD_REVEAL animation if the card doesn't need additional selection
-    // For cards requiring selection (MULTI_MOVE, SINGLE_MOVE, SEARCH_AND_DRAW), animation will be added after selection completes
+    // For cards requiring selection (SINGLE_MOVE, SEARCH_AND_DRAW), animation will be added after selection completes
     if (!result.needsCardSelection) {
       allAnimationEvents.push({
         type: 'CARD_REVEAL',
@@ -405,7 +404,6 @@ class CardPlayManager {
 
     switch (effect.type) {
       case 'SINGLE_MOVE':
-      case 'MULTI_MOVE':
         debugLog('CARD_PLAY', `Movement effect ${effect.type} reached fallback - should be handled by MovementEffectProcessor`);
         return { newPlayerStates: playerStates, additionalEffects: [] };
       default:

@@ -8,7 +8,7 @@ import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, ev
 import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard } from '../utilityCards.js';
 import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from '../healCards.js';
 import { evaluateRepeatingEffectCard, evaluateModifyStatCard } from '../statCards.js';
-import { evaluateSingleMoveCard, evaluateMultiMoveCard } from '../movementCards.js';
+import { evaluateSingleMoveCard } from '../movementCards.js';
 import { evaluateCreateTokensCard } from '../droneCards.js';
 import { evaluateModifyDroneBaseCard } from '../upgradeCards.js';
 import { CARD_EVALUATION, SCORING_WEIGHTS, INVALID_SCORE, UPGRADE_EVALUATION } from '../../aiConstants.js';
@@ -1312,91 +1312,6 @@ describe('evaluateSingleMoveCard', () => {
     // Specter has ON_MOVE +1 attack ability
     // ON_MOVE_ATTACK_BONUS_PER_POINT = 15
     expect(result.logic.some(l => l.includes('OnMove Ability'))).toBe(true);
-  });
-});
-
-describe('evaluateMultiMoveCard', () => {
-  it('scores based on drones available to move', () => {
-    const card = {
-      id: 'REPOSITION',
-      cost: 4,
-      effects: [{
-        type: 'MULTI_MOVE',
-        count: 3,
-        properties: ['DO_NOT_EXHAUST']
-      }]
-    };
-    // Target is the source lane
-    const target = { id: 'lane1' };
-    const context = createMockContext({
-      player2: createMockPlayer('player2', {
-        dronesOnBoard: {
-          lane1: [
-            { id: 'drone_1' },
-            { id: 'drone_2' }
-          ],
-          lane2: [],
-          lane3: []
-        }
-      })
-    });
-
-    const result = evaluateMultiMoveCard(card, target, context);
-
-    // 2 drones can move (min of 2 in lane and 3 max)
-    // Flexibility: 2 × 15 = 30
-    // Stay Ready: 2 × 10 = 20
-    // Cost: 4 × 4 = 16
-    // Expected: 30 + 20 - 16 = 34
-    expect(result.score).toBe(34);
-    expect(result.logic.some(l => l.includes('Flexibility'))).toBe(true);
-  });
-
-  it('returns zero for empty lane', () => {
-    const card = {
-      id: 'REPOSITION',
-      cost: 4,
-      effects: [{ type: 'MULTI_MOVE', count: 3 }]
-    };
-    const target = { id: 'lane1' };
-    const context = createMockContext({
-      player2: createMockPlayer('player2', {
-        dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
-      })
-    });
-
-    const result = evaluateMultiMoveCard(card, target, context);
-
-    expect(result.score).toBe(INVALID_SCORE);
-    expect(result.logic.some(l => l.includes('No drones'))).toBe(true);
-  });
-
-  it('caps moves at effect count', () => {
-    const card = {
-      id: 'REPOSITION',
-      cost: 4,
-      effects: [{ type: 'MULTI_MOVE', count: 2 }]  // Only 2 max
-    };
-    const target = { id: 'lane1' };
-    const context = createMockContext({
-      player2: createMockPlayer('player2', {
-        dronesOnBoard: {
-          lane1: [
-            { id: 'd1' }, { id: 'd2' }, { id: 'd3' }, { id: 'd4' }
-          ],
-          lane2: [],
-          lane3: []
-        }
-      })
-    });
-
-    const result = evaluateMultiMoveCard(card, target, context);
-
-    // Only 2 can move despite 4 in lane
-    // Flexibility: 2 × 15 = 30
-    // Cost: 4 × 4 = 16
-    // Expected: 30 - 16 = 14
-    expect(result.score).toBe(14);
   });
 });
 

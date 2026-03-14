@@ -109,8 +109,8 @@ describe('CardActionStrategy — cardSelectionPending', () => {
   });
 
   it('only sets cardSelectionPending for search_and_draw (movement uses effect chain UI)', async () => {
-    // Movement cards (SINGLE_MOVE/MULTI_MOVE) never reach processCardPlay's needsCardSelection path
-    // because EffectChainProcessor.executeChainMovement() handles them directly at line 325.
+    // Movement cards (SINGLE_MOVE) never reach processCardPlay's needsCardSelection path
+    // because EffectChainProcessor.executeChainMovement() handles them directly.
     // This test documents that cardSelectionPending is exclusively for search_and_draw.
     const card = { id: 'tac-move', name: 'Tactical Repositioning', effects: [{ type: 'MOVE' }] };
 

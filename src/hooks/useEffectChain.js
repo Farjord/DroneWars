@@ -13,7 +13,21 @@ import {
   isCompoundEffect,
   hasSkippedRef,
 } from '../logic/cards/chainTargetResolver.js';
-import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
+import { isLaneFull, countPendingArrivals, MAX_DRONES_PER_LANE } from '../logic/utils/gameEngineUtils.js';
+
+/**
+ * Collect drone IDs from all completed selections in a chain.
+ * Used to prevent re-selecting drones that were already moved.
+ */
+function collectPriorTargetIds(selections) {
+  const ids = new Set();
+  for (const sel of selections) {
+    if (sel?.skipped) continue;
+    if (sel?.target?.id) ids.add(sel.target.id);
+    if (Array.isArray(sel?.target)) sel.target.forEach(t => ids.add(t.id));
+  }
+  return ids;
+}
 /**
  * Check if an effect requires multi-target selection.
  */
@@ -54,7 +68,25 @@ function advanceToNextSelection(state, context) {
       continue;
     }
 
-    const validTargets = computeChainTargets(effect, idx, sels, positionTracker, context);
+    let validTargets = computeChainTargets(effect, idx, sels, positionTracker, context);
+
+    // Filter out drones already selected in prior chain effects
+    const priorTargetIds = collectPriorTargetIds(sels);
+    if (priorTargetIds.size > 0) {
+      validTargets = validTargets.filter(t => !priorTargetIds.has(t.id));
+    }
+
+    // Filter drones already in the destination lane (same-lane no-op prevention)
+    if (isCompoundEffect(effect) && validTargets.length > 0) {
+      const resolvedDest = resolveDestinationRefs(effect.destination, sels);
+      const lanes = ['lane1', 'lane2', 'lane3'];
+      if (lanes.includes(resolvedDest?.location)) {
+        validTargets = validTargets.filter(t => {
+          const virtualLane = positionTracker?.getDronePosition(t.id)?.lane || t.lane;
+          return virtualLane !== resolvedDest.location;
+        });
+      }
+    }
 
     debugLog('CARD_PLAY_TRACE', `[1.2] advanceToNextSelection evaluating effect[${idx}]`, {
       effectType: effect.type,
@@ -62,6 +94,8 @@ function advanceToNextSelection(state, context) {
       hasSkippedRef: hasSkippedRef(effect, sels),
       validTargetCount: validTargets.length,
       willSkip: validTargets.length === 0,
+      priorTargetCount: priorTargetIds.size,
+      isOptional: !!effect.optional,
     });
 
     if (validTargets.length === 0) {
@@ -82,6 +116,8 @@ function advanceToNextSelection(state, context) {
         pendingMultiTargets: [],
         multiSourceLane: null,
         validTargets,
+        priorTargetIds,
+        isCurrentEffectOptional: !!effect.optional,
         prompt: effect.prompt || 'Select drones',
         complete: false,
       };
@@ -95,6 +131,8 @@ function advanceToNextSelection(state, context) {
       pendingTarget: null,
       pendingLane: null,
       validTargets,
+      priorTargetIds,
+      isCurrentEffectOptional: !!effect.optional,
       prompt: effect.prompt || '',
       complete: false,
     };
@@ -114,14 +152,15 @@ function advanceToNextSelection(state, context) {
 
 /**
  * Filter destination lane targets to exclude full lanes.
- * For SINGLE_MOVE/MULTI_MOVE, the batch size affects which lanes are valid.
+ * For SINGLE_MOVE, the batch size affects which lanes are valid.
  */
-function filterFullDestinations(destTargets, playerStates, batchSize = 1) {
+function filterFullDestinations(destTargets, playerStates, batchSize = 1, selections = null) {
   return destTargets.filter(t => {
     const state = playerStates[t.owner];
     if (!state) return true;
     const currentCount = state.dronesOnBoard[t.id]?.length || 0;
-    return currentCount + batchSize <= 5;
+    const ghostCount = countPendingArrivals(selections, t.id);
+    return currentCount + ghostCount + batchSize <= MAX_DRONES_PER_LANE;
   });
 }
 
@@ -183,7 +222,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
           { target: initialTarget, lane: initialLane },
           actingPlayerId
         );
-        const destTargets = filterFullDestinations(rawDestTargets, playerStates);
+        const destTargets = filterFullDestinations(rawDestTargets, playerStates, 1, base.selections);
         setChainState({
           ...base,
           subPhase: 'destination',
@@ -222,7 +261,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         { target, lane },
         actingPlayerId
       );
-      const destTargets = filterFullDestinations(rawDestTargets, playerStates);
+      const destTargets = filterFullDestinations(rawDestTargets, playerStates, 1, chainState.selections);
 
       // Auto-select when destination ref resolved to a concrete lane (exactly 1 target)
       const lanes = ['lane1', 'lane2', 'lane3'];
@@ -238,6 +277,31 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
           selections: newSelections,
         }, context));
         return;
+      }
+
+      // Resolved destination is concrete but lane is full — auto-skip remaining optional effects
+      if (lanes.includes(resolvedDest.location) && destTargets.length === 0) {
+        if (effect.optional) {
+          const sels = [...chainState.selections];
+          for (let i = chainState.currentIndex; i < chainState.effects.length; i++) {
+            sels.push({ target: null, lane: null, skipped: true });
+          }
+          debugLog('CARD_PLAY_TRACE', '[1.3] Lane full — auto-skipping remaining optional effects', {
+            card: chainState.card?.name,
+            fullLane: resolvedDest.location,
+            fromIndex: chainState.currentIndex,
+          });
+          setChainState(prev => ({
+            ...prev,
+            selections: sels,
+            currentIndex: prev.effects.length,
+            complete: true,
+            pendingTarget: null, pendingLane: null, validTargets: [], prompt: '',
+          }));
+          return;
+        }
+        // For mandatory effects, fall through to destination subPhase with 0 targets
+        // (existing behavior — chain stalls, user must cancel)
       }
 
       setChainState(prev => ({
@@ -266,7 +330,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   }, [chainState, actingPlayerId, makeContext]);
 
   /**
-   * Record a destination selection for compound effects (SINGLE_MOVE/MULTI_MOVE).
+   * Record a destination selection for compound effects (SINGLE_MOVE).
    */
   const selectChainDestination = useCallback((destinationLane) => {
     if (!chainState || chainState.subPhase !== 'destination') return;
@@ -377,7 +441,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         { target: targets, lane: sourceLane },
         actingPlayerId
       );
-      const destTargets = filterFullDestinations(rawDestTargets, playerStates, targets.length);
+      const destTargets = filterFullDestinations(rawDestTargets, playerStates, targets.length, chainState.selections);
       setChainState(prev => ({
         ...prev,
         subPhase: 'destination',
@@ -422,6 +486,38 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   }, [chainState, selectChainTarget]);
 
   /**
+   * Skip all remaining optional effects and mark the chain complete.
+   * Called by the "Done" button when the player is satisfied with partial moves.
+   */
+  const skipRemainingOptionalEffects = useCallback(() => {
+    if (!chainState || chainState.complete) return;
+
+    const sels = [...chainState.selections];
+    // Push skipped entries for the current effect and all remaining effects
+    for (let i = chainState.currentIndex; i < chainState.effects.length; i++) {
+      sels.push({ target: null, lane: null, skipped: true });
+    }
+
+    debugLog('CARD_PLAY_TRACE', '[1.4] Skipping remaining optional effects', {
+      card: chainState.card?.name,
+      fromIndex: chainState.currentIndex,
+      totalEffects: chainState.effects.length,
+      selectionsCount: sels.length,
+    });
+
+    setChainState(prev => ({
+      ...prev,
+      selections: sels,
+      currentIndex: prev.effects.length,
+      pendingTarget: null,
+      pendingLane: null,
+      validTargets: [],
+      prompt: '',
+      complete: true,
+    }));
+  }, [chainState]);
+
+  /**
    * Cancel the effect chain — resets all state.
    */
   const cancelEffectChain = useCallback(() => {
@@ -437,6 +533,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
     confirmChainMultiSelect,
     setPendingChainTarget,
     confirmChainTarget,
+    skipRemainingOptionalEffects,
     cancelEffectChain,
   };
 };

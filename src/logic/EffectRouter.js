@@ -76,9 +76,8 @@ class EffectRouter {
       MODIFY_STAT: new ModifyStatEffectProcessor(),
       MODIFY_DRONE_BASE: new ModifyDroneBaseEffectProcessor(),
       DESTROY_UPGRADE: new DestroyUpgradeEffectProcessor(),
-      // Phase 7: Movement effects - COMPLETE
+      // Phase 7: Movement effects - SINGLE_MOVE - COMPLETE
       SINGLE_MOVE: movementProcessor,
-      MULTI_MOVE: movementProcessor,
       // Phase 8: Special effects (meta-processors, tokens, search) - COMPLETE
       REPEATING_EFFECT: new RepeatingEffectProcessor(),
       COMPOSITE_EFFECT: new CompositeEffectProcessor(),

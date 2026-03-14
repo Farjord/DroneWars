@@ -11,14 +11,33 @@ export const MAX_DRONES_PER_LANE = 5;
 export const MAX_TECH_PER_LANE = 5;
 
 /**
+ * Count drones pending arrival in a lane from prior effect chain selections.
+ * These are "ghost" drones — selected to move but not yet in dronesOnBoard.
+ *
+ * @param {Array|null} selections - Effect chain selections array
+ * @param {string} laneId - Lane ID to count arrivals for
+ * @returns {number} Count of pending arrivals
+ */
+export const countPendingArrivals = (selections, laneId) => {
+  if (!selections) return 0;
+  return selections.reduce((count, sel) => {
+    if (!sel || sel.skipped || sel.destination !== laneId) return count;
+    return count + (Array.isArray(sel.target) ? sel.target.length : 1);
+  }, 0);
+};
+
+/**
  * Check if a lane is at capacity for a given player
  *
  * @param {Object} playerState - Player state to check
  * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
+ * @param {Array|null} selections - Optional effect chain selections for ghost drone counting
  * @returns {boolean} True if lane has >= MAX_DRONES_PER_LANE drones
  */
-export const isLaneFull = (playerState, laneId) => {
-  return (playerState.dronesOnBoard[laneId]?.length || 0) >= MAX_DRONES_PER_LANE;
+export const isLaneFull = (playerState, laneId, selections = null) => {
+  const realCount = playerState.dronesOnBoard[laneId]?.length || 0;
+  const ghostCount = countPendingArrivals(selections, laneId);
+  return (realCount + ghostCount) >= MAX_DRONES_PER_LANE;
 };
 
 /**
@@ -26,10 +45,13 @@ export const isLaneFull = (playerState, laneId) => {
  *
  * @param {Object} playerState - Player state to check
  * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
+ * @param {Array|null} selections - Optional effect chain selections for ghost drone counting
  * @returns {{ count: number, max: number, isFull: boolean }}
  */
-export const getLaneCapacity = (playerState, laneId) => {
-  const count = playerState.dronesOnBoard[laneId]?.length || 0;
+export const getLaneCapacity = (playerState, laneId, selections = null) => {
+  const realCount = playerState.dronesOnBoard[laneId]?.length || 0;
+  const ghostCount = countPendingArrivals(selections, laneId);
+  const count = realCount + ghostCount;
   return { count, max: MAX_DRONES_PER_LANE, isFull: count >= MAX_DRONES_PER_LANE };
 };
 

@@ -99,11 +99,6 @@ export const extractTargetingText = (card, effect) => {
       return `${t} (${a})`;
     }
     return t;
-  } else if (effect.type === 'MULTI_MOVE' && effect.source) {
-    const sourceLocation = effect.source.location || 'Any';
-    const sourceAffinity = effect.source.affinity || 'Any';
-    const formattedAffinity = sourceAffinity.charAt(0).toUpperCase() + sourceAffinity.slice(1).toLowerCase();
-    return `${formatKeyword(sourceLocation)} (${formattedAffinity})`;
   } else if (effect.type === 'SINGLE_MOVE') {
     return 'Drone (Friendly)';
   }

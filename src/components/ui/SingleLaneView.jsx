@@ -12,7 +12,7 @@ import { getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
-  (effect.type === 'SINGLE_MOVE' || effect.type === 'MULTI_MOVE') && !!effect.destination;
+  effect.type === 'SINGLE_MOVE' && !!effect.destination;
 
 /**
  * Renders all drones within a lane with proper positioning and interaction handlers.
@@ -92,8 +92,11 @@ const renderDronesOnBoard = ({
                 (effectChainState?.subPhase === 'destination' && (
                   effectChainState.pendingTarget?.id === drone.id ||
                   (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
-                ))
+                )) ||
+                // Prior chain selections — highlighted but not draggable
+                effectChainState?.priorTargetIds?.has(drone.id)
               }
+              isPriorChainTarget={effectChainState?.priorTargetIds?.has(drone.id) || false}
               isHit={recentlyHitDrones.includes(drone.id)}
               isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
               isPotentialGuardian={potentialGuardians.includes(drone.id)}
@@ -111,15 +114,24 @@ const renderDronesOnBoard = ({
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
               onDragStart={
-                // During chain target/multi-target selection, clicks only — no drag
-                (effectChainState?.subPhase === 'target' || effectChainState?.subPhase === 'multi-target')
-                  ? undefined
-                  : (isPlayer || (effectChainState?.subPhase === 'destination' && (
+                // During chain target phase for compound effects with known destination — allow drag
+                (effectChainState?.subPhase === 'target' && effectChainState?.effects?.[effectChainState.currentIndex] && isCompoundEffect(effectChainState.effects[effectChainState.currentIndex]) &&
+                  validCardTargets.some(t => t.id === drone.id && t.owner === droneOwner) &&
+                  !effectChainState?.priorTargetIds?.has(drone.id))
+                  ? handleDroneDragStart
+                // During chain destination phase — allow dragging the pending target
+                : (effectChainState?.subPhase === 'destination' && (
                     effectChainState.pendingTarget?.id === drone.id ||
                     (Array.isArray(effectChainState.pendingTarget) && effectChainState.pendingTarget.some(d => d.id === drone.id))
-                  )))
-                    ? handleDroneDragStart
-                    : undefined
+                  ))
+                  ? handleDroneDragStart
+                // During chain target/multi-target selection for non-compound effects — clicks only, no drag
+                : (effectChainState?.subPhase === 'target' || effectChainState?.subPhase === 'multi-target')
+                  ? undefined
+                // Normal: player drones can drag
+                : isPlayer
+                  ? handleDroneDragStart
+                  : undefined
               }
               onDragDrop={!isPlayer && draggedDrone ?
                 (targetDrone) => {
@@ -150,6 +162,25 @@ const renderDronesOnBoard = ({
                />
           );
       })}
+      {/* Ghost drones — preview pending moves from completed chain selections */}
+      {/* Only render on the player's side — ghosts belong to the acting player */}
+      {effectChainState && !effectChainState.complete && isPlayer && effectChainState.selections?.filter(sel =>
+        sel && !sel.skipped && sel.target?.id && sel.destination === lane
+      ).map(sel => (
+        <DroneToken
+          key={`ghost-${sel.target.id}`}
+          drone={sel.target}
+          lane={lane}
+          isPlayer={isPlayer}
+          isGhost={true}
+          onClick={() => {}}
+          droneRefs={droneRefs}
+          mandatoryAction={null}
+          localPlayerState={localPlayerState}
+          getLocalPlayerId={getLocalPlayerId}
+          getOpponentPlayerId={getOpponentPlayerId}
+        />
+      ))}
     </>
   );
 };
@@ -288,7 +319,7 @@ const SingleLaneView = ({
           return;
         }
 
-        if (draggedDrone && handleDroneDragEnd && (isPlayer || effectChainState?.subPhase === 'destination')) {
+        if (draggedDrone && handleDroneDragEnd && (isPlayer || effectChainState?.subPhase === 'destination' || draggedDrone.isChainTargetDrag)) {
           debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C: Drone drop on lane', {
             lane: laneId,
             willCallWith: { target: null, targetLane: laneId, isOpponentTarget: false, targetType: 'lane' }

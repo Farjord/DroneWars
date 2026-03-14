@@ -8,7 +8,7 @@ import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard, ev
 import { evaluateReadyDroneCard, evaluateCreateTokensCard, evaluateExhaustDroneCard } from './droneCards.js';
 import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from './healCards.js';
 import { evaluateModifyStatCard, evaluateRepeatingEffectCard } from './statCards.js';
-import { evaluateSingleMoveCard, evaluateMultiMoveCard } from './movementCards.js';
+import { evaluateSingleMoveCard } from './movementCards.js';
 import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
 import { evaluateConditionalEffects } from './conditionalEvaluator.js';
 import { evaluateApplyCannotMoveCard, evaluateApplyCannotAttackCard, evaluateApplyCannotInterceptCard, evaluateApplyDoesNotReadyCard, evaluateClearAllStatusCard } from './statusEffectCards.js';
@@ -52,7 +52,6 @@ export const cardEvaluatorRegistry = {
   MODIFY_STAT: evaluateModifyStatCard,
   REPEATING_EFFECT: evaluateRepeatingEffectCard,
   SINGLE_MOVE: evaluateSingleMoveCard,
-  MULTI_MOVE: evaluateMultiMoveCard,
   MODIFY_DRONE_BASE: evaluateModifyDroneBaseCard,
   // New tactics card evaluators
   EXHAUST_DRONE: evaluateExhaustDroneCard,
@@ -104,6 +103,19 @@ export const evaluateCardPlay = (card, target, context, moveData = null) => {
   }
   else {
     baseResult = evaluator(card, target, context);
+  }
+
+  // For multi-SINGLE_MOVE cards (Reposition), sum scores for additional moves
+  // The cost penalty is already included in the first evaluator call, so additional
+  // moves only add their movement impact (no double-counting energy cost)
+  if (moveData?.multiMoveData && moveData.multiMoveData.length > 1) {
+    for (let i = 1; i < moveData.multiMoveData.length; i++) {
+      // Create a zero-cost pseudo-card so the evaluator doesn't penalize cost again
+      const pseudoCard = { ...card, cost: 0, momentumCost: 0, effects: card.effects.slice(i) };
+      const additionalResult = evaluator(pseudoCard, null, moveData.multiMoveData[i], context);
+      baseResult.score += additionalResult.score;
+      baseResult.logic.push(...additionalResult.logic);
+    }
   }
 
   // Add conditional effect bonuses (modular - works with any base effect)

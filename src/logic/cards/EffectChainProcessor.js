@@ -341,7 +341,7 @@ class EffectChainProcessor {
 
       // Route effect through the appropriate processor
       let result;
-      if (effectData.type === 'SINGLE_MOVE' || effectData.type === 'MULTI_MOVE') {
+      if (effectData.type === 'SINGLE_MOVE') {
         result = this.executeChainMovement(effectData, selection, playerId, currentStates, ctx);
       } else if (effectData.type === 'DISCARD_CARD') {
         result = this.executeChainDiscard(selection, playerId, currentStates);
@@ -513,9 +513,9 @@ class EffectChainProcessor {
   }
 
   /**
-   * Execute a SINGLE_MOVE or MULTI_MOVE during commit.
+   * Execute a SINGLE_MOVE during commit.
    * Bypasses MovementEffectProcessor.process() (which returns needsCardSelection)
-   * and calls executeSingleMove/executeMultiMove directly.
+   * and calls executeSingleMove directly.
    */
   executeChainMovement(effectData, selection, playerId, playerStates, ctx) {
     const { placedSections, callbacks } = ctx;
@@ -529,20 +529,10 @@ class EffectChainProcessor {
     const pseudoCard = { name: 'Effect Chain', effects: [effectData] };
     const moveContext = { callbacks, placedSections };
 
-    let result;
-    if (effectData.type === 'SINGLE_MOVE') {
-      result = this.movementProcessor.executeSingleMove(
-        pseudoCard, selection.target, selection.lane, selection.destination,
-        playerId, newStates, opponentId, moveContext
-      );
-    } else {
-      // MULTI_MOVE
-      const drones = Array.isArray(selection.target) ? selection.target : [selection.target];
-      result = this.movementProcessor.executeMultiMove(
-        pseudoCard, drones, selection.lane, selection.destination,
-        playerId, newStates, opponentId, moveContext
-      );
-    }
+    const result = this.movementProcessor.executeSingleMove(
+      pseudoCard, selection.target, selection.lane, selection.destination,
+      playerId, newStates, opponentId, moveContext
+    );
 
     if (result.error) {
       debugLog('CARD_PLAY_TRACE', '[7] Effect movement error', { error: result.error });

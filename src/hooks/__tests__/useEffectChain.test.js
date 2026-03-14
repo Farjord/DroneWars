@@ -476,6 +476,171 @@ describe('useEffectChain — pending target confirmation', () => {
   });
 });
 
+// --- Optional Effects and Skip ---
+
+describe('useEffectChain — optional effects', () => {
+  const repositionCard = {
+    name: 'Reposition',
+    effects: [
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: [] },
+        destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
+        properties: ['DO_NOT_EXHAUST'],
+        prompt: 'Move a friendly drone (1 of 3)',
+      },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: [] },
+        destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+        properties: ['DO_NOT_EXHAUST'],
+        optional: true,
+        prompt: 'Move another drone (2 of 3)',
+      },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: [] },
+        destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+        properties: ['DO_NOT_EXHAUST'],
+        optional: true,
+        prompt: 'Move another drone (3 of 3)',
+      },
+    ],
+  };
+
+  it('exposes isCurrentEffectOptional on chain state', () => {
+    const { result } = renderChainHook();
+    act(() => result.current.startEffectChain(repositionCard));
+
+    // Effect 0 is not optional
+    expect(result.current.effectChainState.isCurrentEffectOptional).toBe(false);
+  });
+
+  it('skipRemainingOptionalEffects skips remaining effects and completes chain', () => {
+    // Need 3 drones in lane1 so effect 1 has valid targets after moving one
+    const playerStates = {
+      player1: {
+        dronesOnBoard: {
+          lane1: [
+            { id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 },
+            { id: 'p1d3', name: 'Fighter', attack: 3, speed: 3, hull: 4 },
+            { id: 'p1d4', name: 'Bomber', attack: 5, speed: 1, hull: 5 },
+          ],
+          lane2: [],
+          lane3: [],
+        },
+        hand: [],
+      },
+      player2: {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        hand: [],
+      },
+    };
+
+    const { result } = renderHook(() => useEffectChain({
+      playerStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(repositionCard));
+
+    // Complete effect 0: select drone from lane1 → destination lane2
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+    act(() => result.current.selectChainDestination('lane2'));
+
+    // Now at effect 1 (optional) — p1d3 and p1d4 are still in lane1
+    expect(result.current.effectChainState.isCurrentEffectOptional).toBe(true);
+
+    // Skip remaining
+    act(() => result.current.skipRemainingOptionalEffects());
+
+    const state = result.current.effectChainState;
+    expect(state.complete).toBe(true);
+    expect(state.selections).toHaveLength(3);
+    expect(state.selections[0].target.id).toBe('p1d1');
+    expect(state.selections[1].skipped).toBe(true);
+    expect(state.selections[2].skipped).toBe(true);
+  });
+
+  it('exposes priorTargetIds for drones selected in earlier effects', () => {
+    // Need multiple drones so effect 1 doesn't auto-skip
+    const playerStates = {
+      player1: {
+        dronesOnBoard: {
+          lane1: [
+            { id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 },
+            { id: 'p1d3', name: 'Fighter', attack: 3, speed: 3, hull: 4 },
+          ],
+          lane2: [],
+          lane3: [],
+        },
+        hand: [],
+      },
+      player2: {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        hand: [],
+      },
+    };
+
+    const { result } = renderHook(() => useEffectChain({
+      playerStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(repositionCard));
+
+    // Complete effect 0
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+    act(() => result.current.selectChainDestination('lane2'));
+
+    // Effect 1 should have priorTargetIds containing p1d1
+    const state = result.current.effectChainState;
+    expect(state.priorTargetIds).toBeDefined();
+    expect(state.priorTargetIds.has('p1d1')).toBe(true);
+  });
+
+  it('prior-selected drones are excluded from valid targets', () => {
+    // Player has 2 drones in lane1 — after moving one, the other should still be valid
+    // but the moved drone should be excluded
+    const playerStates = {
+      player1: {
+        dronesOnBoard: {
+          lane1: [
+            { id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 },
+            { id: 'p1d3', name: 'Fighter', attack: 3, speed: 3, hull: 4 },
+          ],
+          lane2: [],
+          lane3: [],
+        },
+        hand: [],
+      },
+      player2: {
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        hand: [],
+      },
+    };
+
+    const { result } = renderHook(() => useEffectChain({
+      playerStates,
+      actingPlayerId: 'player1',
+      getEffectiveStats: null,
+    }));
+
+    act(() => result.current.startEffectChain(repositionCard));
+    // Select p1d1 from lane1, move to lane2
+    act(() => result.current.selectChainTarget({ id: 'p1d1' }, 'lane1'));
+    act(() => result.current.selectChainDestination('lane2'));
+
+    // Effect 1: p1d1 should NOT be in validTargets (already moved)
+    const state = result.current.effectChainState;
+    const targetIds = state.validTargets.map(t => t.id);
+    expect(targetIds).not.toContain('p1d1');
+    expect(targetIds).toContain('p1d3');
+  });
+});
+
 // --- Edge Cases ---
 
 describe('useEffectChain — edge cases', () => {
