@@ -251,6 +251,46 @@ describe('AnnouncementQueue', () => {
     expect(cb).toHaveBeenCalledTimes(1);
   });
 
+  // --- Compound announcement duration ---
+
+  it('compound items use COMPOUND_DISPLAY_DURATION (2600ms) instead of standard 1800ms', async () => {
+    const events = [];
+    queue.on('animationStarted', (a) => events.push(`started:${a.id}`));
+    queue.on('animationEnded', (a) => events.push(`ended:${a.id}`));
+
+    const compoundItem = {
+      id: 'compound-1',
+      phaseName: 'compoundDeployToAction',
+      compound: true,
+      stages: [
+        { phaseText: 'YOU PASSED', subtitle: 'Deployment Complete' },
+        { phaseText: 'ACTION PHASE', subtitle: 'You Go First' },
+      ],
+    };
+
+    queue.enqueue(compoundItem);
+
+    // After standard duration (1800ms), compound should still be playing
+    await vi.advanceTimersByTimeAsync(1800);
+    expect(queue.isPlaying()).toBe(true);
+    expect(events).toEqual(['started:compound-1']);
+
+    // After compound duration (2600ms total), should be complete
+    await vi.advanceTimersByTimeAsync(800);
+    expect(events).toEqual(['started:compound-1', 'ended:compound-1']);
+    expect(queue.isPlaying()).toBe(false);
+  });
+
+  it('non-compound items still use standard 1800ms duration', async () => {
+    const ended = vi.fn();
+    queue.on('animationEnded', ended);
+
+    queue.enqueue(mkAnnouncement('std'));
+    await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
+
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
   // --- Accessor correctness ---
 
   it('isPlaying, getCurrentAnimation, getQueueLength return correct values', async () => {

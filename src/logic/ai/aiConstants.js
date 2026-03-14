@@ -459,7 +459,7 @@ export const DAMAGE_TYPE_WEIGHTS = {
 // THREAT DRONE CONSTANTS
 // ========================================
 // Used for AI-only drones that increase player threat
-// Signal Beacon: +1 threat per round (ON_ROUND_START)
+// Signal Beacon: +1 threat per round (ON_ROUND_END)
 // Threat Transmitter: +2 threat on ship hull damage (ON_SHIP_SECTION_HULL_DAMAGE)
 
 // ========================================

@@ -7,7 +7,7 @@ import GameServer from '../server/GameServer.js';
 import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
-import { extractAnnouncements } from '../utils/announcementUtils.js';
+import { extractAnnouncements, mergeCompoundAnnouncements } from '../utils/announcementUtils.js';
 
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
@@ -208,14 +208,15 @@ class GameClient extends GameServer {
    */
   _extractAndQueueAnnouncements(allAnimations) {
     const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
+    const merged = mergeCompoundAnnouncements(announcements);
 
     flowCheckpoint('ANNOUNCEMENTS_SPLIT', {
-      toQueue: announcements.length,
+      toQueue: merged.length,
       toVisual: visualAnimations.length,
     });
 
-    if (announcements.length > 0 && this.phaseAnimationQueue) {
-      this.phaseAnimationQueue.enqueueAll(announcements);
+    if (merged.length > 0 && this.phaseAnimationQueue) {
+      this.phaseAnimationQueue.enqueueAll(merged);
     }
 
     return { visualAnimations };

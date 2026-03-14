@@ -70,16 +70,16 @@ export const hasReadyNotFirstActionDrones = (playerState) => {
 };
 
 /**
- * Check if a drone has an ON_ROUND_START ability that increases threat
+ * Check if a drone has an ON_ROUND_END ability that increases threat
  * These drones generate threat each round and should be protected
  * @param {Object} drone - The drone to check
  * @returns {boolean} True if drone has threat-per-round ability
  */
-export const hasThreatOnRoundStart = (drone) => {
+export const hasThreatOnRoundEnd = (drone) => {
   const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
   return baseDrone?.abilities?.some(ability =>
     ability.type === 'TRIGGERED' &&
-    ability.trigger === 'ON_ROUND_START' &&
+    ability.trigger === 'ON_ROUND_END' &&
     ability.effect?.type === 'INCREASE_THREAT'
   ) || false;
 };

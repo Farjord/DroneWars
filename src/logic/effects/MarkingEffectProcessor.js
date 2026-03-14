@@ -1,31 +1,31 @@
 // ========================================
 // MARKING EFFECT PROCESSOR
 // ========================================
-// Handles MARK_DRONE and MARK_RANDOM_ENEMY card effects
-// Extracted from gameLogic.js Phase 9.4A
+// Handles MARK_DRONE effects — marks a pre-resolved target drone.
+// Target resolution (random selection, lane filtering) is handled upstream
+// by TriggerProcessor._buildTarget via targetSelection.
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { SeededRandom } from '../../utils/seededRandom.js';
 
 /**
  * MarkingEffectProcessor
- * Processes MARK_DRONE and MARK_RANDOM_ENEMY effects for marking system
+ * Processes MARK_DRONE effects for the marking system.
  *
- * MARK_DRONE: Marks a specific targeted enemy drone (ship ability)
- * MARK_RANDOM_ENEMY: Marks a random unmarked enemy in specified lane (Scanner ON_DEPLOY)
+ * Marks a specific drone identified by context.target.id.
+ * Random target selection for Scanner's ON_DEPLOY is handled by
+ * TriggerProcessor._buildTarget → _resolveDronePool → selectTargets.
  *
  * Key features:
- * - Filters valid targets (unmarked drones only for random marking)
  * - Updates drone isMarked property
- * - Silently fails if no valid targets (Scanner deployment)
+ * - Silently fails if target not found
  * - No animations (state-only effect)
  */
 class MarkingEffectProcessor extends BaseEffectProcessor {
   /**
-   * Process marking effect - routes to specific marking type
+   * Process marking effect
    *
-   * @param {Object} effect - Effect configuration (type: 'MARK_DRONE' | 'MARK_RANDOM_ENEMY')
+   * @param {Object} effect - Effect configuration (type: 'MARK_DRONE')
    * @param {Object} context - Effect execution context
    * @returns {Object} Result with newPlayerStates
    */
@@ -34,8 +34,6 @@ class MarkingEffectProcessor extends BaseEffectProcessor {
 
     if (effect.type === 'MARK_DRONE') {
       return this.processMarkDrone(effect, context);
-    } else if (effect.type === 'MARK_RANDOM_ENEMY') {
-      return this.processMarkRandomEnemy(effect, context);
     }
 
     debugLog('MARKING', `⚠️ Unknown marking effect type: ${effect.type}`);
@@ -82,69 +80,6 @@ class MarkingEffectProcessor extends BaseEffectProcessor {
       debugLog('MARKING', `⚠️ Target drone not found: ${target.id}`, {
         targetId: target.id,
         opponentId
-      });
-    }
-
-    return this.createResult(newPlayerStates);
-  }
-
-  /**
-   * Mark a random unmarked enemy drone in specified lane
-   * Used by Scanner drone's ON_DEPLOY trigger
-   *
-   * @param {Object} effect - Effect configuration
-   * @param {string} effect.lane - Lane to search for targets
-   * @param {Object} context - Effect execution context
-   * @returns {Object} Result with updated states
-   */
-  processMarkRandomEnemy(effect, context) {
-    const { actingPlayerId, playerStates } = context;
-    const newPlayerStates = this.clonePlayerStates(playerStates);
-
-    // Lane comes from effect configuration or context
-    const lane = effect.lane || context.lane;
-
-    if (!lane) {
-      debugLog('MARKING', `⚠️ No lane specified for MARK_RANDOM_ENEMY`);
-      return this.createResult(playerStates);
-    }
-
-    // Determine opponent
-    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-
-    // Get all enemy drones in the specified lane
-    const enemyDronesInLane = newPlayerStates[opponentId].dronesOnBoard[lane] || [];
-
-    // Filter to only unmarked drones
-    const validTargets = enemyDronesInLane.filter(drone => !drone.isMarked);
-
-    // If there are valid targets, randomly select one and mark it
-    if (validTargets.length > 0) {
-      const rng = new SeededRandom(
-        (context.gameSeed || 0) + (context.roundNumber || 1) * 100 + validTargets.length + 6000
-      );
-      const randomIndex = rng.randomInt(0, validTargets.length);
-      const targetDrone = validTargets[randomIndex];
-
-      // Find the drone in the lane array and mark it
-      const droneIndex = newPlayerStates[opponentId].dronesOnBoard[lane].findIndex(
-        d => d.id === targetDrone.id
-      );
-      if (droneIndex !== -1) {
-        newPlayerStates[opponentId].dronesOnBoard[lane][droneIndex].isMarked = true;
-
-        debugLog('MARKING', `✅ Randomly marked enemy drone in ${lane}`, {
-          droneId: targetDrone.id,
-          droneName: targetDrone.name,
-          lane,
-          validTargetsCount: validTargets.length
-        });
-      }
-    } else {
-      // Silently fail if no valid targets (per Scanner drone requirements)
-      debugLog('MARKING', `ℹ️ No valid unmarked targets in ${lane}`, {
-        lane,
-        totalEnemies: enemyDronesInLane.length
       });
     }
 

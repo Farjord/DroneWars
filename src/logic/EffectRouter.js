@@ -88,7 +88,6 @@ class EffectRouter {
       DRAW_THEN_DISCARD: new DrawThenDiscardProcessor(),
       // Phase 9.4A: Marking effects - COMPLETE
       MARK_DRONE: markingProcessor,
-      MARK_RANDOM_ENEMY: markingProcessor,
       // Detection/Threat effects (Extraction mode)
       INCREASE_THREAT: new IncreaseThreatEffectProcessor(),
       // Phase 10: New tactics card effects

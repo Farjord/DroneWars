@@ -106,7 +106,7 @@ const fullTechCollection = [
         name: 'Auto-Destruct',
         description: 'Destroyed at the start of the next round.',
         type: 'TRIGGERED',
-        trigger: 'ON_ROUND_START',
+        trigger: 'ON_ROUND_END',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
         effects: []
@@ -132,10 +132,29 @@ const fullTechCollection = [
         name: 'Auto-Destruct',
         description: 'Destroyed at the start of the next round.',
         type: 'TRIGGERED',
-        trigger: 'ON_ROUND_START',
+        trigger: 'ON_ROUND_END',
         triggerOwner: 'LANE_OWNER',
         destroyAfterTrigger: true,
         effects: []
+      }
+    ]
+  },
+  {
+    name: 'Repair Relay',
+    hull: 1,
+    image: '/DroneWars/img/RepairRelay.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    isTech: true,
+    abilities: [
+      {
+        name: 'Regenerative Field',
+        description: 'End of round: If you control this lane, heal 1 hull to the ship section in this lane.',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_END',
+        triggerFilter: { laneControl: 'CONTROLLED_BY_ACTOR' },
+        effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION' }]
       }
     ]
   },

@@ -31,6 +31,7 @@ import {
   SELF_TRIGGER_TYPES,
   CONTROLLER_TRIGGER_TYPES,
   LANE_TRIGGER_TYPES,
+  LANE_CONTROL_FILTERS,
   MAX_CHAIN_DEPTH
 } from './triggerConstants.js';
 
@@ -500,8 +501,8 @@ class TriggerProcessor {
         const processedEffect = this._preprocessEffect(effect, reactorDrone, reactorLane);
 
         // Build target(s) — may return array when targetSelection is present
-        const targets = this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates, gameSeed);
-        const targetArray = Array.isArray(targets) ? targets : [targets];
+        const targets = this._buildTarget(processedEffect, reactorDrone, reactorPlayerId, reactorLane, currentStates, gameSeed, placedSections);
+        const targetArray = Array.isArray(targets) ? targets : (targets ? [targets] : []);
 
         for (const singleTarget of targetArray) {
           const effectContext = {
@@ -640,7 +641,7 @@ class TriggerProcessor {
         case 'DRAW':
           parts.push(`drew ${effect.value} card${effect.value !== 1 ? 's' : ''}`);
           break;
-        case 'MARK_RANDOM_ENEMY':
+        case 'MARK_DRONE':
           parts.push('marked an enemy drone');
           break;
         case 'INCREASE_THREAT':
@@ -903,11 +904,13 @@ class TriggerProcessor {
       }
     }
 
-    if (triggerFilter.laneControl === 'NOT_CONTROLLED_BY_ACTOR') {
+    if (triggerFilter.laneControl === LANE_CONTROL_FILTERS.NOT_CONTROLLED_BY_ACTOR || triggerFilter.laneControl === LANE_CONTROL_FILTERS.CONTROLLED_BY_ACTOR) {
       if (!triggerFilter._filterContext) return true;
       const { lane: destLane, playerStates: ctxStates, actingPlayerId: ctxActingPlayerId } = triggerFilter._filterContext;
       const laneControl = LaneControlCalculator.calculateLaneControl(ctxStates.player1, ctxStates.player2);
-      if (laneControl[destLane] === ctxActingPlayerId) return false;
+      const actorControls = laneControl[destLane] === ctxActingPlayerId;
+      const wantsControl = triggerFilter.laneControl === LANE_CONTROL_FILTERS.CONTROLLED_BY_ACTOR;
+      if (actorControls !== wantsControl) return false;
     }
 
     return true;
@@ -931,7 +934,21 @@ class TriggerProcessor {
   /**
    * Build target object for EffectRouter context.
    */
-  _buildTarget(effect, reactorDrone, reactorPlayerId, reactorLane, playerStates, gameSeed) {
+  _buildTarget(effect, reactorDrone, reactorPlayerId, reactorLane, playerStates, gameSeed, placedSections = null) {
+    if (effect.targetType === 'SHIP_SECTION' && placedSections) {
+      const laneIndex = parseInt(reactorLane.slice(-1)) - 1;
+      const sectionArray = placedSections[reactorPlayerId];
+      const sectionName = sectionArray?.[laneIndex];
+      if (!sectionName) return null;
+      return {
+        type: 'SHIP_SECTION',
+        name: sectionName,
+        lane: reactorLane,
+        owner: reactorPlayerId,
+        playerId: reactorPlayerId
+      };
+    }
+
     if (effect._targetDroneId) {
       return {
         type: 'DRONE',

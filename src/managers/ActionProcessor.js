@@ -42,7 +42,7 @@ import {
 import {
   processDraw as _processDraw,
   processEnergyReset as _processEnergyReset,
-  processRoundStartTriggers as _processRoundStartTriggers,
+  processRoundEndTriggers as _processRoundEndTriggers,
   processRebuildProgress as _processRebuildProgress,
   processMomentumAward as _processMomentumAward
 } from '../logic/actions/StateUpdateStrategy.js';
@@ -93,7 +93,7 @@ const ACTION_STRATEGIES = {
   commitment: 'processCommitment',
   draw: 'processDraw',
   energyReset: 'processEnergyReset',
-  roundStartTriggers: 'processRoundStartTriggers',
+  roundEndTriggers: 'processRoundEndTriggers',
   rebuildProgress: 'processRebuildProgress',
   momentumAward: 'processMomentumAward',
   destroyDrone: 'processDestroyDrone',
@@ -757,7 +757,7 @@ setAnimationManager(animationManager) {
   applyPhaseCommitments(phase) { return _applyPhaseCommitments(phase, this._getActionContext()); }
   async processDraw(payload) { return _processDraw(payload, this._getActionContext()); }
   async processEnergyReset(payload) { return _processEnergyReset(payload, this._getActionContext()); }
-  async processRoundStartTriggers(payload) { return _processRoundStartTriggers(payload, this._getActionContext()); }
+  async processRoundEndTriggers(payload) { return _processRoundEndTriggers(payload, this._getActionContext()); }
   async processRebuildProgress(payload) { return _processRebuildProgress(payload, this._getActionContext()); }
   async processMomentumAward(payload) { return _processMomentumAward(payload, this._getActionContext()); }
   async processDestroyDrone(payload) { return _processDestroyDrone(payload, this._getActionContext()); }

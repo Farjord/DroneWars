@@ -12,6 +12,8 @@ import { flowCheckpoint } from '../utils/flowVerification.js';
 
 // Total phase display duration: 1500ms display + 300ms fade out
 const PHASE_DISPLAY_DURATION = 1800;
+// Compound cross-fade: 1000ms stage1 + 300ms cross-fade + 1000ms stage2 + 300ms fade out
+const COMPOUND_DISPLAY_DURATION = 2600;
 
 class AnnouncementQueue {
   constructor() {
@@ -160,7 +162,8 @@ class AnnouncementQueue {
 
     this.emit('animationStarted', this.currentAnimation);
 
-    await new Promise(resolve => setTimeout(resolve, PHASE_DISPLAY_DURATION));
+    const duration = this.currentAnimation.compound ? COMPOUND_DISPLAY_DURATION : PHASE_DISPLAY_DURATION;
+    await new Promise(resolve => setTimeout(resolve, duration));
 
     // SAFETY: If clear() was called during the await, abort gracefully
     if (!this.currentAnimation) {

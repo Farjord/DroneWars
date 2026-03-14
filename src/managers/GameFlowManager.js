@@ -16,6 +16,7 @@ import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 import { isPreGameComplete } from '../logic/actions/CommitmentStrategy.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
+import RoundManager from '../logic/round/RoundManager.js';
 
 function _buildStateSnapshot(gs) {
   const snap = (p) => ({
@@ -46,7 +47,7 @@ class GameFlowManager {
     // Phase type classification
     this.SIMULTANEOUS_PHASES = ['preGameSetup', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = SEQUENTIAL_PHASES;
-    this.AUTOMATIC_PHASES = ['roundInitialization']; // Automatic phase handled directly by GameFlowManager
+    this.AUTOMATIC_PHASES = ['roundInitialization', 'roundEnd']; // Automatic phases handled directly by GameFlowManager
 
     // Current game state
     this.currentPhase = 'preGame';
@@ -628,10 +629,10 @@ class GameFlowManager {
 
       await this.transitionToPhase(nextPhase);
     } else {
-      // End of action phase - start new round
+      // End of action phase - transition to roundEnd phase
       if (phase === 'action') {
         debugLog('STATE_CHECKPOINT', '[ACTION_END]', _buildStateSnapshot(this.gameStateManager.getState()));
-        // Queue ACTION PHASE COMPLETE announcement before starting new round
+        // Queue ACTION PHASE COMPLETE announcement before roundEnd phase
         await this.actionProcessor.executeAndCaptureAnimations([{
           animationName: 'PHASE_ANNOUNCEMENT',
           timing: 'independent',
@@ -643,7 +644,7 @@ class GameFlowManager {
           });
         }
 
-        await this.startNewRound();
+        await this.transitionToPhase('roundEnd');
       }
     }
   }
@@ -736,6 +737,8 @@ class GameFlowManager {
     // Route to appropriate phase handler
     if (phase === 'roundInitialization') {
       nextPhase = await this.processRoundInitialization(previousPhase);
+    } else if (phase === 'roundEnd') {
+      nextPhase = await this.processRoundEnd(previousPhase);
     } else {
       debugLog('PHASE_TRANSITIONS', `No handler for automatic phase: ${phase}`);
     }
@@ -810,6 +813,68 @@ class GameFlowManager {
       debugLog('PHASE_TRANSITIONS', 'Error during roundInitialization phase:', error);
       throw error;
     }
+  }
+
+  /**
+   * Process the roundEnd phase
+   * Fires after both players pass in the action phase.
+   * Shows END OF ROUND banner, processes ON_ROUND_END triggers, then starts new round.
+   * @param {string} previousPhase - The phase we're transitioning from (should be 'action')
+   * @returns {Promise<null>} Always null — startNewRound handles the next transition
+   */
+  async processRoundEnd(previousPhase) {
+    debugLog('PHASE_TRACE', '[roundEnd] processRoundEnd entry', { previousPhase });
+
+    // Emit END OF ROUND banner
+    await this.actionProcessor.executeAndCaptureAnimations([{
+      animationName: 'PHASE_ANNOUNCEMENT',
+      timing: 'independent',
+      payload: { phase: 'roundEnd', text: 'END OF ROUND', subtitle: null }
+    }], true);
+
+    // Process ON_ROUND_END triggers
+    const currentState = this.gameStateManager.getState();
+    const allPlacedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    const logCallback = (entry, debugSource) =>
+      this.gameStateManager.addLogEntry(entry, debugSource || 'roundEndTriggers');
+
+    const roundEndResult = RoundManager.processRoundEndTriggers(
+      currentState.player1,
+      currentState.player2,
+      allPlacedSections,
+      logCallback,
+      currentState.firstPlayerOfRound
+    );
+
+    if (roundEndResult?.animationEvents?.length > 0) {
+      await this.actionProcessor.queueAction({
+        type: 'roundEndTriggers',
+        payload: {
+          player1: roundEndResult.player1,
+          player2: roundEndResult.player2,
+          animationEvents: roundEndResult.animationEvents
+        }
+      });
+
+      debugLog('PHASE_TRANSITIONS', '✅ ON_ROUND_END triggers processed', {
+        animationEventsCount: roundEndResult.animationEvents.length
+      });
+    }
+
+    // Emit phaseTransition event
+    this.emit('phaseTransition', {
+      newPhase: 'roundEnd',
+      previousPhase
+    });
+
+    // Start next round
+    await this.startNewRound();
+
+    return null;
   }
 
   /**

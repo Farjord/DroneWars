@@ -3,19 +3,67 @@
 // ========================================
 // Displays a full-screen phase announcement when transitioning between game phases
 // Shows phase name with Drone Wars gradient styling and shine effect
-// Auto-dismisses after 1.5 seconds
+// Supports compound announcements with cross-fade between two stages
+// Auto-dismisses after display duration (1.5s standard, 2.6s compound)
 
 import React, { useState, useEffect, useRef } from 'react';
 import { timingLog, getTimestamp } from '../../utils/debugLogger.js';
 
+const gradientStyle = {
+  background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+  backgroundSize: '300% auto',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+  textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
+  filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
+};
+
+/**
+ * Renders the phase text heading and optional subtitle for a single stage.
+ * Used both for standard announcements and as layers within compound announcements.
+ */
+function StageContent({ phaseText, subtitle, isVisible, className = '' }) {
+  return (
+    <div className={`flex flex-col items-center ${className}`}>
+      <h1
+        className={`
+          text-6xl font-orbitron font-black uppercase tracking-widest text-center
+          phase-announcement-text
+          ${isVisible ? 'phase-announcement-shine' : ''}
+        `}
+        style={gradientStyle}
+      >
+        {phaseText}
+      </h1>
+
+      {subtitle && (
+        <p
+          className={`
+            text-2xl font-orbitron font-medium uppercase tracking-wider text-center
+            text-cyan-300/80 mt-4
+            transition-all duration-300
+            ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
+          `}
+        >
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * PhaseAnnouncementOverlay - Shows phase name during phase transitions
- * @param {string} phaseText - The text to display (e.g., "DEPLOYMENT PHASE")
- * @param {string} subtitle - Optional subtitle text (e.g., "You Go First")
+ * @param {string} phaseText - The text to display (standard mode)
+ * @param {string} subtitle - Optional subtitle text (standard mode)
+ * @param {boolean} compound - Whether this is a compound cross-fade announcement
+ * @param {Array} stages - Array of {phaseText, subtitle} for compound mode
  * @param {Function} onComplete - Callback when animation completes
  */
-const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
+const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [stageIndex, setStageIndex] = useState(0);
   const containerRef = useRef(null);
   const mountTimeRef = useRef(null);
 
@@ -40,6 +88,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
     timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
       phaseText,
       subtitle,
+      compound: compound || false,
       isVisible,
       browserState,
       blockingReason: 'component_function_executing'
@@ -52,6 +101,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
 
       timingLog('[MODAL COMPONENT] useEffect triggered', {
         phaseText,
+        compound: compound || false,
         browserState: {
           hasFocus: document.hasFocus(),
           visibilityState: document.visibilityState,
@@ -87,7 +137,26 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
       });
     });
 
-    // Auto-dismiss after 1.5 seconds
+    if (compound && stages) {
+      // Compound: cross-fade between stages, then fade out
+      // 1000ms stage 1 → 300ms cross-fade → 1000ms stage 2 → 300ms fade out = 2600ms total
+      const crossFadeTimer = setTimeout(() => {
+        setStageIndex(1);
+      }, 1000);
+
+      const fadeOutTimer = setTimeout(() => {
+        setIsVisible(false);
+        // Wait for fade-out animation to complete before cleanup
+        setTimeout(() => onComplete?.(), 300);
+      }, 2300); // 1000 + 300 cross-fade + 1000 stage 2
+
+      return () => {
+        clearTimeout(crossFadeTimer);
+        clearTimeout(fadeOutTimer);
+      };
+    }
+
+    // Standard: display for 1.5s then fade out
     const displayTimer = setTimeout(() => {
       setIsVisible(false);
 
@@ -100,7 +169,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
     }, 1500);
 
     return () => clearTimeout(displayTimer);
-  }, [onComplete, markId, phaseText]);
+  }, [onComplete, markId, phaseText, compound, stages]);
 
   // Log when isVisible actually changes (React has applied the state update)
   useEffect(() => {
@@ -227,38 +296,29 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
           </svg>
         </div>
 
-        {/* Phase text with gradient and glow */}
-        <h1
-          className={`
-            text-6xl font-orbitron font-black uppercase tracking-widest text-center
-            phase-announcement-text
-            ${isVisible ? 'phase-announcement-shine' : ''}
-          `}
-          style={{
-            background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
-            backgroundSize: '300% auto',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
-            filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
-          }}
-        >
-          {phaseText}
-        </h1>
-
-        {/* Optional subtitle (for deployment/action phases showing who goes first) */}
-        {subtitle && (
-          <p
-            className={`
-              text-2xl font-orbitron font-medium uppercase tracking-wider text-center
-              text-cyan-300/80 mt-4
-              transition-all duration-300
-              ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
-            `}
-          >
-            {subtitle}
-          </p>
+        {/* Text content — compound cross-fade or standard */}
+        {compound && stages ? (
+          <div className="relative">
+            {stages.map((stage, idx) => (
+              <div
+                key={idx}
+                className={`transition-opacity duration-300 ${idx > 0 ? 'absolute inset-0' : ''}`}
+                style={{ opacity: stageIndex === idx ? 1 : 0 }}
+              >
+                <StageContent
+                  phaseText={stage.phaseText}
+                  subtitle={stage.subtitle}
+                  isVisible={isVisible}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <StageContent
+            phaseText={phaseText}
+            subtitle={subtitle}
+            isVisible={isVisible}
+          />
         )}
 
         {/* Decorative line beneath text */}

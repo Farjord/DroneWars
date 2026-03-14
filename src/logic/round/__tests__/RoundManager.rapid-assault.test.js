@@ -33,7 +33,7 @@ vi.mock('../../triggers/TriggerProcessor.js', () => ({
 }))
 
 vi.mock('../../triggers/triggerConstants.js', () => ({
-  TRIGGER_TYPES: { ON_ROUND_START: 'ON_ROUND_START' }
+  TRIGGER_TYPES: { ON_ROUND_END: 'ON_ROUND_END' }
 }))
 
 describe('RoundManager - triggerUsesMap reset', () => {

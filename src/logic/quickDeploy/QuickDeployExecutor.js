@@ -1,7 +1,7 @@
 // --- Quick Deploy Executor ---
 // Executes the quick deploy sequence: deploy player drones interleaved with AI responses.
 // Flow: Player deploys drone → ON_DEPLOY triggers → AI deploys one drone → repeat
-// This ensures ON_DEPLOY effects (like Scanner's MARK_RANDOM_ENEMY) see correct board state.
+// This ensures ON_DEPLOY effects (like Scanner's MARK_DRONE) see correct board state.
 
 import fullDroneCollection from '../../data/droneData.js';
 import DeploymentProcessor from '../deployment/DeploymentProcessor.js';

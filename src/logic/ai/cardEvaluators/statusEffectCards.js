@@ -323,7 +323,7 @@ export const evaluateApplyDoesNotReadyCard = (card, target, context) => {
   // === POWERFUL ABILITY BONUS ===
   const hasPowerfulAbility = baseDrone?.abilities?.some(a =>
     a.type === 'ACTIVATED' ||
-    (a.type === 'TRIGGERED' && ['ON_ROUND_START', 'ON_ATTACK'].includes(a.trigger))
+    (a.type === 'TRIGGERED' && ['ON_ROUND_END', 'ON_ATTACK'].includes(a.trigger))
   );
 
   if (hasPowerfulAbility) {

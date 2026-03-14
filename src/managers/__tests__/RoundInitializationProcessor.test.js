@@ -26,8 +26,7 @@ vi.mock('../../services/GameDataService.js', () => ({
 
 vi.mock('../../logic/round/RoundManager.js', () => ({
   default: {
-    readyDronesAndRestoreShields: vi.fn((player) => ({ ...player, exhausted: false })),
-    processRoundStartTriggers: vi.fn(() => null)
+    readyDronesAndRestoreShields: vi.fn((player) => ({ ...player, exhausted: false }))
   }
 }));
 
@@ -274,32 +273,6 @@ describe('RoundInitializationProcessor', () => {
       await processor.process({ isRoundLoop: false });
 
       expect(callOrder.indexOf('firstPlayer')).toBeLessThan(callOrder.indexOf('energyReset'));
-    });
-  });
-
-  // --- Step 3b: ON_ROUND_START triggers ---
-
-  describe('Step 3b: Round-start triggers', () => {
-    it('queues roundStartTriggers when triggers produce results', async () => {
-      RoundManager.processRoundStartTriggers.mockReturnValueOnce({
-        player1: { hand: [], dronesOnBoard: {}, modified: true },
-        player2: { hand: [], dronesOnBoard: {} },
-        animationEvents: [{ type: 'effect' }]
-      });
-
-      await processor.process({ isRoundLoop: false });
-
-      const triggerCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'roundStartTriggers');
-      expect(triggerCalls.length).toBe(1);
-      expect(triggerCalls[0][0].payload.player1.modified).toBe(true);
-    });
-
-    it('skips roundStartTriggers when no triggers fire', async () => {
-      // Default mock returns null — should not queue action
-      await processor.process({ isRoundLoop: false });
-
-      const triggerCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'roundStartTriggers');
-      expect(triggerCalls.length).toBe(0);
     });
   });
 

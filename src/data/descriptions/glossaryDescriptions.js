@@ -73,7 +73,7 @@ export const effectDescriptions = {
 
   'ON_DEPLOY': 'Self-trigger fired when a drone is deployed. Used for on-enter abilities like Scanner\'s mark.',
 
-  'ON_ROUND_START': 'Self-trigger fired at the start of each round. Used by Signal Beacon (+threat) and War Machine (+attack).',
+  'ON_ROUND_END': 'Self-trigger fired at the end of each round. Used by Signal Beacon (+threat) and War Machine (+attack).',
 
   'ON_CARD_DRAWN': 'Controller trigger fired when the owner draws cards. Supports scalingDivisor for proportional effects.',
 

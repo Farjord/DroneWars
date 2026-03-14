@@ -1,7 +1,7 @@
 // ========================================
-// ROUND MANAGER - ON_ROUND_START TRIGGER TESTS
+// ROUND MANAGER - ON_ROUND_END TRIGGER TESTS
 // ========================================
-// Tests processRoundStartTriggers delegation to TriggerProcessor
+// Tests processRoundEndTriggers delegation to TriggerProcessor
 // TriggerProcessor's own behavior is tested in TriggerProcessor.test.js
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -39,12 +39,12 @@ vi.mock('../../triggers/TriggerProcessor.js', () => {
 });
 
 vi.mock('../../triggers/triggerConstants.js', () => ({
-  TRIGGER_TYPES: { ON_ROUND_START: 'ON_ROUND_START' }
+  TRIGGER_TYPES: { ON_ROUND_END: 'ON_ROUND_END' }
 }));
 
 import RoundManager from '../RoundManager.js';
 
-describe('RoundManager - processRoundStartTriggers', () => {
+describe('RoundManager - processRoundEndTriggers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFireTrigger.mockReturnValue({
@@ -88,21 +88,21 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [drone1], lane2: [drone2] });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       // player2 has 0 drones, player1 has 2 → 2 fireTrigger calls
       expect(mockFireTrigger).toHaveBeenCalledTimes(2);
     });
 
-    it('should pass ON_ROUND_START trigger type', () => {
+    it('should pass ON_ROUND_END trigger type', () => {
       const drone = createDrone();
       const player1State = createPlayerState({ lane1: [drone] });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(mockFireTrigger).toHaveBeenCalledWith(
-        'ON_ROUND_START',
+        'ON_ROUND_END',
         expect.objectContaining({
           triggeringPlayerId: 'player1',
           actingPlayerId: 'player1'
@@ -115,10 +115,10 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane2: [drone] });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(mockFireTrigger).toHaveBeenCalledWith(
-        'ON_ROUND_START',
+        'ON_ROUND_END',
         expect.objectContaining({ lane: 'lane2' })
       );
     });
@@ -127,14 +127,14 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState();
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(mockFireTrigger).not.toHaveBeenCalled();
     });
   });
 
   describe('Processing order', () => {
-    it('should process AI drones (player2) before player drones (player1)', () => {
+    it('should process firstPlayerOfRound first when specified as player1', () => {
       const callOrder = [];
       mockFireTrigger.mockImplementation((type, ctx) => {
         callOrder.push(ctx.actingPlayerId);
@@ -146,7 +146,43 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [player1Drone] });
       const player2State = createPlayerState({ lane1: [player2Drone] });
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, null, 'player1');
+
+      expect(callOrder[0]).toBe('player1');
+      expect(callOrder[1]).toBe('player2');
+    });
+
+    it('should process firstPlayerOfRound first when specified as player2', () => {
+      const callOrder = [];
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callOrder.push(ctx.actingPlayerId);
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      const player1Drone = createDrone({ id: 'p1_drone' });
+      const player2Drone = createDrone({ id: 'p2_drone' });
+      const player1State = createPlayerState({ lane1: [player1Drone] });
+      const player2State = createPlayerState({ lane1: [player2Drone] });
+
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, null, 'player2');
+
+      expect(callOrder[0]).toBe('player2');
+      expect(callOrder[1]).toBe('player1');
+    });
+
+    it('should default to player2 first when no firstPlayerOfRound specified', () => {
+      const callOrder = [];
+      mockFireTrigger.mockImplementation((type, ctx) => {
+        callOrder.push(ctx.actingPlayerId);
+        return { triggered: false, newPlayerStates: ctx.playerStates, animationEvents: [] };
+      });
+
+      const player1Drone = createDrone({ id: 'p1_drone' });
+      const player2Drone = createDrone({ id: 'p2_drone' });
+      const player1State = createPlayerState({ lane1: [player1Drone] });
+      const player2State = createPlayerState({ lane1: [player2Drone] });
+
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(callOrder[0]).toBe('player2');
       expect(callOrder[1]).toBe('player1');
@@ -169,7 +205,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       });
       const player2State = createPlayerState();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(callOrder).toEqual(['lane1', 'lane2', 'lane3']);
     });
@@ -191,7 +227,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [drone] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      const result = RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(result.player1.modified).toBe(true);
     });
@@ -200,7 +236,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [createDrone()] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      const result = RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(result.player1).toBeDefined();
       expect(result.player2).toBeDefined();
@@ -221,7 +257,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [createDrone()] });
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      const result = RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(result.animationEvents).toHaveLength(1);
       expect(result.animationEvents[0].type).toBe('STAT_INCREASE');
@@ -231,7 +267,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState();
       const player2State = createPlayerState();
 
-      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      const result = RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       expect(result.animationEvents).toEqual([]);
     });
@@ -248,10 +284,10 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player2State = createPlayerState();
       const logCallback = vi.fn();
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {}, logCallback);
+      RoundManager.processRoundEndTriggers(player1State, player2State, {}, logCallback);
 
       expect(mockFireTrigger).toHaveBeenCalledWith(
-        'ON_ROUND_START',
+        'ON_ROUND_END',
         expect.objectContaining({ logCallback })
       );
     });
@@ -262,7 +298,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player2State = createPlayerState();
 
       // No logCallback passed — should not throw
-      const result = RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      const result = RoundManager.processRoundEndTriggers(player1State, player2State, {});
       expect(result.player1).toBeDefined();
     });
   });
@@ -285,7 +321,7 @@ describe('RoundManager - processRoundStartTriggers', () => {
       const player1State = createPlayerState({ lane1: [createDrone({ id: 'p1' })] });
       const player2State = createPlayerState({ lane1: [createDrone({ id: 'p2' })] });
 
-      RoundManager.processRoundStartTriggers(player1State, player2State, {});
+      RoundManager.processRoundEndTriggers(player1State, player2State, {});
 
       // Second call (player1's drone) should receive the state modified by first call
       const secondCallStates = mockFireTrigger.mock.calls[1][1].playerStates;

@@ -217,7 +217,7 @@ vi.mock('../../../data/droneData.js', () => ({
       abilities: [{
         name: 'Power Up',
         type: 'TRIGGERED',
-        trigger: 'ON_ROUND_START',
+        trigger: 'ON_ROUND_END',
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 2, type: 'permanent' } }]
       }]
     },
@@ -227,7 +227,7 @@ vi.mock('../../../data/droneData.js', () => ({
       abilities: [{
         name: 'Repair Protocol',
         type: 'TRIGGERED',
-        trigger: 'ON_ROUND_START',
+        trigger: 'ON_ROUND_END',
         effects: [{ type: 'HEAL_HULL', value: 3 }]
       }]
     },
@@ -295,6 +295,27 @@ vi.mock('../../../data/droneData.js', () => ({
         trigger: 'ON_MOVE',
         usesPerRound: 1,
         effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      }]
+    },
+    {
+      name: 'TestControlledByActorDrone',
+      attack: 1, hull: 3, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Controlled Lane Heal',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_END',
+        triggerFilter: { laneControl: 'CONTROLLED_BY_ACTOR' },
+        effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION' }]
+      }]
+    },
+    {
+      name: 'TestShipSectionTargetDrone',
+      attack: 1, hull: 3, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Hull Repair Pulse',
+        type: 'TRIGGERED',
+        trigger: 'ON_ROUND_END',
+        effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION' }]
       }]
     }
   ]
@@ -2146,7 +2167,7 @@ describe('TriggerProcessor', () => {
       basePlayerStates.player1.dronesOnBoard.lane1 = [drone];
 
       const logCallback = vi.fn();
-      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
         lane: 'lane1',
         triggeringDrone: drone,
         triggeringPlayerId: 'player1',
@@ -2165,7 +2186,7 @@ describe('TriggerProcessor', () => {
       basePlayerStates.player1.dronesOnBoard.lane3 = [drone];
 
       const logCallback = vi.fn();
-      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+      processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
         lane: 'lane3',
         triggeringDrone: drone,
         triggeringPlayerId: 'player1',
@@ -2491,6 +2512,149 @@ describe('TriggerProcessor', () => {
 
       expect(result2.triggered).toBe(false);
       expect(result2.doesNotExhaust).toBeFalsy();
+    });
+  });
+
+  // ========================================
+  // CONTROLLED_BY_ACTOR TRIGGER FILTER
+  // ========================================
+
+  describe('CONTROLLED_BY_ACTOR triggerFilter', () => {
+    it('should fire trigger when actor controls the lane', () => {
+      // Player1 has 2 drones in lane1, player2 has 1 → player1 controls
+      const controlledDrone = {
+        id: 'ctrl1', name: 'TestControlledByActorDrone',
+        attack: 1, hull: 3, shields: 0, speed: 1
+      };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [
+        controlledDrone,
+        { id: 'ally1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 }
+      ];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
+        lane: 'lane1',
+        triggeringDrone: controlledDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+    });
+
+    it('should block trigger when actor does NOT control the lane', () => {
+      // Player1 has 1 drone in lane1, player2 has 2 → player2 controls
+      const controlledDrone = {
+        id: 'ctrl1', name: 'TestControlledByActorDrone',
+        attack: 1, hull: 3, shields: 0, speed: 1
+      };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [controlledDrone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 },
+        { id: 'enemy2', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
+        lane: 'lane1',
+        triggeringDrone: controlledDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+
+    it('should block trigger when lane control is tied (null)', () => {
+      // Equal drone counts → tied → null control
+      const controlledDrone = {
+        id: 'ctrl1', name: 'TestControlledByActorDrone',
+        attack: 1, hull: 3, shields: 0, speed: 1
+      };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [controlledDrone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy1', name: 'NormalDrone', attack: 2, hull: 3, shields: 1, speed: 2 }
+      ];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
+        lane: 'lane1',
+        triggeringDrone: controlledDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(false);
+    });
+  });
+
+  // ========================================
+  // SHIP_SECTION TARGETING IN _buildTarget
+  // ========================================
+
+  describe('SHIP_SECTION targeting in _buildTarget', () => {
+    it('should return ship section target when effect has targetType SHIP_SECTION', () => {
+      const reactorDrone = { id: 'healer1', name: 'TestShipSectionTargetDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [reactorDrone];
+
+      const placedSections = {
+        player1: ['Engines', 'Bridge', 'Weapons'],
+        player2: ['Shields', 'Bridge', 'Cargo']
+      };
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
+        lane: 'lane2',
+        triggeringDrone: reactorDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections,
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      // Verify EffectRouter received a SHIP_SECTION target
+      const routeCall = processor.effectRouter.routeEffect.mock.calls[0];
+      expect(routeCall[1].target).toEqual({
+        type: 'SHIP_SECTION',
+        name: 'Bridge', // lane2 → index 1
+        lane: 'lane2',
+        owner: 'player1',
+        playerId: 'player1'
+      });
+    });
+
+    it('should return null (no crash) when no section placed in lane', () => {
+      const reactorDrone = { id: 'healer1', name: 'TestShipSectionTargetDrone' };
+      basePlayerStates.player1.dronesOnBoard.lane2 = [reactorDrone];
+
+      const placedSections = {
+        player1: ['Engines', null, 'Weapons'], // No section in lane2 (index 1)
+        player2: ['Shields', 'Bridge', 'Cargo']
+      };
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
+        lane: 'lane2',
+        triggeringDrone: reactorDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections,
+        logCallback: vi.fn()
+      });
+
+      // Should not crash, trigger fires but effect is skipped (no target)
+      expect(result.triggered).toBe(true);
+      expect(processor.effectRouter.routeEffect).not.toHaveBeenCalled();
     });
   });
 });

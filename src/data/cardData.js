@@ -1305,8 +1305,20 @@ const fullCardCollection = [
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
-
-
+  },
+  {
+    id: 'DEPLOY_REPAIR_RELAY',
+    baseCardId: 'DEPLOY_REPAIR_RELAY',
+    name: 'Deploy Repair Relay',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/RepairRelay.png',
+    description: 'Create a Repair Relay in a friendly lane. (Repair Relay: End of round, if you control this lane, heal 1 hull to the ship section here.)',
+    effects: [
+      { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+    ],
   },
   {
     id: 'TACTICAL_ADVANTAGE',

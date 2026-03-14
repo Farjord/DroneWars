@@ -1,4 +1,4 @@
-// State update strategies: processDraw, processEnergyReset, processRoundStartTriggers,
+// State update strategies: processDraw, processEnergyReset, processRoundEndTriggers,
 // processRebuildProgress, processMomentumAward
 // Extracted from ActionProcessor.js — handles round-level state updates.
 
@@ -62,25 +62,30 @@ export async function processEnergyReset(payload, ctx) {
 }
 
 /**
- * Process ON_ROUND_START triggered abilities
+ * Process ON_ROUND_END triggered abilities
  * @param {Object} payload - { player1, player2 } with updated states
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
-export async function processRoundStartTriggers(payload, ctx) {
-  const { player1, player2 } = payload;
+export async function processRoundEndTriggers(payload, ctx) {
+  const { player1, player2, animationEvents } = payload;
 
-  debugLog('ROUND_START', '🎯 ActionProcessor: Processing round start triggers');
+  debugLog('PHASE_TRANSITIONS', '🎯 ActionProcessor: Processing round end triggers');
+
+  if (animationEvents?.length > 0) {
+    const animations = ctx.mapAnimationEvents(animationEvents);
+    ctx.captureAnimations(animations);
+  }
 
   ctx.setState({
     player1,
     player2
-  }, 'ROUND_START_TRIGGERS');
+  }, 'ROUND_END_TRIGGERS');
 
-  debugLog('ROUND_START', '✅ Round start triggers complete');
+  debugLog('PHASE_TRANSITIONS', '✅ Round end triggers complete');
 
   return {
     success: true,
-    message: 'Round start triggers processed',
+    message: 'Round end triggers processed',
     player1,
     player2
   };

@@ -29,7 +29,7 @@ vi.mock('../../logic/actions/CommitmentStrategy.js', () => ({
   processCommitment: vi.fn(), handleAICommitment: vi.fn(), applyPhaseCommitments: vi.fn(),
 }));
 vi.mock('../../logic/actions/StateUpdateStrategy.js', () => ({
-  processDraw: vi.fn(), processEnergyReset: vi.fn(), processRoundStartTriggers: vi.fn(),
+  processDraw: vi.fn(), processEnergyReset: vi.fn(), processRoundEndTriggers: vi.fn(),
   processRebuildProgress: vi.fn(), processMomentumAward: vi.fn(),
 }));
 vi.mock('../../logic/actions/DroneActionStrategy.js', () => ({

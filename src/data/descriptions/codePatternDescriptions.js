@@ -30,15 +30,15 @@ export const effectPatterns = {
   },
 
   'ON_DEPLOY': {
-    validEffects: ['MODIFY_STAT', 'MARK_RANDOM_ENEMY'],
+    validEffects: ['MODIFY_STAT', 'MARK_DRONE'],
     implementation: 'TriggerProcessor.fireTrigger(ON_DEPLOY)',
     notes: 'Self-trigger fired when a drone is deployed.'
   },
 
-  'ON_ROUND_START': {
-    validEffects: ['MODIFY_STAT (permanent)', 'INCREASE_THREAT'],
-    implementation: 'TriggerProcessor.fireTrigger(ON_ROUND_START)',
-    notes: 'Self-trigger, fires for all drones each round.'
+  'ON_ROUND_END': {
+    validEffects: ['MODIFY_STAT (permanent)', 'INCREASE_THREAT', 'HEAL_HULL', 'DAMAGE'],
+    implementation: 'TriggerProcessor.fireTrigger(ON_ROUND_END)',
+    notes: 'Self-trigger, fires for all drones/techs at round end. Supports triggerFilter.laneControl and targetType: SHIP_SECTION.'
   },
 
   'ON_CARD_DRAWN': {

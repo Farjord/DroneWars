@@ -129,6 +129,8 @@ const AnimationLayer = ({
         key={announcement.id}
         phaseText={announcement.phaseText}
         subtitle={announcement.subtitle}
+        compound={announcement.compound}
+        stages={announcement.stages}
         onComplete={announcement.onComplete}
       />
     ))}

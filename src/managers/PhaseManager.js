@@ -20,7 +20,7 @@ import { SEQUENTIAL_PHASES } from '../logic/phase/phaseDisplayUtils.js';
 class PhaseManager {
   // Valid phase names - transitions to invalid phases will be rejected
   static VALID_PHASES = [
-    'preGameSetup', 'roundInitialization',
+    'preGameSetup', 'roundInitialization', 'roundEnd',
     'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
     'mandatoryDroneRemoval', 'deployment', 'action'
   ];

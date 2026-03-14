@@ -108,6 +108,26 @@ const fullDroneCollection = [
       }],
   upgradeSlots: 2 
 },
+  {
+    name: 'Scorcher',
+    class: 1,
+    limit: 3,
+    rebuildRate: 2.0,
+    rarity: 'Common',
+    attack: 1,
+    hull: 1,
+    shields: 0,
+    speed: 3,
+    image: '/DroneWars/img/Scorcher.png',
+    abilities: [{
+      name: 'Lingering Burn',
+      description: 'End of round: Deal 1 damage to a random enemy drone in this lane.',
+      type: 'TRIGGERED',
+      trigger: 'ON_ROUND_END',
+      effects: [{ type: 'DAMAGE', value: 1, targetSelection: { method: 'RANDOM', count: 1 }, scope: 'SAME_LANE', affinity: 'ENEMY' }]
+    }],
+    upgradeSlots: 1
+  },
   { name: 'Locust', class: 0, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   {
     name: 'Basilisk',
@@ -323,7 +343,8 @@ const fullDroneCollection = [
         description: 'On deploy, mark a random enemy drone in the same lane.',
         type: 'TRIGGERED',
         trigger: 'ON_DEPLOY',
-        effects: [{ type: 'MARK_RANDOM_ENEMY', scope: 'SAME_LANE', filter: 'NOT_MARKED' }]
+        effects: [{ type: 'MARK_DRONE', scope: 'SAME_LANE', affinity: 'ENEMY', filter: 'NOT_MARKED',
+            targetSelection: { method: 'RANDOM', count: 1 } }]
     }],
     upgradeSlots: 2
   },
@@ -686,7 +707,7 @@ const fullDroneCollection = [
       name: 'Threat Signal',
       description: 'Start of Round: Increase player threat by 2.',
       type: 'TRIGGERED',
-      trigger: 'ON_ROUND_START',
+      trigger: 'ON_ROUND_END',
       effects: [{ type: 'INCREASE_THREAT', value: 2 }]
     }],
     upgradeSlots: 0
@@ -731,7 +752,7 @@ const fullDroneCollection = [
       name: 'Combat Escalation',
       description: 'Start of Round: Gain +1 attack permanently.',
       type: 'TRIGGERED',
-      trigger: 'ON_ROUND_START',
+      trigger: 'ON_ROUND_END',
       effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
     }],
     upgradeSlots: 2

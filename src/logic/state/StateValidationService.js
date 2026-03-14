@@ -114,7 +114,7 @@ class StateValidationService {
       'deployment': ['action', 'roundEnd'],
       'action': ['deployment', 'roundEnd', 'gameEnd', 'actionComplete'],
       'actionComplete': ['roundAnnouncement'],
-      'roundEnd': ['deployment', 'gameEnd'],
+      'roundEnd': ['mandatoryDiscard', 'optionalDiscard', 'roundInitialization', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -151,7 +151,7 @@ class StateValidationService {
       return;
     }
 
-    const automaticPhases = ['energyReset', 'draw', 'roundInitialization'];
+    const automaticPhases = ['energyReset', 'draw', 'roundInitialization', 'roundEnd'];
     if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
       return;
     }

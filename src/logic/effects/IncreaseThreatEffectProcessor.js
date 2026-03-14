@@ -8,7 +8,7 @@
 // { type: 'INCREASE_THREAT', value: number, perDrone?: string }
 //
 // Works for:
-// - Drone triggered abilities (ON_ROUND_START)
+// - Drone triggered abilities (ON_ROUND_END)
 // - Drone conditional abilities (ON_ATTACK with POST condition)
 // - Card effects
 // - perDrone: multiplies value by count of named drones on acting player's board

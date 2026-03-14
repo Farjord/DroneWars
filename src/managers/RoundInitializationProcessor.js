@@ -3,11 +3,12 @@
 // Step 1: Game stage transition & round number init
 // Step 2: First player determination
 // Step 3: Energy & resource reset (stats, drones, budgets, shields)
-// Step 3b: ON_ROUND_START triggered abilities
-// Step 3b2: Momentum award (lane control bonus)
+// Step 3b: Momentum award (lane control bonus)
 // Step 3c: Drone rebuild progress
 // Step 4: Card draw
 // Step 5: Quick deploy (round 1 only)
+//
+// Note: ON_ROUND_END triggers are processed in the roundEnd phase (GameFlowManager.processRoundEnd)
 //
 // Stateful — reads and mutates game state via gameStateManager and actionProcessor.
 // Returns { quickDeployExecuted } so the caller can update flow-control flags.
@@ -173,43 +174,7 @@ class RoundInitializationProcessor {
     });
 
     // ========================================
-    // STEP 3b: ON_ROUND_START Triggered Abilities
-    // ========================================
-    debugLog('PHASE_TRANSITIONS', '🎯 Step 3b: Processing ON_ROUND_START triggers');
-
-    const preTriggersState = this.gameStateManager.getState();
-
-    const logCallback = (entry, debugSource) =>
-      this.gameStateManager.addLogEntry(entry, debugSource || 'roundStartTriggers');
-
-    const roundStartResult = RoundManager.processRoundStartTriggers(
-      preTriggersState.player1,
-      preTriggersState.player2,
-      allPlacedSections,
-      logCallback
-    );
-
-    if (roundStartResult) {
-      await this.actionProcessor.queueAction({
-        type: 'roundStartTriggers',
-        payload: {
-          player1: roundStartResult.player1,
-          player2: roundStartResult.player2
-        }
-      });
-
-      debugLog('PHASE_TRANSITIONS', '✅ ON_ROUND_START triggers processed', {
-        animationEventsCount: roundStartResult.animationEvents?.length || 0
-      });
-    }
-
-    debugLog('ROUND_TRACE', '[4/7] Round-start triggers processed', {
-      triggered: !!roundStartResult,
-      animCount: roundStartResult?.animationEvents?.length || 0,
-    });
-
-    // ========================================
-    // STEP 3b2: Momentum Award (Lane Control Bonus)
+    // STEP 3b: Momentum Award (Lane Control Bonus)
     // ========================================
     // +1 momentum to player controlling most lanes. No ties, no round 1, cap at 4.
     const momentumRoundNumber = this.gameStateManager.get('roundNumber');

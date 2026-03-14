@@ -6,14 +6,14 @@
 
 /**
  * Trigger types — when a trigger fires.
- * Self triggers: ON_MOVE, ON_DEPLOY, ON_ROUND_START, ON_ATTACK
+ * Self triggers: ON_MOVE, ON_DEPLOY, ON_ROUND_END, ON_ATTACK
  * Controller triggers: ON_CARD_DRAWN, ON_ENERGY_GAINED, ON_CARD_PLAY
  * Lane triggers: ON_LANE_MOVEMENT_IN, ON_LANE_MOVEMENT_OUT, ON_LANE_DEPLOYMENT, ON_LANE_ATTACK
  */
 export const TRIGGER_TYPES = Object.freeze({
   ON_MOVE: 'ON_MOVE',
   ON_DEPLOY: 'ON_DEPLOY',
-  ON_ROUND_START: 'ON_ROUND_START',
+  ON_ROUND_END: 'ON_ROUND_END',
   ON_ATTACK: 'ON_ATTACK',
   ON_CARD_DRAWN: 'ON_CARD_DRAWN',
   ON_ENERGY_GAINED: 'ON_ENERGY_GAINED',
@@ -61,7 +61,7 @@ export const TRIGGER_SCOPES = Object.freeze({
 export const SELF_TRIGGER_TYPES = Object.freeze(new Set([
   TRIGGER_TYPES.ON_MOVE,
   TRIGGER_TYPES.ON_DEPLOY,
-  TRIGGER_TYPES.ON_ROUND_START,
+  TRIGGER_TYPES.ON_ROUND_END,
   TRIGGER_TYPES.ON_ATTACK,
   TRIGGER_TYPES.ON_INTERCEPT,
   TRIGGER_TYPES.ON_ATTACKED
@@ -85,6 +85,16 @@ export const LANE_TRIGGER_TYPES = Object.freeze(new Set([
   TRIGGER_TYPES.ON_LANE_DEPLOYMENT,
   TRIGGER_TYPES.ON_LANE_ATTACK
 ]));
+
+/**
+ * Lane control filter values — used in triggerFilter.laneControl.
+ * CONTROLLED_BY_ACTOR: trigger only fires when actor controls the lane
+ * NOT_CONTROLLED_BY_ACTOR: trigger only fires when actor does NOT control the lane
+ */
+export const LANE_CONTROL_FILTERS = Object.freeze({
+  CONTROLLED_BY_ACTOR: 'CONTROLLED_BY_ACTOR',
+  NOT_CONTROLLED_BY_ACTOR: 'NOT_CONTROLLED_BY_ACTOR'
+});
 
 /**
  * Maximum cascade chain depth — safety net against unbounded recursion.

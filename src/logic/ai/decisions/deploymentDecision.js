@@ -9,7 +9,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
 import SeededRandom from '../../../utils/seededRandom.js';
 
 import {
-  hasThreatOnRoundStart,
+  hasThreatOnRoundEnd,
   countDroneTypeInLane,
 } from '../helpers/index.js';
 
@@ -224,7 +224,7 @@ const currentLaneScores = {
         ) || [];
 
         for (const ability of onDeployAbilities) {
-          if (ability.effect?.type === 'MARK_RANDOM_ENEMY') {
+          if (ability.effects?.some(e => e.type === 'MARK_DRONE')) {
             const enemiesInLane = player1.dronesOnBoard[laneId] || [];
             const unmarkedEnemies = enemiesInLane.filter(d => !d.isMarked);
             if (unmarkedEnemies.length > 0) {
@@ -235,7 +235,7 @@ const currentLaneScores = {
 
         // Threat drone deployment bonus - threat-per-round drones generate value over time
         let threatDroneBonus = 0;
-        if (hasThreatOnRoundStart(baseDrone)) {
+        if (hasThreatOnRoundEnd(baseDrone)) {
           threatDroneBonus = THREAT_DRONES.ROUND_START_DEPLOY_BONUS;
         }
 

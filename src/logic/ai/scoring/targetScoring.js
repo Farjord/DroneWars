@@ -8,7 +8,7 @@ import { TARGET_SCORING, DAMAGE_TYPE_WEIGHTS, THREAT_DRONES } from '../aiConstan
 
 const { RALLY_BEACON_ATTACK_PRIORITY } = TARGET_SCORING;
 import fullDroneCollection from '../../../data/droneData.js';
-import { hasThreatOnRoundStart } from '../helpers/keywordHelpers.js';
+import { hasThreatOnRoundEnd } from '../helpers/keywordHelpers.js';
 
 const {
   JAMMER_BLOCKING_BASE,
@@ -178,7 +178,7 @@ const evaluateDangerousAbilities = (target) => {
   }
 
   // Threat-per-round drones are high value (should be protected)
-  if (hasThreatOnRoundStart(target)) {
+  if (hasThreatOnRoundEnd(target)) {
     value += THREAT_DRONES.ROUND_START_PROTECTION_VALUE;
     logic.push(`Threat Generator: +${THREAT_DRONES.ROUND_START_PROTECTION_VALUE}`);
   }

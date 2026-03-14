@@ -164,12 +164,12 @@ class RoundManager {
   }
 
   /**
-   * Process ON_ROUND_START triggered abilities for all drones
-   * Called during roundInitialization after drones are readied
+   * Process ON_ROUND_END triggered abilities for all drones
+   * Called during roundEnd phase after both players pass
    *
    * Processing order:
-   * 1. AI drones (player2) first - threat effects apply before player benefits
-   * 2. Player drones (player1) second
+   * 1. First player of current round processes first
+   * 2. Other player processes second
    * 3. Within each player, process lane1 → lane2 → lane3
    *
    * Delegates to TriggerProcessor for effect routing and trigger resolution.
@@ -179,7 +179,7 @@ class RoundManager {
    * @param {Object} placedSections - Ship section placements
    * @returns {Object} { player1: updatedState, player2: updatedState, animationEvents: [] }
    */
-  processRoundStartTriggers(player1State, player2State, placedSections, logCallback = null) {
+  processRoundEndTriggers(player1State, player2State, placedSections, logCallback = null, firstPlayerOfRound = 'player2') {
     const triggerProcessor = new TriggerProcessor();
     let currentStates = {
       player1: JSON.parse(JSON.stringify(player1State)),
@@ -187,14 +187,14 @@ class RoundManager {
     };
     const allAnimationEvents = [];
 
-    // Process AI (player2) drones first, then player (player1)
-    // This ensures AI threat effects process before player benefits
-    for (const playerId of ['player2', 'player1']) {
+    // Process first player of the round first, then the other player
+    const otherPlayer = firstPlayerOfRound === 'player1' ? 'player2' : 'player1';
+    for (const playerId of [firstPlayerOfRound, otherPlayer]) {
       for (const lane of ['lane1', 'lane2', 'lane3']) {
         // Process tech slots BEFORE drones (so e.g. TI auto-destructs before drone readying)
         const techs = currentStates[playerId].techSlots?.[lane] || [];
         for (const tech of techs) {
-          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
             lane,
             triggeringDrone: tech,
             triggeringPlayerId: playerId,
@@ -216,7 +216,7 @@ class RoundManager {
         const drones = currentStates[playerId].dronesOnBoard?.[lane] || [];
 
         for (const drone of drones) {
-          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_START, {
+          const result = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_ROUND_END, {
             lane,
             triggeringDrone: drone,
             triggeringPlayerId: playerId,

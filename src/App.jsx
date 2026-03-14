@@ -754,8 +754,10 @@ const App = ({ phaseAnimationQueue }) => {
         id: animation.id,
         phaseText: animation.phaseText,
         subtitle: animation.subtitle,
+        compound: animation.compound || false,
+        stages: animation.stages || null,
         onComplete: () => {
-          // Animation completes after 1.8 seconds (1.5s display + 0.3s fade)
+          // Animation completes after queue duration (1.8s standard / 2.6s compound)
         }
       }]);
     };

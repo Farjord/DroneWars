@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { personalizeAnnouncements, extractAnnouncements } from '../announcementUtils.js';
+import { personalizeAnnouncements, extractAnnouncements, mergeCompoundAnnouncements } from '../announcementUtils.js';
 
 describe('personalizeAnnouncements', () => {
   const baseState = {
@@ -168,5 +168,117 @@ describe('extractAnnouncements', () => {
     expect(announcements[0].id).toBeTruthy();
     expect(announcements[1].id).toBeTruthy();
     expect(announcements[0].id).not.toBe(announcements[1].id);
+  });
+});
+
+describe('mergeCompoundAnnouncements', () => {
+  function mkAnnouncement(phaseName, phaseText, subtitle = null) {
+    return { id: `phase-anim-${phaseName}`, phaseName, phaseText, subtitle };
+  }
+
+  it('merges [playerPass, deploymentComplete, action] into one compound item', () => {
+    const input = [
+      mkAnnouncement('playerPass', 'YOU PASSED'),
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].compound).toBe(true);
+    expect(result[0].phaseName).toBe('compoundDeployToAction');
+    expect(result[0].stages).toEqual([
+      { phaseText: 'YOU PASSED', subtitle: 'Deployment Complete' },
+      { phaseText: 'ACTION PHASE', subtitle: 'You Go First' },
+    ]);
+  });
+
+  it('preserves "OPPONENT PASSED" text in stage 1', () => {
+    const input = [
+      mkAnnouncement('playerPass', 'OPPONENT PASSED'),
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+      mkAnnouncement('action', 'ACTION PHASE', 'Opponent Goes First'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].stages[0].phaseText).toBe('OPPONENT PASSED');
+    expect(result[0].stages[1].subtitle).toBe('Opponent Goes First');
+  });
+
+  it('does not merge when only 2 of 3 items match (partial match)', () => {
+    const input = [
+      mkAnnouncement('playerPass', 'YOU PASSED'),
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].compound).toBeFalsy();
+    expect(result[1].compound).toBeFalsy();
+  });
+
+  it('does not merge when sequence is in wrong order', () => {
+    const input = [
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+      mkAnnouncement('playerPass', 'YOU PASSED'),
+      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(3);
+    expect(result.every(a => !a.compound)).toBe(true);
+  });
+
+  it('passes through non-matching announcements unchanged', () => {
+    const input = [
+      mkAnnouncement('roundAnnouncement', 'ROUND 1'),
+      mkAnnouncement('deployment', 'DEPLOYMENT PHASE', 'You Go First'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].phaseName).toBe('roundAnnouncement');
+    expect(result[1].phaseName).toBe('deployment');
+  });
+
+  it('preserves surrounding items when pattern is embedded', () => {
+    const input = [
+      mkAnnouncement('roundAnnouncement', 'ROUND 1'),
+      mkAnnouncement('playerPass', 'YOU PASSED'),
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
+      mkAnnouncement('deployment', 'DEPLOYMENT PHASE'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].phaseName).toBe('roundAnnouncement');
+    expect(result[1].compound).toBe(true);
+    expect(result[1].phaseName).toBe('compoundDeployToAction');
+    expect(result[2].phaseName).toBe('deployment');
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(mergeCompoundAnnouncements([])).toEqual([]);
+  });
+
+  it('generates a new id for the compound item', () => {
+    const input = [
+      mkAnnouncement('playerPass', 'YOU PASSED'),
+      mkAnnouncement('deploymentComplete', 'DEPLOYMENT COMPLETE'),
+      mkAnnouncement('action', 'ACTION PHASE', 'You Go First'),
+    ];
+
+    const result = mergeCompoundAnnouncements(input);
+
+    expect(result[0].id).toMatch(/^phase-anim-/);
+    expect(result[0].id).not.toBe(input[0].id);
   });
 });
