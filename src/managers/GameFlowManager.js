@@ -68,6 +68,9 @@ class GameFlowManager {
     this.gameDataService = null;
     this.phaseManager = null; // Phase Manager instance (initialized later)
 
+    // Deferred continuation (e.g., startNewRound after roundEnd trigger animations)
+    this._deferredContinuation = null;
+
     // Initialization guard
     this.isInitialized = false;
 
@@ -863,15 +866,17 @@ class GameFlowManager {
       debugLog('PHASE_TRANSITIONS', '✅ ON_ROUND_END triggers processed', {
         animationEventsCount: roundEndResult.animationEvents.length
       });
+
+      // Emit phaseTransition event
+      this.emit('phaseTransition', { newPhase: 'roundEnd', previousPhase });
+
+      // Defer startNewRound to a new response cycle — trigger animations play first
+      this.deferContinuation(() => this.startNewRound());
+      return null;
     }
 
-    // Emit phaseTransition event
-    this.emit('phaseTransition', {
-      newPhase: 'roundEnd',
-      previousPhase
-    });
-
-    // Start next round
+    // No triggers — continue immediately in same cascade (no response boundary needed)
+    this.emit('phaseTransition', { newPhase: 'roundEnd', previousPhase });
     await this.startNewRound();
 
     return null;
@@ -944,6 +949,23 @@ class GameFlowManager {
       await this._pendingActionCompletion;
       this._pendingActionCompletion = null;
     }
+  }
+
+  deferContinuation(fn) {
+    if (this._deferredContinuation) {
+      debugLog('PHASE_TRANSITIONS', 'WARNING: overwriting existing deferred continuation');
+    }
+    this._deferredContinuation = fn;
+  }
+
+  hasDeferredContinuation() {
+    return !!this._deferredContinuation;
+  }
+
+  async executeDeferredContinuation() {
+    const fn = this._deferredContinuation;
+    this._deferredContinuation = null;
+    if (fn) await fn();
   }
 
 

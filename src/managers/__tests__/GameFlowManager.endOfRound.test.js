@@ -158,7 +158,6 @@ describe('GameFlowManager - End of Round Phase', () => {
     });
 
     it('queues trigger results when triggers fire', async () => {
-      vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
       RoundManager.processRoundEndTriggers.mockReturnValueOnce({
         player1: { hand: [], dronesOnBoard: {}, modified: true },
         player2: { hand: [], dronesOnBoard: {} },
@@ -175,7 +174,6 @@ describe('GameFlowManager - End of Round Phase', () => {
     });
 
     it('includes animationEvents in queueAction payload when triggers fire', async () => {
-      vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
       const mockAnimEvents = [{ type: 'effect', name: 'heal' }, { type: 'effect', name: 'shield' }];
       RoundManager.processRoundEndTriggers.mockReturnValueOnce({
         player1: { hand: [], dronesOnBoard: {} },
@@ -191,15 +189,40 @@ describe('GameFlowManager - End of Round Phase', () => {
       expect(triggerCalls[0][0].payload.animationEvents).toEqual(mockAnimEvents);
     });
 
-    it('calls startNewRound after processing', async () => {
-      const spy = vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
+    it('defers startNewRound when roundEnd triggers fire', async () => {
+      RoundManager.processRoundEndTriggers.mockReturnValueOnce({
+        player1: { hand: [], dronesOnBoard: {}, modified: true },
+        player2: { hand: [], dronesOnBoard: {} },
+        animationEvents: [{ type: 'effect' }]
+      });
 
       await gfm.processRoundEnd('action');
 
+      // startNewRound should NOT have been called directly
+      expect(gfm.hasDeferredContinuation()).toBe(true);
+
+      // Execute the deferred function and verify it calls startNewRound
+      const spy = vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
+      await gfm.executeDeferredContinuation();
       expect(spy).toHaveBeenCalled();
     });
 
-    it('works with no triggers (just banner + startNewRound)', async () => {
+    it('calls startNewRound directly when no triggers fire (no deferral)', async () => {
+      const spy = vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
+      RoundManager.processRoundEndTriggers.mockReturnValueOnce({
+        player1: { hand: [], dronesOnBoard: {} },
+        player2: { hand: [], dronesOnBoard: {} },
+        animationEvents: []
+      });
+
+      await gfm.processRoundEnd('action');
+
+      // startNewRound called directly (no deferral)
+      expect(spy).toHaveBeenCalled();
+      expect(gfm.hasDeferredContinuation()).toBe(false);
+    });
+
+    it('works with no triggers (just banner + startNewRound, no deferral)', async () => {
       vi.spyOn(gfm, 'startNewRound').mockResolvedValue();
       RoundManager.processRoundEndTriggers.mockReturnValueOnce({
         player1: { hand: [], dronesOnBoard: {} },
@@ -211,13 +234,15 @@ describe('GameFlowManager - End of Round Phase', () => {
 
       // Banner still emitted
       expect(mockActionProcessor.executeAndCaptureAnimations).toHaveBeenCalled();
-      // startNewRound still called
+      // startNewRound still called directly
       expect(gfm.startNewRound).toHaveBeenCalled();
       // No trigger action queued (empty animation events)
       const triggerCalls = mockActionProcessor.queueAction.mock.calls.filter(
         c => c[0].type === 'roundEndTriggers'
       );
       expect(triggerCalls.length).toBe(0);
+      // No deferral
+      expect(gfm.hasDeferredContinuation()).toBe(false);
     });
 
     it('returns null (automatic phase with no next-phase — startNewRound handles flow)', async () => {

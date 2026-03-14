@@ -12,8 +12,8 @@ import { flowCheckpoint } from '../utils/flowVerification.js';
 
 // Total phase display duration: 1500ms display + 300ms fade out
 const PHASE_DISPLAY_DURATION = 1800;
-// Compound cross-fade: 1000ms stage1 + 300ms cross-fade + 1000ms stage2 + 300ms fade out
-const COMPOUND_DISPLAY_DURATION = 2600;
+// Compound scramble: 1200ms hold + 500ms scramble + 1600ms hold + 300ms fade out
+const COMPOUND_DISPLAY_DURATION = 3600;
 
 class AnnouncementQueue {
   constructor() {

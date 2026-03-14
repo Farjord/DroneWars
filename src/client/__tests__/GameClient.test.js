@@ -461,6 +461,81 @@ describe('GameClient', () => {
 
   // Queue drain handling removed — AnnouncementQueue auto-plays on enqueue
 
+  // --- Response queue ---
+
+  describe('response queue', () => {
+    it('queues responses and processes them sequentially', async () => {
+      const processOrder = [];
+      mockAnimMgr.executeWithStateUpdate.mockImplementation(async () => {
+        processOrder.push('anim');
+        await new Promise(r => setTimeout(r, 20));
+      });
+
+      const state1 = makeState({ turnPhase: 'roundEnd' });
+      const state2 = makeState({ turnPhase: 'deployment' });
+      const anims1 = { actionAnimations: [{ animationName: 'TRIGGER_FIRED', payload: {} }], systemAnimations: [] };
+      const anims2 = { actionAnimations: [{ animationName: 'DRONE_MOVEMENT', payload: {} }], systemAnimations: [] };
+
+      // Fire both responses concurrently (simulates two server broadcasts arriving quickly)
+      const p1 = client._onResponse({ state: state1, animations: anims1 });
+      const p2 = client._onResponse({ state: state2, animations: anims2 });
+
+      await Promise.all([p1, p2]);
+
+      // Both should have been processed (sequentially, not concurrently)
+      expect(mockAnimMgr.executeWithStateUpdate).toHaveBeenCalledTimes(2);
+      // First call should have trigger animations, second should have movement
+      expect(mockAnimMgr.executeWithStateUpdate.mock.calls[0][0][0].animationName).toBe('TRIGGER_FIRED');
+      expect(mockAnimMgr.executeWithStateUpdate.mock.calls[1][0][0].animationName).toBe('DRONE_MOVEMENT');
+    });
+
+    it('second response waits for first response animations to complete', async () => {
+      let firstResponseCompleted = false;
+      let secondResponseStartedBeforeFirstCompleted = false;
+
+      mockAnimMgr.executeWithStateUpdate
+        .mockImplementationOnce(async () => {
+          await new Promise(r => setTimeout(r, 30));
+          firstResponseCompleted = true;
+        })
+        .mockImplementationOnce(async () => {
+          if (!firstResponseCompleted) {
+            secondResponseStartedBeforeFirstCompleted = true;
+          }
+        });
+
+      const state1 = makeState({ turnPhase: 'roundEnd' });
+      const state2 = makeState({ turnPhase: 'deployment' });
+      const anims = { actionAnimations: [{ animationName: 'ATTACK', payload: {} }], systemAnimations: [] };
+
+      const p1 = client._onResponse({ state: state1, animations: anims });
+      const p2 = client._onResponse({ state: state2, animations: anims });
+
+      await Promise.all([p1, p2]);
+
+      expect(secondResponseStartedBeforeFirstCompleted).toBe(false);
+    });
+
+    it('handles errors in one response without breaking the queue', async () => {
+      mockAnimMgr.executeWithStateUpdate
+        .mockRejectedValueOnce(new Error('Animation failed'))
+        .mockResolvedValueOnce(undefined);
+
+      const state1 = makeState({ turnPhase: 'roundEnd' });
+      const state2 = makeState({ turnPhase: 'deployment' });
+      const anims = { actionAnimations: [{ animationName: 'ATTACK', payload: {} }], systemAnimations: [] };
+
+      const p1 = client._onResponse({ state: state1, animations: anims });
+      const p2 = client._onResponse({ state: state2, animations: anims });
+
+      // Should not throw — errors are caught within the queue
+      await Promise.all([p1, p2]);
+
+      // Second response still processed despite first failing
+      expect(mockAnimMgr.executeWithStateUpdate).toHaveBeenCalledTimes(2);
+    });
+  });
+
   // --- Intermediate State ---
 
   describe('applyIntermediateState', () => {

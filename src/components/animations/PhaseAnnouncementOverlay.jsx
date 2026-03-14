@@ -3,11 +3,20 @@
 // ========================================
 // Displays a full-screen phase announcement when transitioning between game phases
 // Shows phase name with Drone Wars gradient styling and shine effect
-// Supports compound announcements with cross-fade between two stages
-// Auto-dismisses after display duration (1.5s standard, 2.6s compound)
+// Supports compound announcements with character-scramble morph between stages
+// Auto-dismisses after display duration (1.5s standard, 3.6s compound)
 
 import React, { useState, useEffect, useRef } from 'react';
 import { timingLog, getTimestamp } from '../../utils/debugLogger.js';
+import useTextScramble from '../../hooks/useTextScramble.js';
+
+// Compound scramble morph timing (ms)
+const STAGE1_HOLD_MS = 1200;
+const SCRAMBLE_DURATION_MS = 500;
+const STAGE2_HOLD_MS = 1600;
+const FADE_OUT_MS = 300;
+// Fade-out starts at: STAGE1_HOLD + SCRAMBLE + STAGE2_HOLD = 3300ms
+const COMPOUND_FADE_START_MS = STAGE1_HOLD_MS + SCRAMBLE_DURATION_MS + STAGE2_HOLD_MS;
 
 const gradientStyle = {
   background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
@@ -57,15 +66,35 @@ function StageContent({ phaseText, subtitle, isVisible, className = '' }) {
  * PhaseAnnouncementOverlay - Shows phase name during phase transitions
  * @param {string} phaseText - The text to display (standard mode)
  * @param {string} subtitle - Optional subtitle text (standard mode)
- * @param {boolean} compound - Whether this is a compound cross-fade announcement
+ * @param {boolean} compound - Whether this is a compound scramble-morph announcement
  * @param {Array} stages - Array of {phaseText, subtitle} for compound mode
  * @param {Function} onComplete - Callback when animation completes
  */
 const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [stageIndex, setStageIndex] = useState(0);
+  const [scrambleActive, setScrambleActive] = useState(false);
+
   const containerRef = useRef(null);
   const mountTimeRef = useRef(null);
+
+  // Scramble hook — called unconditionally (rules of hooks).
+  // When scrambleActive becomes true, morphs from stage 0 text to stage 1 text.
+  const scrambleTarget = (compound && stages)
+    ? (scrambleActive ? stages[1].phaseText : stages[0].phaseText)
+    : (phaseText || '');
+  const displayPhaseText = useTextScramble(scrambleTarget, {
+    isActive: scrambleActive,
+    duration: SCRAMBLE_DURATION_MS,
+  });
+
+  // Subtitle scramble hook — morphs subtitle text alongside the heading
+  const subtitleTarget = (compound && stages)
+    ? (scrambleActive ? stages[1].subtitle : stages[0].subtitle)
+    : '';
+  const displaySubtitle = useTextScramble(subtitleTarget, {
+    isActive: scrambleActive,
+    duration: SCRAMBLE_DURATION_MS,
+  });
 
   // Create unique performance mark ID for this instance
   const markId = useRef(`phase-announcement-${Date.now()}`).current;
@@ -138,20 +167,18 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
     });
 
     if (compound && stages) {
-      // Compound: cross-fade between stages, then fade out
-      // 1000ms stage 1 → 300ms cross-fade → 1000ms stage 2 → 300ms fade out = 2600ms total
-      const crossFadeTimer = setTimeout(() => {
-        setStageIndex(1);
-      }, 1000);
+      // Compound scramble morph: hold → scramble → hold → fade out
+      const scrambleTimer = setTimeout(() => {
+        setScrambleActive(true);
+      }, STAGE1_HOLD_MS);
 
       const fadeOutTimer = setTimeout(() => {
         setIsVisible(false);
-        // Wait for fade-out animation to complete before cleanup
-        setTimeout(() => onComplete?.(), 300);
-      }, 2300); // 1000 + 300 cross-fade + 1000 stage 2
+        setTimeout(() => onComplete?.(), FADE_OUT_MS);
+      }, COMPOUND_FADE_START_MS);
 
       return () => {
-        clearTimeout(crossFadeTimer);
+        clearTimeout(scrambleTimer);
         clearTimeout(fadeOutTimer);
       };
     }
@@ -163,7 +190,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
       // Wait for fade-out animation to complete before cleanup
       const cleanupTimer = setTimeout(() => {
         onComplete?.();
-      }, 300); // Match CSS transition duration
+      }, FADE_OUT_MS);
 
       return () => clearTimeout(cleanupTimer);
     }, 1500);
@@ -214,13 +241,15 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
   // Ref callback to detect when DOM element is actually created
   const handleContainerRef = (element) => {
     if (element && !containerRef.current) {
-      performance.mark(`${markId}-dom-element-created`);
       containerRef.current = element;
 
-      timingLog('[MODAL COMPONENT] DOM element created', {
-        phaseText,
-        blockingReason: 'element_in_dom_awaiting_paint'
-      });
+      if (import.meta.env.DEV) {
+        performance.mark(`${markId}-dom-element-created`);
+        timingLog('[MODAL COMPONENT] DOM element created', {
+          phaseText,
+          blockingReason: 'element_in_dom_awaiting_paint'
+        });
+      }
     }
   };
 
@@ -296,22 +325,23 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, compound, stages, onCom
           </svg>
         </div>
 
-        {/* Text content — compound cross-fade or standard */}
+        {/* Text content — compound scramble morph or standard */}
         {compound && stages ? (
-          <div className="relative">
-            {stages.map((stage, idx) => (
-              <div
-                key={idx}
-                className={`transition-opacity duration-300 ${idx > 0 ? 'absolute inset-0' : ''}`}
-                style={{ opacity: stageIndex === idx ? 1 : 0 }}
-              >
-                <StageContent
-                  phaseText={stage.phaseText}
-                  subtitle={stage.subtitle}
-                  isVisible={isVisible}
-                />
-              </div>
-            ))}
+          <div className="flex flex-col items-center">
+            <h1
+              className={`
+                text-6xl font-orbitron font-black uppercase tracking-widest text-center
+                phase-announcement-text
+                ${isVisible ? 'phase-announcement-shine' : ''}
+              `}
+              style={{ ...gradientStyle, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {displayPhaseText}
+            </h1>
+
+            <p className="text-2xl font-orbitron font-medium uppercase tracking-wider text-center text-cyan-300/80 mt-4">
+              {displaySubtitle}
+            </p>
           </div>
         ) : (
           <StageContent

@@ -74,6 +74,25 @@ class GameEngine {
 
       await this._emitToClients(state, animations);
 
+      // Process deferred continuations in separate response cycles
+      // (e.g., startNewRound after roundEnd trigger animations)
+      const MAX_DEFERRED_ITERATIONS = 10;
+      let deferredCount = 0;
+      while (this.gameFlowManager.hasDeferredContinuation()) {
+        if (++deferredCount > MAX_DEFERRED_ITERATIONS) {
+          debugLog('STATE_SYNC', 'Deferred continuation loop exceeded max iterations — breaking', {
+            maxIterations: MAX_DEFERRED_ITERATIONS,
+          });
+          break;
+        }
+        this.actionProcessor.startResponseCapture();
+        await this.gameFlowManager.executeDeferredContinuation();
+        await this.gameFlowManager.waitForPendingActionCompletion();
+        const contAnimations = this.actionProcessor.getAndClearResponseCapture();
+        const contState = this.gameStateManager.getState();
+        await this._emitToClients(contState, contAnimations);
+      }
+
       return { state, animations, result };
     } finally {
       this.gameStateManager.endProcessing();

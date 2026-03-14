@@ -30,6 +30,8 @@ describe('GameEngine', () => {
       startGame: vi.fn(),
       endGame: vi.fn(),
       waitForPendingActionCompletion: vi.fn().mockResolvedValue(undefined),
+      hasDeferredContinuation: vi.fn().mockReturnValue(false),
+      executeDeferredContinuation: vi.fn().mockResolvedValue(undefined),
     };
     engine = new GameEngine(mockGSM, mockAP, mockGFM);
   });

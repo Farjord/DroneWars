@@ -253,7 +253,7 @@ describe('AnnouncementQueue', () => {
 
   // --- Compound announcement duration ---
 
-  it('compound items use COMPOUND_DISPLAY_DURATION (2600ms) instead of standard 1800ms', async () => {
+  it('compound items use COMPOUND_DISPLAY_DURATION (3600ms) instead of standard 1800ms', async () => {
     const events = [];
     queue.on('animationStarted', (a) => events.push(`started:${a.id}`));
     queue.on('animationEnded', (a) => events.push(`ended:${a.id}`));
@@ -275,8 +275,8 @@ describe('AnnouncementQueue', () => {
     expect(queue.isPlaying()).toBe(true);
     expect(events).toEqual(['started:compound-1']);
 
-    // After compound duration (2600ms total), should be complete
-    await vi.advanceTimersByTimeAsync(800);
+    // After compound duration (3600ms total), should be complete
+    await vi.advanceTimersByTimeAsync(1800);
     expect(events).toEqual(['started:compound-1', 'ended:compound-1']);
     expect(queue.isPlaying()).toBe(false);
   });

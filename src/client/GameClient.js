@@ -21,6 +21,11 @@ class GameClient extends GameServer {
     // stateProvider protocol fields (used by AnimationManager.executeWithStateUpdate)
     this.pendingServerState = null;
     this.pendingFinalServerState = null;
+
+    // Response queue — serializes _onResponse processing so concurrent
+    // server broadcasts (e.g., deferred continuation) don't overlap
+    this._responseQueue = [];
+    this._processingResponse = false;
     // Wire up transport handlers
     this.transport.onResponse(response => this._onResponse(response));
     this.transport.onActionAck(ack => this._onActionAck(ack));
@@ -67,7 +72,24 @@ class GameClient extends GameServer {
 
   // --- Transport response handler ---
 
-  async _onResponse({ state, animations }) {
+  async _onResponse(data) {
+    this._responseQueue.push(data);
+    if (this._processingResponse) return;
+    this._processingResponse = true;
+    try {
+      while (this._responseQueue.length > 0) {
+        try {
+          await this._processResponse(this._responseQueue.shift());
+        } catch (error) {
+          debugLog('STATE_SYNC', 'Error processing server response', { error: error.message });
+        }
+      }
+    } finally {
+      this._processingResponse = false;
+    }
+  }
+
+  async _processResponse({ state, animations }) {
     const previousPhase = this.getState().turnPhase;
     const newPhase = state.turnPhase;
     const allAnimations = this._collectAnimations(animations);
