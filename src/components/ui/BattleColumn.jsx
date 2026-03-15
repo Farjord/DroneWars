@@ -269,6 +269,10 @@ const BattleColumn = ({
   // Computed stats (passed from parent to avoid per-column hook calls)
   opponentEffectiveStats,
   localEffectiveStats,
+  // Insertion preview
+  insertionPreview,
+  setInsertionPreview,
+  onLaneMouseMove,
 }) => {
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
@@ -319,6 +323,9 @@ const BattleColumn = ({
     hoveredLane,
     setHoveredLane,
     laneControl,
+    insertionPreview,
+    setInsertionPreview,
+    onLaneMouseMove,
   };
 
   // Shared props for ShipSectionSlot

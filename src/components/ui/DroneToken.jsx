@@ -198,7 +198,11 @@ const DroneToken = ({
   // Prior chain target — highlighted but not draggable
   isPriorChainTarget = false,
   // Ghost drone preview for pending move
-  isGhost = false
+  isGhost = false,
+  // Same-lane reorder ghost — full opacity + selected glow instead of faded
+  isSameLaneGhost = false,
+  // Positional index within the lane (for insertion calculator DOM queries)
+  droneIndex = null,
 }) => {
   // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
   const isVisuallyOwned = drone.deployedBy
@@ -272,10 +276,12 @@ const DroneToken = ({
   const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
 
   // --- State Effects ---
-  const ghostEffect = isGhost ? 'opacity-40 pointer-events-none' : '';
+  const ghostEffect = isGhost
+    ? (isSameLaneGhost ? 'pointer-events-none' : 'opacity-40 pointer-events-none')
+    : '';
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
-  const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 selected-glow' : '';
+  const selectedEffect = (isSelected || isSelectedForMove || isSameLaneGhost) ? 'scale-105 selected-glow' : '';
   const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
   const hoverEffect = isHovered ? 'scale-105' : '';
@@ -360,18 +366,20 @@ const DroneToken = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
+      data-drone-index={droneIndex}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)',
-        perspective: '400px'
+        perspective: '400px',
+        ...(isGhost ? { transition: 'none' } : {}),
       }}
     >
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
-      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} transition-transform duration-200`}>
+      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`}>
         {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
         <div ref={tiltRef} className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
-        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
+        <div className={`w-full h-full ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
             {/* Main Token Body */}

@@ -214,7 +214,7 @@ const useResolvers = ({
 
 
   // --- Resolve Single Move ---
-  const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
+  const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane, insertionIndex = null) => {
     debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 10: Inside resolveSingleMove', {
       receivedCard: card?.name, receivedDroneId: droneId, receivedDroneOwner: droneOwner,
       receivedFromLane: fromLane, receivedToLane: toLane,
@@ -250,7 +250,8 @@ const useResolvers = ({
       movementType: 'single_move',
       drones: [{ ...currentDrone, owner: droneOwner }],
       fromLane, toLane,
-      playerId: getLocalPlayerId()
+      playerId: getLocalPlayerId(),
+      insertionIndex,
     });
 
     debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 11: Move completed successfully', {
@@ -291,11 +292,12 @@ const useResolvers = ({
       rawFrom: moveConfirmation.from, rawTo: moveConfirmation.to
     });
 
-    const { droneId, owner, from, to, card, isSnared: wasSnared } = moveConfirmation;
+    const { droneId, owner, from, to, card, isSnared: wasSnared, insertionIndex } = moveConfirmation;
 
     debugLog('SINGLE_MOVE_FLOW', 'CHECKPOINT 8b: Data destructured from moveConfirmation', {
       droneId, owner, from, to,
       hasCard: !!card, cardName: card?.name,
+      insertionIndex,
       allDefined: !!(droneId && owner && from && to)
     });
 
@@ -318,11 +320,12 @@ const useResolvers = ({
         setSelectedDrone(null);
         setDraggedDrone(null);
         setValidCardTargets([]);
-        await resolveSingleMove(card, droneId, owner, from, to);
+        await resolveSingleMove(card, droneId, owner, from, to, insertionIndex);
       } else {
         setSelectedDrone(null);
         await submitAction('move', {
-          droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId()
+          droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId(),
+          insertionIndex,
         });
       }
     }, MOVE_RESOLUTION_DELAY);

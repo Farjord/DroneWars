@@ -77,14 +77,14 @@ const fullDroneCollection = [
   },
   {
     name: 'Aegis',
-    class: 3, limit: 2, rebuildRate: 1.0, rarity: 'Rare', attack: 1, hull: 2, shields: 3, speed: 2,
+    class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Rare', attack: 1, hull: 2, shields: 3, speed: 2,
     image: '/DroneWars/img/Aegis.png',
     abilities: [{
         name: 'Shield Harmonizer',
-        description: 'Other friendly drones in this lane gain +1 max shields.',
+        description: 'Adjacent friendly drones in this lane gain +2 max shields.',
         type: 'PASSIVE',
-        scope: 'FRIENDLY_IN_LANE',
-        effect: { type: 'MODIFY_STAT', stat: 'shields', value: 1 }
+        scope: 'FRIENDLY_ADJACENT',
+        effect: { type: 'MODIFY_STAT', stat: 'shields', value: 2 }
         }],
     upgradeSlots: 2 
   },
@@ -822,6 +822,29 @@ const fullDroneCollection = [
       triggerScope: 'SAME_LANE',
       triggerFilter: { cardSubType: 'Mine' },
       effects: [{ type: 'DRAW', value: 1 }]
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Phalanx',
+    class: 2,
+    limit: 2,
+    rebuildRate: 0.5,
+    rarity: 'Uncommon',
+    attack: 1,
+    hull: 2,
+    shields: 2,
+    speed: 3,
+    image: '/DroneWars/img/Phalanx.png',
+    abilities: [{
+      name: 'Formation Strike',
+      description: 'Gains +1 attack for each adjacent friendly drone.',
+      type: 'PASSIVE',
+      effect: {
+        type: 'CONDITIONAL_MODIFY_STAT_SCALING',
+        condition: { type: 'ADJACENT_FRIENDLY_COUNT' },
+        mod: { stat: 'attack', value: 1 }
+      }
     }],
     upgradeSlots: 2
   },

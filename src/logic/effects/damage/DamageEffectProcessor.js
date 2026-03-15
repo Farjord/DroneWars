@@ -26,6 +26,7 @@ import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
 import { applyTargetSelection, hashString } from '../../targeting/TargetSelector.js';
 import { SeededRandom } from '../../../utils/seededRandom.js';
+import { isExposed } from '../../utils/positionResolver.js';
 
 /**
  * Processor for all damage effect types
@@ -319,6 +320,17 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       if (effect.markedBonus && target.isMarked) {
         damageValue += effect.markedBonus;
         debugLog('COMBAT', `[DAMAGE] Target is marked - applying bonus damage: ${effect.value} + ${effect.markedBonus} = ${damageValue}`);
+      }
+
+      // Apply exposed bonus if target has fewer than 2 adjacent drones
+      if (effect.exposedBonus) {
+        const targetPlayerId = target.owner === 'player1' ? 'player1' : 'player2';
+        const targetDronesInLane = playerStates[targetPlayerId].dronesOnBoard[targetLane] || [];
+        const targetIndex = targetDronesInLane.findIndex(d => d.id === target.id);
+        if (targetIndex !== -1 && isExposed(targetIndex, targetDronesInLane.length)) {
+          damageValue += effect.exposedBonus;
+          debugLog('COMBAT', `[DAMAGE] Target is exposed - applying bonus damage: +${effect.exposedBonus} = ${damageValue}`);
+        }
       }
 
       const attackDetails = {

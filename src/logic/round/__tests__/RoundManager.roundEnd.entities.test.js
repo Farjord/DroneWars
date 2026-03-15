@@ -1,7 +1,7 @@
 // ========================================
 // ROUND END ENTITIES — INTEGRATION TESTS
 // ========================================
-// Tests Repair Relay (tech) and Scorcher (drone) ON_ROUND_END triggers
+// Tests Repair Relay (tech) and Manticore (drone) ON_ROUND_END triggers
 // through the full RoundManager → TriggerProcessor → EffectRouter pipeline.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -221,14 +221,14 @@ describe('RoundManager - ON_ROUND_END entity integration', () => {
   });
 
   // ========================================
-  // SCORCHER
+  // MANTICORE
   // ========================================
 
-  describe('Scorcher', () => {
-    it('should deal 1 damage to a random enemy drone in its lane', () => {
-      const scorcher = {
-        id: 'scorcher_1',
-        name: 'Scorcher',
+  describe('Manticore', () => {
+    it('should deal 2 damage to a random enemy drone in its lane', () => {
+      const manticore = {
+        id: 'manticore_1',
+        name: 'Manticore',
         attack: 1,
         hull: 1,
         shields: 0,
@@ -238,7 +238,7 @@ describe('RoundManager - ON_ROUND_END entity integration', () => {
 
       const player1State = createPlayerState({
         dronesOnBoard: {
-          lane1: [scorcher],
+          lane1: [manticore],
           lane2: [],
           lane3: []
         }
@@ -267,15 +267,15 @@ describe('RoundManager - ON_ROUND_END entity integration', () => {
         player1State, player2State, {}, vi.fn()
       );
 
-      // Enemy drone should have taken 1 hull damage (no shields to absorb)
+      // Enemy drone should have taken 2 hull damage (Manticore deals 2, no shields to absorb)
       const enemyAfter = result.player2.dronesOnBoard.lane1.find(d => d.id === 'enemy_1');
-      expect(enemyAfter.hull).toBe(2);
+      expect(enemyAfter.hull).toBe(1);
     });
 
     it('should do nothing when no enemies in lane', () => {
-      const scorcher = {
-        id: 'scorcher_1',
-        name: 'Scorcher',
+      const manticore = {
+        id: 'manticore_1',
+        name: 'Manticore',
         attack: 1,
         hull: 1,
         shields: 0,
@@ -285,7 +285,7 @@ describe('RoundManager - ON_ROUND_END entity integration', () => {
 
       const player1State = createPlayerState({
         dronesOnBoard: {
-          lane1: [scorcher],
+          lane1: [manticore],
           lane2: [],
           lane3: []
         }
@@ -297,10 +297,10 @@ describe('RoundManager - ON_ROUND_END entity integration', () => {
         player1State, player2State, {}, vi.fn()
       );
 
-      // Scorcher still alive, no crash
-      const scorcherAfter = result.player1.dronesOnBoard.lane1.find(d => d.id === 'scorcher_1');
-      expect(scorcherAfter).toBeDefined();
-      expect(scorcherAfter.hull).toBe(1);
+      // Manticore still alive, no crash
+      const manticoreAfter = result.player1.dronesOnBoard.lane1.find(d => d.id === 'manticore_1');
+      expect(manticoreAfter).toBeDefined();
+      expect(manticoreAfter.hull).toBe(1);
     });
   });
 });

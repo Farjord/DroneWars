@@ -679,6 +679,7 @@ const App = ({ phaseAnimationQueue }) => {
     handleSetHoveredTarget, handleCardDragStart, handleCardDragEnd,
     handleActionCardDragStart, handleActionCardDragEnd,
     handleDroneDragStart, handleDroneDragEnd,
+    insertionPreview, setInsertionPreview, handleLaneMouseMove,
   } = useDragMechanics({
     gameAreaRef, turnPhase, currentPlayer, getLocalPlayerId, passInfo,
     roundNumber, totalLocalPlayerDrones, localPlayerState, localPlayerEffectiveStats,
@@ -970,6 +971,8 @@ const App = ({ phaseAnimationQueue }) => {
     submitAction,
     // External services
     gameEngine, gameDataService,
+    // Insertion preview
+    insertionPreview,
     // Refs
     droneRefs, gameAreaRef,
   });
@@ -981,10 +984,10 @@ const App = ({ phaseAnimationQueue }) => {
 
   const handleConfirmDeployment = async () => {
     if (!deploymentConfirmation) return;
-    const { lane, drone } = deploymentConfirmation;
+    const { lane, drone, insertionIndex } = deploymentConfirmation;
     setDeploymentConfirmation(null);
     setTimeout(async () => {
-      await executeDeployment(lane, drone);
+      await executeDeployment(lane, drone, insertionIndex);
     }, 400);
   };
 
@@ -1198,6 +1201,9 @@ const App = ({ phaseAnimationQueue }) => {
         hoveredLane={hoveredLane}
         setHoveredLane={handleLaneHover}
         laneControl={laneControl}
+        insertionPreview={insertionPreview}
+        setInsertionPreview={setInsertionPreview}
+        onLaneMouseMove={handleLaneMouseMove}
       />
 
       <div style={{ flex: '0 0 20%', maxHeight: '20%' }}>

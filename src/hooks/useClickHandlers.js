@@ -84,6 +84,8 @@ export default function useClickHandlers({
 
   // --- External services ---
   gameEngine,
+  // --- Insertion preview ---
+  insertionPreview,
 }) {
 
   // --- handleToggleDroneSelection ---
@@ -346,7 +348,7 @@ export default function useClickHandlers({
       const isValidChainLane = validCardTargets.some(t => t.id === lane && t.owner === laneOwner);
       if (isValidChainLane) {
         if (effectChainState.subPhase === 'destination') {
-          selectChainDestination(lane);
+          selectChainDestination(lane, insertionPreview?.index ?? null);
         } else {
           // Lane as target (for LANE-type targeting)
           selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);

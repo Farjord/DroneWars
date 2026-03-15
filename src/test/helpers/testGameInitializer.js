@@ -79,6 +79,17 @@ function applyPassiveAbilitiesToInitializedDrones(dronesOnBoard) {
           ) {
             shieldBonus += ability.effect.value;
           }
+          // FRIENDLY_ADJACENT: only apply if other drone is at index ± 1
+          if (
+            ability.type === 'PASSIVE' &&
+            ability.scope === 'FRIENDLY_ADJACENT' &&
+            ability.effect.type === 'MODIFY_STAT' &&
+            ability.effect.stat === 'shields'
+          ) {
+            if (Math.abs(droneIndex - otherIndex) === 1) {
+              shieldBonus += ability.effect.value;
+            }
+          }
         });
       });
 

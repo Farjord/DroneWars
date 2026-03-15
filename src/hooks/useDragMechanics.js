@@ -10,6 +10,9 @@ import { calculateAllValidTargets, calculateAffectedDroneIds, calculateAffectedS
 import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect, resolveDestinationRefs } from '../logic/cards/chainTargetResolver.js';
 import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
+import { calculateInsertionIndex } from '../components/ui/insertionIndexCalculator.js';
+import { computeGhostIsPlayer } from '../components/ui/ghostSideHelpers.js';
+import { isRepositionNoOp } from './isRepositionNoOp.js';
 
 /** Returns true when a card would flow to setCardConfirmation({ card, target: null }) — no arrow needed. */
 function isNoTargetCard(card) {
@@ -77,6 +80,8 @@ const useDragMechanics = ({
   const [draggedActionCard, setDraggedActionCard] = useState(null);
   const [actionCardDragArrowState, setActionCardDragArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
+  // Insertion preview: { laneId, index, drone } — shows ghost at insertion point during drag
+  const [insertionPreview, setInsertionPreview] = useState(null);
 
   // --- Drag Refs ---
   const arrowLineRef = useRef(null);
@@ -88,6 +93,18 @@ const useDragMechanics = ({
   const suppressNextClickRef = useRef(false);
   const floatingCardRef = useRef(null);
 
+
+  // --- Insertion Preview ---
+  // Calculate insertion index as mouse moves over lanes during drag
+  const handleLaneMouseMove = useCallback((laneId, mouseX, laneContentElement) => {
+    if (!draggedCard && !draggedDrone) return;
+    const drone = draggedCard || draggedDrone?.drone;
+    if (!drone) return;
+    const excludeId = draggedDrone?.drone?.id || null;
+    const index = calculateInsertionIndex(mouseX, laneContentElement, excludeId);
+    const isPlayer = computeGhostIsPlayer(draggedCard, drone, localPlayerState);
+    setInsertionPreview({ laneId, index, drone, isPlayer });
+  }, [draggedCard, draggedDrone, localPlayerState]);
 
   // --- Selection-driven effects ---
 
@@ -188,9 +205,12 @@ const useDragMechanics = ({
     suppressNextClickRef.current = true;
 
     const droneToDeployFromDrag = draggedCard;
+    // Capture insertion index before clearing preview state
+    const capturedInsertionIndex = insertionPreview?.index ?? null;
 
     setDraggedCard(null);
     setCardDragArrowState(prev => ({ ...prev, visible: false }));
+    setInsertionPreview(null);
 
     if (lane) {
       if (currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) {
@@ -209,14 +229,14 @@ const useDragMechanics = ({
       debugLog('DRAG_DROP_DEPLOY', '✅ Validation passed', { budgetCost, energyCost });
       if (energyCost > 0) {
         debugLog('DRAG_DROP_DEPLOY', '📋 Showing confirmation modal (energyCost > 0)');
-        setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag });
+        setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag, insertionIndex: capturedInsertionIndex });
         return;
       }
 
       debugLog('DRAG_DROP_DEPLOY', '🚀 Calling executeDeployment', { lane, droneName: droneToDeployFromDrag.name });
-      executeDeployment(lane, droneToDeployFromDrag);
+      executeDeployment(lane, droneToDeployFromDrag, capturedInsertionIndex);
     }
-  }, [draggedCard, currentPlayer, getLocalPlayerId, passInfo, roundNumber, localPlayerState, totalLocalPlayerDrones, localPlayerEffectiveStats, gameEngine, setModalContent, executeDeployment]);
+  }, [draggedCard, currentPlayer, getLocalPlayerId, passInfo, roundNumber, localPlayerState, totalLocalPlayerDrones, localPlayerEffectiveStats, gameEngine, setModalContent, executeDeployment, insertionPreview]);
 
   // --- Action Card Drag Handlers ---
 
@@ -671,6 +691,7 @@ const useDragMechanics = ({
       const fromLane = draggedDrone.sourceLane;
       setDraggedDrone(null);
       setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+      setInsertionPreview(null);
 
       if (targetLane && targetLane !== fromLane) {
         // Check if resolved destination would be full
@@ -705,12 +726,14 @@ const useDragMechanics = ({
     // the drone to a lane, route through selectChainDestination instead
     // of the regular move path.
     if (effectChainState?.subPhase === 'destination' && !draggedDrone.isInterceptionDrag) {
+      const capturedChainInsertionIndex = insertionPreview?.index ?? null;
       setDraggedDrone(null);
       setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+      setInsertionPreview(null);
       if (targetLane) {
         const isValidDestination = effectChainState.validTargets?.some(t => t.id === targetLane);
         if (isValidDestination) {
-          selectChainDestination(targetLane);
+          selectChainDestination(targetLane, capturedChainInsertionIndex);
         } else if (isLaneFull(localPlayerState, targetLane, effectChainState.selections)) {
           setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
         }
@@ -725,6 +748,7 @@ const useDragMechanics = ({
       // Cleanup drag state
       setDraggedDrone(null);
       setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+      setInsertionPreview(null);
 
       // Check if dropped on the attacker drone
       const attackerId = playerInterceptionChoice?.attackDetails?.attacker?.id;
@@ -752,9 +776,13 @@ const useDragMechanics = ({
 
     const attackerDrone = interceptorDrone; // Rename for clarity in normal flow
 
+    // Capture insertion index before cleanup (needed for same-lane reorder)
+    const capturedInsertionIndex = insertionPreview?.index ?? null;
+
     // Cleanup drag state first
     setDraggedDrone(null);
     setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+    setInsertionPreview(null);
 
     // Case 1a: Attack - dropped on opponent drone in same lane
     if (isOpponentTarget && target && targetLane && targetType === 'drone') {
@@ -806,8 +834,32 @@ const useDragMechanics = ({
       return;
     }
 
-    // Case 2: Move - dropped on player lane (adjacent to source)
-    if (!isOpponentTarget && targetLane && targetLane !== sourceLane) {
+    // Case 2: Move - dropped on player lane (adjacent or same-lane reorder)
+    if (!isOpponentTarget && targetLane) {
+      if (targetLane === sourceLane) {
+        // Same-lane reorder
+        const currentIndex = localPlayerState.dronesOnBoard[sourceLane]?.findIndex(d => d.id === attackerDrone.id);
+        if (isRepositionNoOp(capturedInsertionIndex, currentIndex)) {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Same-lane reorder no-op', { currentIndex, capturedInsertionIndex });
+          return;
+        }
+
+        debugLog('DRAG_DROP_DEPLOY', '🔄 Same-lane reorder initiated', { drone: attackerDrone.name, lane: sourceLane, from: currentIndex, to: capturedInsertionIndex });
+
+        const moveConfData = {
+          droneId: attackerDrone.id,
+          owner: getLocalPlayerId(),
+          from: sourceLane,
+          to: sourceLane,
+          card: null,
+          isSnared: attackerDrone.isSnared || false,
+          insertionIndex: capturedInsertionIndex,
+        };
+
+        setMoveConfirmation(moveConfData);
+        return;
+      }
+
       const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
       const targetLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
 
@@ -833,12 +885,12 @@ const useDragMechanics = ({
           from: sourceLane,
           to: targetLane,
           card: null,  // Regular drone drag (not card-based)
-          isSnared: attackerDrone.isSnared || false
+          isSnared: attackerDrone.isSnared || false,
+          insertionIndex: capturedInsertionIndex,
         };
 
         debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - regular drag move]', {
           location: 'handleDroneDragEnd - regular drag move',
-          lineNumber: 3718,
           dataStructure: {
             hasDroneId: 'droneId' in moveConfData,
             hasDrone: 'drone' in moveConfData,
@@ -927,6 +979,16 @@ const useDragMechanics = ({
     gameArea?.addEventListener('mousemove', handleMouseMove);
     return () => gameArea?.removeEventListener('mousemove', handleMouseMove);
   }, [droneDragArrowState.visible, droneDragArrowState.start, gameAreaRef]);
+
+  // Hide drag arrow during same-lane reorder (insertion preview provides sufficient feedback)
+  useEffect(() => {
+    if (!draggedDrone) return;
+    const isSameLane = insertionPreview?.laneId === draggedDrone.sourceLane;
+    setDroneDragArrowState(prev => {
+      if (prev.visible === !isSameLane) return prev;
+      return { ...prev, visible: !isSameLane };
+    });
+  }, [draggedDrone, insertionPreview?.laneId]);
 
   // Action card drag arrow mouse tracking
   useEffect(() => {
@@ -1094,6 +1156,11 @@ const useDragMechanics = ({
     handleActionCardDragEnd,
     handleDroneDragStart,
     handleDroneDragEnd,
+
+    // Insertion preview
+    insertionPreview,
+    setInsertionPreview,
+    handleLaneMouseMove,
   };
 };
 

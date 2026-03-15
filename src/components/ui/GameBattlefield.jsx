@@ -58,7 +58,10 @@ function GameBattlefield({
   handleActionCardDragEnd,
   hoveredLane,
   setHoveredLane,
-  laneControl
+  laneControl,
+  insertionPreview,
+  setInsertionPreview,
+  onLaneMouseMove,
 }) {
   // Compute effective ship stats once, pass down to all columns
   const { getEffectiveShipStats } = useGameData();
@@ -119,6 +122,9 @@ function GameBattlefield({
     laneControl,
     opponentEffectiveStats,
     localEffectiveStats,
+    insertionPreview,
+    setInsertionPreview,
+    onLaneMouseMove,
   };
 
   return (

@@ -158,6 +158,24 @@ const fullTechCollection = [
       }
     ]
   },
+  {
+    name: 'Shield Array',
+    hull: 1,
+    image: '/DroneWars/img/ShieldArray.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    isTech: true,
+    abilities: [
+      {
+        name: 'Shield Amplifier',
+        description: 'Other friendly drones in this lane gain +1 max shields.',
+        type: 'PASSIVE',
+        scope: 'FRIENDLY_IN_LANE',
+        effect: { type: 'MODIFY_STAT', stat: 'shields', value: 1 }
+      }
+    ]
+  },
 ];
 
 export default fullTechCollection;

@@ -12,7 +12,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processDeployment(payload, ctx) {
-  const { droneData, laneId, playerId, turn } = payload;
+  const { droneData, laneId, playerId, turn, insertionIndex } = payload;
 
   debugLog('DEPLOYMENT', '📥 ActionProcessor.processDeployment: Received payload:', {
     droneDataName: droneData?.name,
@@ -43,7 +43,8 @@ export async function processDeployment(payload, ctx) {
     opponentState,
     placedSections,
     logCallback,
-    playerId
+    playerId,
+    insertionIndex
   );
 
   debugLog('DEPLOY_TRACE', '[7/10] processDeployment executing via DeploymentProcessor', {

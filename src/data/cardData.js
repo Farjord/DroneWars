@@ -5,6 +5,21 @@ const fullCardCollection = [
   // --- Ordnance Cards ---
 
   {
+    id: 'ISOLATION_STRIKE',
+    baseCardId: 'ISOLATION_STRIKE',
+    name: 'Isolation Strike',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/IsolationStrike.png',
+    description: 'Deal 2 damage to target drone. +1 if target is exposed (fewer than 2 adjacent drones).',
+    visualEffect: { type: 'LASER_BLAST' },
+    effects: [
+      { type: 'DAMAGE', value: 2, exposedBonus: 1, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
+    ],
+  },
+  {
     id: 'ION_PULSE',
     baseCardId: 'ION_PULSE',
     name: 'Ion Pulse',
@@ -1340,6 +1355,20 @@ const fullCardCollection = [
     description: 'Create a Repair Relay in a friendly lane. (Repair Relay: End of round, if you control this lane, heal 1 hull to the ship section here.)',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+    ],
+  },
+  {
+    id: 'DEPLOY_SHIELD_ARRAY',
+    baseCardId: 'DEPLOY_SHIELD_ARRAY',
+    name: 'Deploy Shield Array',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/ShieldArray.png',
+    description: 'Create a Shield Array in a friendly lane. (Shield Array: Other friendly drones in this lane gain +1 max shields.)',
+    effects: [
+      { type: 'CREATE_TECH', tokenName: 'Shield Array', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
   },
   {

@@ -7,7 +7,9 @@
 
 // --- IMPORTS ---
 import fullDroneCollection from '../data/droneData.js';
+import fullTechCollection from '../data/techData.js';
 import { LaneControlCalculator } from './combat/LaneControlCalculator.js';
+import { getAdjacentIndices, getAdjacentFriendlyCount } from './utils/positionResolver.js';
 
 // ========================================
 // SHIP STATUS UTILITY
@@ -245,6 +247,14 @@ export const calculateEffectiveStats = (drone, lane, playerState, opponentState,
           }
         }
 
+        if (condition.type === 'ADJACENT_FRIENDLY_COUNT') {
+          const scalingLaneDrones = playerState.dronesOnBoard[lane] || [];
+          const droneIndex = scalingLaneDrones.findIndex(d => d.id === drone.id);
+          if (droneIndex !== -1) {
+            scaleFactor = getAdjacentFriendlyCount(droneIndex, scalingLaneDrones.length);
+          }
+        }
+
         if (scaleFactor > 0) {
           if (mod.stat === 'attack') effectiveStats.attack += (mod.value * scaleFactor);
           if (mod.stat === 'speed') effectiveStats.speed += (mod.value * scaleFactor);
@@ -265,10 +275,53 @@ export const calculateEffectiveStats = (drone, lane, playerState, opponentState,
       }
     });
 
-    playerState.dronesOnBoard[lane]?.forEach(otherDrone => {
+    const dronesInLane = playerState.dronesOnBoard[lane] || [];
+    const targetIndex = dronesInLane.findIndex(d => d.id === drone.id);
+
+    // FRIENDLY_IN_LANE: buff from all other drones in the lane
+    dronesInLane.forEach(otherDrone => {
       if (otherDrone.id === drone.id) return;
       const otherBaseDrone = fullDroneCollection.find(d => d.name === otherDrone.name);
       otherBaseDrone?.abilities?.forEach(ability => {
+        if (ability.type === 'PASSIVE' && ability.scope === 'FRIENDLY_IN_LANE' && ability.effect.type === 'MODIFY_STAT') {
+          const { stat, value } = ability.effect;
+          if (stat === 'shields') {
+            effectiveStats.maxShields += value;
+          } else if (stat === 'attack') {
+            effectiveStats.attack += value;
+          } else if (stat === 'speed') {
+            effectiveStats.speed += value;
+          }
+        }
+      });
+    });
+
+    // FRIENDLY_ADJACENT: only buff drones at index ± 1 from source
+    if (targetIndex !== -1) {
+      dronesInLane.forEach((otherDrone, sourceIndex) => {
+        if (otherDrone.id === drone.id) return;
+        const otherBaseDrone = fullDroneCollection.find(d => d.name === otherDrone.name);
+        otherBaseDrone?.abilities?.forEach(ability => {
+          if (ability.type === 'PASSIVE' && ability.scope === 'FRIENDLY_ADJACENT' && ability.effect.type === 'MODIFY_STAT') {
+            if (getAdjacentIndices(sourceIndex, dronesInLane.length).includes(targetIndex)) {
+              const { stat, value } = ability.effect;
+              if (stat === 'shields') {
+                effectiveStats.maxShields += value;
+              } else if (stat === 'attack') {
+                effectiveStats.attack += value;
+              } else if (stat === 'speed') {
+                effectiveStats.speed += value;
+              }
+            }
+          }
+        });
+      });
+    }
+
+    // Tech aura scanning: apply PASSIVE MODIFY_STAT from tech tokens in the lane
+    playerState.techSlots?.[lane]?.forEach(tech => {
+      const baseTech = fullTechCollection.find(t => t.name === tech.name);
+      baseTech?.abilities?.forEach(ability => {
         if (ability.type === 'PASSIVE' && ability.scope === 'FRIENDLY_IN_LANE' && ability.effect.type === 'MODIFY_STAT') {
           const { stat, value } = ability.effect;
           if (stat === 'shields') {

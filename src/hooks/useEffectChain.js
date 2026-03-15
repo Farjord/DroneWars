@@ -349,7 +349,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   /**
    * Record a destination selection for compound effects (SINGLE_MOVE).
    */
-  const selectChainDestination = useCallback((destinationLane) => {
+  const selectChainDestination = useCallback((destinationLane, insertionIndex = null) => {
     if (!chainState || chainState.subPhase !== 'destination') return;
 
     const pendingTarget = chainState.pendingTarget;
@@ -369,6 +369,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         : { ...pendingTarget, lane: chainState.pendingLane },
       lane: chainState.pendingLane,
       destination: destinationLane,
+      insertionIndex,
     };
     const newSelections = [...chainState.selections, selection];
     const nextState = advanceToNextSelection({

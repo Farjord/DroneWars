@@ -37,11 +37,12 @@ const useActionRouting = ({
   }, [processAction, gameServer]);
 
   // --- Deployment Execution ---
-  const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
+  const executeDeployment = async (lane, droneToDeployed = selectedDrone, insertionIndex = null) => {
     debugLog('DEPLOY_TRACE', '[1/10] executeDeployment called', {
       droneName: droneToDeployed?.name,
       lane,
       playerId: getLocalPlayerId(),
+      insertionIndex,
     });
     debugLog('DRAG_DROP_DEPLOY', '🚀 executeDeployment entered', { lane, droneName: droneToDeployed?.name, hasSelectedDrone: !!selectedDrone, usedParam: droneToDeployed !== selectedDrone });
     try {
@@ -50,14 +51,16 @@ const useActionRouting = ({
         droneObject: droneToDeployed,
         lane,
         playerId: getLocalPlayerId(),
-        turn
+        turn,
+        insertionIndex,
       });
 
       const result = await submitAction('deployment', {
         droneData: droneToDeployed,
         laneId: lane,
         playerId: getLocalPlayerId(),
-        turn: roundNumber
+        turn: roundNumber,
+        insertionIndex,
       });
 
       if (result.success) {

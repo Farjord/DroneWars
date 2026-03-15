@@ -13,6 +13,7 @@ import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 import { MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
+import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
 
 /**
  * DeploymentProcessor
@@ -230,7 +231,7 @@ class DeploymentProcessor {
    * @param {string} playerId - Player ID (player1 or player2)
    * @returns {Object} Deployment result with success, newPlayerState, deployedDrone, animationEvents
    */
-  executeDeployment(drone, lane, turn, playerState, opponentState, placedSections, logCallback, playerId) {
+  executeDeployment(drone, lane, turn, playerState, opponentState, placedSections, logCallback, playerId, insertionIndex = null) {
     // Validate deployment
     // Filter out token drones from CPU count - tokens don't count toward CPU limit
     const totalPlayerDrones = Object.values(playerState.dronesOnBoard)
@@ -313,8 +314,8 @@ class DeploymentProcessor {
       abilityActivations: [],
     };
 
-    // Update the player state
-    newPlayerState.dronesOnBoard[lane].push(newDrone);
+    // Update the player state — insert at chosen position or append
+    insertDroneInLane(newPlayerState.dronesOnBoard[lane], newDrone, insertionIndex);
     newPlayerState.deployedDroneCounts = {
       ...newPlayerState.deployedDroneCounts,
       [drone.name]: (newPlayerState.deployedDroneCounts[drone.name] || 0) + 1

@@ -9,6 +9,7 @@ import React from 'react';
 import DroneToken from './DroneToken.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
+import { shouldRenderChainGhost } from './ghostSideHelpers.js';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
@@ -26,11 +27,15 @@ const renderDronesOnBoard = ({
   hoveredTarget, interceptedBadge, draggedDrone, handleDroneDragStart,
   handleDroneDragEnd, draggedActionCard, handleActionCardDragEnd,
   getLocalPlayerId, getOpponentPlayerId, abilityMode, effectChainState,
-  selectedCard, hoveredLane,
+  selectedCard, hoveredLane, insertionPreview,
 }) => {
-  return (
-    <>
-     {drones.map((drone) => {
+  // Build drone elements array, then splice in ghost at insertion position
+  const droneElements = drones.map((drone, index) => {
+          // Hide the original drone during same-lane reorder — the ghost shows its new position
+          const isSameLaneReorder = draggedDrone?.drone?.id === drone.id
+            && insertionPreview?.laneId === lane;
+          if (isSameLaneReorder) return null;
+
           const droneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           const abilityTargetMatch = validAbilityTargets.some(t => t.id === drone.id && t.owner === droneOwner);
           const cardTargetMatch = validCardTargets.some(t => t.id === drone.id && t.owner === droneOwner);
@@ -83,6 +88,7 @@ const renderDronesOnBoard = ({
               drone={drone}
               lane={lane}
               isPlayer={isPlayer}
+              droneIndex={index}
               onClick={handleTokenClick}
               onAbilityClick={handleAbilityIconClick}
               isSelected={selectedDrone && selectedDrone.id === drone.id}
@@ -161,11 +167,34 @@ const renderDronesOnBoard = ({
               isInvalidTarget={isInvalidTarget}
                />
           );
-      })}
-      {/* Ghost drones — preview pending moves from completed chain selections */}
-      {/* Only render on the player's side — ghosts belong to the acting player */}
-      {effectChainState && !effectChainState.complete && isPlayer && effectChainState.selections?.filter(sel =>
-        sel && !sel.skipped && sel.target?.id && sel.destination === lane
+      }).filter(Boolean);
+
+  // Splice insertion ghost at the preview position (deployment/move drag)
+  if (insertionPreview?.laneId === lane && insertionPreview?.isPlayer === isPlayer) {
+    const isSameLaneReorder = draggedDrone?.sourceLane === insertionPreview?.laneId;
+    const ghostElement = (
+      <DroneToken
+        key="insertion-ghost"
+        drone={insertionPreview.drone}
+        lane={lane}
+        isPlayer={isPlayer}
+        isGhost={true}
+        isSameLaneGhost={isSameLaneReorder}
+        onClick={() => {}}
+        droneRefs={droneRefs}
+        mandatoryAction={null}
+        localPlayerState={localPlayerState}
+        getLocalPlayerId={getLocalPlayerId}
+        getOpponentPlayerId={getOpponentPlayerId}
+      />
+    );
+    droneElements.splice(insertionPreview.index, 0, ghostElement);
+  }
+
+  // Chain selection ghosts — preview pending moves from completed chain selections
+  const chainGhosts = (effectChainState && !effectChainState.complete)
+    ? effectChainState.selections?.filter(sel =>
+        shouldRenderChainGhost(sel, lane, isPlayer, getLocalPlayerId())
       ).map(sel => (
         <DroneToken
           key={`ghost-${sel.target.id}`}
@@ -180,7 +209,13 @@ const renderDronesOnBoard = ({
           getLocalPlayerId={getLocalPlayerId}
           getOpponentPlayerId={getOpponentPlayerId}
         />
-      ))}
+      )) || []
+    : [];
+
+  return (
+    <>
+      {droneElements}
+      {chainGhosts}
     </>
   );
 };
@@ -234,6 +269,10 @@ const SingleLaneView = ({
   onLaneDrop = null,
   onLaneDragOver = null,
   laneControl = { lane1: null, lane2: null, lane3: null },
+  // Insertion preview
+  insertionPreview = null,
+  setInsertionPreview = null,
+  onLaneMouseMove = null,
 }) => {
   const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
 
@@ -253,6 +292,8 @@ const SingleLaneView = ({
   // inner layers need explicit z-indices to maintain correct ordering at root level.
   const isDragSourceLane = draggedDrone?.sourceLane === laneId &&
     player.dronesOnBoard[laneId]?.some(d => d.id === draggedDrone.drone?.id);
+
+  const isDestinationPhase = effectChainState?.subPhase === 'destination';
 
   const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
 
@@ -350,7 +391,19 @@ const SingleLaneView = ({
       </div>
 
       {/* Content layer — unclipped, interactive */}
-      <div style={{
+      <div
+        data-lane-content="true"
+        onMouseMove={(e) => {
+          if (onLaneMouseMove && (isPlayer || isDestinationPhase || draggedDrone?.isChainTargetDrag)) {
+            onLaneMouseMove(laneId, e.clientX, e.currentTarget);
+          }
+        }}
+        onMouseLeave={() => {
+          if (insertionPreview?.laneId === laneId && setInsertionPreview) {
+            setInsertionPreview(null);
+          }
+        }}
+        style={{
         position: 'absolute', left: '2%', right: '2%',
         top: 0, bottom: 0,
         pointerEvents: 'auto', zIndex: isDragSourceLane ? undefined : 10,
@@ -395,6 +448,7 @@ const SingleLaneView = ({
           effectChainState,
           selectedCard,
           hoveredLane,
+          insertionPreview,
         })}
       </div>
     </div>

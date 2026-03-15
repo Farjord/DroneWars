@@ -13,6 +13,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './movement/animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
 import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
 
@@ -209,7 +210,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {Object} context - Effect execution context
    * @returns {Object} Result with newPlayerStates or error
    */
-  executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context) {
+  executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context, insertionIndex = null) {
     const effect = card.effects[0];
     const { callbacks, placedSections } = context;
 
@@ -304,6 +305,11 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       }
     }
 
+    // Capture original index before removal (for same-lane reorder adjustment)
+    const originalIndex = fromLane === toLane
+      ? droneOwnerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneToMove.id)
+      : null;
+
     // Remove drone from source lane (from the drone owner's state)
     droneOwnerState.dronesOnBoard[fromLane] = droneOwnerState.dronesOnBoard[fromLane].filter(
       d => d.id !== droneToMove.id
@@ -316,7 +322,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         ? droneToMove.isExhausted
         : true
     };
-    droneOwnerState.dronesOnBoard[toLane].push(movedDrone);
+    insertDroneInLane(droneOwnerState.dronesOnBoard[toLane], movedDrone, insertionIndex, originalIndex);
 
     debugLog('MOVEMENT_EFFECT', 'executeSingleMove - drone exhaustion result', {
       droneName: movedDrone.name,

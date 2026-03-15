@@ -12,6 +12,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 import { buildDefaultMovementAnimation } from '../effects/movement/animations/DefaultMovementAnimation.js';
 import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
+import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
 
 /**
  * Process attack action
@@ -169,7 +170,7 @@ export async function processAttack(payload, ctx) {
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processMove(payload, ctx) {
-  const { droneId, fromLane, toLane, playerId } = payload;
+  const { droneId, fromLane, toLane, playerId, insertionIndex } = payload;
 
   const currentState = ctx.getState();
   const playerState = currentState[playerId];
@@ -237,8 +238,12 @@ export async function processMove(payload, ctx) {
     ...drone,
     isExhausted: true
   };
+  // Capture original index before removal (for same-lane reorder adjustment)
+  const originalIndex = fromLane === toLane
+    ? newPlayerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneId)
+    : null;
   newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
-  newPlayerState.dronesOnBoard[toLane].push(movedDrone);
+  insertDroneInLane(newPlayerState.dronesOnBoard[toLane], movedDrone, insertionIndex, originalIndex);
 
   // Capture pre-trigger state for bridge STATE_SNAPSHOT
   // (drone has moved but no trigger effects applied yet)

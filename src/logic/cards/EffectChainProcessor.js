@@ -531,7 +531,7 @@ class EffectChainProcessor {
 
     const result = this.movementProcessor.executeSingleMove(
       pseudoCard, selection.target, selection.lane, selection.destination,
-      playerId, newStates, opponentId, moveContext
+      playerId, newStates, opponentId, moveContext, selection.insertionIndex
     );
 
     if (result.error) {
