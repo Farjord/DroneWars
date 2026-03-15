@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
+    AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
     ANIMATIONS: false,           // Animation system
     COMMITMENTS: true,           // Simultaneous phase commitments
     COMBAT: true,              // Combat resolution

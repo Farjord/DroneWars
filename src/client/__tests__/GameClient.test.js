@@ -53,7 +53,7 @@ describe('GameClient', () => {
       getState: vi.fn().mockReturnValue(makeState()),
       subscribe: vi.fn().mockReturnValue(vi.fn()),
       applyUpdate: vi.fn(),
-      gameStateManager: { syncFromServer: vi.fn() },
+      gameStateManager: { syncFromServer: vi.fn(), emit: vi.fn() },
     };
     mockPAQ = {
       enqueue: vi.fn(),
@@ -659,6 +659,67 @@ describe('GameClient', () => {
       });
 
       expect(mockStore.gameStateManager.syncFromServer).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // --- RESPONSE_CYCLE_COMPLETE signal ---
+
+  describe('RESPONSE_CYCLE_COMPLETE signal', () => {
+    it('emits RESPONSE_CYCLE_COMPLETE on GSM after response queue drains', async () => {
+      const emitSpy = vi.fn();
+      mockStore.gameStateManager.emit = emitSpy;
+
+      await client._onResponse({
+        state: makeState({ turnPhase: 'deployment' }),
+        animations: { actionAnimations: [], systemAnimations: [] },
+      });
+
+      expect(emitSpy).toHaveBeenCalledWith('RESPONSE_CYCLE_COMPLETE');
+    });
+
+    it('does not emit while responses are still queued', async () => {
+      const emitSpy = vi.fn();
+      mockStore.gameStateManager.emit = emitSpy;
+
+      // Slow down animation processing so second response queues behind first
+      let resolveFirst;
+      mockAnimMgr.executeWithStateUpdate.mockImplementationOnce(
+        () => new Promise(r => { resolveFirst = r; })
+      ).mockResolvedValueOnce(undefined);
+
+      const state1 = makeState({ turnPhase: 'action' });
+      const state2 = makeState({ turnPhase: 'deployment' });
+      const anims = { actionAnimations: [{ animationName: 'ATTACK', payload: {} }], systemAnimations: [] };
+
+      const p1 = client._onResponse({ state: state1, animations: anims });
+      const p2 = client._onResponse({ state: state2, animations: anims });
+
+      // First response is mid-processing, second is queued — no signal yet
+      await Promise.resolve();
+      expect(emitSpy).not.toHaveBeenCalled();
+
+      // Let first response finish — second still needs processing
+      resolveFirst();
+      await Promise.all([p1, p2]);
+
+      // Signal should fire exactly once, after ALL responses processed
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+      expect(emitSpy).toHaveBeenCalledWith('RESPONSE_CYCLE_COMPLETE');
+    });
+
+    it('does not emit when GSM is not available', async () => {
+      // Create client without gameStateManager on the store
+      const storeNoGSM = { ...mockStore, gameStateManager: undefined };
+      const clientNoGSM = new GameClient(transport, {
+        clientStateStore: storeNoGSM,
+        playerId: 'player1',
+      });
+
+      // Should not throw
+      await clientNoGSM._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [], systemAnimations: [] },
+      });
     });
   });
 

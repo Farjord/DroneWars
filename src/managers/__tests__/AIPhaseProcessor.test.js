@@ -758,7 +758,10 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
   });
 });
 
-describe('AIPhaseProcessor - Animation blocking retry cap', () => {
+describe('AIPhaseProcessor - Event-driven AI turn activation', () => {
+  let mockGameStateManager;
+  let mockActionProcessor;
+  let subscribedListener;
   let originalGameDataService;
 
   beforeEach(() => {
@@ -767,7 +770,158 @@ describe('AIPhaseProcessor - Animation blocking retry cap', () => {
     aiPhaseProcessor.isInitialized = false;
     aiPhaseProcessor.isProcessing = false;
     aiPhaseProcessor.turnTimer = null;
-    aiPhaseProcessor._animBlockRetries = 0;
+
+    vi.useFakeTimers();
+
+    vi.spyOn(GameDataService, 'getInstance').mockReturnValue({
+      getEffectiveShipStats: vi.fn(() => ({ totals: { cpuLimit: 10, handLimit: 6, shieldRegen: 2 } })),
+      getEffectiveStats: vi.fn(() => ({ attack: 2, speed: 3, hull: 2, maxShields: 0, keywords: new Set() }))
+    });
+
+    mockActionProcessor = { queueAction: vi.fn().mockResolvedValue({ success: true }) };
+
+    const aiTurnState = {
+      currentPlayer: 'player2',
+      turnPhase: 'deployment',
+      passInfo: { player1Passed: false, player2Passed: false },
+      winner: null,
+      gameStage: 'battle',
+      roundNumber: 1,
+      player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, energy: 5, deploymentBudget: 3 },
+      player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
+      placedSections: [],
+      opponentPlacedSections: [],
+    };
+
+    mockGameStateManager = {
+      getState: vi.fn().mockReturnValue(aiTurnState),
+      subscribe: vi.fn((listener) => {
+        subscribedListener = listener;
+        return vi.fn();
+      }),
+      addLogEntry: vi.fn(),
+      emit: vi.fn(),
+      gameEngine: null,
+      gameServer: { isPlayerAI: vi.fn().mockReturnValue(true) },
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    GameDataService.instance = originalGameDataService;
+    aiPhaseProcessor.isInitialized = false;
+    aiPhaseProcessor.isProcessing = false;
+    if (aiPhaseProcessor.turnTimer) {
+      clearTimeout(aiPhaseProcessor.turnTimer);
+      aiPhaseProcessor.turnTimer = null;
+    }
+    if (aiPhaseProcessor.stateSubscriptionCleanup) {
+      aiPhaseProcessor.stateSubscriptionCleanup();
+      aiPhaseProcessor.stateSubscriptionCleanup = null;
+    }
+  });
+
+  it('ignores non-RESPONSE_CYCLE_COMPLETE events (no timer scheduled)', () => {
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+
+    // Simulate a generic state update event (not RESPONSE_CYCLE_COMPLETE)
+    subscribedListener({
+      type: 'STATE_UPDATE',
+      payload: {},
+      state: mockGameStateManager.getState(),
+    });
+
+    // No timer should be scheduled
+    expect(aiPhaseProcessor.turnTimer).toBeNull();
+  });
+
+  it('activates on RESPONSE_CYCLE_COMPLETE when it is AI turn in sequential phase', () => {
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+
+    subscribedListener({
+      type: 'RESPONSE_CYCLE_COMPLETE',
+      payload: {},
+      state: mockGameStateManager.getState(),
+    });
+
+    // Timer should be scheduled (300ms cosmetic delay)
+    expect(aiPhaseProcessor.turnTimer).not.toBeNull();
+  });
+
+  it('uses 300ms delay (not 1500ms) after RESPONSE_CYCLE_COMPLETE', () => {
+    const executeTurnSpy = vi.spyOn(aiPhaseProcessor, 'executeTurn').mockResolvedValue(undefined);
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+
+    subscribedListener({
+      type: 'RESPONSE_CYCLE_COMPLETE',
+      payload: {},
+      state: mockGameStateManager.getState(),
+    });
+
+    // Should NOT fire at 299ms
+    vi.advanceTimersByTime(299);
+    expect(executeTurnSpy).not.toHaveBeenCalled();
+
+    // Should fire at 300ms
+    vi.advanceTimersByTime(1);
+    expect(executeTurnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores RESPONSE_CYCLE_COMPLETE when not AI turn', () => {
+    const humanTurnState = { ...mockGameStateManager.getState(), currentPlayer: 'player1' };
+    mockGameStateManager.getState.mockReturnValue(humanTurnState);
+
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+
+    subscribedListener({
+      type: 'RESPONSE_CYCLE_COMPLETE',
+      payload: {},
+      state: humanTurnState,
+    });
+
+    expect(aiPhaseProcessor.turnTimer).toBeNull();
+  });
+
+  it('ignores RESPONSE_CYCLE_COMPLETE when already processing', () => {
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+    aiPhaseProcessor.isProcessing = true;
+
+    subscribedListener({
+      type: 'RESPONSE_CYCLE_COMPLETE',
+      payload: {},
+      state: mockGameStateManager.getState(),
+    });
+
+    expect(aiPhaseProcessor.turnTimer).toBeNull();
+  });
+
+  it('ignores RESPONSE_CYCLE_COMPLETE in non-sequential phase', () => {
+    const simultaneousState = { ...mockGameStateManager.getState(), turnPhase: 'deckSelection' };
+    mockGameStateManager.getState.mockReturnValue(simultaneousState);
+
+    aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
+
+    subscribedListener({
+      type: 'RESPONSE_CYCLE_COMPLETE',
+      payload: {},
+      state: simultaneousState,
+    });
+
+    expect(aiPhaseProcessor.turnTimer).toBeNull();
+  });
+});
+
+describe('AIPhaseProcessor - Animation blocking diagnostic guard', () => {
+  let originalGameDataService;
+
+  beforeEach(() => {
+    originalGameDataService = GameDataService.instance;
+    GameDataService.instance = null;
+    aiPhaseProcessor.isInitialized = false;
+    aiPhaseProcessor.isProcessing = false;
+    aiPhaseProcessor.turnTimer = null;
 
     vi.spyOn(GameDataService, 'getInstance').mockReturnValue({
       getEffectiveShipStats: vi.fn(() => ({ totals: { cpuLimit: 10, handLimit: 6, shieldRegen: 2 } })),
@@ -781,7 +935,6 @@ describe('AIPhaseProcessor - Animation blocking retry cap', () => {
     GameDataService.instance = originalGameDataService;
     aiPhaseProcessor.isInitialized = false;
     aiPhaseProcessor.isProcessing = false;
-    aiPhaseProcessor._animBlockRetries = 0;
     if (aiPhaseProcessor.turnTimer) {
       clearTimeout(aiPhaseProcessor.turnTimer);
       aiPhaseProcessor.turnTimer = null;
@@ -792,7 +945,7 @@ describe('AIPhaseProcessor - Animation blocking retry cap', () => {
     }
   });
 
-  it('proceeds after max animation-blocking retries instead of looping forever', async () => {
+  it('bails immediately when animation is unexpectedly blocking', async () => {
     const mockGSM = {
       getState: vi.fn().mockReturnValue({
         currentPlayer: 'player2',
@@ -815,11 +968,9 @@ describe('AIPhaseProcessor - Animation blocking retry cap', () => {
       isAnimationBlocking: () => true // always blocking
     });
 
-    // Simulate 21 calls to executeTurn — on call 21 it should proceed past the block
-    aiPhaseProcessor._animBlockRetries = 20; // Already at max
     await aiPhaseProcessor.executeTurn();
 
-    // Should have proceeded (isProcessing was set to true then false, not stuck in retry)
-    expect(aiPhaseProcessor._animBlockRetries).toBe(0); // Reset after proceeding
+    // Should bail without processing — isProcessing never set to true (early return)
+    expect(aiPhaseProcessor.isProcessing).toBe(false);
   });
 });

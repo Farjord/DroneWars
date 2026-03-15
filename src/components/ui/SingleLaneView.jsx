@@ -31,7 +31,9 @@ const renderDronesOnBoard = ({
 }) => {
   // When any drone is hovered or selected during targeting, dim the rest
   // In abilityMode, selectedDrone is the ability *source* — not a target focus
-  const anyTargetFocused = !!(hoveredTarget?.target || (selectedDrone && !abilityMode) ||
+  const anyTargetFocused = !!(
+    (hoveredTarget?.target && hoveredTarget?.type === 'drone') ||
+    (selectedDrone && !abilityMode) ||
     effectChainState?.pendingTarget || effectChainState?.pendingMultiTargets?.length);
 
   // Build drone elements array, then splice in ghost at insertion position

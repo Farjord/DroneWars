@@ -86,6 +86,12 @@ class GameClient extends GameServer {
       }
     } finally {
       this._processingResponse = false;
+      // Signal: all responses processed, all animations complete
+      const gsm = this.clientStateStore?.gameStateManager;
+      if (gsm) {
+        debugLog('AI_TURN_TRACE', '[AI-00] RESPONSE_CYCLE_COMPLETE emitting');
+        gsm.emit('RESPONSE_CYCLE_COMPLETE');
+      }
     }
   }
 

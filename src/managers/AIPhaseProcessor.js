@@ -29,6 +29,9 @@ import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 
+/** Cosmetic delay before AI acts — animations are already done by RESPONSE_CYCLE_COMPLETE */
+const AI_TURN_COSMETIC_DELAY_MS = 300;
+
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
  */
@@ -42,7 +45,6 @@ class AIPhaseProcessor {
     // AI turn management
     this.isProcessing = false;
     this.turnTimer = null;
-    this._animBlockRetries = 0;
 
     // Initialization guards and cleanup tracking
     this.isInitialized = false;
@@ -95,9 +97,13 @@ class AIPhaseProcessor {
     }
 
     // Subscribe to game state changes for AI turn detection
+    // Only react to RESPONSE_CYCLE_COMPLETE — guarantees all animations are done
     if (gameStateManager) {
       this.stateSubscriptionCleanup = gameStateManager.subscribe((event) => {
-        this.checkForAITurn(event.state);
+        if (event.type === 'RESPONSE_CYCLE_COMPLETE') {
+          debugLog('AI_TURN_TRACE', '[AI-00a] RESPONSE_CYCLE_COMPLETE received');
+          this.checkForAITurn(event.state, 'RESPONSE_CYCLE_COMPLETE');
+        }
       });
     }
 
@@ -124,6 +130,7 @@ class AIPhaseProcessor {
     // Reset processing state
     this.isProcessing = false;
     this.isInitialized = false;
+    this._lastAI01Key = null;
   }
 
   // --- Simultaneous Phase Delegation ---
@@ -193,34 +200,19 @@ class AIPhaseProcessor {
    * Check if AI should take a turn based on current game state
    * @param {Object} state - Current game state
    */
-  checkForAITurn(state) {
-    // Don't process if AI is already taking a turn or player2 is not AI
-    if (this.isProcessing || !this._isAIEnabled()) {
-      return;
-    }
+  checkForAITurn(state, source = 'signal') {
+    // Determine skip reason (if any)
+    let skipReason = null;
+    if (this.isProcessing) skipReason = 'already processing';
+    else if (!this._isAIEnabled()) skipReason = 'AI not enabled';
+    else if (state.winner || state.gameStage === 'gameOver') skipReason = 'game over';
+    else if (!isSequentialPhase(state.turnPhase)) skipReason = `non-sequential phase (${state.turnPhase})`;
+    else if (state.currentPlayer !== 'player2') skipReason = `not AI turn (${state.currentPlayer})`;
+    else if (state.passInfo?.player2Passed) skipReason = 'AI already passed';
+    else if (state.interceptionPending) skipReason = 'interception pending';
 
-    // Don't process if game has ended
-    if (state.winner || state.gameStage === 'gameOver') {
-      return;
-    }
-
-    // Only trigger for sequential phases where AI needs to act
-    if (!isSequentialPhase(state.turnPhase)) {
-      return;
-    }
-
-    // Only trigger if it's AI's turn (AI is always player2)
-    if (state.currentPlayer !== 'player2') {
-      return;
-    }
-
-    // Check if AI has already passed this phase
-    if (state.passInfo && state.passInfo.player2Passed) {
-      return;
-    }
-
-    // Don't trigger while waiting for human interception decision
-    if (state.interceptionPending) {
+    if (skipReason) {
+      debugLog('AI_TURN_TRACE', `[AI-01-SKIP] ${skipReason}`);
       return;
     }
 
@@ -231,12 +223,12 @@ class AIPhaseProcessor {
     const turnKey = `${state.turnPhase}-${state.roundNumber}-${state.currentPlayer}`;
     if (turnKey !== this._lastAI01Key) {
       this._lastAI01Key = turnKey;
-      debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
+      debugLog('AI_TURN_TRACE', `[AI-01] Turn detected | source=${source}, phase=${state.turnPhase}, currentPlayer=${state.currentPlayer}, round=${state.roundNumber}`);
     }
 
     this.turnTimer = setTimeout(() => {
       this.executeTurn();  // No state parameter - will fetch fresh state
-    }, 1500); // 1.5 second delay
+    }, AI_TURN_COSMETIC_DELAY_MS);
   }
 
   /**
@@ -266,20 +258,11 @@ class AIPhaseProcessor {
       return;
     }
 
-    // Block AI if animations are playing (phase announcements or action animations)
+    // Diagnostic guard — should not trigger after RESPONSE_CYCLE_COMPLETE
     if (this.isAnimationBlocking()) {
-      this._animBlockRetries = (this._animBlockRetries || 0) + 1;
-      if (this._animBlockRetries > 20) {
-        debugLog('AI_TURN_TRACE', '[AI-WARN] Animation blocking exceeded 10s, proceeding');
-        this._animBlockRetries = 0;
-      } else {
-        this.turnTimer = setTimeout(() => {
-          this.executeTurn();
-        }, 500);
-        return;
-      }
+      debugLog('AI_TURN_TRACE', '[AI-WARN] Unexpected blocking after RESPONSE_CYCLE_COMPLETE — bailing');
+      return;
     }
-    this._animBlockRetries = 0;
 
     this.isProcessing = true;
     const p2 = state.player2;
@@ -316,10 +299,10 @@ class AIPhaseProcessor {
       debugLog('AI_TURN_TRACE', `[AI-10] Turn complete | continues=${continues}, reason=${continues ? 'humanPassedOrGoAgain' : 'turnOver'}`);
 
       if (continues) {
-        // Schedule another turn
-        setTimeout(() => {
-          this.checkForAITurn(currentState);
-        }, 100); // Small delay to let state settle
+        // Direct continuation — routeAction already awaited all animations
+        this.turnTimer = setTimeout(() => {
+          this.executeTurn();
+        }, AI_TURN_COSMETIC_DELAY_MS);
       }
 
     } catch (error) {
