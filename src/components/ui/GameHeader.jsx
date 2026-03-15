@@ -417,7 +417,6 @@ function GameHeader({
               current={opponentHullIntegrity.remainingToWin}
               max={opponentHullIntegrity.damageThreshold}
               side="opponent"
-              factionColors={OPPONENT_PANEL_COLORS}
             />
           )}
         </HeaderPanel>
@@ -648,7 +647,6 @@ function GameHeader({
               current={localPlayerHullIntegrity.remainingToWin}
               max={localPlayerHullIntegrity.damageThreshold}
               side="player"
-              factionColors={PLAYER_PANEL_COLORS}
             />
           )}
         </HeaderPanel>

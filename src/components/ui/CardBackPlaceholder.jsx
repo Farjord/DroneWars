@@ -5,6 +5,7 @@
 // Used for deck and empty discard pile display
 
 import React, { useState } from 'react';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 
 // Color schemes for different variants
 const getColors = (variant) => {
@@ -42,9 +43,9 @@ const getColors = (variant) => {
         accentBright: 'rgba(34, 211, 238, 0.5)',
         accentBrightest: 'rgba(34, 211, 238, 0.7)',
         fill: 'rgba(6, 182, 212, 0.15)',
-        circuit: '#22d3ee',
-        circuitNode: '#06b6d4',
-        circuitNodeBright: '#22d3ee',
+        circuit: FACTION_COLORS.player.accent,
+        circuitNode: FACTION_COLORS.player.accentMid,
+        circuitNodeBright: FACTION_COLORS.player.accent,
         dot: 'rgba(34, 211, 238, 0.6)',
         line: 'rgba(34, 211, 238, 0.4)'
       };

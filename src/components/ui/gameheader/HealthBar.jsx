@@ -6,11 +6,13 @@
 
 import React from 'react';
 import { Shield } from 'lucide-react';
+import { FACTION_COLORS } from '../../../utils/factionColors.js';
 
 const MAX_SEGMENTS = 30;
 
-const HealthBar = ({ current, max, side, factionColors }) => {
+const HealthBar = ({ current, max, side }) => {
   const isPlayer = side === 'player';
+  const fc = isPlayer ? FACTION_COLORS.player : FACTION_COLORS.opponent;
   const segmentCount = Math.min(max, MAX_SEGMENTS);
   const filledCount = max > MAX_SEGMENTS
     ? Math.round((current / max) * MAX_SEGMENTS)
@@ -18,9 +20,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
 
   const segments = Array.from({ length: segmentCount }, (_, i) => {
     const isFilled = i < filledCount;
-    const bgColor = isFilled
-      ? (isPlayer ? '#22d3ee' : '#ef4444')
-      : '#9ca3af';
+    const bgColor = isFilled ? fc.accent : '#9ca3af';
     return (
       <div
         key={i}
@@ -49,7 +49,7 @@ const HealthBar = ({ current, max, side, factionColors }) => {
         flexShrink: 0,
       }}
     >
-      <Shield size={14} color={isPlayer ? '#22d3ee' : '#ef4444'} />
+      <Shield size={14} color={fc.accent} />
       <span style={{
         color: '#b8bcc8',
         fontSize: 'clamp(11px, 1.1vw, 16px)',

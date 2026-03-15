@@ -13,6 +13,7 @@ import InterceptedBadge from './InterceptedBadge.jsx';
 import StatusEffectIcons from './StatusEffectIcons.jsx';
 import TraitIndicators from './TraitIndicators.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 import { Gauge, Crosshair } from 'lucide-react';
 
 /**
@@ -195,6 +196,8 @@ const DroneToken = ({
   getOpponentPlayerId = () => 'player2',
   // Invalid target indicator prop
   isInvalidTarget = false,
+  // Whether any target is currently hovered/selected (dims unfocused drones)
+  anyTargetFocused = false,
   // Prior chain target — highlighted but not draggable
   isPriorChainTarget = false,
   // Ghost drone preview for pending move
@@ -209,8 +212,10 @@ const DroneToken = ({
     ? drone.deployedBy === getLocalPlayerId()
     : isPlayer;
 
+  const fc = isVisuallyOwned ? FACTION_COLORS.player : FACTION_COLORS.opponent;
+
   // 3D tilt parallax during drag + hover (subtler than ActionCard)
-  const glowColor = isVisuallyOwned ? 'rgba(34, 211, 238, 0.35)' : 'rgba(239, 68, 68, 0.35)';
+  const glowColor = `${fc.accent}59`; // 59 hex ≈ 0.35 opacity
   const glowShadow = drone.isExhausted ? null
     : `0 0 6px ${glowColor}, 0 0 12px ${glowColor}`;
   const tiltRef = useCardTilt(isDragging, {
@@ -281,8 +286,18 @@ const DroneToken = ({
     : '';
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
-  const selectedEffect = (isSelected || isSelectedForMove || isSameLaneGhost) ? 'scale-105 selected-glow' : '';
-  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
+  const isSelectedState = isSelected || isSelectedForMove || isSameLaneGhost;
+  const selectedEffect = isSelectedState ? 'scale-110' : '';
+  const selectedGlowStyle = isSelectedState ? {
+    boxShadow: `0 0 6px 2px ${fc.glow}cc, 0 0 14px 6px ${fc.glow}66, 0 0 24px 10px ${fc.glow}33`,
+  } : {};
+  // When another target is focused, unfocused valid targets go static at 0.5
+  const isUnfocusedTarget = isActionTarget && !isSelectedState && !isHovered && anyTargetFocused;
+  const actionTargetEffect = (isActionTarget && !isSelectedState && !isHovered && !anyTargetFocused) ? 'animate-pulse' : '';
+  const actionTargetStyle = isActionTarget ? {
+    boxShadow: `0 0 8px 3px ${fc.glow}ee, 0 0 18px 8px ${fc.glow}77`,
+  } : {};
+  const dimmingStyle = (isUnfocusedTarget || isInvalidTarget) ? { opacity: 0.5 } : {};
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
   const hoverEffect = isHovered ? 'scale-105' : '';
   const abilitySourceEffect = isAbilitySource ? 'ability-source-glow' : '';
@@ -372,26 +387,34 @@ const DroneToken = ({
         height: 'clamp(115px, 5.99vw, 156px)',
         perspective: '400px',
         ...(isGhost ? { transition: 'none' } : {}),
+        ...dimmingStyle,
       }}
     >
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
-      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`}>
+      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`} style={selectedGlowStyle}>
         {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
         <div ref={tiltRef} className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
-        <div className={`w-full h-full ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
+        <div className={`w-full h-full ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`} style={actionTargetStyle}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
             {/* Main Token Body */}
             <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
               <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
               <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
+              {/* Faction-colour overlay on selection/targeting */}
+              {(isSelectedState || isHovered) && (
+                <div className="absolute inset-0" style={{
+                  background: `radial-gradient(ellipse at center, ${fc.primary}25 0%, ${fc.primary}15 60%, transparent 100%)`,
+                  pointerEvents: 'none',
+                }} />
+              )}
               <div className="relative z-10 h-full">
                 <div className="absolute bottom-6 left-0 right-0 w-full flex flex-col gap-1 px-2">
                   <div className="flex w-full justify-center gap-1 min-h-[12px]">
                     {Array.from({ length: maxShields }).map((_, i) => (
                       i < currentShields
-                        ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#22d3ee"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="rgba(0,0,0,0.5)" strokeWidth="2"></path></svg>
+                        ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill={FACTION_COLORS.player.accent}><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="rgba(0,0,0,0.5)" strokeWidth="2"></path></svg>
                         : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z"></path></svg>
                     ))}
                   </div>

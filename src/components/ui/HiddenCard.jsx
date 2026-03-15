@@ -7,6 +7,7 @@
 import React from 'react';
 import { Package, Shield, Rocket, Cog } from 'lucide-react';
 import { RARITY_COLORS } from '../../data/rarityColors';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 import './HiddenCard.css';
 
 // Gold/amber color scheme for salvage variant
@@ -17,12 +18,12 @@ const SALVAGE_COLORS = {
   highlight: '#fbbf24'   // amber-400
 };
 
-// Cyan color scheme for token variant
+// Cyan color scheme for token variant — derived from faction colours
 const TOKEN_COLORS = {
-  primary: '#06b6d4',    // cyan-500
-  secondary: '#0891b2',  // cyan-600
-  dark: '#0e7490',       // cyan-700
-  highlight: '#22d3ee'   // cyan-400
+  primary: FACTION_COLORS.player.accentMid,
+  secondary: FACTION_COLORS.player.accentDark,
+  dark: '#0e7490',       // cyan-700 — one step darker than accentDark, unique to card UI
+  highlight: FACTION_COLORS.player.accent,
 };
 
 /**

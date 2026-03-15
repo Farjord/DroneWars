@@ -305,11 +305,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    // Capture original index before removal (for same-lane reorder adjustment)
-    const originalIndex = fromLane === toLane
-      ? droneOwnerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneToMove.id)
-      : null;
-
     // Remove drone from source lane (from the drone owner's state)
     droneOwnerState.dronesOnBoard[fromLane] = droneOwnerState.dronesOnBoard[fromLane].filter(
       d => d.id !== droneToMove.id
@@ -322,7 +317,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         ? droneToMove.isExhausted
         : true
     };
-    insertDroneInLane(droneOwnerState.dronesOnBoard[toLane], movedDrone, insertionIndex, originalIndex);
+    insertDroneInLane(droneOwnerState.dronesOnBoard[toLane], movedDrone, insertionIndex);
 
     debugLog('MOVEMENT_EFFECT', 'executeSingleMove - drone exhaustion result', {
       droneName: movedDrone.name,

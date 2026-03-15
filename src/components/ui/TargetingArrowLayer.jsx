@@ -6,6 +6,7 @@ import React from 'react';
 import TargetingArrow from './TargetingArrow.jsx';
 import InterceptionTargetLine from './InterceptionTargetLine.jsx';
 import InterceptionSelectionLine from './InterceptionSelectionLine.jsx';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 
 const TargetingArrowLayer = ({
   arrowState,
@@ -27,10 +28,10 @@ const TargetingArrowLayer = ({
 }) => (
   <>
     <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
-    <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color="#22d3ee" />
+    <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color={FACTION_COLORS.player.accent} />
     <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
-    <TargetingArrow visible={actionCardDragArrowState.visible} start={actionCardDragArrowState.start} end={actionCardDragArrowState.end} lineRef={actionCardDragArrowRef} color="#22d3ee" />
-    <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color="#22d3ee" showPulses={false} zIndex={15} />
+    <TargetingArrow visible={actionCardDragArrowState.visible} start={actionCardDragArrowState.start} end={actionCardDragArrowState.end} lineRef={actionCardDragArrowRef} color={FACTION_COLORS.player.accent} />
+    <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color={FACTION_COLORS.player.accent} showPulses={false} zIndex={15} />
     <InterceptionTargetLine
       visible={!!playerInterceptionChoice}
       attackDetails={playerInterceptionChoice?.attackDetails}

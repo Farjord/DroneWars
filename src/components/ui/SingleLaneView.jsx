@@ -29,6 +29,11 @@ const renderDronesOnBoard = ({
   getLocalPlayerId, getOpponentPlayerId, abilityMode, effectChainState,
   selectedCard, hoveredLane, insertionPreview,
 }) => {
+  // When any drone is hovered or selected during targeting, dim the rest
+  // In abilityMode, selectedDrone is the ability *source* — not a target focus
+  const anyTargetFocused = !!(hoveredTarget?.target || (selectedDrone && !abilityMode) ||
+    effectChainState?.pendingTarget || effectChainState?.pendingMultiTargets?.length);
+
   // Build drone elements array, then splice in ghost at insertion position
   const droneElements = drones.map((drone, index) => {
           // Hide the original drone during same-lane reorder — the ghost shows its new position
@@ -49,7 +54,10 @@ const renderDronesOnBoard = ({
             || draggedActionCard?.card?.effects?.[0]
             || selectedCard?.effects?.[0];
 
+          const isAbilitySourceDrone = abilityMode?.drone?.id === drone.id;
           const isInvalidTarget = (() => {
+            // The ability source drone is neither valid nor invalid — it's the activator
+            if (isAbilitySourceDrone) return false;
             if (targetingType === 'DRONE' && !isActionTarget) {
               if (currentEffect && isCompoundEffect(currentEffect) && effectChainState?.subPhase === 'destination') return false;
               return true;
@@ -165,6 +173,7 @@ const renderDronesOnBoard = ({
               isAbilitySource={abilityMode?.drone?.id === drone.id}
               isElevated={false}
               isInvalidTarget={isInvalidTarget}
+              anyTargetFocused={anyTargetFocused}
                />
           );
       }).filter(Boolean);

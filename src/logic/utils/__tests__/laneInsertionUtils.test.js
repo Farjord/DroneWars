@@ -46,26 +46,28 @@ describe('insertDroneInLane', () => {
     expect(lane.map(d => d.id)).toEqual(['a']);
   });
 
-  describe('same-lane reorder (originalIndex adjustment)', () => {
-    it('adjusts index when drone removed from before insertion point', () => {
-      // Drone was at index 0, moving to index 2
-      // After removal: [b, c] — adjusted target is index 1
+  describe('same-lane reorder (filtered-index semantics)', () => {
+    it('inserts at filtered index when drone moved from front to end', () => {
+      // [A, B, C] → drag A to after C → filtered midpoints [B, C] → insertionIndex = 2
+      // After removal: [B, C], splice at 2 → [B, C, A]
       const lane = [makeDrone('b'), makeDrone('c')]; // 'a' already removed
-      insertDroneInLane(lane, makeDrone('a'), 2, 0);
-      expect(lane.map(d => d.id)).toEqual(['b', 'a', 'c']);
+      insertDroneInLane(lane, makeDrone('a'), 2);
+      expect(lane.map(d => d.id)).toEqual(['b', 'c', 'a']);
     });
 
-    it('does not adjust when drone removed from after insertion point', () => {
-      // Drone was at index 2, moving to index 0
-      // After removal: [a, b] — no adjustment needed
+    it('inserts at filtered index when drone moved from end to front', () => {
+      // [A, B, C] → drag C to before A → filtered midpoints [A, B] → insertionIndex = 0
+      // After removal: [A, B], splice at 0 → [C, A, B]
       const lane = [makeDrone('a'), makeDrone('b')]; // 'c' already removed
-      insertDroneInLane(lane, makeDrone('c'), 0, 2);
+      insertDroneInLane(lane, makeDrone('c'), 0);
       expect(lane.map(d => d.id)).toEqual(['c', 'a', 'b']);
     });
 
-    it('does not adjust when originalIndex equals insertionIndex', () => {
+    it('inserts at filtered index for same position', () => {
+      // [A, B] → drag A to after A's original spot → filtered [B] → insertionIndex = 1
+      // After removal: [B], splice at 1 → [B, A]
       const lane = [makeDrone('b')]; // 'a' already removed
-      insertDroneInLane(lane, makeDrone('a'), 1, 1);
+      insertDroneInLane(lane, makeDrone('a'), 1);
       expect(lane.map(d => d.id)).toEqual(['b', 'a']);
     });
   });

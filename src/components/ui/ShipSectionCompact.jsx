@@ -128,13 +128,13 @@ const ShipSectionCompact = ({
           style={{
             position: 'absolute', inset: 0,
             pointerEvents: 'none',
-            filter: 'drop-shadow(0 0 8px rgba(239,68,68,0.8)) drop-shadow(0 0 18px rgba(239,68,68,0.5))',
+            filter: `drop-shadow(0 0 8px ${FACTION_COLORS.opponent.accent}cc) drop-shadow(0 0 18px ${FACTION_COLORS.opponent.accent}80)`,
           }}
         >
           <div style={{
             width: '100%', height: '100%',
             clipPath,
-            background: 'rgba(239,68,68,0.25)',
+            background: `${FACTION_COLORS.opponent.accent}40`,
           }} />
         </div>
       )}
@@ -183,9 +183,9 @@ const ShipSectionCompact = ({
               }} viewBox="0 0 20 23">
                 <polygon
                   points="10,1 19,6 19,17 10,22 1,17 1,6"
-                  fill={i < stats.allocatedShields ? '#67e8f9' : 'none'}
+                  fill={i < stats.allocatedShields ? FACTION_COLORS.player.accentLight : 'none'}
                   fillOpacity={i < stats.allocatedShields ? 0.6 : 1}
-                  stroke={i < stats.allocatedShields ? '#67e8f9' : '#4b5563'}
+                  stroke={i < stats.allocatedShields ? FACTION_COLORS.player.accentLight : '#4b5563'}
                   strokeWidth="1.5"
                 />
               </svg>
@@ -228,11 +228,11 @@ const ShipSectionCompact = ({
                   : ''
               }`}
                 style={stats.ability.activationLimit == null || (stats.abilityActivationCount || 0) < stats.ability.activationLimit
-                  ? { borderColor: '#FF2A2A' } : undefined}
+                  ? { borderColor: FACTION_COLORS.opponent.primary } : undefined}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   style={stats.ability.activationLimit == null || (stats.abilityActivationCount || 0) < stats.ability.activationLimit
-                    ? { color: '#FF2A2A' } : undefined}
+                    ? { color: FACTION_COLORS.opponent.primary } : undefined}
                   className={
                   stats.ability.activationLimit != null && (stats.abilityActivationCount || 0) >= stats.ability.activationLimit
                     ? 'text-gray-500'
@@ -260,11 +260,11 @@ const ShipSectionCompact = ({
             if (!isFilled) {
               bgColor = '#9ca3af';
             } else if (hullPoint <= critical) {
-              bgColor = '#ef4444';
+              bgColor = FACTION_COLORS.opponent.accent;
             } else if (hullPoint <= damaged) {
-              bgColor = '#0891b2';
+              bgColor = FACTION_COLORS.player.accentDark;
             } else {
-              bgColor = '#22d3ee';
+              bgColor = FACTION_COLORS.player.accent;
             }
             return (
               <div key={i} style={{

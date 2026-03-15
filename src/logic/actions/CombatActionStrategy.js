@@ -238,12 +238,8 @@ export async function processMove(payload, ctx) {
     ...drone,
     isExhausted: true
   };
-  // Capture original index before removal (for same-lane reorder adjustment)
-  const originalIndex = fromLane === toLane
-    ? newPlayerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneId)
-    : null;
   newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
-  insertDroneInLane(newPlayerState.dronesOnBoard[toLane], movedDrone, insertionIndex, originalIndex);
+  insertDroneInLane(newPlayerState.dronesOnBoard[toLane], movedDrone, insertionIndex);
 
   // Capture pre-trigger state for bridge STATE_SNAPSHOT
   // (drone has moved but no trigger effects applied yet)
