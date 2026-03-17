@@ -28,7 +28,7 @@ vi.mock('../../statsCalculator.js', () => ({
   calculateEffectiveStats: () => ({ keywords: new Set() }),
 }));
 vi.mock('../../../utils/gameUtils.js', () => ({
-  hasMovementInhibitorInLane: () => false,
+  hasMovementInhibitorInLane: () => false, // 3-arg: (allPlayerStates, droneOwnerId, lane)
 }));
 
 import { processMove } from '../CombatActionStrategy.js';

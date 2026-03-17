@@ -204,7 +204,8 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
 
           // Thruster Inhibitor: block own drones from movement targeting
           if (isMovementEffect && playerId === actingPlayerId) {
-            if (hasMovementInhibitorInLane(playerState, lane)) return;
+            const allPlayerStates = { player1: context?.player1, player2: context?.player2 };
+            if (hasMovementInhibitorInLane(allPlayerStates, playerId, lane)) return;
           }
 
           if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {
@@ -231,7 +232,8 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
 
           // Thruster Inhibitor: block own drones from movement targeting
           if (isMovementEffect && playerId === actingPlayerId) {
-            if (hasMovementInhibitorInLane(playerState, lane)) return;
+            const allPlayerStates = { player1: context?.player1, player2: context?.player2 };
+            if (hasMovementInhibitorInLane(allPlayerStates, playerId, lane)) return;
           }
 
           if (this.applyCustomCriteria(drone, restrictions, costContext, lane, context)) {

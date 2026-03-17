@@ -7,15 +7,18 @@
 import SeededRandom from './seededRandom.js';
 
 /**
- * Check if a player has a movement inhibitor (Thruster Inhibitor) in a given lane.
- * Checks both dronesOnBoard and techSlots.
- * @param {Object} playerState - Player state object
+ * Check if a drone owner's drones are movement-inhibited in a given lane.
+ * Looks for INHIBIT_MOVEMENT on the OPPONENT's board (dronesOnBoard + techSlots).
+ * @param {Object} allPlayerStates - { player1: ..., player2: ... }
+ * @param {string} droneOwnerId - Player whose drones we're checking ('player1' or 'player2')
  * @param {string} lane - Lane ID (e.g., 'lane1')
- * @returns {boolean} True if the lane has a movement inhibitor
+ * @returns {boolean} True if the opponent has a movement inhibitor in this lane
  */
-export const hasMovementInhibitorInLane = (playerState, lane) => {
-  const drones = playerState.dronesOnBoard?.[lane] || [];
-  const techs = playerState.techSlots?.[lane] || [];
+export const hasMovementInhibitorInLane = (allPlayerStates, droneOwnerId, lane) => {
+  const opponentId = droneOwnerId === 'player1' ? 'player2' : 'player1';
+  const opponentState = allPlayerStates[opponentId];
+  const drones = opponentState?.dronesOnBoard?.[lane] || [];
+  const techs = opponentState?.techSlots?.[lane] || [];
   return [...drones, ...techs].some(d =>
     d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
   );

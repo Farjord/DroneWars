@@ -357,6 +357,7 @@ class EffectChainProcessor {
           isPlayerAI: ctx.isPlayerAI,
           gameSeed: ctx.gameSeed,
           roundNumber: ctx.roundNumber,
+          insertionIndex: selection.insertionIndex ?? null,
         };
         result = this.effectRouter.routeEffect(effectData, routerContext);
         if (!result) {

@@ -55,14 +55,26 @@ export async function processDeployment(payload, ctx) {
   });
 
   if (result.success) {
+    // 1. Commit pre-mine state so drone exists in DOM for TELEPORT_IN
+    //    (deployment creates a new element — unlike movement where it already exists)
+    ctx.updatePlayerState(playerId, result.preMineIntermediateState?.[playerId] || result.newPlayerState);
+    ctx.updatePlayerState(opponentId, result.preMineIntermediateState?.[opponentId] || result.opponentState);
+
+    // 2. Capture animations with triggerSyncId stamping (resolves synchronously —
+    //    both captureAnimations and executeAndCaptureAnimations are non-blocking,
+    //    but executeAndCaptureAnimations adds triggerSyncId correlation)
     const animations = ctx.mapAnimationEvents(result.animationEvents);
-    ctx.captureAnimations(animations);
+    await ctx.executeAndCaptureAnimations(animations);
 
-    // Commit deployed drone state to GSM (was missing — root cause of invisible drones)
-    ctx.updatePlayerState(playerId, result.newPlayerState);
-    ctx.updatePlayerState(opponentId, result.opponentState);
+    // 3. Commit final post-trigger state (matches CombatActionStrategy pattern)
+    //    Uses setPlayerStates to batch both players in one update
+    if (playerId === 'player1') {
+      ctx.setPlayerStates(result.newPlayerState, result.opponentState);
+    } else {
+      ctx.setPlayerStates(result.opponentState, result.newPlayerState);
+    }
 
-    debugLog('DEPLOY_TRACE', '[8a/10] ctx.updatePlayerState committed — GSM subscribers will fire', {
+    debugLog('DEPLOY_TRACE', '[8a/10] Final post-trigger state committed via setPlayerStates', {
       droneName: droneData?.name, lane: laneId, playerId,
     });
 

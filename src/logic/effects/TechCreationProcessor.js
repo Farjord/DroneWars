@@ -26,7 +26,6 @@ class TechCreationProcessor extends BaseEffectProcessor {
    *
    * @param {Object} effect - Effect definition
    * @param {string} effect.tokenName - Name of Tech to create
-   * @param {string} [effect.targetOwner] - 'OPPONENT' or undefined (self)
    * @param {Array<string>} [effect.locations] - Lane IDs where Tech should spawn
    * @param {Object} context - Effect context
    * @returns {Object} Result { newPlayerStates, additionalEffects, animationEvents }
@@ -38,9 +37,8 @@ class TechCreationProcessor extends BaseEffectProcessor {
     const newPlayerStates = this.clonePlayerStates(playerStates);
     const animationEvents = [];
 
-    // Determine target player
-    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-    const targetPlayerId = effect.targetOwner === 'OPPONENT' ? opponentPlayerId : actingPlayerId;
+    // All tech deploys to acting player's own board
+    const targetPlayerId = actingPlayerId;
     const targetPlayerState = newPlayerStates[targetPlayerId];
     const actingPlayerState = newPlayerStates[actingPlayerId];
 
@@ -60,10 +58,10 @@ class TechCreationProcessor extends BaseEffectProcessor {
     // Derive locations from effect.locations or from context.target (lane-targeted cards)
     const locations = effect.locations || (context.target ? [context.target.id] : []);
 
-    debugLog('EFFECT_PROCESSING', `[CREATE_TECH] ${actingPlayerId} creating ${effect.tokenName} in techSlots on ${targetPlayerId}'s board`, {
+    debugLog('EFFECT_PROCESSING', `[CREATE_TECH] ${actingPlayerId} creating ${effect.tokenName} in techSlots`, {
       tokenName: effect.tokenName,
       locations,
-      targetOwner: effect.targetOwner || 'SELF'
+      targetPlayerId
     });
 
     locations.forEach(laneId => {
@@ -138,7 +136,7 @@ class TechCreationProcessor extends BaseEffectProcessor {
           player: actingPlayerState.name,
           actionType: 'TECH_CREATED',
           source: card?.name || 'Unknown',
-          outcome: `Created a ${effect.tokenName} in ${laneId}${effect.targetOwner === 'OPPONENT' ? ' (on opponent\'s board)' : ''}`
+          outcome: `Created a ${effect.tokenName} in ${laneId}`
         });
       }
     });

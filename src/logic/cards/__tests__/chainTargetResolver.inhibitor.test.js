@@ -42,7 +42,7 @@ vi.mock('../EffectChainProcessor.js', () => {
 // Mock gameUtils — control inhibitor per lane
 const inhibitedLanes = new Set();
 vi.mock('../../../utils/gameUtils.js', () => ({
-  hasMovementInhibitorInLane: (_playerState, lane) => inhibitedLanes.has(lane),
+  hasMovementInhibitorInLane: (_allPlayerStates, _droneOwnerId, lane) => inhibitedLanes.has(lane),
 }));
 
 import { computeChainTargets } from '../chainTargetResolver.js';

@@ -203,7 +203,7 @@ export async function processMove(payload, ctx) {
   }
 
   // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-  if (hasMovementInhibitorInLane(playerState, fromLane)) {
+  if (hasMovementInhibitorInLane(currentState, playerId, fromLane)) {
     return {
       success: false,
       error: `${drone.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,

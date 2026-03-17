@@ -87,7 +87,7 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
     // FRIENDLY DRONE MOVEMENT (existing logic)
 
     // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-    if (hasMovementInhibitorInLane(player2, fromLane)) {
+    if (hasMovementInhibitorInLane({player1, player2}, 'player2', fromLane)) {
       return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
     }
 

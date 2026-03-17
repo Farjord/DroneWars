@@ -62,7 +62,7 @@ export const effectPatterns = {
   'ON_LANE_MOVEMENT_IN': {
     validEffects: ['DAMAGE', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GO_AGAIN'],
     implementation: 'TriggerProcessor.fireTrigger(ON_LANE_MOVEMENT_IN)',
-    notes: 'Lane trigger, triggerOwner: LANE_OWNER, destroyAfterTrigger.'
+    notes: 'Lane trigger, triggerOwner: LANE_OWNER (Rally Beacon) or LANE_ENEMY (mines), destroyAfterTrigger.'
   },
 
   'ON_LANE_MOVEMENT_OUT': {

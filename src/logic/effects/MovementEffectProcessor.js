@@ -254,8 +254,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-    // The inhibiting entity lives on the same player's board as the drones it locks down
-    if (hasMovementInhibitorInLane(droneOwnerState, fromLane) && !isMovingEnemyDrone) {
+    // Checks the opponent's board for inhibitors targeting this drone owner
+    if (hasMovementInhibitorInLane(newPlayerStates, droneOwnerId, fromLane) && !isMovingEnemyDrone) {
       return {
         newPlayerStates: newPlayerStates,
         error: `${droneToMove.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,

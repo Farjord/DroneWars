@@ -137,7 +137,7 @@ const useResolvers = ({
   }, [submitAction, cancelAbilityMode]);
 
   // --- Resolve Card Play ---
-  const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null) => {
+  const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null, insertionIndex = null) => {
     if (actingPlayerId === getOpponentPlayerId()) {
       let targetDisplayName = '';
       let targetLane = '';
@@ -178,7 +178,8 @@ const useResolvers = ({
         card: card,
         targetId: target?.id || null,
         targetOwner: target?.owner || null,
-        playerId: actingPlayerId
+        playerId: actingPlayerId,
+        insertionIndex,
       });
     } catch (err) {
       debugLog('CARD_PLAY_TRACE', '[3] submitAction ERROR', { card: card.name, error: err.message, stack: err.stack });
@@ -368,7 +369,7 @@ const useResolvers = ({
 
   const handleConfirmCardPlay = async () => {
     if (!cardConfirmation) return;
-    const { card, target, chainSelections } = cardConfirmation;
+    const { card, target, chainSelections, insertionIndex } = cardConfirmation;
     setCardConfirmation(null);
     setAffectedSectionIds([]);
     setTimeout(async () => {
@@ -381,7 +382,7 @@ const useResolvers = ({
           chainSelections,
         });
       } else {
-        await resolveCardPlay(card, target, getLocalPlayerId());
+        await resolveCardPlay(card, target, getLocalPlayerId(), null, insertionIndex);
       }
     }, 400);
   };

@@ -153,7 +153,7 @@ function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTr
       // Thruster Inhibitor: block friendly drones from being targeted for movement
       // in lanes with an active inhibitor (enemy forced repositioning still works)
       if (effectType === 'SINGLE_MOVE' && targeting.affinity === 'FRIENDLY') {
-        if (hasMovementInhibitorInLane(playerStates[targetPlayerId], virtualLane)) continue;
+        if (hasMovementInhibitorInLane(playerStates, targetPlayerId, virtualLane)) continue;
       }
 
       targets.push({ ...drone, owner: targetPlayerId, lane: virtualLane });

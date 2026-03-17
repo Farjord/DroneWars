@@ -368,30 +368,29 @@ const evaluateRallyBeaconCard = (card, target, context) => {
 /**
  * Evaluate a Thruster Inhibitor deployment card
  * Scores based on enemy drones locked down in the target lane
- * Card places a token on the OPPONENT's board to block movement out
+ * Tech deploys to AI's own board (player2)
  * @param {Object} card - The card being played
- * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
 const evaluateThrusterInhibitorCard = (card, target, context) => {
-  const { player1 } = context;
+  const { player1, player2 } = context;
   const logic = [];
   let score = 0;
 
-  // Target is an enemy lane object from LaneTargetingProcessor
   const targetLane = target?.id;
   if (!targetLane) {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check tech slot capacity limit
-  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+  // Check tech slot capacity on AI's own board (player2)
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
     return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
-  // Check if lane already has a Thruster Inhibitor (maxPerLane: 1)
-  const techsInLane = player1.techSlots?.[targetLane] || [];
+  // Check if lane already has a Thruster Inhibitor on AI's board (maxPerLane: 1)
+  const techsInLane = player2.techSlots?.[targetLane] || [];
   const hasInhibitor = techsInLane.some(d => d.name === 'Thruster Inhibitor');
   if (hasInhibitor) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Thruster Inhibitor'] };
@@ -432,13 +431,14 @@ const evaluateThrusterInhibitorCard = (card, target, context) => {
 /**
  * Evaluate a Proximity Mine deployment card
  * Scores based on drones in adjacent lanes that might move into the target lane
+ * Tech deploys to AI's own board (player2)
  * @param {Object} card - The card being played
- * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
 const evaluateProximityMineCard = (card, target, context) => {
-  const { player1 } = context;
+  const { player1, player2 } = context;
   const logic = [];
   let score = 0;
 
@@ -447,13 +447,13 @@ const evaluateProximityMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check tech slot capacity (Proximity Mine deploys as Tech)
-  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+  // Check tech slot capacity on AI's own board (player2)
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
     return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
-  // Check if lane already has a Proximity Mine
-  const techInLane = player1.techSlots?.[targetLane] || [];
+  // Check if lane already has a Proximity Mine on AI's board
+  const techInLane = player2.techSlots?.[targetLane] || [];
   const hasMine = techInLane.some(d => d.name === 'Proximity Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Proximity Mine'] };
@@ -492,13 +492,14 @@ const evaluateProximityMineCard = (card, target, context) => {
 /**
  * Evaluate an Inhibitor Mine deployment card
  * Scores based on opponent's undeployed drones and empty lane slots
+ * Tech deploys to AI's own board (player2)
  * @param {Object} card - The card being played
- * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
 const evaluateInhibitorMineCard = (card, target, context) => {
-  const { player1 } = context;
+  const { player1, player2 } = context;
   const logic = [];
   let score = 0;
 
@@ -507,13 +508,13 @@ const evaluateInhibitorMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check tech slot capacity (Inhibitor Mine deploys as Tech)
-  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+  // Check tech slot capacity on AI's own board (player2)
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
     return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
-  // Check if lane already has an Inhibitor Mine
-  const techInLane = player1.techSlots?.[targetLane] || [];
+  // Check if lane already has an Inhibitor Mine on AI's board
+  const techInLane = player2.techSlots?.[targetLane] || [];
   const hasMine = techInLane.some(d => d.name === 'Inhibitor Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has an Inhibitor Mine'] };
@@ -544,13 +545,14 @@ const evaluateInhibitorMineCard = (card, target, context) => {
 /**
  * Evaluate a Jitter Mine deployment card
  * Scores based on drones in target lane that haven't attacked yet
+ * Tech deploys to AI's own board (player2)
  * @param {Object} card - The card being played
- * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
 const evaluateJitterMineCard = (card, target, context) => {
-  const { player1, gameDataService } = context;
+  const { player1, player2, gameDataService } = context;
   const logic = [];
   let score = 0;
 
@@ -559,13 +561,13 @@ const evaluateJitterMineCard = (card, target, context) => {
     return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
   }
 
-  // Check tech slot capacity (Jitter Mine deploys as Tech)
-  if ((player1.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
+  // Check tech slot capacity on AI's own board (player2)
+  if ((player2.techSlots?.[targetLane]?.length || 0) >= MAX_TECH_PER_LANE) {
     return { score: INVALID_SCORE, logic: ['⛔ Tech slots full'] };
   }
 
-  // Check if lane already has a Jitter Mine
-  const techInLane = player1.techSlots?.[targetLane] || [];
+  // Check if lane already has a Jitter Mine on AI's board
+  const techInLane = player2.techSlots?.[targetLane] || [];
   const hasMine = techInLane.some(d => d.name === 'Jitter Mine');
   if (hasMine) {
     return { score: INVALID_SCORE, logic: ['❌ Lane already has a Jitter Mine'] };

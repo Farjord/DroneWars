@@ -11,6 +11,7 @@ import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
+import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
 
 /**
  * Processor for CREATE_TOKENS effect type
@@ -135,8 +136,8 @@ class TokenCreationProcessor extends BaseEffectProcessor {
         abilities: baseDrone.abilities ? JSON.parse(JSON.stringify(baseDrone.abilities)) : []
       };
 
-      // Add to the target player's lane (opponent's board for OPPONENT tokens)
-      targetPlayerState.dronesOnBoard[laneId].push(tokenDrone);
+      // Add to the target player's lane at the chosen position (or end if no position specified)
+      insertDroneInLane(targetPlayerState.dronesOnBoard[laneId], tokenDrone, context.insertionIndex);
 
       // Increment target player's deployment counter for deterministic ID generation
       targetPlayerState.totalDronesDeployed = deploymentNumber;

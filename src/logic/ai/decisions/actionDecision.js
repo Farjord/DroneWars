@@ -218,7 +218,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
           const candidates = readyAiDrones.filter(d => {
             if (d.lane === destLane) return false; // Already in destination
             if (!adjacentSourceLanes.includes(d.lane)) return false;
-            if (hasMovementInhibitorInLane(player2, d.lane)) return false;
+            if (hasMovementInhibitorInLane({player1, player2}, 'player2', d.lane)) return false;
             const bd = fullDroneCollection.find(b => b.name === d.name);
             if (bd?.maxPerLane && countDroneTypeInLane(player2, d.name, destLane) >= bd.maxPerLane) return false;
             return true;
@@ -331,7 +331,7 @@ export const handleOpponentAction = ({ player1, player2, placedSections, opponen
       const fromLaneIndex = parseInt(drone.lane.slice(-1));
 
       // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-      if (hasMovementInhibitorInLane(player2, drone.lane)) continue; // Skip all moves from inhibited lanes
+      if (hasMovementInhibitorInLane({player1, player2}, 'player2', drone.lane)) continue; // Skip all moves from inhibited lanes
 
       [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
         if (toLaneIndex >= 1 && toLaneIndex <= 3) {

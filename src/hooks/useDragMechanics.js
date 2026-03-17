@@ -13,6 +13,14 @@ import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
 import { calculateInsertionIndex } from '../components/ui/insertionIndexCalculator.js';
 import { computeGhostIsPlayer } from '../components/ui/ghostSideHelpers.js';
 import { isRepositionNoOp } from './isRepositionNoOp.js';
+import fullDroneCollection from '../data/droneData.js';
+
+/** Returns the base drone for a CREATE_TOKENS card (for ghost preview), or null. */
+function _getTokenBaseDrone(card) {
+    const effect0 = card?.effects?.[0];
+    if (effect0?.type !== 'CREATE_TOKENS') return null;
+    return fullDroneCollection.find(d => d.name === effect0.tokenName) || null;
+}
 
 /** Returns true when a card would flow to setCardConfirmation({ card, target: null }) — no arrow needed. */
 function isNoTargetCard(card) {
@@ -97,14 +105,25 @@ const useDragMechanics = ({
   // --- Insertion Preview ---
   // Calculate insertion index as mouse moves over lanes during drag
   const handleLaneMouseMove = useCallback((laneId, mouseX, laneContentElement) => {
-    if (!draggedCard && !draggedDrone) return;
-    const drone = draggedCard || draggedDrone?.drone;
+    const isTokenCreationDrag = !!_getTokenBaseDrone(draggedActionCard?.card);
+    if (!draggedCard && !draggedDrone && !isTokenCreationDrag) return;
+
+    const drone = draggedCard || draggedDrone?.drone || _getTokenBaseDrone(draggedActionCard?.card);
     if (!drone) return;
+
+    // Suppress ghost in full lanes (allow same-lane reorder where dragged drone is already counted)
+    const isSameLaneReorder = draggedDrone && draggedDrone.sourceLane === laneId;
+    if (!isSameLaneReorder && isLaneFull(localPlayerState, laneId)) {
+      setInsertionPreview(null);
+      return;
+    }
+
     const excludeId = draggedDrone?.drone?.id || null;
     const index = calculateInsertionIndex(mouseX, laneContentElement, excludeId);
-    const isPlayer = computeGhostIsPlayer(draggedCard, drone, localPlayerState);
+    // Token creation targets FRIENDLY lanes; TODO: check effect.targeting.affinity for future OPPONENT-targeted token cards
+    const isPlayer = isTokenCreationDrag ? true : computeGhostIsPlayer(draggedCard, drone, localPlayerState);
     setInsertionPreview({ laneId, index, drone, isPlayer });
-  }, [draggedCard, draggedDrone, localPlayerState]);
+  }, [draggedCard, draggedDrone, draggedActionCard, localPlayerState]);
 
   // --- Selection-driven effects ---
 
@@ -336,6 +355,7 @@ const useDragMechanics = ({
     suppressNextClickRef.current = true;
 
     const { card } = draggedActionCard;
+    const capturedInsertionIndex = insertionPreview?.index ?? null;
     debugLog('DRAG_DROP_DEPLOY', '📥 Action card drag end', { cardName: card.name, target, targetType, targetOwner });
 
     // Cleanup drag state
@@ -343,6 +363,7 @@ const useDragMechanics = ({
     setActionCardDragArrowState(prev => ({ ...prev, visible: false }));
     setAffectedDroneIds([]);
     setHoveredLane(null);
+    setInsertionPreview(null);
 
     // Case Chain: Multi-effect or compound-effect cards — route through effect chain UI
     if (card.effects?.length > 0) {
@@ -527,7 +548,7 @@ const useDragMechanics = ({
         (t.id === target.id || t.id === target.name) && t.owner === targetOwner
       );
       if (isValidTarget) {
-        setCardConfirmation({ card, target: { ...target, owner: targetOwner } });
+        setCardConfirmation({ card, target: { ...target, owner: targetOwner }, insertionIndex: capturedInsertionIndex });
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, dragCardTargets });
         cancelCardSelection('drag-invalid-target');

@@ -370,6 +370,17 @@ class DeploymentProcessor {
       }
     }
 
+    // WHY: ON_DEPLOY effects are already applied. Mine triggers fire next and may
+    // destroy the mine + exhaust the drone. TriggerProcessor generates its own
+    // STATE_SNAPSHOT to apply those changes at the right time during playback.
+    // We capture pre-mine state here so the bridge snapshot shows the drone ready
+    // (not exhausted) and the mine still present — matching CombatActionStrategy's
+    // preTriggerIntermediateState pattern.
+    const preMineIntermediateState = {
+      [playerId]: JSON.parse(JSON.stringify(finalPlayerState)),
+      [opponentId]: JSON.parse(JSON.stringify(finalOpponentState)),
+    };
+
     // Process ON_LANE_DEPLOYMENT mine triggers (fires LAST, after ON_DEPLOY)
     const minePlayerStates = {
       [playerId]: finalPlayerState,
@@ -406,11 +417,13 @@ class DeploymentProcessor {
     };
 
     // Build ordered sequence: TELEPORT_IN → STATE_SNAPSHOT → triggers
+    // Bridge snapshot uses pre-mine state so drone appears ready (not exhausted)
+    // and mine is still visible when the trigger announcement plays
     const animationEvents = buildAnimationSequence([{
       actionEvents: [teleportInEvent],
       triggerEvents: allTriggerEvents,
       intermediateState: allTriggerEvents.length > 0
-        ? { [playerId]: finalPlayerState, [opponentId]: finalOpponentState }
+        ? preMineIntermediateState
         : null,
     }]);
 
@@ -428,7 +441,8 @@ class DeploymentProcessor {
       newPlayerState: finalPlayerState,
       deployedDrone: newDrone,
       animationEvents,
-      opponentState: finalOpponentState // Return updated opponent state
+      opponentState: finalOpponentState, // Return updated opponent state
+      preMineIntermediateState,
     };
   }
 }

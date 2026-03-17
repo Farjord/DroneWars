@@ -21,7 +21,7 @@ const fullTechCollection = [
         description: 'When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.',
         type: 'TRIGGERED',
         trigger: 'ON_LANE_MOVEMENT_IN',
-        triggerOwner: 'LANE_OWNER',
+        triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
         effects: [{ type: 'DAMAGE', value: 4, scope: 'TRIGGERING_DRONE' }]
       }
@@ -41,7 +41,7 @@ const fullTechCollection = [
         description: 'When an enemy drone is deployed into this lane, exhaust it. Then destroy this mine.',
         type: 'TRIGGERED',
         trigger: 'ON_LANE_DEPLOYMENT',
-        triggerOwner: 'LANE_OWNER',
+        triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
         effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }]
       }
@@ -61,7 +61,7 @@ const fullTechCollection = [
         description: 'When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.',
         type: 'TRIGGERED',
         trigger: 'ON_LANE_ATTACK',
-        triggerOwner: 'LANE_OWNER',
+        triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
         effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'temporary' }, scope: 'TRIGGERING_DRONE' }]
       }

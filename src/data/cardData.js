@@ -657,13 +657,12 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/InhibitorMine.png',
-    description: 'Create an Inhibitor Mine in an enemy lane. (Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
+    description: 'Create an Inhibitor Mine in a friendly lane. (Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
         tokenName: 'Inhibitor Mine',
-        targetOwner: 'OPPONENT',
-        targeting: { type: 'LANE', affinity: 'ENEMY' },
+        targeting: { type: 'LANE', affinity: 'FRIENDLY' },
       },
     ],
 
@@ -679,13 +678,12 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/JitterMine.png',
-    description: 'Create a Jitter Mine in an enemy lane. (Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
+    description: 'Create a Jitter Mine in a friendly lane. (Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
         tokenName: 'Jitter Mine',
-        targetOwner: 'OPPONENT',
-        targeting: { type: 'LANE', affinity: 'ENEMY' },
+        targeting: { type: 'LANE', affinity: 'FRIENDLY' },
       },
     ],
 
@@ -701,13 +699,12 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/ProximityMine.png',
-    description: 'Create a Proximity Mine in an enemy lane. (Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
+    description: 'Create a Proximity Mine in a friendly lane. (Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
     effects: [
       {
         type: 'CREATE_TECH',
         tokenName: 'Proximity Mine',
-        targetOwner: 'OPPONENT',
-        targeting: { type: 'LANE', affinity: 'ENEMY' },
+        targeting: { type: 'LANE', affinity: 'FRIENDLY' },
       },
     ],
 
@@ -1706,13 +1703,12 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor in an enemy lane. (Enemy drones cannot move out of this lane. Removed at the start of the next round.)',
+    description: 'Create a Thruster Inhibitor in a friendly lane. (Enemy drones cannot move out of this lane. Removed at the start of the next round.)',
     effects: [
       {
         type: 'CREATE_TECH',
         tokenName: 'Thruster Inhibitor',
-        targetOwner: 'OPPONENT',
-        targeting: { type: 'LANE', affinity: 'ENEMY' },
+        targeting: { type: 'LANE', affinity: 'FRIENDLY' },
       },
     ],
 

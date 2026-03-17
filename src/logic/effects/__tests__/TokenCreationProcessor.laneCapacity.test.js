@@ -118,6 +118,38 @@ describe('TokenCreationProcessor - lane capacity limit', () => {
     expect(result.animationEvents).toHaveLength(0);
   });
 
+  it('should insert token at insertionIndex when provided', () => {
+    mockContext.playerStates.player1.dronesOnBoard.lane1 = makeDrones(2, 'Sentinel');
+    mockContext.insertionIndex = 1;
+
+    const effect = {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Dart',
+      locations: ['lane1'],
+    };
+
+    const result = processor.process(effect, mockContext);
+
+    const ids = result.newPlayerStates.player1.dronesOnBoard.lane1.map(d => d.name);
+    expect(ids).toEqual(['Sentinel', 'Dart', 'Sentinel']);
+  });
+
+  it('should append token to end when insertionIndex is null', () => {
+    mockContext.playerStates.player1.dronesOnBoard.lane1 = makeDrones(2, 'Sentinel');
+    mockContext.insertionIndex = null;
+
+    const effect = {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Dart',
+      locations: ['lane1'],
+    };
+
+    const result = processor.process(effect, mockContext);
+
+    const ids = result.newPlayerStates.player1.dronesOnBoard.lane1.map(d => d.name);
+    expect(ids).toEqual(['Sentinel', 'Sentinel', 'Dart']);
+  });
+
   it('should check capacity before maxPerLane (both can block independently)', () => {
     // Lane is full, AND maxPerLane would also block — capacity check fires first
     mockContext.playerStates.player2.dronesOnBoard.lane1 = [

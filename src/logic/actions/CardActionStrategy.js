@@ -57,7 +57,7 @@ function _generateOutcome(card, target) {
   return 'Card effect applied.';
 }
 
-async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, chainSelections = null) {
+async function _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, chainSelections = null, insertionIndex = null) {
   debugLog('CARD_PLAY_TRACE', '[5] Entering chain engine', {
     card: card.name, playerId, targetId: target?.id,
     targetType: target?.name ? 'entity' : target?.id?.startsWith('lane') ? 'lane' : 'none',
@@ -88,7 +88,7 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
     selections = chainSelections;
   } else {
     const lane = _findTargetLane(target, playerStates);
-    selections = [{ target, lane }];
+    selections = [{ target, lane, insertionIndex }];
   }
 
   const result = getChainProcessor().processEffectChain(card, selections, playerId, {
@@ -151,7 +151,7 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
  * @param {Object} ctx - ActionContext from ActionProcessor
  */
 export async function processCardPlay(payload, ctx) {
-  const { card, targetId, targetOwner, playerId } = payload;
+  const { card, targetId, targetOwner, playerId, insertionIndex } = payload;
 
   debugLog('CARD_PLAY_TRACE', '[4] Resolving target from targetId', { card: card.name, targetId, playerId });
 
@@ -222,7 +222,7 @@ export async function processCardPlay(payload, ctx) {
     }
   }
 
-  return _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, payload.chainSelections || null);
+  return _processChainCardPlay(card, target, playerId, playerStates, placedSections, currentState, ctx, payload.chainSelections || null, insertionIndex);
 }
 
 /**

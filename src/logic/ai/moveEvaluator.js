@@ -42,7 +42,7 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   }
 
   // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
-  if (hasMovementInhibitorInLane(player2, fromLane)) {
+  if (hasMovementInhibitorInLane({player1, player2}, 'player2', fromLane)) {
     return { score: -Infinity, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
   }
 
@@ -88,7 +88,8 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   }
 
   // Proximity Mine penalty — moving into a mined lane will trigger damage
-  const techInDestLane = player2.techSlots?.[toLane] || [];
+  // Mines now deploy to the deployer's own board; enemy mines are on player1's board
+  const techInDestLane = player1.techSlots?.[toLane] || [];
   if (techInDestLane.some(d => d.name === 'Proximity Mine')) {
     score -= 30;
     logic.push(`Proximity Mine: -30`);
