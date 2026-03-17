@@ -59,6 +59,7 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
     const newUpgrade = {
       instanceId: `upgrade-${crypto.randomUUID()}`,
       cardId: card?.id,
+      cardName: card?.name || 'Upgrade',
       slots: card?.slots || 1,
       mod: effect.mod
     };

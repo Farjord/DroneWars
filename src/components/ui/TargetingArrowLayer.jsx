@@ -31,7 +31,7 @@ const TargetingArrowLayer = ({
     <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color={FACTION_COLORS.player.accent} />
     <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
     <TargetingArrow visible={actionCardDragArrowState.visible} start={actionCardDragArrowState.start} end={actionCardDragArrowState.end} lineRef={actionCardDragArrowRef} color={FACTION_COLORS.player.accent} />
-    <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color={FACTION_COLORS.player.accent} showPulses={false} zIndex={15} />
+    <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color={FACTION_COLORS.player.accent} showPulses={false} zIndex={100} />
     <InterceptionTargetLine
       visible={!!playerInterceptionChoice}
       attackDetails={playerInterceptionChoice?.attackDetails}

@@ -305,7 +305,8 @@ export async function processMove(payload, ctx) {
     actingPlayerId: playerId,
     playerStates: minePlayerStates,
     placedSections,
-    logCallback: (entry) => ctx.addLogEntry(entry)
+    logCallback: (entry) => ctx.addLogEntry(entry),
+    currentTurnPlayerId: playerId
   });
 
   // Capture goAgain from mine result BEFORE building sequence

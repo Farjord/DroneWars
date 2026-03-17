@@ -15,6 +15,7 @@ const fullTechCollection = [
     maxPerLane: 1,
     isToken: true,
     isTech: true,
+    subType: 'mine',
     abilities: [
       {
         name: 'Proximity Detonation',
@@ -23,7 +24,8 @@ const fullTechCollection = [
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
-        effects: [{ type: 'DAMAGE', value: 4, scope: 'TRIGGERING_DRONE' }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'DAMAGE', value: 4, scope: 'TRIGGERING_DRONE', effectTarget: 'TRIGGER_OWNER' }]
       }
     ]
   },
@@ -35,6 +37,7 @@ const fullTechCollection = [
     maxPerLane: 1,
     isToken: true,
     isTech: true,
+    subType: 'mine',
     abilities: [
       {
         name: 'Inhibitor Detonation',
@@ -43,7 +46,8 @@ const fullTechCollection = [
         trigger: 'ON_LANE_DEPLOYMENT',
         triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
-        effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE' }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'EXHAUST_DRONE', scope: 'TRIGGERING_DRONE', effectTarget: 'TRIGGER_OWNER' }]
       }
     ]
   },
@@ -55,6 +59,7 @@ const fullTechCollection = [
     maxPerLane: 1,
     isToken: true,
     isTech: true,
+    subType: 'mine',
     abilities: [
       {
         name: 'Jitter Detonation',
@@ -63,7 +68,8 @@ const fullTechCollection = [
         trigger: 'ON_LANE_ATTACK',
         triggerOwner: 'LANE_ENEMY',
         destroyAfterTrigger: true,
-        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'temporary' }, scope: 'TRIGGERING_DRONE' }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'temporary' }, scope: 'TRIGGERING_DRONE', effectTarget: 'TRIGGER_OWNER' }]
       }
     ]
   },
@@ -82,8 +88,9 @@ const fullTechCollection = [
         type: 'TRIGGERED',
         trigger: 'ON_LANE_MOVEMENT_IN',
         triggerOwner: 'LANE_OWNER',
+        triggerTiming: 'OWN_TURN_ONLY',
         usesPerRound: 1,
-        effects: [{ type: 'GO_AGAIN' }]
+        effects: [{ type: 'GO_AGAIN', effectTarget: 'TRIGGER_OWNER' }]
       }
     ]
   },
@@ -108,6 +115,7 @@ const fullTechCollection = [
         type: 'TRIGGERED',
         trigger: 'ON_ROUND_END',
         triggerOwner: 'LANE_OWNER',
+        triggerTiming: 'ANY_TURN',
         destroyAfterTrigger: true,
         effects: []
       }
@@ -134,6 +142,7 @@ const fullTechCollection = [
         type: 'TRIGGERED',
         trigger: 'ON_ROUND_END',
         triggerOwner: 'LANE_OWNER',
+        triggerTiming: 'ANY_TURN',
         destroyAfterTrigger: true,
         effects: []
       }
@@ -153,8 +162,9 @@ const fullTechCollection = [
         description: 'End of round: If you control this lane, heal 1 hull to the ship section in this lane.',
         type: 'TRIGGERED',
         trigger: 'ON_ROUND_END',
+        triggerTiming: 'ANY_TURN',
         triggerFilter: { laneControl: 'CONTROLLED_BY_ACTOR' },
-        effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION' }]
+        effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION', effectTarget: 'TRIGGER_OWNER' }]
       }
     ]
   },

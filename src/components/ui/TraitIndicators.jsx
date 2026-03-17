@@ -35,7 +35,6 @@ const TraitIndicators = ({ drone, effectiveStats }) => {
       <div
         key="marked"
         className="w-6 h-6 flex items-center justify-center marked-glow"
-        title="Marked - Priority target"
       >
         <TargetLockIcon size={24} />
       </div>
@@ -47,7 +46,6 @@ const TraitIndicators = ({ drone, effectiveStats }) => {
       <div
         key="passive"
         className="w-5 h-5 rounded-sm flex items-center justify-center bg-emerald-950 border border-emerald-500 shadow-md"
-        title="Passive - Cannot attack or intercept"
       >
         <Feather size={12} className="text-emerald-400" />
       </div>
@@ -59,7 +57,6 @@ const TraitIndicators = ({ drone, effectiveStats }) => {
       <div
         key="inert"
         className="w-5 h-5 rounded-sm flex items-center justify-center bg-amber-950 border border-amber-500 shadow-md"
-        title="Inert - Cannot move"
       >
         <Anchor size={12} className="text-amber-400" />
       </div>

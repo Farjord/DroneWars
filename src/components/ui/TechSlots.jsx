@@ -10,6 +10,7 @@ import React from 'react';
 import { FACTION_COLORS } from './ShipSectionLayers.jsx';
 import fullTechCollection from '../../data/techData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import DroneTooltipPanel, { buildTechTooltipItems } from './DroneTooltipPanel.jsx';
 
 const SLOT_COUNT = 5;
 
@@ -48,6 +49,10 @@ const SHIMMER_CSS = `
     0%, 100% { box-shadow: 0 0 0.6vw var(--tech-glow), 0 0 1.2vw var(--tech-glow-dim); }
     50% { box-shadow: 0 0 1vw var(--tech-glow), 0 0 2vw var(--tech-glow-dim); }
   }
+  @keyframes techSlotWarning {
+    0%, 100% { box-shadow: 0 0 0.6vw #ff4400, 0 0 1.2vw #ff440060; }
+    50% { box-shadow: 0 0 1.2vw #ff6600, 0 0 2.4vw #ff660080; }
+  }
   .tech-slot-filled:hover {
     transform: scale(1.15);
   }
@@ -67,35 +72,42 @@ if (typeof document !== 'undefined') {
  * Circular image + faction-colored border + optional glow.
  * Exposes data-drone-id for animation system targeting.
  */
-const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick, draggedActionCard, onActionCardDrop, owner }) => {
+const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, warned, onClick, draggedActionCard, onActionCardDrop, owner }) => {
   const fc = FACTION_COLORS[faction];
+  const tooltipItems = techDef ? buildTechTooltipItems(techDef) : [];
 
   return (
     <div
       className="tech-slot-filled"
       data-drone-id={techDrone.id}
+      data-tech-slot=""
       style={{
+        position: 'relative',
         width: SLOT_SIZE,
         height: SLOT_SIZE,
         borderRadius: '50%',
         background: exhausted ? 'rgba(40,40,50,0.7)' : fc.bg,
-        border: `0.15vw solid ${exhausted ? 'rgba(100,100,120,0.4)' : fc.primary}`,
+        border: `0.15vw solid ${exhausted ? 'rgba(100,100,120,0.4)' : warned ? '#ff4400' : fc.primary}`,
         '--tech-glow': fc.glow,
         '--tech-glow-dim': `${fc.glow}60`,
         boxShadow: exhausted
           ? 'none'
-          : highlighted
-            ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
-            : `0 0 0.4vw ${fc.glow}40`,
-        overflow: 'hidden',
+          : warned
+            ? '0 0 0.6vw #ff4400, 0 0 1.2vw #ff440060'
+            : highlighted
+              ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
+              : `0 0 0.4vw ${fc.glow}40`,
+        overflow: 'visible',
         pointerEvents: 'auto',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'box-shadow 0.2s ease, transform 0.15s ease, filter 0.3s ease',
         animation: exhausted
           ? 'none'
-          : highlighted
-            ? 'techSlotHighlight 0.8s ease-in-out infinite'
-            : 'techSlotShimmer 3s ease-in-out infinite',
+          : warned
+            ? 'techSlotWarning 0.6s ease-in-out infinite'
+            : highlighted
+              ? 'techSlotHighlight 0.8s ease-in-out infinite'
+              : 'techSlotShimmer 3s ease-in-out infinite',
       }}
       onClick={onClick ? () => onClick(techDrone) : undefined}
       onMouseUp={(e) => {
@@ -105,7 +117,6 @@ const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick, dra
           e.stopPropagation();
         }
       }}
-      title={techDrone.name}
     >
       <img
         src={techDrone.image}
@@ -121,11 +132,12 @@ const TechSlotItem = ({ techDrone, faction, highlighted, exhausted, onClick, dra
         }}
         draggable={false}
       />
+      {tooltipItems.length > 0 && <DroneTooltipPanel items={tooltipItems} position="right" />}
     </div>
   );
 };
 
-export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], onTechClick, draggedActionCard, onActionCardDrop, owner }) {
+export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], warnedSlots = [], onTechClick, draggedActionCard, onActionCardDrop, owner }) {
   return (
     <div style={getContainerStyle(faction)}>
       {Array.from({ length: SLOT_COUNT }, (_, i) => {
@@ -140,9 +152,11 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
             <TechSlotItem
               key={tech.id}
               techDrone={tech}
+              techDef={techDef}
               faction={faction}
               highlighted={highlightedSlots.includes(tech.id)}
               exhausted={isExhausted}
+              warned={warnedSlots.includes(tech.id)}
               onClick={onTechClick}
               draggedActionCard={draggedActionCard}
               onActionCardDrop={onActionCardDrop}

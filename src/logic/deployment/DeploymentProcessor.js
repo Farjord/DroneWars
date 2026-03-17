@@ -394,7 +394,8 @@ class DeploymentProcessor {
       actingPlayerId: playerId,
       playerStates: minePlayerStates,
       placedSections,
-      logCallback
+      logCallback,
+      currentTurnPlayerId: playerId
     });
 
     // Update states from mine processing (TriggerProcessor returns new states)

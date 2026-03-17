@@ -92,6 +92,9 @@ const renderDronesOnBoard = ({
             });
           }
 
+          const ownerState = isPlayer ? localPlayerState : opponentPlayerState;
+          const droneUpgrades = ownerState?.appliedUpgrades?.[drone.name] || [];
+
           return (
               <DroneToken
               key={drone.id}
@@ -99,6 +102,7 @@ const renderDronesOnBoard = ({
               lane={lane}
               isPlayer={isPlayer}
               droneIndex={index}
+              appliedUpgrades={droneUpgrades}
               onClick={handleTokenClick}
               onAbilityClick={handleAbilityIconClick}
               isSelected={selectedDrone && selectedDrone.id === drone.id}

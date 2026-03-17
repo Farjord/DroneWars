@@ -95,6 +95,7 @@ export const SOUND_MANIFEST = {
   tech_deploy:     { path: `${BASE_PATH}deploy-teleport.wav`,  channel: 'sfx', volume: 0.3 },
   tech_destroy:    { path: `${BASE_PATH}explosion-small.wav`,  channel: 'sfx', volume: 0.4 },
   tech_warning:    { path: `${BASE_PATH}card-hover-over.mp3`,  channel: 'sfx', volume: 0.15 },
+  mine_warning:    { path: `${BASE_PATH}mine_warning.mp3`,    channel: 'sfx', volume: 0.3 },
 
   // Combat sounds
   laser_fire:      { path: `${BASE_PATH}laser-fire.mp3`,      channel: 'sfx', volume: 0.4 },

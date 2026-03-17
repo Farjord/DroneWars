@@ -12,6 +12,7 @@ import useCardTilt from '../../hooks/useCardTilt.js';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import StatusEffectIcons from './StatusEffectIcons.jsx';
 import TraitIndicators from './TraitIndicators.jsx';
+import DroneTooltipPanel, { buildTooltipItems } from './DroneTooltipPanel.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { FACTION_COLORS } from '../../utils/factionColors.js';
 import { Gauge, Crosshair } from 'lucide-react';
@@ -101,7 +102,6 @@ const SpecialAbilityIcons = ({ drone, isPlayer }) => {
               ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
               : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
         }`}
-        title={isUsed ? 'Rapid Response (used)' : 'Rapid Response (available)'}
       >
         <Gauge
           size={14}
@@ -123,7 +123,6 @@ const SpecialAbilityIcons = ({ drone, isPlayer }) => {
               ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
               : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
         }`}
-        title={isUsed ? 'Assault Protocol (used)' : 'Assault Protocol (available)'}
       >
         <Crosshair
           size={14}
@@ -196,6 +195,8 @@ const DroneToken = ({
   getOpponentPlayerId = () => 'player2',
   // Invalid target indicator prop
   isInvalidTarget = false,
+  // Applied upgrades for this drone type (from playerState.appliedUpgrades)
+  appliedUpgrades = [],
   // Whether any target is currently hovered/selected (dims unfocused drones)
   anyTargetFocused = false,
   // Prior chain target — highlighted but not draggable
@@ -247,6 +248,7 @@ const DroneToken = ({
   const { maxShields } = effectiveStats;
   const currentShields = drone.currentShields ?? maxShields;
   const activeAbilities = baseDrone?.abilities?.filter(a => a.type === 'ACTIVE') ?? [];
+  const tooltipItems = buildTooltipItems(drone, effectiveStats, baseDrone, appliedUpgrades);
 
   // Debug log interceptor glow state
   if (isPotentialInterceptor) {
@@ -381,6 +383,8 @@ const DroneToken = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
+      data-drone-token=""
+      data-dragging={isDragging || undefined}
       data-drone-index={droneIndex}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
@@ -515,6 +519,15 @@ const DroneToken = ({
       {/* End Tilt Wrapper */}
       </div>
       {/* End Scale Wrapper */}
+
+      {/* Tooltip toasts — CSS-only hover visibility */}
+      {tooltipItems.length > 0 && (
+        <DroneTooltipPanel
+          items={tooltipItems}
+          position={lane === 'lane3' ? 'left' : 'right'}
+        />
+      )}
+
     </div>
   );
 };

@@ -32,6 +32,8 @@ import {
   CONTROLLER_TRIGGER_TYPES,
   LANE_TRIGGER_TYPES,
   LANE_CONTROL_FILTERS,
+  TRIGGER_TIMING,
+  EFFECT_TARGETS,
   MAX_CHAIN_DEPTH
 } from './triggerConstants.js';
 
@@ -80,7 +82,8 @@ class TriggerProcessor {
       preSnapshotStats = null,
       skipLivenessCheck = false,
       counterTargetDrone = null,
-      counterTargetPlayerId = null
+      counterTargetPlayerId = null,
+      currentTurnPlayerId = null
     } = context;
 
     if (chainDepth >= MAX_CHAIN_DEPTH) {
@@ -98,7 +101,7 @@ class TriggerProcessor {
 
     const filterContext = { lane, playerStates: currentStates, actingPlayerId };
     const matchingTriggers = this.findMatchingTriggers(
-      triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, card, filterContext
+      triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, card, filterContext, currentTurnPlayerId
     );
 
     if (matchingTriggers.length > 0) {
@@ -145,7 +148,7 @@ class TriggerProcessor {
         ability, reactorDrone, reactorPlayerId, reactorLane,
         triggeringDrone, triggeringPlayerId, actingPlayerId, currentStates, placedSections,
         logCallback, pairSet, chainDepth, scalingAmount, gameSeed, roundNumber,
-        preSnapshotStats, counterTargetDrone, counterTargetPlayerId
+        preSnapshotStats, counterTargetDrone, counterTargetPlayerId, currentTurnPlayerId
       );
 
       if (result.triggered) {
@@ -247,7 +250,7 @@ class TriggerProcessor {
    * @param {Object} [card] - For ON_CARD_PLAY: the card
    * @returns {Array<Object>} Sorted array of { drone, ability, playerId, lane }
    */
-  findMatchingTriggers(triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, card = null, filterContext = null) {
+  findMatchingTriggers(triggerType, lane, triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, card = null, filterContext = null, currentTurnPlayerId = null) {
     const matches = [];
 
     // Tier 1: Self-triggers on the acting drone
@@ -260,6 +263,11 @@ class TriggerProcessor {
             if (ability.usesPerRound != null) {
               const uses = triggeringDrone.triggerUsesMap?.[ability.name] || 0;
               if (uses >= ability.usesPerRound) continue;
+            }
+
+            // Validate triggerTiming (currently no self-triggers use OWN_TURN_ONLY, but guard for future)
+            if (!this._validateTriggerTiming(ability.triggerTiming, triggeringPlayerId, currentTurnPlayerId)) {
+              continue;
             }
 
             // Validate triggerFilter (including laneControl)
@@ -290,26 +298,26 @@ class TriggerProcessor {
       // Actor's Tech triggers
       this._collectTechTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
-        actingPlayerId, playerStates[actingPlayerId], card, matches, 0.5
+        actingPlayerId, playerStates[actingPlayerId], card, matches, 0.5, currentTurnPlayerId
       );
 
       // Opponent's Tech triggers
       this._collectTechTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
-        opponentId, playerStates[opponentId], card, matches, 0.5
+        opponentId, playerStates[opponentId], card, matches, 0.5, currentTurnPlayerId
       );
 
       // Tier 1 & 2: Lane triggers (actor's drones first, then opponent's)
       // Actor's lane triggers (Tier 1)
       this._collectLaneTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
-        actingPlayerId, playerStates[actingPlayerId], card, matches, 1
+        actingPlayerId, playerStates[actingPlayerId], card, matches, 1, currentTurnPlayerId
       );
 
       // Opponent's lane triggers (Tier 2)
       this._collectLaneTriggers(
         triggerType, lane, triggeringDrone, triggeringPlayerId,
-        opponentId, playerStates[opponentId], card, matches, 2
+        opponentId, playerStates[opponentId], card, matches, 2, currentTurnPlayerId
       );
     }
 
@@ -321,7 +329,7 @@ class TriggerProcessor {
       for (const [playerId, tier] of [[actingPlayerId, 1], [opponentId, 2]]) {
         this._collectControllerTriggers(
           triggerType, triggeringPlayerId, playerId,
-          playerStates[playerId], card, matches, tier, lane
+          playerStates[playerId], card, matches, tier, lane, currentTurnPlayerId
         );
       }
     }
@@ -342,7 +350,8 @@ class TriggerProcessor {
     ability, reactorDrone, reactorPlayerId, reactorLane,
     triggeringDrone, triggeringPlayerId, actingPlayerId, playerStates, placedSections,
     logCallback, pairSet, chainDepth, scalingAmount = null, gameSeed, roundNumber,
-    preSnapshotStats = null, counterTargetDrone = null, counterTargetPlayerId = null
+    preSnapshotStats = null, counterTargetDrone = null, counterTargetPlayerId = null,
+    currentTurnPlayerId = null
   ) {
     let currentStates = playerStates;
     const animationEvents = [];
@@ -454,8 +463,12 @@ class TriggerProcessor {
         }
 
         // GO_AGAIN is a control flow signal, not a state mutation — handle before EffectRouter
+        // effectTarget determines the beneficiary; only grant if beneficiary is the current turn player
         if (effect.type === 'GO_AGAIN') {
-          goAgain = true;
+          const beneficiary = this._resolveEffectTarget(effect.effectTarget, reactorPlayerId);
+          if (!currentTurnPlayerId || beneficiary === currentTurnPlayerId) {
+            goAgain = true;
+          }
           continue;
         }
 
@@ -505,8 +518,9 @@ class TriggerProcessor {
         const targetArray = Array.isArray(targets) ? targets : (targets ? [targets] : []);
 
         for (const singleTarget of targetArray) {
+          const effectActingPlayer = this._resolveEffectTarget(processedEffect.effectTarget, reactorPlayerId);
           const effectContext = {
-            actingPlayerId: reactorPlayerId,
+            actingPlayerId: effectActingPlayer,
             playerStates: currentStates,
             placedSections,
             sourceDroneName: reactorDrone.name,
@@ -727,7 +741,7 @@ class TriggerProcessor {
    * Collect lane triggers from a player's board for a specific lane.
    * Drones are iterated in array order (left-to-right = deployment order).
    */
-  _collectLaneTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier) {
+  _collectLaneTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier, currentTurnPlayerId = null) {
     const drones = playerState?.dronesOnBoard?.[eventLane] || [];
 
     for (const drone of drones) {
@@ -742,6 +756,11 @@ class TriggerProcessor {
 
         // Validate triggerOwner
         if (!this._validateTriggerOwner(ability.triggerOwner, scanPlayerId, triggeringPlayerId, drone, playerState)) {
+          continue;
+        }
+
+        // Validate triggerTiming
+        if (!this._validateTriggerTiming(ability.triggerTiming, scanPlayerId, currentTurnPlayerId)) {
           continue;
         }
 
@@ -765,7 +784,7 @@ class TriggerProcessor {
    * Collect Tech triggers from a player's techSlots for a specific lane.
    * Tech fires at a priority tier between Self and Other Drones.
    */
-  _collectTechTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier) {
+  _collectTechTriggers(triggerType, eventLane, triggeringDrone, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier, currentTurnPlayerId = null) {
     const techs = playerState?.techSlots?.[eventLane] || [];
 
     for (const drone of techs) {
@@ -776,6 +795,11 @@ class TriggerProcessor {
         if (ability.type !== 'TRIGGERED' || ability.trigger !== triggerType) continue;
 
         if (!this._validateTriggerOwner(ability.triggerOwner, scanPlayerId, triggeringPlayerId, drone, playerState)) {
+          continue;
+        }
+
+        // Validate triggerTiming
+        if (!this._validateTriggerTiming(ability.triggerTiming, scanPlayerId, currentTurnPlayerId)) {
           continue;
         }
 
@@ -798,7 +822,7 @@ class TriggerProcessor {
    * Collect controller triggers from a player's drones across all lanes.
    * @param {string|null} eventLane - Lane where the triggering event occurred (for SAME_LANE filtering)
    */
-  _collectControllerTriggers(triggerType, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier, eventLane = null) {
+  _collectControllerTriggers(triggerType, triggeringPlayerId, scanPlayerId, playerState, card, matches, tier, eventLane = null, currentTurnPlayerId = null) {
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       const drones = playerState?.dronesOnBoard?.[lane] || [];
 
@@ -811,6 +835,11 @@ class TriggerProcessor {
 
           // Validate triggerOwner for controller triggers
           if (!this._validateControllerOwner(ability.triggerOwner, scanPlayerId, triggeringPlayerId)) {
+            continue;
+          }
+
+          // Validate triggerTiming (currently no controller-triggers use OWN_TURN_ONLY, but guard for future)
+          if (!this._validateTriggerTiming(ability.triggerTiming, scanPlayerId, currentTurnPlayerId)) {
             continue;
           }
 
@@ -855,6 +884,33 @@ class TriggerProcessor {
     }
 
     return true;
+  }
+
+  /**
+   * Validate trigger timing — should the trigger fire given whose turn it is?
+   * OWN_TURN_ONLY: only fires when currentTurnPlayerId === reactorPlayerId
+   * ANY_TURN / absent: always fires (backwards-compatible default)
+   */
+  _validateTriggerTiming(triggerTiming, reactorPlayerId, currentTurnPlayerId) {
+    if (!triggerTiming || triggerTiming === TRIGGER_TIMING.ANY_TURN) return true;
+    if (!currentTurnPlayerId) return true; // backwards-compat: no turn info provided
+    if (triggerTiming === TRIGGER_TIMING.OWN_TURN_ONLY) {
+      return currentTurnPlayerId === reactorPlayerId;
+    }
+    return true;
+  }
+
+  /**
+   * Resolve effectTarget — determines actingPlayerId for the effect.
+   * TRIGGER_OWNER / absent: returns reactorPlayerId (default)
+   * TRIGGER_OPPONENT: returns the opponent of reactorPlayerId
+   */
+  _resolveEffectTarget(effectTarget, reactorPlayerId) {
+    if (!effectTarget || effectTarget === EFFECT_TARGETS.TRIGGER_OWNER) return reactorPlayerId;
+    if (effectTarget === EFFECT_TARGETS.TRIGGER_OPPONENT) {
+      return reactorPlayerId === 'player1' ? 'player2' : 'player1';
+    }
+    return reactorPlayerId;
   }
 
   /**

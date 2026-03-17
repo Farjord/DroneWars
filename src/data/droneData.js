@@ -104,7 +104,8 @@ const fullDroneCollection = [
       description: 'This drone is destroyed after it attacks.',
       type: 'TRIGGERED',
       trigger: 'ON_ATTACK',
-      effects: [{ type: 'DESTROY', scope: 'SELF' }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'DESTROY', scope: 'SELF', effectTarget: 'TRIGGER_OWNER' }]
       }],
   upgradeSlots: 2 
 },
@@ -124,7 +125,8 @@ const fullDroneCollection = [
       description: 'End of round: Deal 2 damage to a random enemy drone in this lane.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_END',
-      effects: [{ type: 'DAMAGE', value: 2, targetSelection: { method: 'RANDOM', count: 1 }, scope: 'SAME_LANE', affinity: 'ENEMY' }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'DAMAGE', value: 2, targetSelection: { method: 'RANDOM', count: 1 }, scope: 'SAME_LANE', affinity: 'ENEMY', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -209,7 +211,8 @@ const fullDroneCollection = [
         description: 'Gains +1 attack permanently after it attacks.',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACK',
-        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
         }],
     upgradeSlots: 2
   },
@@ -279,9 +282,10 @@ const fullDroneCollection = [
         description: 'After this drone moves, permanently gain +1 Attack and +1 Speed.',
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
+        triggerTiming: 'ANY_TURN',
         effects: [
-            { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } },
-            { type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' } }
+            { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' },
+            { type: 'MODIFY_STAT', mod: { stat: 'speed', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }
         ]
      }],
     upgradeSlots: 2 
@@ -302,8 +306,9 @@ const fullDroneCollection = [
         description: 'After this drone moves, heal 4 hull.',
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
+        triggerTiming: 'ANY_TURN',
         effects: [
-            { type: 'HEAL_HULL', value: 4, scope: 'SELF' }
+            { type: 'HEAL_HULL', value: 4, scope: 'SELF', effectTarget: 'TRIGGER_OWNER' }
         ]
      }],
     upgradeSlots: 1 
@@ -343,8 +348,9 @@ const fullDroneCollection = [
         description: 'On deploy, mark a random enemy drone in the same lane.',
         type: 'TRIGGERED',
         trigger: 'ON_DEPLOY',
+        triggerTiming: 'ANY_TURN',
         effects: [{ type: 'MARK_DRONE', scope: 'SAME_LANE', affinity: 'ENEMY', filter: 'NOT_MARKED',
-            targetSelection: { method: 'RANDOM', count: 1 } }]
+            targetSelection: { method: 'RANDOM', count: 1 }, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -387,9 +393,10 @@ const fullDroneCollection = [
       description: 'First move each round does not exhaust this drone.',
       type: 'TRIGGERED',
       trigger: 'ON_MOVE',
+      triggerTiming: 'ANY_TURN',
       usesPerRound: 1,
       keywordIcon: 'RAPID',
-      effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -409,9 +416,10 @@ const fullDroneCollection = [
       description: 'First attack each round does not exhaust this drone.',
       type: 'TRIGGERED',
       trigger: 'ON_ATTACK',
+      triggerTiming: 'ANY_TURN',
       usesPerRound: 1,
       keywordIcon: 'ASSAULT',
-      effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -432,18 +440,20 @@ const fullDroneCollection = [
         description: 'First move each round does not exhaust this drone.',
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
+        triggerTiming: 'ANY_TURN',
         usesPerRound: 1,
         keywordIcon: 'RAPID',
-        effects: [{ type: 'DOES_NOT_EXHAUST' }]
+        effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
       },
       {
         name: 'Assault Protocol',
         description: 'First attack each round does not exhaust this drone.',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACK',
+        triggerTiming: 'ANY_TURN',
         usesPerRound: 1,
         keywordIcon: 'ASSAULT',
-        effects: [{ type: 'DOES_NOT_EXHAUST' }]
+        effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
       }
     ],
     upgradeSlots: 1
@@ -464,7 +474,8 @@ const fullDroneCollection = [
       description: 'When this drone intercepts, deals its attack damage to the attacker.',
       type: 'TRIGGERED',
       trigger: 'ON_INTERCEPT',
-      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT' }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -484,7 +495,8 @@ const fullDroneCollection = [
       description: 'When this drone is attacked and survives, deals its attack damage to the attacker.',
       type: 'TRIGGERED',
       trigger: 'ON_ATTACKED',
-      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE' }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -505,14 +517,16 @@ const fullDroneCollection = [
         description: 'On intercept - deal damage to attacker.',
         type: 'TRIGGERED',
         trigger: 'ON_INTERCEPT',
-        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT' }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'DOGFIGHT', effectTarget: 'TRIGGER_OWNER' }]
       },
       {
         name: 'Retaliate',
         description: 'On defence - deal damage to the attacker.',
         type: 'TRIGGERED',
         trigger: 'ON_ATTACKED',
-        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE' }]
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'COUNTER_DAMAGE', scope: 'ATTACKER', damageType: 'RETALIATE', effectTarget: 'TRIGGER_OWNER' }]
       }
     ],
     upgradeSlots: 1
@@ -685,9 +699,10 @@ const fullDroneCollection = [
       description: 'Does not exhaust when moving into a lane you currently do not control.',
       type: 'TRIGGERED',
       trigger: 'ON_MOVE',
+      triggerTiming: 'ANY_TURN',
       keywordIcon: 'INFILTRATE',
       triggerFilter: { laneControl: 'NOT_CONTROLLED_BY_ACTOR' },
-      effects: [{ type: 'DOES_NOT_EXHAUST' }]
+      effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -708,7 +723,8 @@ const fullDroneCollection = [
       description: 'Start of Round: Increase player threat by 2.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_END',
-      effects: [{ type: 'INCREASE_THREAT', value: 2 }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'INCREASE_THREAT', value: 2, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 0
   },
@@ -729,10 +745,11 @@ const fullDroneCollection = [
       description: 'When this drone deals hull damage to a ship section, increase player threat by 4.',
       type: 'TRIGGERED',
       trigger: 'ON_ATTACK',
+      triggerTiming: 'ANY_TURN',
       conditionalEffects: [{
         timing: 'POST',
         condition: { type: 'ON_SHIP_SECTION_HULL_DAMAGE' },
-        grantedEffect: { type: 'INCREASE_THREAT', value: 4 }
+        grantedEffect: { type: 'INCREASE_THREAT', value: 4, effectTarget: 'TRIGGER_OWNER' }
       }]
     }],
     upgradeSlots: 1
@@ -753,7 +770,8 @@ const fullDroneCollection = [
       description: 'Start of Round: Gain +1 attack permanently.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_END',
-      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -777,7 +795,8 @@ const fullDroneCollection = [
       description: 'Each time you draw cards during the action phase, permanently gain +1 attack per card drawn.',
       type: 'TRIGGERED',
       trigger: 'ON_CARD_DRAWN',
-      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -797,8 +816,9 @@ const fullDroneCollection = [
       description: 'Each time you gain energy during the action phase, permanently gain +1 attack per 2 energy gained (rounded down).',
       type: 'TRIGGERED',
       trigger: 'ON_ENERGY_GAINED',
+      triggerTiming: 'ANY_TURN',
       scalingDivisor: 2,
-      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -820,8 +840,9 @@ const fullDroneCollection = [
       trigger: 'ON_CARD_PLAY',
       triggerOwner: 'CONTROLLER',
       triggerScope: 'SAME_LANE',
+      triggerTiming: 'ANY_TURN',
       triggerFilter: { cardSubType: 'Mine' },
-      effects: [{ type: 'DRAW', value: 1 }]
+      effects: [{ type: 'DRAW', value: 1, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 2
   },
@@ -847,6 +868,38 @@ const fullDroneCollection = [
       }
     }],
     upgradeSlots: 2
+  },
+  {
+    name: 'Relay Beacon',
+    class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon',
+    attack: 1, hull: 1, shields: 0, speed: 1,
+    image: '/DroneWars/img/RelayBeacon.png',
+    abilities: [{
+      name: 'Signal Relay',
+      description: 'When any drone moves into this lane, draw a card.',
+      type: 'TRIGGERED',
+      trigger: 'ON_LANE_MOVEMENT_IN',
+      triggerOwner: 'ANY',
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'DRAW', value: 1, effectTarget: 'TRIGGER_OWNER' }]
+    }],
+    upgradeSlots: 1
+  },
+  {
+    name: 'Disruption Drone',
+    class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon',
+    attack: 1, hull: 1, shields: 0, speed: 1,
+    image: '/DroneWars/img/DisruptionDrone.png',
+    abilities: [{
+      name: 'Energy Disruption',
+      description: "When an enemy drone moves into this lane, your opponent loses 1 energy.",
+      type: 'TRIGGERED',
+      trigger: 'ON_LANE_MOVEMENT_IN',
+      triggerOwner: 'LANE_ENEMY',
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'DRAIN_ENERGY', amount: 1, effectTarget: 'TRIGGER_OWNER' }]
+    }],
+    upgradeSlots: 1
   },
 ];
 

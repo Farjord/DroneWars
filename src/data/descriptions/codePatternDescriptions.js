@@ -60,9 +60,9 @@ export const effectPatterns = {
   },
 
   'ON_LANE_MOVEMENT_IN': {
-    validEffects: ['DAMAGE', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GO_AGAIN'],
+    validEffects: ['DAMAGE', 'EXHAUST_DRONE', 'MODIFY_STAT', 'GO_AGAIN', 'DRAW', 'DRAIN_ENERGY'],
     implementation: 'TriggerProcessor.fireTrigger(ON_LANE_MOVEMENT_IN)',
-    notes: 'Lane trigger, triggerOwner: LANE_OWNER (Rally Beacon) or LANE_ENEMY (mines), destroyAfterTrigger.'
+    notes: 'Lane trigger, triggerOwner: LANE_OWNER/LANE_ENEMY/ANY, triggerTiming: OWN_TURN_ONLY/ANY_TURN, destroyAfterTrigger. Effects support effectTarget: TRIGGER_OWNER/TRIGGER_OPPONENT to override actingPlayerId.'
   },
 
   'ON_LANE_MOVEMENT_OUT': {
@@ -413,5 +413,27 @@ export const specialProperties = {
     usedWith: ['CREATE_TOKENS'],
     effect: 'Created tokens do not count against CPU limit.',
     notes: 'Allows token creation even when at max drones.'
+  }
+};
+
+// ========================================
+// TRIGGER TIMING & EFFECT TARGET
+// ========================================
+
+export const triggerTimingPatterns = {
+  'triggerTiming': {
+    property: 'ability.triggerTiming',
+    values: ['OWN_TURN_ONLY', 'ANY_TURN'],
+    default: 'ANY_TURN',
+    notes: 'Controls which turn phase allows the trigger to fire. OWN_TURN_ONLY restricts firing to when the trigger owner is the current turn player. Validated in TriggerProcessor._validateTriggerTiming().',
+    example: 'Rally Beacon uses OWN_TURN_ONLY so it only fires on the beacon owner\'s turn.'
+  },
+
+  'effectTarget': {
+    property: 'effect.effectTarget',
+    values: ['TRIGGER_OWNER', 'TRIGGER_OPPONENT'],
+    default: 'TRIGGER_OWNER',
+    notes: 'Overrides actingPlayerId in the effect context. Controls whose perspective the effect executes from, NOT who gets directly affected. For GO_AGAIN, determines the beneficiary (only grants goAgain if beneficiary === currentTurnPlayerId). Resolved in TriggerProcessor._resolveEffectTarget().',
+    example: 'DRAIN_ENERGY with effectTarget: TRIGGER_OWNER means "drain FROM trigger owner\'s perspective" → drains the trigger owner\'s opponent.'
   }
 };

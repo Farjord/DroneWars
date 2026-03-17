@@ -7,6 +7,7 @@
 import React from 'react';
 import BattleColumn from './BattleColumn.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
+import useMineWarning from '../../hooks/useMineWarning.js';
 
 function GameBattlefield({
   localPlayerState,
@@ -68,6 +69,18 @@ function GameBattlefield({
   const opponentEffectiveStats = getEffectiveShipStats(opponentPlayerState, opponentPlacedSections);
   const localEffectiveStats = getEffectiveShipStats(localPlayerState, localPlacedSections);
 
+  // Mine warning — detects when hover/drag would trigger opponent mines
+  const { warnedMineIds } = useMineWarning({
+    draggedCard,
+    draggedDrone,
+    insertionPreview,
+    selectedDrone,
+    hoveredTarget,
+    turnPhase,
+    localPlayerState,
+    opponentPlayerState,
+  });
+
   // Shared props passed to every BattleColumn
   const sharedProps = {
     localPlayerState,
@@ -125,6 +138,7 @@ function GameBattlefield({
     insertionPreview,
     setInsertionPreview,
     onLaneMouseMove,
+    warnedMineIds,
   };
 
   return (

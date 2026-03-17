@@ -9,7 +9,7 @@ const FloatingDragCard = ({ card, floatingCardRef, renderCard }) => {
       style={{
         position: 'fixed',
         pointerEvents: 'none',
-        zIndex: 50,
+        zIndex: 200,
         transform: 'translate(-50%, -50%)',
         boxShadow: '0 0 12px rgba(34, 211, 238, 0.6)',
         opacity: 0.85,

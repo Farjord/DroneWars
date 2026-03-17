@@ -751,6 +751,7 @@ img {
   animation: subtleSway 5s ease-in-out infinite;
 }
 
+
 /* Heal effect animations */
 @keyframes healFloat {
   0% {

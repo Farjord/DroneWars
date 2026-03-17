@@ -32,6 +32,12 @@ import { isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 /** Cosmetic delay before AI acts — animations are already done by RESPONSE_CYCLE_COMPLETE */
 const AI_TURN_COSMETIC_DELAY_MS = 300;
 
+/** Interval between retries when animations are still blocking at turn start */
+const BLOCKING_RETRY_INTERVAL_MS = 500;
+
+/** Max retries before aborting (BLOCKING_MAX_RETRIES × BLOCKING_RETRY_INTERVAL_MS = 10s safety cap) */
+const BLOCKING_MAX_RETRIES = 20;
+
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
  */
@@ -45,6 +51,7 @@ class AIPhaseProcessor {
     // AI turn management
     this.isProcessing = false;
     this.turnTimer = null;
+    this._blockingRetryCount = 0;
 
     // Initialization guards and cleanup tracking
     this.isInitialized = false;
@@ -131,6 +138,7 @@ class AIPhaseProcessor {
     this.isProcessing = false;
     this.isInitialized = false;
     this._lastAI01Key = null;
+    this._blockingRetryCount = 0;
   }
 
   // --- Simultaneous Phase Delegation ---
@@ -258,11 +266,20 @@ class AIPhaseProcessor {
       return;
     }
 
-    // Diagnostic guard — should not trigger after RESPONSE_CYCLE_COMPLETE
+    // Wait-and-retry guard — animations may still be playing due to race condition
+    // between RESPONSE_CYCLE_COMPLETE and the phase announcement queue
     if (this.isAnimationBlocking()) {
-      debugLog('AI_TURN_TRACE', '[AI-WARN] Unexpected blocking after RESPONSE_CYCLE_COMPLETE — bailing');
+      this._blockingRetryCount += 1;
+      if (this._blockingRetryCount > BLOCKING_MAX_RETRIES) {
+        debugLog('AI_TURN_TRACE', '[AI-ABORT] Animation blocking exceeded max retries — aborting');
+        this._blockingRetryCount = 0;
+        return;
+      }
+      debugLog('AI_TURN_TRACE', `[AI-WAIT] Animations blocking — retry ${this._blockingRetryCount}/${BLOCKING_MAX_RETRIES}`);
+      this.turnTimer = setTimeout(() => this.executeTurn(), BLOCKING_RETRY_INTERVAL_MS);
       return;
     }
+    this._blockingRetryCount = 0;
 
     this.isProcessing = true;
     const p2 = state.player2;

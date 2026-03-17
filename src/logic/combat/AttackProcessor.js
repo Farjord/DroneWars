@@ -135,7 +135,8 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             actingPlayerId: attackingPlayerId,
             playerStates: minePlayerStates,
             placedSections,
-            logCallback
+            logCallback,
+            currentTurnPlayerId: attackingPlayerId
         });
 
         if (mineResult.triggered) {

@@ -156,13 +156,14 @@
 /* === FLOAT/SWAY ANIMATIONS === */
 
 @keyframes subtleSway {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  25% { transform: translateY(-2px) rotate(0.5deg); }
-  75% { transform: translateY(-2px) rotate(-0.5deg); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
 }
 
 .drone-float {
   animation: subtleSway 5s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* === EXPLOSION ANIMATIONS === */
@@ -654,5 +655,41 @@
 
 .kpi-popup-animation {
   animation: kpiPopup 1.2s ease-out forwards;
+}
+
+/* === DRONE TOOLTIP HOVER ACTIVATION === */
+/* CSS-only with delayed show — no React state needed */
+
+.drone-tooltip-container {
+  opacity: 0;
+  transition: opacity 150ms ease;
+  transition-delay: 0ms;
+}
+[data-drone-token]:hover > .drone-tooltip-container {
+  opacity: 1;
+  transition-delay: 400ms;
+}
+[data-dragging="true"] > .drone-tooltip-container {
+  display: none;
+}
+/* Elevate hovered drone above siblings so tooltip isn't clipped */
+[data-drone-token]:hover {
+  z-index: 45 !important;
+}
+/* Elevate the lane wrapper above adjacent lanes so tooltips aren't clipped by neighbouring columns */
+[data-lane-wrapper]:has([data-drone-token]:hover) {
+  z-index: 50 !important;
+}
+
+/* === TECH SLOT TOOLTIP HOVER ACTIVATION === */
+[data-tech-slot]:hover > .drone-tooltip-container {
+  opacity: 1;
+  transition-delay: 400ms;
+}
+[data-tech-slot]:hover {
+  z-index: 45 !important;
+}
+[data-lane-wrapper]:has([data-tech-slot]:hover) {
+  z-index: 50 !important;
 }
 

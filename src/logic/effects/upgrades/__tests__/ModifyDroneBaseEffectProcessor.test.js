@@ -318,6 +318,49 @@ describe('ModifyDroneBaseEffectProcessor', () => {
   });
 
   // ========================================
+  // CARD NAME STORED IN UPGRADE RECORDS
+  // ========================================
+  describe('cardName stored in upgrade records', () => {
+    it('should store cardName from the card context in the upgrade record', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'COMBAT_ENHANCEMENT', name: 'Combat Enhancement', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'attack', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+      const upgrade = result.newPlayerStates.player1.appliedUpgrades['Talon'][0];
+      expect(upgrade.cardName).toBe('Combat Enhancement');
+    });
+
+    it('should fall back to "Upgrade" when card has no name', () => {
+      const mockPlayerStates = createMockPlayerStates();
+      const mockContext = {
+        actingPlayerId: 'player1',
+        playerStates: mockPlayerStates,
+        target: { name: 'Talon' },
+        card: { id: 'MYSTERY', slots: 1 }
+      };
+
+      const effect = {
+        type: 'MODIFY_DRONE_BASE',
+        mod: { stat: 'speed', value: 1 }
+      };
+
+      const result = processor.process(effect, mockContext);
+      const upgrade = result.newPlayerStates.player1.appliedUpgrades['Talon'][0];
+      expect(upgrade.cardName).toBe('Upgrade');
+    });
+  });
+
+  // ========================================
   // EDGE CASES
   // ========================================
   describe('edge cases', () => {

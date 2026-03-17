@@ -406,6 +406,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const triggerAnimationEvents = [];
 
     // ON_MOVE triggers fire for ALL moved drones (including force-moved enemy drones per PRD 3.3)
+    // Note: ON_MOVE is a self-trigger — the drone IS the actor, so currentTurnPlayerId is not needed.
+    // Lane triggers (ON_LANE_MOVEMENT_IN/OUT) below DO pass currentTurnPlayerId for timing validation.
     for (const movedDrone of movedDrones) {
       const moveResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
         lane: toLane,
@@ -453,7 +455,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           placedSections,
           logCallback,
           pairSet: pairSet || new Set(),
-          chainDepth: chainDepth || 0
+          chainDepth: chainDepth || 0,
+          currentTurnPlayerId: actingPlayerId
         });
         if (outResult.triggered) {
           newPlayerStates[droneOwnerId] = outResult.newPlayerStates[droneOwnerId];
@@ -501,7 +504,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         placedSections,
         logCallback,
         pairSet: pairSet || new Set(),
-        chainDepth: chainDepth || 0
+        chainDepth: chainDepth || 0,
+        currentTurnPlayerId: actingPlayerId
       });
 
       if (result.triggered) {

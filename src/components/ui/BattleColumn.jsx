@@ -273,6 +273,8 @@ const BattleColumn = ({
   insertionPreview,
   setInsertionPreview,
   onLaneMouseMove,
+  // Mine warning
+  warnedMineIds = [],
 }) => {
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
@@ -372,7 +374,7 @@ const BattleColumn = ({
       </div>
 
       {/* Opponent Lane — 29% height, overlaps ship by -10% margin */}
-      <div style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: dragInOpponentLane ? undefined : 5 }}>
+      <div data-lane-wrapper style={{ height: '29%', width: '100%', marginTop: '-10%', position: 'relative', zIndex: dragInOpponentLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={false}
@@ -383,6 +385,7 @@ const BattleColumn = ({
           faction="opponent"
           techDrones={opponentPlayerState.techSlots?.[laneId] || []}
           highlightedSlots={validCardTargets.filter(t => t.isTech && t.owner === getOpponentPlayerId()).map(t => t.id)}
+          warnedSlots={warnedMineIds}
           onTechClick={validCardTargets.some(t => t.isTech)
             ? (tech) => handleTargetClick({ ...tech, owner: getOpponentPlayerId() })
             : onViewTechDetail}
@@ -401,7 +404,7 @@ const BattleColumn = ({
       </div>
 
       {/* Player Lane — 29% height */}
-      <div style={{ height: '29%', width: '100%', position: 'relative', zIndex: dragInPlayerLane ? undefined : 5 }}>
+      <div data-lane-wrapper style={{ height: '29%', width: '100%', position: 'relative', zIndex: dragInPlayerLane ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={true}

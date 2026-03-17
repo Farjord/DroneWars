@@ -913,8 +913,22 @@ describe('AIPhaseProcessor - Event-driven AI turn activation', () => {
   });
 });
 
-describe('AIPhaseProcessor - Animation blocking diagnostic guard', () => {
+describe('AIPhaseProcessor - Animation blocking wait-and-retry', () => {
   let originalGameDataService;
+  let mockGSM;
+  let mockAP;
+
+  const makeBlockingState = () => ({
+    currentPlayer: 'player2',
+    turnPhase: 'deployment',
+    passInfo: { player1Passed: false, player2Passed: false },
+    winner: null,
+    gameStage: 'battle',
+    player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, energy: 0 },
+    player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
+    placedSections: [],
+    opponentPlacedSections: [],
+  });
 
   beforeEach(() => {
     originalGameDataService = GameDataService.instance;
@@ -922,19 +936,32 @@ describe('AIPhaseProcessor - Animation blocking diagnostic guard', () => {
     aiPhaseProcessor.isInitialized = false;
     aiPhaseProcessor.isProcessing = false;
     aiPhaseProcessor.turnTimer = null;
+    aiPhaseProcessor._blockingRetryCount = 0;
+
+    vi.useFakeTimers();
 
     vi.spyOn(GameDataService, 'getInstance').mockReturnValue({
       getEffectiveShipStats: vi.fn(() => ({ totals: { cpuLimit: 10, handLimit: 6, shieldRegen: 2 } })),
       getEffectiveStats: vi.fn(() => ({ attack: 2, speed: 3, hull: 2, maxShields: 0, keywords: new Set() }))
     });
+
+    mockGSM = {
+      getState: vi.fn().mockReturnValue(makeBlockingState()),
+      subscribe: vi.fn(() => vi.fn()),
+      addLogEntry: vi.fn(),
+      gameEngine: null,
+    };
+    mockAP = { queueAction: vi.fn().mockResolvedValue({ success: true }) };
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
     vi.restoreAllMocks();
     GameDataService.instance = originalGameDataService;
     aiPhaseProcessor.isInitialized = false;
     aiPhaseProcessor.isProcessing = false;
+    aiPhaseProcessor._blockingRetryCount = 0;
     if (aiPhaseProcessor.turnTimer) {
       clearTimeout(aiPhaseProcessor.turnTimer);
       aiPhaseProcessor.turnTimer = null;
@@ -945,32 +972,99 @@ describe('AIPhaseProcessor - Animation blocking diagnostic guard', () => {
     }
   });
 
-  it('bails immediately when animation is unexpectedly blocking', async () => {
-    const mockGSM = {
-      getState: vi.fn().mockReturnValue({
-        currentPlayer: 'player2',
-        turnPhase: 'deployment',
-        passInfo: { player1Passed: false, player2Passed: false },
-        winner: null,
-        gameStage: 'battle',
-        player2: { hand: [], dronesOnBoard: { lane1: [], lane2: [], lane3: [] }, energy: 0 },
-        player1: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } },
-        placedSections: [],
-        opponentPlacedSections: [],
-      }),
-      subscribe: vi.fn(() => vi.fn()),
-      addLogEntry: vi.fn(),
-      gameEngine: null,
-    };
-    const mockAP = { queueAction: vi.fn().mockResolvedValue({ success: true }) };
-
+  it('schedules a 500ms retry when animations are blocking instead of bailing', async () => {
     aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
-      isAnimationBlocking: () => true // always blocking
+      isAnimationBlocking: () => true
     });
 
     await aiPhaseProcessor.executeTurn();
 
-    // Should bail without processing — isProcessing never set to true (early return)
+    // Should NOT be processing (didn't enter the main block)
     expect(aiPhaseProcessor.isProcessing).toBe(false);
+    // Should have scheduled a retry timer
+    expect(aiPhaseProcessor.turnTimer).not.toBeNull();
+    // Retry count should be 1
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(1);
+  });
+
+  it('proceeds after animations clear on retry', async () => {
+    let callCount = 0;
+    aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
+      isAnimationBlocking: () => {
+        callCount++;
+        return callCount <= 1; // blocking on first call, clear on second
+      }
+    });
+
+    // First call — should schedule retry
+    await aiPhaseProcessor.executeTurn();
+    expect(aiPhaseProcessor.turnTimer).not.toBeNull();
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(1);
+
+    // Advance timer to trigger retry
+    await vi.advanceTimersByTimeAsync(500);
+
+    // After retry with animations clear, isProcessing should have been set and released
+    // (the turn executes and finishes via finally block)
+    expect(aiPhaseProcessor.isProcessing).toBe(false);
+    // Counter should be reset on successful entry
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(0);
+  });
+
+  it('aborts after exceeding max retries (20)', async () => {
+    aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
+      isAnimationBlocking: () => true // permanently blocking
+    });
+
+    // Simulate 20 retries
+    for (let i = 0; i < 20; i++) {
+      await aiPhaseProcessor.executeTurn();
+      expect(aiPhaseProcessor._blockingRetryCount).toBe(i + 1);
+      expect(aiPhaseProcessor.turnTimer).not.toBeNull();
+      // Clear timer for next manual call
+      clearTimeout(aiPhaseProcessor.turnTimer);
+      aiPhaseProcessor.turnTimer = null;
+    }
+
+    // 21st call — should abort (counter > 20)
+    await aiPhaseProcessor.executeTurn();
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(0); // reset after abort
+    expect(aiPhaseProcessor.turnTimer).toBeNull(); // no more retries
+  });
+
+  it('resets retry counter on successful entry', async () => {
+    let blocking = true;
+    aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
+      isAnimationBlocking: () => blocking
+    });
+
+    // Accumulate some retries
+    await aiPhaseProcessor.executeTurn();
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(1);
+    clearTimeout(aiPhaseProcessor.turnTimer);
+    aiPhaseProcessor.turnTimer = null;
+
+    await aiPhaseProcessor.executeTurn();
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(2);
+    clearTimeout(aiPhaseProcessor.turnTimer);
+    aiPhaseProcessor.turnTimer = null;
+
+    // Now clear blocking
+    blocking = false;
+    await aiPhaseProcessor.executeTurn();
+
+    // Counter should be reset after successful entry
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(0);
+  });
+
+  it('resets retry counter on cleanup', () => {
+    aiPhaseProcessor._blockingRetryCount = 15;
+    aiPhaseProcessor.initialize(null, [], null, mockAP, mockGSM, {
+      isAnimationBlocking: () => true
+    });
+
+    aiPhaseProcessor.cleanup();
+
+    expect(aiPhaseProcessor._blockingRetryCount).toBe(0);
   });
 });

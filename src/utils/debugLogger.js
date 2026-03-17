@@ -137,6 +137,7 @@ const DEBUG_CONFIG = {
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: true,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
     TRIGGERS: true,                      // Unified trigger system (TriggerProcessor)
+    MINE_WARNING: false,                 // Mine warning hover detection and sound lifecycle
 
     // Single-Player State Management
     SP_SAVE: false,                    // Save/load, profile creation, migration

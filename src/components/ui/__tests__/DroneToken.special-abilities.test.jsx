@@ -156,11 +156,14 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockBlitzDrone} />
       );
 
+      // SpecialAbilityIcons renders in a left-positioned container
       const leftContainer = container.querySelector('[class*="-left-"]');
       expect(leftContainer).toBeInTheDocument();
 
-      const rapidIcon = container.querySelector('[title*="Rapid"]');
-      expect(rapidIcon).toBeInTheDocument();
+      // Tooltip should contain Rapid Response text
+      const tooltipContainer = container.querySelector('.drone-tooltip-container');
+      expect(tooltipContainer).not.toBeNull();
+      expect(tooltipContainer.textContent).toContain('Rapid Response');
     });
 
     it('should show blue color when triggerUsesMap has no usage', () => {
@@ -168,8 +171,9 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, triggerUsesMap: {} }} />
       );
 
-      const rapidIcon = container.querySelector('[title*="available"]');
-      expect(rapidIcon).toBeInTheDocument();
+      // Gauge icon with text-blue-400 class indicates available state
+      const blueIcon = container.querySelector('.text-blue-400');
+      expect(blueIcon).toBeInTheDocument();
     });
 
     it('should show grey color when triggerUsesMap shows Rapid Response used', () => {
@@ -177,8 +181,9 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={{ ...mockBlitzDrone, triggerUsesMap: { 'Rapid Response': 1 } }} />
       );
 
-      const rapidIcon = container.querySelector('[title*="used"]');
-      expect(rapidIcon).toBeInTheDocument();
+      // Gauge icon with text-slate-500 class indicates used state
+      const greyIcon = container.querySelector('.text-slate-500');
+      expect(greyIcon).toBeInTheDocument();
     });
 
     it('should NOT render RAPID icon for non-RAPID drones', () => {
@@ -186,8 +191,9 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStandardDrone} />
       );
 
-      const rapidIcon = container.querySelector('[title*="Rapid"]');
-      expect(rapidIcon).not.toBeInTheDocument();
+      // No tooltip container should exist for standard drones (no effects at all)
+      const tooltipContainer = container.querySelector('.drone-tooltip-container');
+      expect(tooltipContainer).toBeNull();
     });
   });
 
@@ -197,8 +203,10 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStrikerDrone} />
       );
 
-      const assaultIcon = container.querySelector('[title*="Assault"]');
-      expect(assaultIcon).toBeInTheDocument();
+      // Tooltip should contain Assault Protocol text
+      const tooltipContainer = container.querySelector('.drone-tooltip-container');
+      expect(tooltipContainer).not.toBeNull();
+      expect(tooltipContainer.textContent).toContain('Assault Protocol');
     });
 
     it('should show red color when triggerUsesMap has no usage', () => {
@@ -206,8 +214,9 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, triggerUsesMap: {} }} />
       );
 
-      const assaultIcon = container.querySelector('[title*="available"]');
-      expect(assaultIcon).toBeInTheDocument();
+      // Crosshair icon with text-red-400 class indicates available state
+      const redIcon = container.querySelector('.text-red-400');
+      expect(redIcon).toBeInTheDocument();
     });
 
     it('should show grey color when triggerUsesMap shows Assault Protocol used', () => {
@@ -215,8 +224,9 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={{ ...mockStrikerDrone, triggerUsesMap: { 'Assault Protocol': 1 } }} />
       );
 
-      const assaultIcon = container.querySelector('[title*="used"]');
-      expect(assaultIcon).toBeInTheDocument();
+      // Both the SpecialAbilityIcons Crosshair and tooltip Crosshair show grey when used
+      const greyIcons = container.querySelectorAll('.text-slate-500');
+      expect(greyIcons.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should NOT render ASSAULT icon for non-ASSAULT drones', () => {
@@ -224,8 +234,8 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockStandardDrone} />
       );
 
-      const assaultIcon = container.querySelector('[title*="Assault"]');
-      expect(assaultIcon).not.toBeInTheDocument();
+      const tooltipContainer = container.querySelector('.drone-tooltip-container');
+      expect(tooltipContainer).toBeNull();
     });
   });
 
@@ -251,11 +261,13 @@ describe('DroneToken - SpecialAbilityIcons', () => {
         <DroneToken {...defaultProps} drone={mockDualAbilityDrone} />
       );
 
-      const rapidIcon = container.querySelector('[title*="Rapid"]');
-      const assaultIcon = container.querySelector('[title*="Assault"]');
-      expect(rapidIcon).toBeInTheDocument();
-      expect(assaultIcon).toBeInTheDocument();
+      // Tooltip should contain both ability labels
+      const tooltipContainer = container.querySelector('.drone-tooltip-container');
+      expect(tooltipContainer).not.toBeNull();
+      expect(tooltipContainer.textContent).toContain('Rapid Response');
+      expect(tooltipContainer.textContent).toContain('Assault Protocol');
 
+      // SpecialAbilityIcons uses flex-col for vertical stacking
       const flexContainer = container.querySelector('[class*="flex-col"]');
       expect(flexContainer).toBeInTheDocument();
     });

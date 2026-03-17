@@ -12,7 +12,7 @@ import { Ban, Move, Swords, Shield, CirclePause, Link2, ShieldOff } from 'lucide
  * NoEntryIcon - Overlays Ban icon on base icon
  * Used for Cannot Move, Cannot Attack, Cannot Intercept
  */
-const NoEntryIcon = ({ baseIcon, size = 10, isExhausted = false }) => (
+export const NoEntryIcon = ({ baseIcon, size = 10, isExhausted = false }) => (
   <div className="relative flex items-center justify-center">
     {React.cloneElement(baseIcon, {
       size,
@@ -43,7 +43,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.cannotAttack) {
     statuses.push({
       key: 'cannot-attack',
-      title: 'Cannot Attack',
       icon: <NoEntryIcon baseIcon={<Swords />} isExhausted={drone.isExhausted} />
     });
   }
@@ -52,7 +51,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.cannotMove) {
     statuses.push({
       key: 'cannot-move',
-      title: 'Cannot Move',
       icon: <NoEntryIcon baseIcon={<Move />} isExhausted={drone.isExhausted} />
     });
   }
@@ -61,7 +59,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.cannotIntercept) {
     statuses.push({
       key: 'cannot-intercept',
-      title: 'Cannot Intercept',
       icon: <NoEntryIcon baseIcon={<Shield />} isExhausted={drone.isExhausted} />
     });
   }
@@ -70,7 +67,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.isSnared) {
     statuses.push({
       key: 'snared',
-      title: 'Snared - Next move will be cancelled',
       icon: (
         <Link2
           size={12}
@@ -84,7 +80,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.isSuppressed) {
     statuses.push({
       key: 'suppressed',
-      title: 'Suppressed - Next attack will be cancelled',
       icon: (
         <ShieldOff
           size={12}
@@ -98,7 +93,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
   if (drone.doesNotReady) {
     statuses.push({
       key: 'does-not-ready',
-      title: 'Does Not Ready Next Phase',
       icon: (
         <CirclePause
           size={14}
@@ -123,7 +117,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
         <div
           key={status.key}
           className="w-6 h-6 rounded-full flex items-center justify-center border bg-slate-800 border-slate-500"
-          title={status.title}
         >
           {status.icon}
         </div>
@@ -131,7 +124,6 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
       {overflow > 0 && (
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center border bg-slate-800 border-slate-500 text-xs text-white font-bold"
-          title={`+${overflow} more status effects`}
         >
           +{overflow}
         </div>

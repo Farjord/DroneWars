@@ -97,6 +97,31 @@ export const LANE_CONTROL_FILTERS = Object.freeze({
 });
 
 /**
+ * Trigger timing — which turn phase allows the trigger to fire.
+ * OWN_TURN_ONLY: only fires when the trigger owner is the current turn player
+ * ANY_TURN: fires regardless of whose turn it is (default when not specified)
+ */
+export const TRIGGER_TIMING = Object.freeze({
+  OWN_TURN_ONLY: 'OWN_TURN_ONLY',
+  ANY_TURN: 'ANY_TURN'
+});
+
+/**
+ * Effect targets — controls whose perspective the effect executes from.
+ * Overrides actingPlayerId in the effect context.
+ * TRIGGER_OWNER: actingPlayerId = reactorPlayerId (default)
+ * TRIGGER_OPPONENT: actingPlayerId = opponent of reactorPlayerId
+ *
+ * NOTE: This does NOT mean "who gets directly affected." For example,
+ * DRAIN_ENERGY with effectTarget: TRIGGER_OWNER means "execute drain FROM
+ * the trigger owner's perspective" — drains the owner's opponent.
+ */
+export const EFFECT_TARGETS = Object.freeze({
+  TRIGGER_OWNER: 'TRIGGER_OWNER',
+  TRIGGER_OPPONENT: 'TRIGGER_OPPONENT'
+});
+
+/**
  * Maximum cascade chain depth — safety net against unbounded recursion.
  * Should never trigger in normal gameplay.
  */
