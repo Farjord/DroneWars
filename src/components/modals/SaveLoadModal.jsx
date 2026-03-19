@@ -35,8 +35,6 @@ const SaveLoadModal = ({ onClose }) => {
       const serialized = SaveGameService.serialize(
         saveData.playerProfile,
         saveData.inventory,
-        saveData.droneInstances,
-        saveData.shipComponentInstances,
         saveData.discoveredCards,
         saveData.shipSlots,
         saveData.currentRunState,

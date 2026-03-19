@@ -16,7 +16,6 @@ vi.mock('../../../managers/GameStateManager.js', () => {
     getState: vi.fn(),
     setState: vi.fn(),
     get: vi.fn(() => null),
-    getDroneDamageStateForSlot: vi.fn(() => ({})),
     actionProcessor: {
       setAIPhaseProcessor: vi.fn(),
       startResponseCapture: vi.fn(),

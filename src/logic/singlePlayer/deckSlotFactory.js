@@ -6,10 +6,7 @@ import { starterDeck } from '../../data/playerDeckData.js';
  * Returns null if insufficient credits.
  * Caller is responsible for applying state via gameStateManager.
  */
-export const createCopyStarterDeckSlot = (
-  slotId, singlePlayerProfile, singlePlayerInventory,
-  singlePlayerDroneInstances, singlePlayerShipComponentInstances
-) => {
+export const createCopyStarterDeckSlot = (slotId, singlePlayerProfile) => {
   const cost = ECONOMY.STARTER_DECK_COPY_COST ?? 0;
   const credits = singlePlayerProfile?.credits || 0;
 
@@ -20,50 +17,15 @@ export const createCopyStarterDeckSlot = (
     credits: singlePlayerProfile.credits - cost
   };
 
-  const newInventory = { ...singlePlayerInventory };
-  (starterDeck.decklist || []).forEach(card => {
-    newInventory[card.id] = (newInventory[card.id] || 0) + card.quantity;
-  });
-
-  if (starterDeck.shipId) {
-    newInventory[starterDeck.shipId] = (newInventory[starterDeck.shipId] || 0) + 1;
-  }
-
-  const newDroneInstances = [...(singlePlayerDroneInstances || [])];
-  (starterDeck.droneSlots || []).forEach(slot => {
-    if (slot.assignedDrone) {
-      newDroneInstances.push({
-        id: `DRONE_${crypto.randomUUID()}`,
-        droneName: slot.assignedDrone,
-        shipSlotId: slotId
-      });
-    }
-  });
-
-  const newComponentInstances = [...(singlePlayerShipComponentInstances || [])];
-  Object.keys(starterDeck.shipComponents || {}).forEach(compId => {
-    newComponentInstances.push({
-      id: `COMP_${crypto.randomUUID()}`,
-      componentId: compId,
-      shipSlotId: slotId,
-      currentHull: 10,
-      maxHull: 10
-    });
-  });
-
   const deckData = {
     name: `Ship ${slotId}`,
     decklist: starterDeck.decklist.map(card => ({ id: card.id, quantity: card.quantity })),
     droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
     shipComponents: { ...starterDeck.shipComponents },
-    shipId: starterDeck.shipId
   };
 
   return {
     profileUpdate: newProfile,
-    inventoryUpdate: newInventory,
-    droneInstances: newDroneInstances,
-    componentInstances: newComponentInstances,
     deckData
   };
 };
@@ -87,9 +49,7 @@ export const createEmptyDeckSlot = (slotId, singlePlayerProfile) => {
   const deckData = {
     name: `Ship ${slotId}`,
     decklist: [],
-    drones: [],
     shipComponents: {},
-    shipId: null
   };
 
   return { profileUpdate: newProfile, deckData };

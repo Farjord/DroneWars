@@ -23,8 +23,6 @@ describe('validateSaveFile', () => {
       ['saveVersion', 'Missing saveVersion'],
       ['playerProfile', 'Missing playerProfile'],
       ['inventory', 'Missing inventory'],
-      ['droneInstances', 'Missing droneInstances'],
-      ['shipComponentInstances', 'Missing shipComponentInstances'],
       ['discoveredCards', 'Missing discoveredCards'],
       ['shipSlots', 'Missing shipSlots'],
     ];
@@ -102,8 +100,6 @@ describe('validateSaveFile', () => {
 
   test('non-array field produces type error', () => {
     const arrayFields = [
-      ['droneInstances', 'droneInstances must be an array'],
-      ['shipComponentInstances', 'shipComponentInstances must be an array'],
       ['discoveredCards', 'discoveredCards must be an array'],
     ];
     for (const [field, expectedError] of arrayFields) {

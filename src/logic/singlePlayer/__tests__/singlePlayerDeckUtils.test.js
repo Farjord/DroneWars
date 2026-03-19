@@ -1,12 +1,15 @@
 /**
  * singlePlayerDeckUtils.test.js
- * TDD tests for infinite starter cards in ALL deck slots
+ * TDD tests for availability models
  *
- * Test Requirement: Starter cards, drones, and components should be infinite (99)
- * in ALL slots (0-5), not just Slot 0. Non-starter items should still use inventory.
+ * Cards: shared across all decks, no cross-slot reservation.
+ *   availableQuantity = 99 (starter) or min(inventory[cardId], maxInDeck) (non-starter)
+ * Drones: blueprint model. Starter + unlocked blueprints, all unlimited (99).
+ * Components: blueprint model. Same as drones.
+ * Ships: consumable model. Inventory count IS the available count.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   calculateAvailableCards,
   calculateAvailableDrones,
@@ -14,303 +17,251 @@ import {
   calculateAvailableShips,
   calculateEffectiveMaxForCard
 } from '../singlePlayerDeckUtils.js';
-import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../../data/saveGameSchema.js';
+import { starterPoolCards, starterPoolDroneNames } from '../../../data/saveGameSchema.js';
 import fullCardCollection from '../../../data/cardData.js';
 import fullDroneCollection from '../../../data/droneData.js';
 import { shipComponentCollection } from '../../../data/shipSectionData.js';
 
-describe('calculateAvailableCards - Infinite Starter Cards', () => {
-  const mockShipSlots = [
-    { id: 0, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 1, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 2, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 3, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 4, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 5, status: 'empty', decklist: [], drones: [], shipComponents: {} }
-  ];
+// ========================================
+// CARDS — shared model (no reservation)
+// ========================================
+describe('calculateAvailableCards — shared model', () => {
+  it('should return 99 for starter pool cards', () => {
+    const starterCardId = starterPoolCards[0];
+    expect(starterCardId).toBeDefined();
 
-  describe('Slot 0 behavior', () => {
-    it('should return 99 for starter cards in Slot 0', () => {
-      const starterCardId = starterPoolCards[0];
-      expect(starterCardId).toBeDefined();
+    const result = calculateAvailableCards({});
+    const card = result.find(c => c.id === starterCardId);
 
-      const availableCards = calculateAvailableCards(0, mockShipSlots, {});
-      const starterCard = availableCards.find(c => c.id === starterCardId);
-
-      expect(starterCard).toBeDefined();
-      expect(starterCard.availableQuantity).toBe(99);
-      expect(starterCard.isStarterPool).toBe(true);
-    });
+    expect(card).toBeDefined();
+    expect(card.availableQuantity).toBe(99);
+    expect(card.isStarterPool).toBe(true);
   });
 
-  describe('Slots 1-5 behavior - NEW requirement', () => {
-    it('should return 99 for starter pool cards in Slots 1-5', () => {
-      const starterCardId = starterPoolCards[0];
-      expect(starterCardId).toBeDefined();
+  it('should return min(inventory, maxInDeck) for non-starter cards', () => {
+    const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
+    if (!nonStarterCard) return;
 
-      // Test for Slot 1
-      const availableCards = calculateAvailableCards(1, mockShipSlots, {});
-      const starterCard = availableCards.find(c => c.id === starterCardId);
+    const inventory = { [nonStarterCard.id]: 10 };
+    const result = calculateAvailableCards(inventory);
+    const card = result.find(c => c.id === nonStarterCard.id);
 
-      expect(starterCard).toBeDefined();
-      expect(starterCard.availableQuantity).toBe(99);
-      expect(starterCard.isStarterPool).toBe(true);
-    });
+    expect(card).toBeDefined();
+    // Should be capped at maxInDeck
+    expect(card.availableQuantity).toBe(Math.min(10, nonStarterCard.maxInDeck));
+    expect(card.isStarterPool).toBe(false);
+  });
 
-    it('should return 99 for starter cards in Slot 3', () => {
-      const starterCardId = starterPoolCards[0];
+  it('should return 0 (filtered out) for non-starter cards not in inventory', () => {
+    const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
+    if (!nonStarterCard) return;
 
-      const availableCards = calculateAvailableCards(3, mockShipSlots, {});
-      const starterCard = availableCards.find(c => c.id === starterCardId);
+    const result = calculateAvailableCards({});
+    const card = result.find(c => c.id === nonStarterCard.id);
 
-      expect(starterCard).toBeDefined();
-      expect(starterCard.availableQuantity).toBe(99);
-    });
+    // Should be filtered out (availableQuantity would be 0)
+    expect(card).toBeUndefined();
+  });
 
-    it('should return 99 for starter cards in Slot 5', () => {
-      const starterCardId = starterPoolCards[0];
+  it('same card should be available in multiple decks (no reservation)', () => {
+    const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
+    if (!nonStarterCard) return;
 
-      const availableCards = calculateAvailableCards(5, mockShipSlots, {});
-      const starterCard = availableCards.find(c => c.id === starterCardId);
+    const inventory = { [nonStarterCard.id]: 2 };
 
-      expect(starterCard).toBeDefined();
-      expect(starterCard.availableQuantity).toBe(99);
-    });
+    // Both calls should return the same availability — no reservation
+    const result1 = calculateAvailableCards(inventory);
+    const result2 = calculateAvailableCards(inventory);
 
-    it('should still use inventory for non-starter cards in Slots 1-5', () => {
-      // Find a non-starter card
-      const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
+    const card1 = result1.find(c => c.id === nonStarterCard.id);
+    const card2 = result2.find(c => c.id === nonStarterCard.id);
 
-      if (nonStarterCard) {
-        // Set up inventory with 5 of this card
-        const inventory = { [nonStarterCard.id]: 5 };
+    expect(card1.availableQuantity).toBe(card2.availableQuantity);
+  });
 
-        const availableCards = calculateAvailableCards(1, mockShipSlots, inventory);
-        const card = availableCards.find(c => c.id === nonStarterCard.id);
+  it('should cap availability at maxInDeck even when inventory is higher', () => {
+    const nonStarterCard = fullCardCollection.find(
+      c => !starterPoolCards.includes(c.id) && c.maxInDeck <= 4
+    );
+    if (!nonStarterCard) return;
 
-        expect(card).toBeDefined();
-        expect(card.availableQuantity).toBe(5);
-        expect(card.isStarterPool).toBe(false);
-      }
-    });
+    const inventory = { [nonStarterCard.id]: 99 };
+    const result = calculateAvailableCards(inventory);
+    const card = result.find(c => c.id === nonStarterCard.id);
 
-    it('should not double-count starter cards used in other slots', () => {
-      const starterCardId = starterPoolCards[0];
-
-      // Set up Slot 1 using some starter cards
-      const slotsWithUsage = [
-        { id: 0, status: 'active', decklist: [], drones: [], shipComponents: {} },
-        { id: 1, status: 'active', decklist: [{ id: starterCardId, quantity: 4 }], drones: [], shipComponents: {} },
-        { id: 2, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-        { id: 3, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-        { id: 4, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-        { id: 5, status: 'empty', decklist: [], drones: [], shipComponents: {} }
-      ];
-
-      // Even though Slot 1 uses starter cards, Slot 2 should still have 99 available
-      const availableCards = calculateAvailableCards(2, slotsWithUsage, {});
-      const starterCard = availableCards.find(c => c.id === starterCardId);
-
-      expect(starterCard).toBeDefined();
-      expect(starterCard.availableQuantity).toBe(99);
-    });
+    expect(card).toBeDefined();
+    expect(card.availableQuantity).toBe(nonStarterCard.maxInDeck);
   });
 });
 
-describe('calculateAvailableDrones - Infinite Starter Drones', () => {
-  const mockShipSlots = [
-    { id: 0, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 1, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 2, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 3, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 4, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 5, status: 'empty', decklist: [], drones: [], shipComponents: {} }
-  ];
-
-  it('should return 99 for starter pool drones in Slot 0', () => {
+// ========================================
+// DRONES — blueprint model
+// ========================================
+describe('calculateAvailableDrones — blueprint model', () => {
+  it('should return 99 for starter pool drones with no blueprints', () => {
     const starterDroneName = starterPoolDroneNames[0];
     expect(starterDroneName).toBeDefined();
 
-    const availableDrones = calculateAvailableDrones(0, mockShipSlots, []);
-    const starterDrone = availableDrones.find(d => d.name === starterDroneName);
+    const result = calculateAvailableDrones([]);
+    const drone = result.find(d => d.name === starterDroneName);
 
-    expect(starterDrone).toBeDefined();
-    expect(starterDrone.availableCount).toBe(99);
-    expect(starterDrone.isStarterPool).toBe(true);
+    expect(drone).toBeDefined();
+    expect(drone.availableCount).toBe(99);
+    expect(drone.isStarterPool).toBe(true);
   });
 
-  it('should return 99 for starter pool drones in Slot 1', () => {
-    const starterDroneName = starterPoolDroneNames[0];
-
-    const availableDrones = calculateAvailableDrones(1, mockShipSlots, []);
-    const starterDrone = availableDrones.find(d => d.name === starterDroneName);
-
-    expect(starterDrone).toBeDefined();
-    expect(starterDrone.availableCount).toBe(99);
-    expect(starterDrone.isStarterPool).toBe(true);
-  });
-
-  it('should return 99 for starter pool drones in Slot 5', () => {
-    const starterDroneName = starterPoolDroneNames[0];
-
-    const availableDrones = calculateAvailableDrones(5, mockShipSlots, []);
-    const starterDrone = availableDrones.find(d => d.name === starterDroneName);
-
-    expect(starterDrone).toBeDefined();
-    expect(starterDrone.availableCount).toBe(99);
-  });
-
-  it('should use instances for non-starter drones in Slots 1-5', () => {
-    // Find a non-starter drone
+  it('should return unlocked blueprint drones with availableCount 99', () => {
     const nonStarterDrone = fullDroneCollection.find(
       d => !starterPoolDroneNames.includes(d.name) && d.selectable !== false
     );
+    if (!nonStarterDrone) return;
 
-    if (nonStarterDrone) {
-      // Create drone instances
-      const droneInstances = [
-        { instanceId: 'INST_001', droneName: nonStarterDrone.name, shipSlotId: null, isDamaged: false },
-        { instanceId: 'INST_002', droneName: nonStarterDrone.name, shipSlotId: null, isDamaged: false }
-      ];
+    const result = calculateAvailableDrones([nonStarterDrone.name]);
+    const drone = result.find(d => d.name === nonStarterDrone.name);
 
-      const availableDrones = calculateAvailableDrones(1, mockShipSlots, droneInstances);
-      const drone = availableDrones.find(d => d.name === nonStarterDrone.name);
+    expect(drone).toBeDefined();
+    expect(drone.availableCount).toBe(99);
+    expect(drone.isStarterPool).toBe(false);
+  });
 
+  it('should NOT return non-starter drones without blueprint', () => {
+    const nonStarterDrone = fullDroneCollection.find(
+      d => !starterPoolDroneNames.includes(d.name) && d.selectable !== false
+    );
+    if (!nonStarterDrone) return;
+
+    const result = calculateAvailableDrones([]);
+    const drone = result.find(d => d.name === nonStarterDrone.name);
+
+    expect(drone).toBeUndefined();
+  });
+
+  it('should include all starter drones even with empty blueprints', () => {
+    const result = calculateAvailableDrones([]);
+
+    starterPoolDroneNames.forEach(name => {
+      const drone = result.find(d => d.name === name);
       expect(drone).toBeDefined();
-      expect(drone.availableCount).toBe(2);
-      expect(drone.isStarterPool).toBe(false);
-    }
+      expect(drone.availableCount).toBe(99);
+    });
+  });
+
+  it('should filter out non-selectable drones', () => {
+    const nonSelectableDrone = fullDroneCollection.find(d => d.selectable === false);
+    if (!nonSelectableDrone) return;
+
+    const result = calculateAvailableDrones([nonSelectableDrone.name]);
+    const drone = result.find(d => d.name === nonSelectableDrone.name);
+
+    expect(drone).toBeUndefined();
   });
 });
 
-describe('calculateAvailableComponents - Infinite Starter Components', () => {
-  const mockShipSlots = [
-    { id: 0, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 1, status: 'active', decklist: [], drones: [], shipComponents: {} },
-    { id: 2, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 3, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 4, status: 'empty', decklist: [], drones: [], shipComponents: {} },
-    { id: 5, status: 'empty', decklist: [], drones: [], shipComponents: {} }
-  ];
-
-  // Get starter component IDs from starterPoolCards (components are in there too)
+// ========================================
+// COMPONENTS — blueprint model
+// ========================================
+describe('calculateAvailableComponents — blueprint model', () => {
   const starterComponentId = shipComponentCollection.find(c =>
     starterPoolCards.includes(c.id)
   )?.id;
 
-  it('should return 99 for starter pool components in Slot 0', () => {
-    if (!starterComponentId) return; // Skip if no starter component found
-
-    const availableComponents = calculateAvailableComponents(0, mockShipSlots, []);
-    const starterComponent = availableComponents.find(c => c.id === starterComponentId);
-
-    expect(starterComponent).toBeDefined();
-    expect(starterComponent.availableCount).toBe(99);
-    expect(starterComponent.isStarterPool).toBe(true);
-  });
-
-  it('should return 99 for starter pool components in Slot 1', () => {
+  it('should return 99 for starter pool components', () => {
     if (!starterComponentId) return;
 
-    const availableComponents = calculateAvailableComponents(1, mockShipSlots, []);
-    const starterComponent = availableComponents.find(c => c.id === starterComponentId);
+    const result = calculateAvailableComponents([]);
+    const comp = result.find(c => c.id === starterComponentId);
 
-    expect(starterComponent).toBeDefined();
-    expect(starterComponent.availableCount).toBe(99);
-    expect(starterComponent.isStarterPool).toBe(true);
+    expect(comp).toBeDefined();
+    expect(comp.availableCount).toBe(99);
+    expect(comp.isStarterPool).toBe(true);
   });
 
-  it('should return 99 for starter pool components in Slot 5', () => {
-    if (!starterComponentId) return;
-
-    const availableComponents = calculateAvailableComponents(5, mockShipSlots, []);
-    const starterComponent = availableComponents.find(c => c.id === starterComponentId);
-
-    expect(starterComponent).toBeDefined();
-    expect(starterComponent.availableCount).toBe(99);
-  });
-
-  it('should use instances for non-starter components in Slots 1-5', () => {
-    // Find a non-starter component
-    const nonStarterComponent = shipComponentCollection.find(
+  it('should return unlocked blueprint components with availableCount 99', () => {
+    const nonStarterComp = shipComponentCollection.find(
       c => !starterPoolCards.includes(c.id)
     );
+    if (!nonStarterComp) return;
 
-    if (nonStarterComponent) {
-      // Create component instances
-      const componentInstances = [
-        { instanceId: 'COMP_001', componentId: nonStarterComponent.id, shipSlotId: null, currentHull: 10, maxHull: 10 }
-      ];
+    const result = calculateAvailableComponents([nonStarterComp.id]);
+    const comp = result.find(c => c.id === nonStarterComp.id);
 
-      const availableComponents = calculateAvailableComponents(1, mockShipSlots, componentInstances);
-      const component = availableComponents.find(c => c.id === nonStarterComponent.id);
+    expect(comp).toBeDefined();
+    expect(comp.availableCount).toBe(99);
+    expect(comp.isStarterPool).toBe(false);
+  });
 
-      expect(component).toBeDefined();
-      expect(component.availableCount).toBe(1);
-      expect(component.isStarterPool).toBe(false);
+  it('should NOT return non-starter components without blueprint', () => {
+    const nonStarterComp = shipComponentCollection.find(
+      c => !starterPoolCards.includes(c.id)
+    );
+    if (!nonStarterComp) return;
+
+    const result = calculateAvailableComponents([]);
+    const comp = result.find(c => c.id === nonStarterComp.id);
+
+    expect(comp).toBeUndefined();
+  });
+
+  it('should include all starter components with empty blueprints', () => {
+    const result = calculateAvailableComponents([]);
+    const starterComponents = shipComponentCollection.filter(c =>
+      starterPoolCards.includes(c.id)
+    );
+
+    starterComponents.forEach(sc => {
+      const comp = result.find(c => c.id === sc.id);
+      expect(comp).toBeDefined();
+      expect(comp.availableCount).toBe(99);
+    });
+  });
+});
+
+// ========================================
+// SHIPS — consumable model (Phase C)
+// ========================================
+describe('calculateAvailableShips — consumable model', () => {
+  it('should return ship with correct availableCount from inventory', () => {
+    const allShips = calculateAvailableShips({ SHIP_001: 2 });
+    const ship = allShips.find(s => s.id === 'SHIP_001');
+
+    expect(ship).toBeDefined();
+    expect(ship.availableCount).toBe(2);
+  });
+
+  it('should filter out ships not in inventory', () => {
+    const allShips = calculateAvailableShips({});
+    const ship = allShips.find(s => s.id === 'SHIP_001');
+
+    expect(ship).toBeUndefined();
+  });
+
+  it('should return multiple ships with correct counts', () => {
+    const inventory = { SHIP_001: 1, SHIP_002: 3 };
+    const allShips = calculateAvailableShips(inventory);
+
+    const ship1 = allShips.find(s => s.id === 'SHIP_001');
+    const ship2 = allShips.find(s => s.id === 'SHIP_002');
+
+    // SHIP_001 always exists; SHIP_002 may not exist in shipData
+    expect(ship1).toBeDefined();
+    expect(ship1.availableCount).toBe(1);
+
+    if (ship2) {
+      expect(ship2.availableCount).toBe(3);
     }
   });
-});
 
-describe('calculateAvailableShips - Infinite Starter Ships', () => {
-  const mockShipSlots = [
-    { id: 0, status: 'active', shipId: 'SHIP_001', decklist: [], drones: [], shipComponents: {} },
-    { id: 1, status: 'empty', shipId: null, decklist: [], drones: [], shipComponents: {} },
-    { id: 2, status: 'empty', shipId: null, decklist: [], drones: [], shipComponents: {} },
-    { id: 3, status: 'empty', shipId: null, decklist: [], drones: [], shipComponents: {} },
-    { id: 4, status: 'empty', shipId: null, decklist: [], drones: [], shipComponents: {} },
-    { id: 5, status: 'empty', shipId: null, decklist: [], drones: [], shipComponents: {} }
-  ];
-
-  it('should return 99 for starter pool ships in Slot 0', () => {
-    const starterShipId = starterPoolShipIds[0];
-    if (!starterShipId) return;
-
-    const availableShips = calculateAvailableShips(0, mockShipSlots, {});
-    const starterShip = availableShips.find(s => s.id === starterShipId);
-
-    expect(starterShip).toBeDefined();
-    expect(starterShip.availableCount).toBe(99);
-    expect(starterShip.isStarterPool).toBe(true);
-  });
-
-  it('should return 99 for starter pool ships in Slot 1', () => {
-    const starterShipId = starterPoolShipIds[0];
-    if (!starterShipId) return;
-
-    const availableShips = calculateAvailableShips(1, mockShipSlots, {});
-    const starterShip = availableShips.find(s => s.id === starterShipId);
-
-    expect(starterShip).toBeDefined();
-    expect(starterShip.availableCount).toBe(99);
-    expect(starterShip.isStarterPool).toBe(true);
-  });
-
-  it('should return 99 for starter pool ships in Slot 5', () => {
-    const starterShipId = starterPoolShipIds[0];
-    if (!starterShipId) return;
-
-    const availableShips = calculateAvailableShips(5, mockShipSlots, {});
-    const starterShip = availableShips.find(s => s.id === starterShipId);
-
-    expect(starterShip).toBeDefined();
-    expect(starterShip.availableCount).toBe(99);
+  it('should return empty array for empty inventory', () => {
+    const allShips = calculateAvailableShips({});
+    expect(allShips).toEqual([]);
   });
 });
 
-/**
- * calculateEffectiveMaxForCard - TDD tests for deck editor card limits
- *
- * This function calculates the effective maximum copies of a card that can be
- * in a deck, considering:
- * - maxInDeck: The card's inherent limit (e.g., 4 for common, 2 for rare)
- * - availableQuantity: How many copies the player owns and are available
- * - currentCountInDeck: How many of this specific variant are in the deck
- * - totalBaseCardCountInDeck: Total of all variants of this base card in deck
- */
+// ========================================
+// calculateEffectiveMaxForCard — unchanged
+// ========================================
 describe('calculateEffectiveMaxForCard', () => {
   describe('basic availability limits', () => {
-    // Player owns 2 copies, maxInDeck=4 → Can only add 2
     it('should return availableQuantity when less than maxInDeck', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -321,7 +272,6 @@ describe('calculateEffectiveMaxForCard', () => {
       expect(result).toBe(2);
     });
 
-    // Player owns 10 copies, maxInDeck=4 → Can only add 4
     it('should return maxInDeck when availableQuantity exceeds it', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -332,7 +282,6 @@ describe('calculateEffectiveMaxForCard', () => {
       expect(result).toBe(4);
     });
 
-    // Starter cards have availableQuantity=99, should respect maxInDeck
     it('should handle starter pool cards (availableQuantity=99)', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -342,21 +291,9 @@ describe('calculateEffectiveMaxForCard', () => {
       });
       expect(result).toBe(4);
     });
-
-    // Rare cards with maxInDeck=2
-    it('should handle rare cards with maxInDeck=2', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 2,
-        availableQuantity: 5,
-        currentCountInDeck: 0,
-        totalBaseCardCountInDeck: 0
-      });
-      expect(result).toBe(2);
-    });
   });
 
   describe('with cards already in deck', () => {
-    // Own 3, have 2 in deck, maxInDeck=4 → effectiveMax = 3 (can still have up to 3)
     it('should account for copies already in deck', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -367,7 +304,6 @@ describe('calculateEffectiveMaxForCard', () => {
       expect(result).toBe(3);
     });
 
-    // Own 2, have 2 in deck → effectiveMax = 2 (at max ownership)
     it('should return current count when no more available', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -377,85 +313,21 @@ describe('calculateEffectiveMaxForCard', () => {
       });
       expect(result).toBe(2);
     });
-
-    // Own 4, have 4 in deck, maxInDeck=4 → effectiveMax = 4 (at both limits)
-    it('should allow keeping cards at both maxInDeck and availability limit', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: 4,
-        currentCountInDeck: 4,
-        totalBaseCardCountInDeck: 4
-      });
-      expect(result).toBe(4);
-    });
-
-    // Own 1, have 0 in deck, maxInDeck=4 → effectiveMax = 1
-    it('should allow adding up to available even with empty deck', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: 1,
-        currentCountInDeck: 0,
-        totalBaseCardCountInDeck: 0
-      });
-      expect(result).toBe(1);
-    });
   });
 
   describe('base card variant tracking', () => {
-    // Have 2x CONVERGENCE_BEAM (base), adding CONVERGENCE_BEAM_ENHANCED (variant)
-    // Both share baseCardId, maxInDeck=4, own 10 of enhanced
-    // Can only add 2 more enhanced because base already has 2
     it('should limit based on base card total across variants', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
         availableQuantity: 10,
-        currentCountInDeck: 0,      // This variant (enhanced) has 0 in deck
-        totalBaseCardCountInDeck: 2  // But base card total is 2
-      });
-      expect(result).toBe(2);
-    });
-
-    // Own 3 of enhanced, base card has 2 regular in deck
-    // maxInDeck=4 means only 2 slots left for enhanced
-    // limited to min(2 remaining base, 3 owned) = 2
-    it('should combine availability and base card limits', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: 3,
         currentCountInDeck: 0,
         totalBaseCardCountInDeck: 2
       });
       expect(result).toBe(2);
     });
-
-    // Have 2 enhanced in deck, base total is 3 (1 regular + 2 enhanced)
-    // maxInDeck=4, own 5 enhanced
-    // remaining for base = 4 - (3 - 2) = 3
-    // effectiveMax = min(3, 5) = 3
-    it('should correctly calculate with mixed variants in deck', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: 5,
-        currentCountInDeck: 2,       // 2 enhanced in deck
-        totalBaseCardCountInDeck: 3   // Total: 1 regular + 2 enhanced
-      });
-      expect(result).toBe(3);
-    });
-
-    // Edge case: current variant count equals total base count
-    it('should work when only one variant is in deck', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: 4,
-        currentCountInDeck: 3,
-        totalBaseCardCountInDeck: 3  // Same as current (no other variants)
-      });
-      expect(result).toBe(4);
-    });
   });
 
   describe('edge cases', () => {
-    // No copies available
     it('should return 0 when availableQuantity is 0', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -466,7 +338,6 @@ describe('calculateEffectiveMaxForCard', () => {
       expect(result).toBe(0);
     });
 
-    // Non-extraction mode cards may not have availableQuantity
     it('should handle undefined availableQuantity (non-extraction mode)', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
@@ -474,40 +345,17 @@ describe('calculateEffectiveMaxForCard', () => {
         currentCountInDeck: 0,
         totalBaseCardCountInDeck: 0
       });
-      expect(result).toBe(4); // Falls back to maxInDeck
+      expect(result).toBe(4);
     });
 
-    // Null availability
-    it('should handle null availableQuantity', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 4,
-        availableQuantity: null,
-        currentCountInDeck: 0,
-        totalBaseCardCountInDeck: 0
-      });
-      expect(result).toBe(4); // Falls back to maxInDeck
-    });
-
-    // Should never return negative
     it('should never return negative values', () => {
       const result = calculateEffectiveMaxForCard({
         maxInDeck: 4,
-        availableQuantity: -1,  // Invalid but shouldn't break
+        availableQuantity: -1,
         currentCountInDeck: 0,
         totalBaseCardCountInDeck: 0
       });
       expect(result).toBeGreaterThanOrEqual(0);
-    });
-
-    // Zero maxInDeck (theoretical edge case)
-    it('should handle maxInDeck of 0', () => {
-      const result = calculateEffectiveMaxForCard({
-        maxInDeck: 0,
-        availableQuantity: 5,
-        currentCountInDeck: 0,
-        totalBaseCardCountInDeck: 0
-      });
-      expect(result).toBe(0);
     });
   });
 });

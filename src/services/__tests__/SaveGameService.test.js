@@ -38,8 +38,6 @@ describe('SaveGameService - Quick Deployments', () => {
 
   const mockPlayerProfile = { credits: 100, gameSeed: 12345 };
   const mockInventory = {};
-  const mockDroneInstances = [];
-  const mockShipComponentInstances = [];
   const mockDiscoveredCards = [];
   const mockShipSlots = [];
 
@@ -48,8 +46,6 @@ describe('SaveGameService - Quick Deployments', () => {
       const result = SaveGameService.serialize(
         mockPlayerProfile,
         mockInventory,
-        mockDroneInstances,
-        mockShipComponentInstances,
         mockDiscoveredCards,
         mockShipSlots,
         null,
@@ -64,8 +60,6 @@ describe('SaveGameService - Quick Deployments', () => {
       const result = SaveGameService.serialize(
         mockPlayerProfile,
         mockInventory,
-        mockDroneInstances,
-        mockShipComponentInstances,
         mockDiscoveredCards,
         mockShipSlots
       );
@@ -77,8 +71,6 @@ describe('SaveGameService - Quick Deployments', () => {
       const result = SaveGameService.serialize(
         mockPlayerProfile,
         mockInventory,
-        mockDroneInstances,
-        mockShipComponentInstances,
         mockDiscoveredCards,
         mockShipSlots,
         null,
@@ -97,8 +89,6 @@ describe('SaveGameService - Quick Deployments', () => {
         saveVersion: '1.0',
         playerProfile: mockPlayerProfile,
         inventory: mockInventory,
-        droneInstances: mockDroneInstances,
-        shipComponentInstances: mockShipComponentInstances,
         discoveredCards: mockDiscoveredCards,
         shipSlots: mockShipSlots,
         currentRunState: null,
@@ -116,8 +106,6 @@ describe('SaveGameService - Quick Deployments', () => {
         saveVersion: '1.0',
         playerProfile: mockPlayerProfile,
         inventory: mockInventory,
-        droneInstances: mockDroneInstances,
-        shipComponentInstances: mockShipComponentInstances,
         discoveredCards: mockDiscoveredCards,
         shipSlots: mockShipSlots,
         currentRunState: null
@@ -136,8 +124,6 @@ describe('SaveGameService - Quick Deployments', () => {
       const serialized = SaveGameService.serialize(
         mockPlayerProfile,
         mockInventory,
-        mockDroneInstances,
-        mockShipComponentInstances,
         mockDiscoveredCards,
         mockShipSlots,
         null,
@@ -177,8 +163,6 @@ describe('SaveGameService - Quick Deployments', () => {
         saveVersion: '1.0',
         playerProfile: mockPlayerProfile,
         inventory: mockInventory,
-        droneInstances: mockDroneInstances,
-        shipComponentInstances: mockShipComponentInstances,
         discoveredCards: mockDiscoveredCards,
         shipSlots: mockShipSlots,
         currentRunState: null,
@@ -197,8 +181,6 @@ describe('SaveGameService - Quick Deployments', () => {
         saveVersion: '1.0',
         playerProfile: mockPlayerProfile,
         inventory: mockInventory,
-        droneInstances: mockDroneInstances,
-        shipComponentInstances: mockShipComponentInstances,
         discoveredCards: mockDiscoveredCards,
         shipSlots: mockShipSlots,
         currentRunState: null,
@@ -226,8 +208,6 @@ describe('SaveGameService - Quick Deployments', () => {
         saveVersion: '1.0',
         playerProfile: mockPlayerProfile,
         inventory: mockInventory,
-        droneInstances: mockDroneInstances,
-        shipComponentInstances: mockShipComponentInstances,
         discoveredCards: mockDiscoveredCards,
         shipSlots: mockShipSlots,
         currentRunState: null,

@@ -32,7 +32,7 @@ const HangarScreen = () => {
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [selectedMap, setSelectedMap] = useState(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState(null);
-  const [newDeckOption, setNewDeckOption] = useState(null); // 'empty', 'copyFromSlot0', or null
+  const [pendingShipConfirm, setPendingShipConfirm] = useState(null); // { slotId, shipId, shipName } awaiting confirm
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
   const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
   const [emptyDeckConfirmation, setEmptyDeckConfirmation] = useState(false); // Show empty deck creation confirmation
@@ -52,8 +52,6 @@ const HangarScreen = () => {
     singlePlayerProfile,
     singlePlayerInventory,
     singlePlayerShipSlots,
-    singlePlayerDroneInstances,
-    singlePlayerShipComponentInstances,
     singlePlayerDiscoveredCards,
     lastRunSummary,
   } = gameState;
@@ -88,14 +86,14 @@ const HangarScreen = () => {
     setSidebarMode(mode);
   };
 
-  // Ship slot click - opens deck editor
+  // Ship slot click - opens deck editor or ship selection
   const handleSlotClick = (slot) => {
     SoundManager.getInstance().play('ui_click');
 
     if (slot.status === 'empty') {
-      // Show new deck prompt modal
+      // Show ship selection modal — player must assign a ship first
       setSelectedSlotId(slot.id);
-      setActiveModal('newDeckPrompt');
+      setActiveModal('shipSelection');
     } else if (slot.status === 'active') {
       // Navigate to deck editor screen (read-only for slot 0)
       gameStateManager.setState({
@@ -146,24 +144,46 @@ const HangarScreen = () => {
     }
   };
 
+  // Handle ship selected from ship selection modal — show confirmation
+  const handleShipChosen = (shipId, shipName) => {
+    setActiveModal(null);
+    setPendingShipConfirm({ slotId: selectedSlotId, shipId, shipName });
+  };
+
+  // Handle ship assignment confirmation
+  const handleConfirmShipAssign = () => {
+    if (!pendingShipConfirm) return;
+    const { slotId, shipId } = pendingShipConfirm;
+    const result = gameStateManager.assignShipToSlot(slotId, shipId);
+    setPendingShipConfirm(null);
+
+    if (!result.success) {
+      debugLog('HANGAR', 'Failed to assign ship:', result.error);
+      return;
+    }
+
+    // Ship assigned — now show copy/empty deck options
+    setActiveModal('newDeckPrompt');
+  };
+
+  // Cancel ship assignment
+  const handleCancelShipAssign = () => {
+    setPendingShipConfirm(null);
+  };
+
   // Handle new deck option selection - show confirmation modal for both options
   const handleNewDeckOption = (option) => {
     setActiveModal(null);
     if (option === 'copyFromSlot0') {
-      // Show confirmation modal for copy from starter deck
       setCopyStarterConfirmation(true);
     } else if (option === 'empty') {
-      // Show confirmation modal for empty deck (costs 500 credits)
       setEmptyDeckConfirmation(true);
     }
   };
 
   // Handle confirm copy from starter deck
   const handleConfirmCopyStarter = () => {
-    const result = createCopyStarterDeckSlot(
-      selectedSlotId, singlePlayerProfile, singlePlayerInventory,
-      singlePlayerDroneInstances, singlePlayerShipComponentInstances
-    );
+    const result = createCopyStarterDeckSlot(selectedSlotId, singlePlayerProfile);
     if (!result) {
       setCopyStarterConfirmation(false);
       return;
@@ -171,9 +191,6 @@ const HangarScreen = () => {
 
     gameStateManager.setState({
       singlePlayerProfile: result.profileUpdate,
-      singlePlayerInventory: result.inventoryUpdate,
-      singlePlayerDroneInstances: result.droneInstances,
-      singlePlayerShipComponentInstances: result.componentInstances
     });
     gameStateManager.saveShipSlotDeck(selectedSlotId, result.deckData);
 
@@ -427,6 +444,7 @@ const HangarScreen = () => {
     setSelectedSlotId(null);
     setSelectedMap(null);
     setSelectedCoordinate(null);
+    setPendingShipConfirm(null);
   };
 
   // Navigate to a different sector in the modal
@@ -518,7 +536,12 @@ const HangarScreen = () => {
         lastRunSummary={lastRunSummary}
         onDismissRunSummary={handleDismissRunSummary}
         singlePlayerShipSlots={singlePlayerShipSlots}
+        singlePlayerInventory={singlePlayerInventory}
         onNewDeckOption={handleNewDeckOption}
+        onShipChosen={handleShipChosen}
+        pendingShipConfirm={pendingShipConfirm}
+        onConfirmShipAssign={handleConfirmShipAssign}
+        onCancelShipAssign={handleCancelShipAssign}
         deleteConfirmation={deleteConfirmation}
         onDeleteConfirm={handleDeleteConfirm}
         onDeleteCancel={handleDeleteCancel}

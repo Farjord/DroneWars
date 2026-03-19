@@ -76,8 +76,6 @@ export function createNewSave() {
 
     playerProfile: structuredClone(defaultPlayerProfile),
     inventory: structuredClone(defaultInventory),
-    droneInstances: [],
-    shipComponentInstances: [],
     discoveredCards: structuredClone(defaultDiscoveredCards),
     shipSlots: structuredClone(defaultShipSlots),
     quickDeployments: [],

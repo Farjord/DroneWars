@@ -34,8 +34,6 @@ const DeckBuilder = ({
   onPreservedFieldsChange,     // Callback when preserved fields change
   // Extraction mode props
   maxDrones = 10,              // 5 for extraction, 10 for multiplayer
-  droneInstances = [],         // For damage display (yellow triangle)
-  componentInstances = [],     // For hull display (health bar)
   readOnly = false,            // For Slot 0 view-only mode
   allowInvalidSave = false,    // Allow save with invalid deck
   mode = 'multiplayer',        // 'multiplayer' | 'extraction'
@@ -265,8 +263,8 @@ const DeckBuilder = ({
     activeShip,
     deckListForDisplay, baseCardCounts, deck, onDeckChange,
     typeLimits, typeCounts,
-    droneListForDisplay, droneInstances, onDronesChange,
-    selectedShipComponents, activeComponentCollection, componentInstances,
+    droneListForDisplay, onDronesChange,
+    selectedShipComponents, activeComponentCollection,
     deckStats, droneStats, activeChartView, setActiveChartView,
     isStatsVisible, setIsStatsVisible,
     shipSlot, droneSlots, credits, onRepairDroneSlot, onRepairSectionSlot,

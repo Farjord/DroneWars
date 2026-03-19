@@ -30,7 +30,7 @@ import { debugLog } from '../utils/debugLogger.js';
 import { isSequentialPhase } from '../logic/phase/phaseDisplayUtils.js';
 
 /** Cosmetic delay before AI acts — animations are already done by RESPONSE_CYCLE_COMPLETE */
-const AI_TURN_COSMETIC_DELAY_MS = 300;
+const AI_TURN_COSMETIC_DELAY_MS = 800;
 
 /** Interval between retries when animations are still blocking at turn start */
 const BLOCKING_RETRY_INTERVAL_MS = 500;

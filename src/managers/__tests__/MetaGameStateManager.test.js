@@ -5,8 +5,6 @@
  * This manager handles persistent player data:
  * - Player profile (credits, AI cores)
  * - Card inventory
- * - Drone instances with damage tracking
- * - Ship component instances with hull tracking
  * - Ship slots (6 slots)
  * - Quick deployments
  * - Reputation and missions
@@ -33,8 +31,6 @@ describe('MetaGameStateManager', () => {
     it('should have empty inventory initially', () => {
       const state = manager.getState();
       expect(state.cardInventory).toEqual({});
-      expect(state.droneInstances).toEqual([]);
-      expect(state.shipComponentInstances).toEqual([]);
     });
 
     it('should have 6 ship slots initialized', () => {
@@ -55,8 +51,6 @@ describe('MetaGameStateManager', () => {
         credits: 1000,
         aiCores: 50,
         cardInventory: { laser_mk1: 3, shield_mk2: 2 },
-        droneInstances: [{ id: 'drone1', damage: 0 }],
-        shipComponentInstances: [{ id: 'comp1', hull: 10 }],
         shipSlots: Array(6).fill(null).map((_, i) => ({
           id: i,
           isStarterDeck: i === 0,
@@ -85,8 +79,6 @@ describe('MetaGameStateManager', () => {
         credits: 500,
         aiCores: 25,
         cardInventory: {},
-        droneInstances: [],
-        shipComponentInstances: [],
         shipSlots: Array(6).fill(null).map((_, i) => ({ id: i, isStarterDeck: i === 0, deck: [] })),
         quickDeployments: [],
         factionReputation: {},
@@ -293,67 +285,6 @@ describe('MetaGameStateManager', () => {
       const deployments = manager.getState().quickDeployments;
       expect(deployments).toHaveLength(1);
       expect(deployments[0].id).toBe('qd2');
-    });
-  });
-
-  describe('drone instances', () => {
-    it('should add drone instance', () => {
-      manager.addDroneInstance({
-        id: 'drone_scout_1',
-        droneId: 'scout_drone',
-        currentHealth: 5,
-        maxHealth: 5,
-        damage: 0
-      });
-
-      const instances = manager.getState().droneInstances;
-      expect(instances).toHaveLength(1);
-      expect(instances[0].droneId).toBe('scout_drone');
-    });
-
-    it('should update drone instance damage', () => {
-      manager.addDroneInstance({
-        id: 'drone_scout_1',
-        droneId: 'scout_drone',
-        currentHealth: 5,
-        maxHealth: 5,
-        damage: 0
-      });
-
-      manager.updateDroneInstance('drone_scout_1', { damage: 2, currentHealth: 3 });
-
-      const instance = manager.getState().droneInstances.find(d => d.id === 'drone_scout_1');
-      expect(instance.damage).toBe(2);
-      expect(instance.currentHealth).toBe(3);
-    });
-  });
-
-  describe('ship component instances', () => {
-    it('should add ship component instance', () => {
-      manager.addShipComponentInstance({
-        id: 'bridge_1',
-        componentId: 'bridge_mk1',
-        currentHull: 10,
-        maxHull: 10
-      });
-
-      const instances = manager.getState().shipComponentInstances;
-      expect(instances).toHaveLength(1);
-      expect(instances[0].componentId).toBe('bridge_mk1');
-    });
-
-    it('should update ship component hull', () => {
-      manager.addShipComponentInstance({
-        id: 'bridge_1',
-        componentId: 'bridge_mk1',
-        currentHull: 10,
-        maxHull: 10
-      });
-
-      manager.updateShipComponentInstance('bridge_1', { currentHull: 7 });
-
-      const instance = manager.getState().shipComponentInstances.find(c => c.id === 'bridge_1');
-      expect(instance.currentHull).toBe(7);
     });
   });
 

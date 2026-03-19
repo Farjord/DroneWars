@@ -531,10 +531,6 @@ class SinglePlayerCombatInitializer {
     } else if (shipSlot?.activeDronePool) {
       // Legacy format fallback
       const droneNames = shipSlot.activeDronePool;
-      const shipSlotId = runState?.shipSlotId;
-      const droneDamageState = shipSlotId !== undefined
-        ? gameStateManager.getDroneDamageStateForSlot(shipSlotId)
-        : {};
 
       activeDronePool = droneNames.map(name => {
         const droneData = fullDroneCollection.find(d => d.name === name);

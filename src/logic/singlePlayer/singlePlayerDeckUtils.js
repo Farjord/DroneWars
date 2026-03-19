@@ -7,42 +7,22 @@ import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips } from '../../data/shipData.js';
-import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../data/saveGameSchema.js';
+import { starterPoolCards, starterPoolDroneNames } from '../../data/saveGameSchema.js';
 
 /**
- * Calculate available cards for a specific ship slot
- * Starter pool cards are unlimited; inventory cards are finite minus usage in other slots
+ * Calculate available cards — shared model (no cross-slot reservation)
+ * Starter pool cards are unlimited (99); non-starter cards are capped at min(owned, maxInDeck).
+ * Every deck sees the same availability.
  *
- * @param {number} targetSlotId - The slot being edited
- * @param {Array} shipSlots - All ship slots
  * @param {Object} inventory - Player inventory { cardId: quantity }
  * @returns {Array} Cards with availableQuantity property
  */
-export function calculateAvailableCards(targetSlotId, shipSlots, inventory) {
-  // Count cards used in OTHER active slots (not target, not slot 0)
-  const usedCards = {};
-  shipSlots.forEach(slot => {
-    if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
-      (slot.decklist || []).forEach(card => {
-        usedCards[card.id] = (usedCards[card.id] || 0) + card.quantity;
-      });
-    }
-  });
-
-  // Build available collection
+export function calculateAvailableCards(inventory) {
   return fullCardCollection.map(card => {
-    let availableQuantity;
     const isStarterPool = starterPoolCards.includes(card.id);
-
-    if (isStarterPool) {
-      // Starter pool: unlimited availability in ALL slots
-      availableQuantity = 99;
-    } else {
-      // For non-starter cards: check inventory
-      const owned = inventory[card.id] || 0;
-      const usedElsewhere = usedCards[card.id] || 0;
-      availableQuantity = Math.max(0, owned - usedElsewhere);
-    }
+    const availableQuantity = isStarterPool
+      ? 99
+      : Math.min(inventory[card.id] || 0, card.maxInDeck);
 
     return {
       ...card,
@@ -53,161 +33,66 @@ export function calculateAvailableCards(targetSlotId, shipSlots, inventory) {
 }
 
 /**
- * Calculate available drones for a specific ship slot
- * Starter pool drones are unlimited; acquired drones are finite minus usage in other slots
+ * Calculate available drones — blueprint model
+ * Starter pool drones are always available (99).
+ * Non-starter drones are available (99) only if their name appears in unlockedBlueprints.
  *
- * @param {number} targetSlotId - The slot being edited
- * @param {Array} shipSlots - All ship slots
- * @param {Array} droneInstances - All drone instances (for damage tracking)
- * @returns {Array} Drones with availableCount and damage info
+ * @param {Array<string>} unlockedBlueprints - Names of unlocked drone blueprints
+ * @returns {Array} Drones with availableCount property
  */
-export function calculateAvailableDrones(targetSlotId, shipSlots, droneInstances) {
-  // Count drones used in OTHER active slots (not target, not slot 0)
-  const usedDrones = {};
-  shipSlots.forEach(slot => {
-    if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
-      (slot.droneSlots || []).forEach(droneSlot => {
-        if (droneSlot.assignedDrone) {
-          usedDrones[droneSlot.assignedDrone] = (usedDrones[droneSlot.assignedDrone] || 0) + 1;
-        }
-      });
-    }
-  });
-
-  // Group instances by drone name for damage checking
-  const instancesByName = {};
-  droneInstances.forEach(inst => {
-    if (!instancesByName[inst.droneName]) {
-      instancesByName[inst.droneName] = [];
-    }
-    instancesByName[inst.droneName].push(inst);
-  });
+export function calculateAvailableDrones(unlockedBlueprints) {
+  const blueprintSet = new Set(unlockedBlueprints || []);
 
   return fullDroneCollection
     .filter(drone => drone.selectable !== false)
     .map(drone => {
       const isStarterPool = starterPoolDroneNames.includes(drone.name);
-      let availableCount;
-
-      if (isStarterPool) {
-        // Starter pool: unlimited availability in ALL slots
-        availableCount = 99;
-      } else {
-        // For non-starter drones: check instances
-        const ownedInstances = instancesByName[drone.name]?.length || 0;
-        const usedElsewhere = usedDrones[drone.name] || 0;
-        availableCount = Math.max(0, ownedInstances - usedElsewhere);
-      }
+      const isUnlocked = isStarterPool || blueprintSet.has(drone.name);
 
       return {
         ...drone,
-        availableCount,
+        availableCount: isUnlocked ? 99 : 0,
         isStarterPool,
       };
     }).filter(drone => drone.availableCount > 0);
 }
 
 /**
- * Calculate available ship components for a specific ship slot
- * Starter pool components are unlimited; acquired components are finite minus usage in other slots
+ * Calculate available ship components — blueprint model
+ * Starter pool components are always available (99).
+ * Non-starter components are available (99) only if their ID appears in unlockedBlueprints.
  *
- * @param {number} targetSlotId - The slot being edited
- * @param {Array} shipSlots - All ship slots
- * @param {Array} componentInstances - All component instances (for hull tracking)
- * @returns {Array} Components with availability and hull info
+ * @param {Array<string>} unlockedBlueprints - IDs of unlocked component blueprints
+ * @returns {Array} Components with availableCount property
  */
-export function calculateAvailableComponents(targetSlotId, shipSlots, componentInstances) {
-  // Count components used in OTHER active slots (not target, not slot 0)
-  const usedComponents = {};
-  shipSlots.forEach(slot => {
-    if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
-      Object.keys(slot.shipComponents || {}).forEach(compId => {
-        usedComponents[compId] = (usedComponents[compId] || 0) + 1;
-      });
-    }
-  });
-
-  // Group instances by component ID for hull tracking
-  const instancesById = {};
-  componentInstances.forEach(inst => {
-    if (!instancesById[inst.componentId]) {
-      instancesById[inst.componentId] = [];
-    }
-    instancesById[inst.componentId].push(inst);
-  });
+export function calculateAvailableComponents(unlockedBlueprints) {
+  const blueprintSet = new Set(unlockedBlueprints || []);
 
   return shipComponentCollection.map(component => {
     const isStarterPool = starterPoolCards.includes(component.id);
-    let availableCount;
-
-    if (isStarterPool) {
-      // Starter pool: unlimited availability in ALL slots
-      availableCount = 99;
-    } else {
-      // For non-starter components: check instances
-      const ownedInstances = instancesById[component.id]?.length || 0;
-      const usedElsewhere = usedComponents[component.id] || 0;
-      availableCount = Math.max(0, ownedInstances - usedElsewhere);
-    }
-
-    // Get hull info from instance (only relevant for non-starter components)
-    const relevantInstances = instancesById[component.id] || [];
-    const hasLowHull = relevantInstances.some(inst =>
-      inst.currentHull < inst.maxHull
-    );
+    const isUnlocked = isStarterPool || blueprintSet.has(component.id);
 
     return {
       ...component,
-      availableCount,
+      availableCount: isUnlocked ? 99 : 0,
       isStarterPool,
-      hasLowHull: !isStarterPool && hasLowHull,
-      instances: relevantInstances
     };
   }).filter(comp => comp.availableCount > 0);
 }
 
 /**
- * Calculate available ships for deck building
- * Starter pool ships are unlimited; crafted ships are limited by inventory and slot usage
+ * Calculate available ships for deck building — consumable model
+ * Ships are consumed on assignment, so inventory count IS the available count.
+ * No reservation logic needed.
  *
- * @param {number} targetSlotId - The slot being edited
- * @param {Array} shipSlots - All ship slots
  * @param {Object} inventory - Player inventory { shipId: quantity }
- * @returns {Array} Ships with availableCount and isStarterPool flags
+ * @returns {Array} Ships with availableCount property
  */
-export function calculateAvailableShips(targetSlotId, shipSlots, inventory) {
-  const allShips = getAllShips();
-
-  // Count ships used in OTHER active slots (not target, not slot 0)
-  const usedShips = {};
-  shipSlots.forEach(slot => {
-    if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
-      if (slot.shipId) {
-        usedShips[slot.shipId] = (usedShips[slot.shipId] || 0) + 1;
-      }
-    }
-  });
-
-  return allShips.map(ship => {
-    const isStarterPool = starterPoolShipIds.includes(ship.id);
-    let availableCount;
-
-    if (isStarterPool) {
-      // Starter pool: unlimited availability in ALL slots
-      availableCount = 99;
-    } else {
-      // For non-starter ships: check inventory
-      const owned = inventory[ship.id] || 0;
-      const usedElsewhere = usedShips[ship.id] || 0;
-      availableCount = Math.max(0, owned - usedElsewhere);
-    }
-
-    return {
-      ...ship,
-      availableCount,
-      isStarterPool
-    };
-  }).filter(ship => ship.availableCount > 0);
+export function calculateAvailableShips(inventory) {
+  return getAllShips().map(ship => ({
+    ...ship,
+    availableCount: inventory[ship.id] || 0,
+  })).filter(ship => ship.availableCount > 0);
 }
 
 /**

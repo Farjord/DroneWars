@@ -108,9 +108,6 @@ describe('InventoryModal - Ship Section Starter Component Detection', () => {
             },
             { id: 1, status: 'empty', decklist: [], drones: [], shipComponents: {} }
           ],
-          singlePlayerDroneInstances: [],
-          singlePlayerShipComponentInstances: [],
-          singlePlayerOwnedShips: []
         }
       });
 
@@ -153,9 +150,6 @@ describe('InventoryModal - Ship Section Starter Component Detection', () => {
               }
             }
           ],
-          singlePlayerDroneInstances: [],
-          singlePlayerShipComponentInstances: [],
-          singlePlayerOwnedShips: []
         }
       });
 
@@ -189,9 +183,6 @@ describe('InventoryModal - Ship Section Starter Component Detection', () => {
               }
             }
           ],
-          singlePlayerDroneInstances: [],
-          singlePlayerShipComponentInstances: [],
-          singlePlayerOwnedShips: []
         }
       });
 
@@ -222,9 +213,6 @@ describe('InventoryModal - Ship Section Starter Component Detection', () => {
               shipComponents: {} // Empty - no starter components
             }
           ],
-          singlePlayerDroneInstances: [],
-          singlePlayerShipComponentInstances: [],
-          singlePlayerOwnedShips: []
         }
       });
 
@@ -254,9 +242,6 @@ describe('InventoryModal - Ship Section Starter Component Detection', () => {
               shipComponents: null // Null
             }
           ],
-          singlePlayerDroneInstances: [],
-          singlePlayerShipComponentInstances: [],
-          singlePlayerOwnedShips: []
         }
       });
 

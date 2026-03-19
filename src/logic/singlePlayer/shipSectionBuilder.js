@@ -1,5 +1,5 @@
 // Ship section builder — constructs section arrays with hull data for tactical map display
-// Priority: run-state sections > persistent instances > base stats from ship card
+// Priority: run-state sections > slot-level damage (sectionSlots) > base stats from ship card
 
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
@@ -9,7 +9,7 @@ import { calculateSectionBaseStats } from '../statsCalculator.js';
  * Build ship sections array with hull data for each component
  * Priority order for hull values:
  * 1. currentRunState.shipSections (live run damage)
- * 2. singlePlayerShipComponentInstances (persistent slot damage)
+ * 2. sectionSlots[lane].damageDealt (persistent slot damage)
  * 3. Base stats from ship card + section modifiers (fresh/default)
  *
  * Hull values are calculated using calculateSectionBaseStats() which combines:
@@ -17,7 +17,7 @@ import { calculateSectionBaseStats } from '../statsCalculator.js';
  * - Section's hullModifier from shipSectionData.js
  * Thresholds also come from the ship's baseThresholds.
  */
-export function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSections) {
+export function buildShipSections(shipSlot, slotId, runShipSections) {
   const sections = [];
 
   // If we have run-state ship sections, use those (contains live damage from combat)
@@ -50,18 +50,13 @@ export function buildShipSections(shipSlot, slotId, shipComponentInstances, runS
 
     const baseStats = calculateSectionBaseStats(shipCard, componentData);
     let currentHull = baseStats.hull;
-    let maxHull = baseStats.maxHull;
-    let thresholds = baseStats.thresholds;
+    const maxHull = baseStats.maxHull;
+    const thresholds = baseStats.thresholds;
 
-    // For slots 1-5, check instances for persistent damage
-    if (slotId !== 0) {
-      const instance = shipComponentInstances?.find(
-        i => i.id === componentId && i.assignedToSlot === slotId
-      );
-      if (instance) {
-        currentHull = instance.currentHull;
-        maxHull = instance.maxHull;
-      }
+    // For slots 1-5, apply persistent damage from sectionSlots
+    if (slotId !== 0 && shipSlot?.sectionSlots?.[lane]) {
+      const damageDealt = shipSlot.sectionSlots[lane].damageDealt || 0;
+      currentHull = Math.max(0, maxHull - damageDealt);
     }
 
     sections.push({

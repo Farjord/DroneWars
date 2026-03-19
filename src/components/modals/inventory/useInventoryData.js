@@ -20,9 +20,6 @@ const useInventoryData = (gameState) => {
     singlePlayerInventory = {},
     singlePlayerDiscoveredCards = [],
     singlePlayerShipSlots = [],
-    singlePlayerDroneInstances = [],
-    singlePlayerShipComponentInstances = [],
-    singlePlayerOwnedShips = [],
     singlePlayerProfile = {},
   } = gameState || {};
 
@@ -121,26 +118,21 @@ const useInventoryData = (gameState) => {
 
   /**
    * Enriched drone data with ownership info
+   * Ownership derived from starter status + unlockedBlueprints (blueprint model)
    */
   const enrichedDrones = useMemo(() => {
     const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+    const blueprintSet = new Set(unlockedBlueprints);
 
     return fullDroneCollection.map(drone => {
       const droneId = drone.name || drone.id;
       const isStarterDrone = slot0Drones.includes(droneId);
-
-      const ownedInstances = singlePlayerDroneInstances.filter(
-        inst => (inst.droneName === droneId || inst.droneId === droneId) && inst.shipSlotId === null
-      );
-
-      const isOwned = isStarterDrone || ownedInstances.length > 0;
-      const isBlueprintUnlocked = unlockedBlueprints.includes(droneId);
+      const isBlueprintUnlocked = blueprintSet.has(droneId);
+      const isOwned = isStarterDrone || isBlueprintUnlocked;
 
       let discoveryState;
       if (isOwned) {
         discoveryState = 'owned';
-      } else if (isBlueprintUnlocked) {
-        discoveryState = 'discovered';
       } else {
         discoveryState = 'undiscovered';
       }
@@ -149,27 +141,25 @@ const useInventoryData = (gameState) => {
         ...drone,
         isStarterDrone,
         isBlueprintUnlocked,
-        ownedCount: ownedInstances.length,
-        instances: ownedInstances,
+        ownedCount: isOwned ? 1 : 0,
         discoveryState
       };
     });
-  }, [singlePlayerDroneInstances, slot0Drones, singlePlayerProfile]);
+  }, [slot0Drones, singlePlayerProfile]);
 
   /**
    * Drone stats
    */
   const droneStats = useMemo(() => {
     const starterCount = enrichedDrones.filter(d => d.isStarterDrone).length;
-    const ownedCount = enrichedDrones.filter(d => d.ownedCount > 0 || d.isStarterDrone).length;
-    const totalInstances = singlePlayerDroneInstances.filter(i => i.shipSlotId === null).length;
+    const ownedCount = enrichedDrones.filter(d => d.ownedCount > 0).length;
 
     const byRarity = {};
     for (const rarity of ['Common', 'Uncommon', 'Rare', 'Mythic']) {
       const rarityDrones = enrichedDrones.filter(d => d.rarity === rarity);
       byRarity[rarity] = {
         total: rarityDrones.length,
-        owned: rarityDrones.filter(d => d.ownedCount > 0 || d.isStarterDrone).length
+        owned: rarityDrones.filter(d => d.ownedCount > 0).length
       };
     }
 
@@ -177,49 +167,46 @@ const useInventoryData = (gameState) => {
       total: enrichedDrones.length,
       owned: ownedCount,
       starter: starterCount,
-      instances: totalInstances,
       byRarity
     };
-  }, [enrichedDrones, singlePlayerDroneInstances]);
+  }, [enrichedDrones]);
 
   /**
    * Enriched ship component data with ownership info
+   * Ownership derived from starter status + unlockedBlueprints (blueprint model)
    */
   const enrichedComponents = useMemo(() => {
+    const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+    const blueprintSet = new Set(unlockedBlueprints);
+
     return shipComponentCollection.map(comp => {
       const compId = comp.id;
       const isStarterComponent = slot0Components.includes(compId);
-
-      const ownedInstances = singlePlayerShipComponentInstances.filter(
-        inst => inst.componentId === compId && inst.shipSlotId === null
-      );
-
-      const isOwned = isStarterComponent || ownedInstances.length > 0;
+      const isBlueprintUnlocked = blueprintSet.has(compId);
+      const isOwned = isStarterComponent || isBlueprintUnlocked;
 
       return {
         ...comp,
         isStarterComponent,
-        ownedCount: ownedInstances.length,
-        instances: ownedInstances,
+        ownedCount: isOwned ? 1 : 0,
         discoveryState: isOwned ? 'owned' : 'undiscovered'
       };
     });
-  }, [singlePlayerShipComponentInstances, slot0Components]);
+  }, [slot0Components, singlePlayerProfile]);
 
   /**
    * Ship component stats
    */
   const componentStats = useMemo(() => {
     const starterCount = enrichedComponents.filter(c => c.isStarterComponent).length;
-    const ownedCount = enrichedComponents.filter(c => c.ownedCount > 0 || c.isStarterComponent).length;
-    const totalInstances = singlePlayerShipComponentInstances.filter(i => i.shipSlotId === null).length;
+    const ownedCount = enrichedComponents.filter(c => c.ownedCount > 0).length;
 
     const byRarity = {};
     for (const rarity of ['Common', 'Uncommon', 'Rare', 'Mythic']) {
       const rarityComps = enrichedComponents.filter(c => c.rarity === rarity);
       byRarity[rarity] = {
         total: rarityComps.length,
-        owned: rarityComps.filter(c => c.ownedCount > 0 || c.isStarterComponent).length
+        owned: rarityComps.filter(c => c.ownedCount > 0).length
       };
     }
 
@@ -227,31 +214,32 @@ const useInventoryData = (gameState) => {
       total: enrichedComponents.length,
       owned: ownedCount,
       starter: starterCount,
-      instances: totalInstances,
       byRarity
     };
-  }, [enrichedComponents, singlePlayerShipComponentInstances]);
+  }, [enrichedComponents]);
 
   /**
    * Enriched ship data with ownership info
+   * Uses blueprint + inventory model (Phase C consumable ships)
    */
   const enrichedShips = useMemo(() => {
     const slot0 = singlePlayerShipSlots?.find(slot => slot.id === 0);
     const starterShipId = slot0?.shipId;
+    const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
 
     return (shipCollection || []).map(ship => {
       const isStarterShip = ship.id === starterShipId;
-      const ownedCount = singlePlayerOwnedShips.filter(s => s === ship.id || s.shipId === ship.id).length;
-      const isOwned = isStarterShip || ownedCount > 0;
+      const ownedCount = singlePlayerInventory[ship.id] || 0;
+      const isUnlocked = isStarterShip || unlockedBlueprints.includes(ship.id);
 
       return {
         ...ship,
         isStarterShip,
         ownedCount,
-        discoveryState: isOwned ? 'owned' : 'undiscovered'
+        discoveryState: (isUnlocked || ownedCount > 0) ? 'owned' : 'undiscovered'
       };
     });
-  }, [singlePlayerOwnedShips, singlePlayerShipSlots]);
+  }, [singlePlayerInventory, singlePlayerShipSlots, singlePlayerProfile]);
 
   /**
    * Ship stats

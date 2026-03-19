@@ -6,8 +6,6 @@
 // Extracted from GameStateManager — receives GSM via constructor injection.
 
 import { ECONOMY } from '../data/economyData.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import { starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
 import { convertComponentsToSectionSlots } from '../logic/migration/saveGameMigrations.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -125,28 +123,82 @@ class ShipSlotManager {
     return { success: true, slotId: nextSlotId };
   }
 
+  // --- SHIP ASSIGNMENT ---
+
+  /**
+   * Assign a ship to an empty slot, consuming it from inventory
+   * @param {number} slotId - Slot ID (1-5)
+   * @param {string} shipId - Ship ID to assign
+   * @returns {Object} { success: boolean, error?: string }
+   */
+  assignShipToSlot(slotId, shipId) {
+    if (slotId === 0) {
+      return { success: false, error: 'Cannot modify Slot 0 (immutable starter deck)' };
+    }
+
+    const slots = this.gsm.state.singlePlayerShipSlots;
+    const slot = slots.find(s => s.id === slotId);
+
+    if (!slot) {
+      return { success: false, error: `Slot ${slotId} not found` };
+    }
+
+    if (slot.status === 'active') {
+      return { success: false, error: `Slot ${slotId} already has a ship assigned` };
+    }
+
+    if (!this.isSlotUnlocked(slotId)) {
+      return { success: false, error: `Slot ${slotId} is locked` };
+    }
+
+    const inventory = { ...this.gsm.state.singlePlayerInventory };
+    const available = inventory[shipId] || 0;
+
+    if (available < 1) {
+      return { success: false, error: `No ${shipId} available in inventory` };
+    }
+
+    // Consume ship from inventory
+    inventory[shipId] = available - 1;
+    if (inventory[shipId] === 0) delete inventory[shipId];
+
+    // Assign ship to slot
+    const updatedSlots = [...slots];
+    const slotIndex = updatedSlots.findIndex(s => s.id === slotId);
+    updatedSlots[slotIndex] = {
+      ...updatedSlots[slotIndex],
+      shipId,
+      status: 'active',
+    };
+
+    this.gsm.setState({
+      singlePlayerShipSlots: updatedSlots,
+      singlePlayerInventory: inventory,
+    });
+
+    debugLog('SP_SHIP', `Assigned ${shipId} to slot ${slotId} (consumed from inventory)`);
+    return { success: true };
+  }
+
   // --- DECK CRUD ---
 
   /**
    * Save deck data to a ship slot
    * @param {number} slotId - Slot ID (1-5, cannot modify 0)
-   * @param {Object} deckData - { name, decklist, droneSlots, drones, shipComponents, shipId }
+   * @param {Object} deckData - { name, decklist, droneSlots, drones, shipComponents }
    */
   saveShipSlotDeck(slotId, deckData) {
     if (slotId === 0) {
       throw new Error('Cannot modify Slot 0 (immutable starter deck)');
     }
 
-    const { name, decklist, droneSlots, drones, shipComponents, shipId } = deckData;
+    const { name, decklist, droneSlots, drones, shipComponents } = deckData;
     const slots = [...this.gsm.state.singlePlayerShipSlots];
     const slotIndex = slots.findIndex(s => s.id === slotId);
 
     if (slotIndex === -1) {
       throw new Error(`Slot ${slotId} not found`);
     }
-
-    // Clear old instances for this slot
-    this.clearSlotInstances(slotId);
 
     // Preserve existing sectionSlots OR convert from shipComponents
     // This ensures componentIds are properly populated for damage persistence
@@ -176,7 +228,7 @@ class ShipSlotManager {
       drones,
       shipComponents,
       sectionSlots: existingSectionSlots,
-      shipId: shipId || null,
+      // Ship is already assigned at the slot level via assignShipToSlot — preserve it
       status: 'active'
     };
 
@@ -185,7 +237,7 @@ class ShipSlotManager {
   }
 
   /**
-   * Delete deck from a ship slot, return cards to inventory
+   * Delete deck from a ship slot, return ship to inventory
    * @param {number} slotId - Slot ID (1-5, cannot delete 0)
    */
   deleteShipSlotDeck(slotId) {
@@ -205,16 +257,15 @@ class ShipSlotManager {
       throw new Error(`Slot ${slotId} is not active`);
     }
 
-    // Return non-starter-pool cards to inventory
-    const newInventory = { ...this.gsm.state.singlePlayerInventory };
-    (slot.decklist || []).forEach(card => {
-      if (!starterPoolCards.includes(card.id)) {
-        newInventory[card.id] = (newInventory[card.id] || 0) + card.quantity;
-      }
-    });
-
-    // Clear instances for this slot
-    this.clearSlotInstances(slotId);
+    // Return ship to inventory if one was assigned
+    let updatedInventory = this.gsm.state.singlePlayerInventory;
+    if (slot.shipId) {
+      updatedInventory = {
+        ...updatedInventory,
+        [slot.shipId]: (updatedInventory[slot.shipId] || 0) + 1,
+      };
+      debugLog('SP_SHIP', `Returned ${slot.shipId} to inventory from slot ${slotId}`);
+    }
 
     // Reset slot to empty state
     slots[slotIndex] = {
@@ -238,29 +289,11 @@ class ShipSlotManager {
 
     this.gsm.setState({
       singlePlayerShipSlots: slots,
-      singlePlayerInventory: newInventory,
-      singlePlayerProfile: updatedProfile
+      singlePlayerProfile: updatedProfile,
+      singlePlayerInventory: updatedInventory,
     });
 
-    debugLog('SP_SHIP', `Deck deleted from slot ${slotId}, cards returned to inventory`);
-  }
-
-  /**
-   * Clear drone and component instances for a slot
-   * @param {number} slotId - Slot ID
-   */
-  clearSlotInstances(slotId) {
-    const droneInstances = this.gsm.state.singlePlayerDroneInstances.filter(
-      i => i.shipSlotId !== slotId
-    );
-    const componentInstances = this.gsm.state.singlePlayerShipComponentInstances.filter(
-      i => i.shipSlotId !== slotId
-    );
-
-    this.gsm.setState({
-      singlePlayerDroneInstances: droneInstances,
-      singlePlayerShipComponentInstances: componentInstances
-    });
+    debugLog('SP_SHIP', `Deck deleted from slot ${slotId}`);
   }
 
   /**
@@ -413,122 +446,6 @@ class ShipSlotManager {
     };
   }
 
-  // --- DRONE & COMPONENT INSTANCES ---
-
-  /**
-   * Create a drone instance for tracking damage
-   * Only for non-starter-pool drones
-   * @param {string} droneName - Name of the drone
-   * @param {number} slotId - Ship slot ID
-   * @returns {string|null} Instance ID or null if starter pool drone
-   */
-  createDroneInstance(droneName, slotId) {
-    // Starter pool drones don't need instances (never damaged)
-    if (starterPoolDroneNames.includes(droneName)) {
-      return null;
-    }
-
-    const instanceId = `DRONE_${crypto.randomUUID()}`;
-    const instance = {
-      instanceId,
-      droneName,
-      shipSlotId: slotId,
-      isDamaged: false
-    };
-
-    const instances = [...this.gsm.state.singlePlayerDroneInstances, instance];
-    this.gsm.setState({ singlePlayerDroneInstances: instances });
-
-    debugLog('SP_DRONE', `Created drone instance: ${instanceId} for ${droneName}`);
-    return instanceId;
-  }
-
-  /**
-   * Update drone instance damage state
-   * @param {string} instanceId - Instance ID
-   * @param {boolean} isDamaged - New damage state
-   */
-  updateDroneInstance(instanceId, isDamaged) {
-    const instances = [...this.gsm.state.singlePlayerDroneInstances];
-    const index = instances.findIndex(inst => inst.instanceId === instanceId);
-
-    if (index >= 0) {
-      instances[index] = { ...instances[index], isDamaged };
-      this.gsm.setState({ singlePlayerDroneInstances: instances });
-      debugLog('SP_DRONE', `Drone instance ${instanceId} damage updated to ${isDamaged}`);
-    } else {
-      debugLog('SP_DRONE', `⚠️ Drone instance ${instanceId} not found`);
-    }
-  }
-
-  /**
-   * Find drone instance by slot ID and drone name
-   * @param {number} slotId - Ship slot ID
-   * @param {string} droneName - Drone name
-   * @returns {Object|null} Drone instance or null if not found
-   */
-  findDroneInstance(slotId, droneName) {
-    return this.gsm.state.singlePlayerDroneInstances.find(
-      inst => inst.shipSlotId === slotId && inst.droneName === droneName
-    ) || null;
-  }
-
-  /**
-   * Get damage state for all drones in a specific slot
-   * Returns a map of drone name -> isDamaged boolean
-   * Slot 0 always returns empty object (starter deck never persists damage)
-   * @param {number} slotId - Ship slot ID
-   * @returns {Object} Map of drone name to damage state
-   */
-  getDroneDamageStateForSlot(slotId) {
-    // Slot 0 (starter deck) never has persisted damage
-    if (slotId === 0) {
-      return {};
-    }
-
-    const damageState = {};
-    this.gsm.state.singlePlayerDroneInstances
-      .filter(inst => inst.shipSlotId === slotId)
-      .forEach(inst => {
-        damageState[inst.droneName] = inst.isDamaged || false;
-      });
-
-    return damageState;
-  }
-
-  /**
-   * Create a ship component instance for tracking hull damage
-   * Only for non-starter-pool components
-   * @param {string} componentId - Component ID
-   * @param {number} slotId - Ship slot ID
-   * @returns {string|null} Instance ID or null if starter pool component
-   */
-  createComponentInstance(componentId, slotId) {
-    // Starter pool components don't need instances (never damaged)
-    if (starterPoolCards.includes(componentId)) {
-      return null;
-    }
-
-    const component = shipComponentCollection.find(c => c.id === componentId);
-    if (!component) {
-      throw new Error(`Component ${componentId} not found`);
-    }
-
-    const instanceId = `COMP_${crypto.randomUUID()}`;
-    const instance = {
-      instanceId,
-      componentId,
-      shipSlotId: slotId,
-      currentHull: component.hull,
-      maxHull: component.maxHull || component.hull
-    };
-
-    const instances = [...this.gsm.state.singlePlayerShipComponentInstances, instance];
-    this.gsm.setState({ singlePlayerShipComponentInstances: instances });
-
-    debugLog('SP_DRONE', `Created component instance: ${instanceId} for ${componentId}`);
-    return instanceId;
-  }
 }
 
 export default ShipSlotManager;

@@ -69,7 +69,6 @@ describe('GameStateManager - startRun() State Cleanup', () => {
           droneSlots: []
         }
       ],
-      singlePlayerShipComponentInstances: []
     });
 
     // Reset tacticalMapStateManager mock

@@ -11,7 +11,6 @@ import {
   calculateAvailableCards,
   calculateAvailableDrones,
   calculateAvailableComponents,
-  calculateAvailableShips
 } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import { updateDeckState } from '../../utils/deckStateUtils.js';
@@ -36,8 +35,6 @@ const ExtractionDeckBuilder = () => {
   const {
     singlePlayerInventory,
     singlePlayerShipSlots,
-    singlePlayerDroneInstances,
-    singlePlayerShipComponentInstances,
     singlePlayerProfile,
     extractionDeckSlotId,
     extractionNewDeckOption
@@ -57,9 +54,11 @@ const ExtractionDeckBuilder = () => {
   const [deck, setDeck] = useState({});
   const [droneSlots, setDroneSlots] = useState(createEmptyDroneSlots());
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
-  const [selectedShip, setSelectedShip] = useState(null);
   // Preserved fields for import/export round-trip
   const [preservedFields, setPreservedFields] = useState({});
+
+  // Ship is locked in at the slot level (assigned in Hangar before entering deck builder)
+  const selectedShip = slot ? (getShipById(slot.shipId) || getDefaultShip()) : getDefaultShip();
 
   // Derive selectedDrones object from droneSlots for DeckBuilder compatibility
   const selectedDrones = useMemo(() => {
@@ -80,22 +79,13 @@ const ExtractionDeckBuilder = () => {
         // Copy from starter deck (slot 0)
         const starterSlot = singlePlayerShipSlots?.find(s => s.id === 0);
         if (starterSlot) {
-          // Convert decklist array to object format
           const deckObj = {};
           (starterSlot.decklist || []).forEach(card => {
             deckObj[card.id] = card.quantity;
           });
           setDeck(deckObj);
-
-          // Use droneSlots with migration for field name consistency
           setDroneSlots(migrateDroneSlotsToNewFormat(starterSlot.droneSlots));
-
-          // Copy ship components
           setSelectedShipComponents({ ...starterSlot.shipComponents });
-
-          // Copy ship card
-          const shipCard = getShipById(starterSlot.shipId) || getDefaultShip();
-          setSelectedShip(shipCard);
         }
         setDeckName('New Ship');
       } else {
@@ -103,79 +93,35 @@ const ExtractionDeckBuilder = () => {
         setDeck({});
         setDroneSlots(createEmptyDroneSlots());
         setSelectedShipComponents({});
-        setSelectedShip(getDefaultShip());
         setDeckName('New Ship');
       }
     } else if (slot) {
       // Editing existing slot
       setDeckName(slot.name || `Ship Slot ${slotId}`);
-
-      // Convert decklist array to object format
       const deckObj = {};
       (slot.decklist || []).forEach(card => {
         deckObj[card.id] = card.quantity;
       });
       setDeck(deckObj);
-
-      // Use droneSlots with migration for field name consistency
       setDroneSlots(migrateDroneSlotsToNewFormat(slot.droneSlots));
-
-      // Copy ship components
       setSelectedShipComponents({ ...slot.shipComponents });
-
-      // Load ship card
-      const shipCard = getShipById(slot.shipId) || getDefaultShip();
-      setSelectedShip(shipCard);
     }
   }, [slotId, newDeckOption, slot, singlePlayerShipSlots, isNewDeck]);
 
-  // Calculate available cards/drones/components using helper functions
+  // Calculate available cards/drones/components using shared model
+  const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+
   const availableCards = useMemo(() => {
-    return calculateAvailableCards(
-      slotId,
-      singlePlayerShipSlots || [],
-      singlePlayerInventory || {}
-    );
-  }, [slotId, singlePlayerShipSlots, singlePlayerInventory]);
+    return calculateAvailableCards(singlePlayerInventory || {});
+  }, [singlePlayerInventory]);
 
   const availableDrones = useMemo(() => {
-    return calculateAvailableDrones(
-      slotId,
-      singlePlayerShipSlots || [],
-      singlePlayerDroneInstances || []
-    );
-  }, [slotId, singlePlayerShipSlots, singlePlayerDroneInstances]);
+    return calculateAvailableDrones(unlockedBlueprints);
+  }, [unlockedBlueprints]);
 
   const availableComponents = useMemo(() => {
-    return calculateAvailableComponents(
-      slotId,
-      singlePlayerShipSlots || [],
-      singlePlayerShipComponentInstances || []
-    );
-  }, [slotId, singlePlayerShipSlots, singlePlayerShipComponentInstances]);
-
-  // Calculate available ships (filtered by inventory and slot usage)
-  const availableShips = useMemo(() => {
-    return calculateAvailableShips(
-      slotId,
-      singlePlayerShipSlots || [],
-      singlePlayerInventory || {}
-    );
-  }, [slotId, singlePlayerShipSlots, singlePlayerInventory]);
-
-  // Get drone instances for damage display
-  const droneInstances = useMemo(() => {
-    return singlePlayerDroneInstances?.filter(inst =>
-      selectedDrones[inst.droneName]
-    ) || [];
-  }, [singlePlayerDroneInstances, selectedDrones]);
-
-  // Get component instances for hull display
-  const componentInstances = useMemo(() => {
-    return singlePlayerShipComponentInstances?.filter(inst =>
-      selectedShipComponents[inst.componentId]
-    ) || [];
-  }, [singlePlayerShipComponentInstances, selectedShipComponents]);
+    return calculateAvailableComponents(unlockedBlueprints);
+  }, [unlockedBlueprints]);
 
   // Handle deck change - removes entry when quantity is 0
   const handleDeckChange = (cardId, quantity) => {
@@ -214,12 +160,6 @@ const ExtractionDeckBuilder = () => {
     }));
   };
 
-  // Handle ship card change
-  const handleShipChange = (ship) => {
-    if (isReadOnly) return;
-    setSelectedShip(ship);
-  };
-
   // Navigate back to hangar
   const navigateBack = () => {
     gameStateManager.setState({
@@ -252,7 +192,6 @@ const ExtractionDeckBuilder = () => {
       droneSlots,  // Pass the new format
       drones,       // Also include legacy format for backward compat
       shipComponents: selectedShipComponents,
-      shipId: selectedShip?.id || null
     };
 
     // Save using GameStateManager (DeckBuilder shows toast)
@@ -304,14 +243,7 @@ const ExtractionDeckBuilder = () => {
         }
       }
 
-      // Validate ship exists if specified
-      if (converted.shipId) {
-        const ship = availableShips.find(s => s.id === converted.shipId);
-        if (!ship) {
-          return { success: false, message: `Ship ${converted.shipId} not available in extraction mode.` };
-        }
-        setSelectedShip(ship);
-      }
+      // Ship is locked in at the slot level — ignore imported shipId
 
       // Apply the imported data
       setDeck(converted.deck);
@@ -391,17 +323,13 @@ const ExtractionDeckBuilder = () => {
           readOnly={isReadOnly}
           allowInvalidSave={!isReadOnly}
           onSaveInvalid={handleSaveInvalid}
-          droneInstances={droneInstances}
-          componentInstances={componentInstances}
           deckName={deckName}
           onDeckNameChange={setDeckName}
-          // Pass available drones/components/ships collections for filtering
+          // Pass available drones/components collections for filtering
           availableDrones={availableDrones}
           availableComponents={availableComponents}
-          availableShips={availableShips}
-          // Ship card selection
+          // Ship is locked in from Hangar — read-only display
           selectedShip={selectedShip}
-          onShipChange={handleShipChange}
           // Ship Configuration Tab props
           shipSlot={slot}
           droneSlots={droneSlots}

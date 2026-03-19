@@ -204,40 +204,38 @@ describe('BlueprintsModal - Starter Items Exclusion', () => {
     });
   });
 
-  describe('Ship Cards tab - Starter ship should be excluded', () => {
+  describe('Ship Cards tab - Consumable model (Phase C)', () => {
     /**
-     * Starter ship (SHIP_001 - Reconnaissance Corvette)
-     * should NOT appear in the Ship Cards tab since it's infinitely available.
+     * Ship Cards are consumable — all ships appear in the tab.
+     * Starter ship blueprint is always unlocked (craftable).
+     * Non-starter ships require blueprint unlock.
      */
-    it('should NOT show starter ship in the Ship Cards tab', () => {
+    it('should show starter ship as craftable (always-unlocked blueprint)', () => {
       render(<BlueprintsModal onClose={() => {}} />);
-
-      // Click Ship Cards tab
       fireEvent.click(screen.getByText('Ship Cards'));
 
-      // Starter ship should NOT appear
-      expect(screen.queryByText('Reconnaissance Corvette')).toBeNull();
+      // Starter ship SHOULD appear and be craftable
+      expect(screen.getByText('Reconnaissance Corvette')).toBeInTheDocument();
     });
 
-    it('should show non-starter ships in the Ship Cards tab', () => {
+    it('should show non-starter ships in the Ship Cards tab (locked if no blueprint)', () => {
       render(<BlueprintsModal onClose={() => {}} />);
-
-      // Click Ship Cards tab
       fireEvent.click(screen.getByText('Ship Cards'));
 
-      // Non-starter ships SHOULD appear
-      expect(screen.getByText('Assault Frigate')).toBeInTheDocument();
+      // Non-starter ship without blueprint shows as locked (name hidden)
+      // SHIP_002 is not in unlockedBlueprints, so it shows "????"
+      // Verify it appears by checking the total count includes it
+      expect(screen.getByText('1 / 2 unlocked')).toBeInTheDocument();
     });
 
-    it('should show correct stats count excluding starter ship', () => {
+    it('should show correct stats count — starter always unlocked', () => {
       render(<BlueprintsModal onClose={() => {}} />);
-
-      // Click Ship Cards tab
       fireEvent.click(screen.getByText('Ship Cards'));
 
-      // Should show "1 / 1 unlocked" (only 1 non-starter ship, owned in mock)
-      // NOT "2 / 2 unlocked" which would include starter ship
-      expect(screen.getByText('1 / 1 unlocked')).toBeInTheDocument();
+      // SHIP_001 (starter) always unlocked + SHIP_002 not in unlockedBlueprints but not starter
+      // Mock has unlockedBlueprints: ['Harrier', 'Bomber Drone', 'BRIDGE_002'] — no SHIP_002
+      // So only starter ship is unlocked = "1 / 2 unlocked"
+      expect(screen.getByText('1 / 2 unlocked')).toBeInTheDocument();
     });
   });
 

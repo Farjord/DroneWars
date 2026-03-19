@@ -3,7 +3,7 @@
 // ========================================
 // Manages detection state (0-100%) for Exploring the Eremos mode
 // Tracks detection increases from movement, combat, looting
-// Triggers MIA protocol at 100%
+// Triggers max detection protocol at 100%
 
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
@@ -17,7 +17,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * - 0-49%: Low threat (Scouts, Patrols) - Green
  * - 50-79%: Medium threat (Cruisers, Hunters) - Yellow
  * - 80-100%: High threat (Blockades) - Red
- * - 100%: Auto MIA (mission failure)
+ * - 100%: Max detection (mission failure)
  *
  * Detection triggers (zone-based for movement):
  * - Movement Core: +2.5% per hex
@@ -57,9 +57,9 @@ class DetectionManager {
 
     debugLog('ENCOUNTER', `[Detection] ${current.toFixed(1)}% -> ${newValue.toFixed(1)}% (+${amount.toFixed(1)}%) [${reason}]`);
 
-    // Check for MIA trigger
+    // Check for max detection trigger
     if (newValue >= 100) {
-      this.triggerMIA();
+      this.triggerMaxDetection();
     }
   }
 
@@ -111,11 +111,11 @@ class DetectionManager {
   }
 
   /**
-   * Trigger MIA protocol (detection reached 100%)
-   * Ends run as failure, locks ship slot as MIA
+   * Trigger max detection protocol (detection reached 100%)
+   * Ends run as failure
    */
-  triggerMIA() {
-    debugLog('ENCOUNTER', '[Detection] 100% reached - MIA TRIGGERED');
+  triggerMaxDetection() {
+    debugLog('ENCOUNTER', '[Detection] 100% reached - MAX DETECTION TRIGGERED');
 
     // Get isStarterDeck BEFORE endRun clears the run state
     const runState = tacticalMapStateManager.getState();

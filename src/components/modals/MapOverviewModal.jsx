@@ -8,6 +8,7 @@ import MapPreviewRenderer from '../ui/MapPreviewRenderer';
 import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-react';
 import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
 import { getShipById } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
 
 /**
  * MapOverviewModal Component
@@ -37,8 +38,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
   const {
     singlePlayerShipSlots,
-    singlePlayerShipComponentInstances,
-    singlePlayerDroneInstances,
     singlePlayerProfile,
   } = gameState;
 
@@ -157,19 +156,15 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     }
 
     // Check ship components for damage
-    const components = slot.shipComponents;
-    if (components) {
-      for (const lane of ['left', 'middle', 'right']) {
-        const compId = components[lane];
-        if (compId) {
-          // For slot 0, no instances exist (always full hull)
-          if (currentSlotId !== 0) {
-            const instance = singlePlayerShipComponentInstances.find(
-              i => i.componentId === compId && i.shipSlotId === currentSlotId
-            );
-            if (instance && instance.currentHull <= 0) {
-              return { valid: false, error: `Damaged ship component: ${compId}. Repair before deploying.` };
-            }
+    // Check section damage via sectionSlots
+    if (slot.sectionSlots && currentSlotId !== 0) {
+      for (const lane of ['l', 'm', 'r']) {
+        const sectionSlot = slot.sectionSlots[lane];
+        if (sectionSlot?.componentId && sectionSlot.damageDealt > 0) {
+          const componentData = shipComponentCollection?.find(c => c.id === sectionSlot.componentId);
+          const maxHull = componentData?.hull || 8;
+          if (sectionSlot.damageDealt >= maxHull) {
+            return { valid: false, error: `Destroyed ship component: ${sectionSlot.componentId}. Repair before deploying.` };
           }
         }
       }

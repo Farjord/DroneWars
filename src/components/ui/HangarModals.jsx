@@ -26,6 +26,7 @@ import {
 } from '../modals/tutorials';
 import MissionService from '../../logic/missions/MissionService';
 import { starterDeck } from '../../data/playerDeckData.js';
+import { calculateAvailableShips } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 // --- Tutorial Configuration ---
@@ -55,7 +56,13 @@ const HangarModals = ({
   onDismissRunSummary,
   // New deck
   singlePlayerShipSlots,
+  singlePlayerInventory,
   onNewDeckOption,
+  // Ship selection
+  onShipChosen,
+  pendingShipConfirm,
+  onConfirmShipAssign,
+  onCancelShipAssign,
   // Delete
   deleteConfirmation,
   onDeleteConfirm,
@@ -142,6 +149,72 @@ const HangarModals = ({
         />
       )}
 
+      {/* Ship Selection Modal — choose a ship from inventory for an empty slot */}
+      {activeModal === 'shipSelection' && (() => {
+        const availableShips = calculateAvailableShips(singlePlayerInventory || {});
+        return (
+          <div className="dw-modal-overlay" onClick={closeAllModals}>
+            <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+              <div className="dw-modal-header">
+                <div className="dw-modal-header-info">
+                  <h2 className="dw-modal-header-title">Select Ship</h2>
+                  <p className="dw-modal-header-subtitle">Choose a ship from your inventory</p>
+                </div>
+              </div>
+              <div className="dw-modal-body">
+                {availableShips.length === 0 ? (
+                  <p className="dw-modal-text" style={{ textAlign: 'center', color: 'var(--modal-text-secondary)' }}>
+                    No ships available. Craft one in the Replicator.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {availableShips.map(ship => (
+                      <button
+                        key={ship.id}
+                        onClick={() => onShipChosen(ship.id, ship.name)}
+                        className="dw-btn-hud dw-btn-hud-cyan dw-btn--full"
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <span>{ship.name}</span>
+                        <span style={{ fontSize: '11px', opacity: 0.7 }}>×{ship.availableCount}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="dw-modal-actions">
+                <button onClick={closeAllModals} className="dw-btn-hud dw-btn-hud-ghost">Cancel</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Ship Assignment Confirmation Modal */}
+      {pendingShipConfirm && (
+        <div className="dw-modal-overlay" onClick={onCancelShipAssign}>
+          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+            <div className="dw-modal-header">
+              <div className="dw-modal-header-info">
+                <h2 className="dw-modal-header-title">Confirm Ship Assignment</h2>
+              </div>
+            </div>
+            <div className="dw-modal-body">
+              <p className="dw-modal-text">
+                This will consume <strong>1× {pendingShipConfirm.shipName}</strong> from your inventory.
+              </p>
+              <p className="dw-modal-text" style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginTop: '8px' }}>
+                The ship will be returned if you delete this deck later.
+              </p>
+            </div>
+            <div className="dw-modal-actions">
+              <button onClick={onCancelShipAssign} className="dw-btn-hud dw-btn-hud-ghost">Cancel</button>
+              <button onClick={onConfirmShipAssign} className="dw-btn-hud dw-btn-hud-cyan">Assign Ship</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* New Deck Prompt Modal */}
       {activeModal === 'newDeckPrompt' && (
         <div className="dw-modal-overlay" onClick={closeAllModals}>
@@ -185,7 +258,7 @@ const HangarModals = ({
         <ConfirmationModal
           confirmationModal={{
             type: 'delete',
-            text: `Delete "${deleteConfirmation.slotName}"? All non-starter cards will be returned to your inventory.`,
+            text: `Delete "${deleteConfirmation.slotName}"? The assigned ship will be returned to your inventory.`,
             onConfirm: onDeleteConfirm,
             onCancel: onDeleteCancel
           }}

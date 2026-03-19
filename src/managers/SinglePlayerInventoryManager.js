@@ -43,8 +43,6 @@ class SinglePlayerInventoryManager {
     this.gsm.setState({
       singlePlayerProfile: profile,
       singlePlayerInventory: saveData.inventory,
-      singlePlayerDroneInstances: saveData.droneInstances,
-      singlePlayerShipComponentInstances: saveData.shipComponentInstances,
       singlePlayerDiscoveredCards: saveData.discoveredCards,
       singlePlayerShipSlots: saveData.shipSlots,
       quickDeployments: saveData.quickDeployments || [],
@@ -63,8 +61,6 @@ class SinglePlayerInventoryManager {
     return {
       playerProfile: this.gsm.state.singlePlayerProfile,
       inventory: this.gsm.state.singlePlayerInventory,
-      droneInstances: this.gsm.state.singlePlayerDroneInstances,
-      shipComponentInstances: this.gsm.state.singlePlayerShipComponentInstances,
       discoveredCards: this.gsm.state.singlePlayerDiscoveredCards,
       shipSlots: this.gsm.state.singlePlayerShipSlots,
       currentRunState: tacticalMapStateManager.getState(),
@@ -110,31 +106,6 @@ class SinglePlayerInventoryManager {
     debugLog('SP_INVENTORY', `Added ${quantity}x ${cardId} to inventory`);
   }
 
-  // --- Ship Components ---
-
-  addShipComponentInstance(instance) {
-    const instances = [...this.gsm.state.singlePlayerShipComponentInstances];
-    instances.push(instance);
-    this.gsm.setState({ singlePlayerShipComponentInstances: instances });
-    debugLog('SP_INVENTORY', 'Ship component instance added', { instance });
-  }
-
-  updateShipComponentHull(instanceId, newHull) {
-    const instances = [...this.gsm.state.singlePlayerShipComponentInstances];
-    const index = instances.findIndex(inst => inst.instanceId === instanceId);
-
-    if (index >= 0) {
-      instances[index] = { ...instances[index], currentHull: newHull };
-      this.gsm.setState({ singlePlayerShipComponentInstances: instances });
-      debugLog('SP_INVENTORY', `Ship component ${instanceId} hull updated to ${newHull}`);
-    } else {
-      debugLog('SP_INVENTORY', `⚠️ Ship component instance ${instanceId} not found`);
-    }
-  }
-
-  getShipComponentInstance(instanceId) {
-    return this.gsm.state.singlePlayerShipComponentInstances.find(inst => inst.instanceId === instanceId) || null;
-  }
 }
 
 export default SinglePlayerInventoryManager;

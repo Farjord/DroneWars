@@ -46,12 +46,6 @@ class MetaGameStateManager {
       // Card inventory (cardId -> quantity)
       cardInventory: {},
 
-      // Drone instances with damage tracking
-      droneInstances: [],
-
-      // Ship component instances with hull tracking
-      shipComponentInstances: [],
-
       // Discovered cards (for collection tracking)
       discoveredCards: [],
 
@@ -126,8 +120,6 @@ class MetaGameStateManager {
       credits: saveData.credits || 0,
       aiCores: saveData.aiCores || 0,
       cardInventory: saveData.cardInventory || {},
-      droneInstances: saveData.droneInstances || [],
-      shipComponentInstances: saveData.shipComponentInstances || [],
       discoveredCards: saveData.discoveredCards || [],
       shipSlots: saveData.shipSlots || this._createDefaultState().shipSlots,
       quickDeployments: saveData.quickDeployments || [],
@@ -296,52 +288,6 @@ class MetaGameStateManager {
   removeQuickDeployment(deploymentId) {
     const deployments = this.state.quickDeployments.filter(d => d.id !== deploymentId);
     this.setState({ quickDeployments: deployments });
-  }
-
-  // --- DRONE INSTANCES ---
-
-  /**
-   * Add drone instance
-   * @param {Object} instance - Drone instance
-   */
-  addDroneInstance(instance) {
-    const instances = [...this.state.droneInstances, instance];
-    this.setState({ droneInstances: instances });
-  }
-
-  /**
-   * Update drone instance
-   * @param {string} instanceId - Instance ID
-   * @param {Object} updates - Updates to apply
-   */
-  updateDroneInstance(instanceId, updates) {
-    const instances = this.state.droneInstances.map(d =>
-      d.id === instanceId ? { ...d, ...updates } : d
-    );
-    this.setState({ droneInstances: instances });
-  }
-
-  // --- SHIP COMPONENT INSTANCES ---
-
-  /**
-   * Add ship component instance
-   * @param {Object} instance - Component instance
-   */
-  addShipComponentInstance(instance) {
-    const instances = [...this.state.shipComponentInstances, instance];
-    this.setState({ shipComponentInstances: instances });
-  }
-
-  /**
-   * Update ship component instance
-   * @param {string} instanceId - Instance ID
-   * @param {Object} updates - Updates to apply
-   */
-  updateShipComponentInstance(instanceId, updates) {
-    const instances = this.state.shipComponentInstances.map(c =>
-      c.id === instanceId ? { ...c, ...updates } : c
-    );
-    this.setState({ shipComponentInstances: instances });
   }
 
   // --- REPUTATION ---

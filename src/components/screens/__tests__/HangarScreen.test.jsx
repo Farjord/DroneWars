@@ -24,8 +24,6 @@ const mockSaveShipSlotDeck = vi.fn()
 const createDefaultState = (overrides = {}) => ({
   singlePlayerProfile: { credits: 600, ...overrides.profile },
   singlePlayerInventory: { ...overrides.inventory },
-  singlePlayerDroneInstances: overrides.droneInstances || [],
-  singlePlayerShipComponentInstances: overrides.componentInstances || [],
   singlePlayerShipSlots: overrides.shipSlots || [
     { id: 0, status: 'starter', name: 'Starter', decklist: [] },
     { id: 1, status: 'empty', name: null, decklist: null },
@@ -53,8 +51,6 @@ vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: () => ({
     singlePlayerProfile: currentMockState.singlePlayerProfile,
     singlePlayerInventory: currentMockState.singlePlayerInventory,
-    singlePlayerDroneInstances: currentMockState.singlePlayerDroneInstances,
-    singlePlayerShipComponentInstances: currentMockState.singlePlayerShipComponentInstances,
     singlePlayerShipSlots: currentMockState.singlePlayerShipSlots,
     appState: currentMockState.appState
   })

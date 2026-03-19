@@ -74,8 +74,6 @@ class GameStateManager {
       // --- SINGLE-PLAYER STATE (Extraction Mode) ---
       singlePlayerProfile: null,         // Player profile data
       singlePlayerInventory: {},         // Card inventory (master quantities)
-      singlePlayerDroneInstances: [],    // Drone instances with damage tracking
-      singlePlayerShipComponentInstances: [],  // Ship component instances with hull tracking
       singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
       singlePlayerShipSlots: [],         // 6 ship slots
       quickDeployments: [],              // Quick deploy templates (max 5)
@@ -1001,9 +999,6 @@ class GameStateManager {
   updateCardDiscoveryState(cardId, newState) { this.singlePlayerInventoryManager.updateCardDiscoveryState(cardId, newState); }
   addDiscoveredCard(cardId) { this.singlePlayerInventoryManager.addDiscoveredCard(cardId); }
   addToInventory(cardId, quantity = 1) { this.singlePlayerInventoryManager.addToInventory(cardId, quantity); }
-  addShipComponentInstance(instance) { this.singlePlayerInventoryManager.addShipComponentInstance(instance); }
-  updateShipComponentHull(instanceId, newHull) { this.singlePlayerInventoryManager.updateShipComponentHull(instanceId, newHull); }
-  getShipComponentInstance(instanceId) { return this.singlePlayerInventoryManager.getShipComponentInstance(instanceId); }
 
   // --- TACTICAL ITEM FACADES ---
   // External callers (ShopModal, TacticalMapScreen, ExtractionController) use these.
@@ -1018,21 +1013,16 @@ class GameStateManager {
   // External callers (HangarScreen, RepairBayScreen, ExtractionDeckBuilder) use these.
   // Delegation to shipSlotManager.
 
+  assignShipToSlot(slotId, shipId) { return this.shipSlotManager.assignShipToSlot(slotId, shipId); }
   setDefaultShipSlot(slotId) { this.shipSlotManager.setDefaultShipSlot(slotId); }
   isSlotUnlocked(slotId) { return this.shipSlotManager.isSlotUnlocked(slotId); }
   getNextUnlockableSlot() { return this.shipSlotManager.getNextUnlockableSlot(); }
   unlockNextDeckSlot() { return this.shipSlotManager.unlockNextDeckSlot(); }
   saveShipSlotDeck(slotId, deckData) { this.shipSlotManager.saveShipSlotDeck(slotId, deckData); }
   deleteShipSlotDeck(slotId) { this.shipSlotManager.deleteShipSlotDeck(slotId); }
-  clearSlotInstances(slotId) { this.shipSlotManager.clearSlotInstances(slotId); }
   updateShipSlotDroneOrder(slotId, newDroneSlots) { this.shipSlotManager.updateShipSlotDroneOrder(slotId, newDroneSlots); }
   repairSectionSlot(slotId, lane) { return this.shipSlotManager.repairSectionSlot(slotId, lane); }
   repairSectionSlotPartial(slotId, lane, hpToRepair) { return this.shipSlotManager.repairSectionSlotPartial(slotId, lane, hpToRepair); }
-  createDroneInstance(droneName, slotId) { return this.shipSlotManager.createDroneInstance(droneName, slotId); }
-  updateDroneInstance(instanceId, isDamaged) { this.shipSlotManager.updateDroneInstance(instanceId, isDamaged); }
-  findDroneInstance(slotId, droneName) { return this.shipSlotManager.findDroneInstance(slotId, droneName); }
-  getDroneDamageStateForSlot(slotId) { return this.shipSlotManager.getDroneDamageStateForSlot(slotId); }
-  createComponentInstance(componentId, slotId) { return this.shipSlotManager.createComponentInstance(componentId, slotId); }
 
   // --- RUN LIFECYCLE FACADES ---
   // External callers (HangarScreen, CombatOutcomeProcessor, ExtractionController, DetectionManager) use these.

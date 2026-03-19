@@ -4,7 +4,7 @@
  *
  * Updated for slot-based damage model:
  * - Damage is stored in sectionSlots[lane].damageDealt
- * - No longer uses singlePlayerShipComponentInstances
+ * - Damage is tracked via sectionSlots[lane].damageDealt on ship slots directly
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -73,7 +73,6 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         createTestShipSlot(1),
         createTestShipSlot(2)
       ],
-      singlePlayerShipComponentInstances: [],
       singlePlayerProfile: {
         credits: 100,
         aiCores: 0,

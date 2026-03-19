@@ -183,8 +183,6 @@ const createMockGameState = (overrides = {}) => ({
       shipComponents: { left: 'COMP1', middle: 'COMP2', right: 'COMP3' }
     }
   ],
-  singlePlayerDroneInstances: [],
-  singlePlayerShipComponentInstances: [],
   singlePlayerDiscoveredCards: [],
   lastRunSummary: null,
   ...overrides

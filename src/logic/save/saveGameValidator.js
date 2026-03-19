@@ -17,8 +17,6 @@ export function validateSaveFile(saveData) {
   if (!saveData.saveVersion) errors.push('Missing saveVersion');
   if (!saveData.playerProfile) errors.push('Missing playerProfile');
   if (!saveData.inventory) errors.push('Missing inventory');
-  if (!saveData.droneInstances) errors.push('Missing droneInstances');
-  if (!saveData.shipComponentInstances) errors.push('Missing shipComponentInstances');
   if (!saveData.discoveredCards) errors.push('Missing discoveredCards');
   if (!saveData.shipSlots) errors.push('Missing shipSlots');
 
@@ -52,16 +50,6 @@ export function validateSaveFile(saveData) {
     if (saveData.shipSlots[0] && !saveData.shipSlots[0].isImmutable) {
       errors.push('Slot 0 must be immutable');
     }
-  }
-
-  // Check drone instances structure
-  if (saveData.droneInstances && !Array.isArray(saveData.droneInstances)) {
-    errors.push('droneInstances must be an array');
-  }
-
-  // Check ship component instances structure
-  if (saveData.shipComponentInstances && !Array.isArray(saveData.shipComponentInstances)) {
-    errors.push('shipComponentInstances must be an array');
   }
 
   // Check discovered cards structure

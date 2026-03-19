@@ -517,14 +517,14 @@ export function useTacticalEncounters({
   const handleSalvageQuit = useCallback(() => {
     if (!activeSalvage) return;
 
-    debugLog('SALVAGE', 'Salvage abort - triggering MIA');
+    debugLog('SALVAGE', 'Salvage abort - triggering max detection');
 
     // Close salvage modal
     setActiveSalvage(null);
     setShowSalvageModal(false);
 
-    // Trigger MIA flow
-    DetectionManager.triggerMIA();
+    // Trigger max detection flow
+    DetectionManager.triggerMaxDetection();
   }, [activeSalvage]);
 
   // ========================================

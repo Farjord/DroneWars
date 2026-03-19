@@ -88,23 +88,22 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
   }, [unlockedBlueprints, singlePlayerInventory]);
 
   /**
-   * Get ship card blueprints (excluding starter ship - it's infinitely available)
-   * Ships now work like drones - tracked in inventory with quantities
+   * Get ship card blueprints — consumable model
+   * Ships are crafted into inventory (consumable). Blueprint unlock enables crafting.
+   * Starter ship blueprints are always available for crafting.
    */
   const shipCardBlueprints = useMemo(() => {
-    return getAllShips()
-      .filter(ship => !STARTER_SHIP_IDS.has(ship.id)) // Exclude starter ship
-      .map(ship => {
-        const owned = singlePlayerInventory[ship.id] || 0;
-        return {
-          ...ship,
-          isUnlocked: owned > 0, // "owned" counts as unlocked
-          craftCost: CRAFT_COSTS[ship.rarity] || 600, // Ships default to Rare cost
-          aiCoresCost: getAICoresCost(ship.rarity || 'Rare'),
-          owned,
-        };
-      });
-  }, [singlePlayerInventory]);
+    return getAllShips().map(ship => {
+      const owned = singlePlayerInventory[ship.id] || 0;
+      return {
+        ...ship,
+        isUnlocked: unlockedBlueprints.includes(ship.id) || STARTER_SHIP_IDS.has(ship.id),
+        craftCost: CRAFT_COSTS[ship.rarity] || 600,
+        aiCoresCost: getAICoresCost(ship.rarity || 'Rare'),
+        owned,
+      };
+    });
+  }, [unlockedBlueprints, singlePlayerInventory]);
 
   /**
    * Get collection stats
@@ -135,8 +134,8 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
    * Handle craft button click
    */
   const handleCraft = (blueprint) => {
-    // Validate blueprint is unlocked (for non-ship-cards)
-    if (!isShipCard(blueprint) && !blueprint.isUnlocked) {
+    // Validate blueprint is unlocked
+    if (!blueprint.isUnlocked) {
       setFeedback({
         type: 'error',
         message: 'This blueprint is not unlocked yet'
@@ -172,46 +171,15 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
       aiCores: singlePlayerProfile.aiCores - aiCoresCost
     };
 
-    // All items (ships, drones, components) are added to inventory
+    // Add crafted item to inventory (cards/ships use inventory; drones/components use blueprints)
     const newInventory = {
       ...singlePlayerInventory,
       [blueprint.id]: (singlePlayerInventory[blueprint.id] || 0) + 1
     };
 
-    // Create drone instances for non-starter drones
-    let newDroneInstances = gameState.singlePlayerDroneInstances || [];
-    if (selectedTab === 'Drones' && !STARTER_DRONE_NAMES.has(blueprint.name)) {
-      const instanceId = `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const newInstance = {
-        instanceId,
-        droneName: blueprint.name,
-        shipSlotId: null,  // Not assigned to a slot yet
-      };
-      newDroneInstances = [...newDroneInstances, newInstance];
-    }
-
-    // Create ship component instances for non-starter components
-    let newComponentInstances = gameState.singlePlayerShipComponentInstances || [];
-    if (selectedTab === 'Ships' && !STARTER_COMPONENT_IDS.has(blueprint.id)) {
-      const componentData = shipComponentCollection.find(c => c.id === blueprint.id);
-      if (componentData) {
-        const instanceId = `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const newInstance = {
-          instanceId,
-          componentId: blueprint.id,
-          shipSlotId: null,
-          currentHull: componentData.hull,
-          maxHull: componentData.maxHull || componentData.hull
-        };
-        newComponentInstances = [...newComponentInstances, newInstance];
-      }
-    }
-
     gameStateManager.setState({
       singlePlayerProfile: newProfile,
       singlePlayerInventory: newInventory,
-      singlePlayerDroneInstances: newDroneInstances,
-      singlePlayerShipComponentInstances: newComponentInstances,
     });
 
     // Update card discovery state to 'owned' if not already (for drones/components)
@@ -424,8 +392,8 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                         {blueprint.isUnlocked ? blueprint.name : '????'}
                       </span>
 
-                      {/* Owned Count - shown for unlocked non-ship-card blueprints */}
-                      {blueprint.isUnlocked && blueprint.owned > 0 && !isShipCard(blueprint) && (
+                      {/* Owned Count - shown for unlocked blueprints with crafted items */}
+                      {blueprint.isUnlocked && blueprint.owned > 0 && (
                         <div style={{
                           fontSize: '12px',
                           fontFamily: 'Orbitron, sans-serif',
@@ -435,20 +403,8 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                         </div>
                       )}
 
-                      {/* Ship Card Unlocked Status */}
-                      {isShipCard(blueprint) && blueprint.isUnlocked && (
-                        <div style={{
-                          fontSize: '12px',
-                          fontFamily: 'Orbitron, sans-serif',
-                          color: '#4ade80',
-                          fontWeight: '600'
-                        }}>
-                          ✓ Unlocked
-                        </div>
-                      )}
-
-                      {/* Craft Cost */}
-                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                      {/* Craft Cost - shown for unlocked blueprints */}
+                      {blueprint.isUnlocked && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{
                             fontFamily: 'Orbitron, sans-serif',
@@ -462,8 +418,8 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                         </div>
                       )}
 
-                      {/* AI Cores Cost */}
-                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                      {/* AI Cores Cost - shown for unlocked blueprints */}
+                      {blueprint.isUnlocked && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Cpu size={14} style={{ color: canAffordCores ? '#f97316' : '#ef4444' }} />
                           <span style={{
@@ -480,8 +436,8 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                         </div>
                       )}
 
-                      {/* Craft/Unlock Button */}
-                      {((blueprint.isUnlocked && !isShipCard(blueprint)) || (!blueprint.isUnlocked && isShipCard(blueprint))) && (
+                      {/* Craft Button - shown for unlocked blueprints */}
+                      {blueprint.isUnlocked && (
                         <button
                           className={`dw-btn-hud dw-btn-hud-cyan ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={{
@@ -497,7 +453,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                           onClick={() => handleCraft(blueprint)}
                           disabled={!canAfford}
                         >
-                          {isShipCard(blueprint) ? 'Unlock' : 'Create'}
+                          Craft
                         </button>
                       )}
                     </div>

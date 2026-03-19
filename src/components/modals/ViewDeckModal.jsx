@@ -36,8 +36,6 @@ const SUB_SORT_OPTIONS = [
  * @param {Array} cards - Array of {card, quantity} objects to display
  * @param {Object} shipComponents - Object mapping component IDs to lanes (e.g., { BRIDGE_001: 'l', POWERCELL_001: 'm' })
  * @param {Object} ship - Ship card object for resolving ship-specific section images
- * @param {Array} componentInstances - Component instances for hull tracking (extraction mode)
- * @param {Array} droneInstances - Drone instances for damage tracking (extraction mode)
  * @param {string} mode - 'multiplayer' | 'extraction' - affects display features
  */
 const ViewDeckModal = ({
@@ -48,8 +46,6 @@ const ViewDeckModal = ({
   cards = [],
   shipComponents = {},
   ship = null,
-  componentInstances = [],
-  droneInstances = [],
   mode = 'multiplayer'
 }) => {
   // Sort drones by cost (class field)
@@ -281,33 +277,6 @@ const ViewDeckModal = ({
                               shipAbilityMode={null}
                             />
                           </div>
-                          {/* Hull Display (extraction mode only) */}
-                          {mode === 'extraction' && (() => {
-                            const instance = componentInstances.find(i => i.componentId === componentEntry[0]);
-                            if (instance && instance.currentHull < instance.maxHull) {
-                              const hullPercent = (instance.currentHull / instance.maxHull) * 100;
-                              return (
-                                <div className="mt-2 px-2">
-                                  <div className="flex items-center justify-between text-xs mb-1">
-                                    <span className="text-gray-400">Hull</span>
-                                    <span className={hullPercent < 50 ? 'text-red-400' : 'text-cyan-400'}>
-                                      {instance.currentHull}/{instance.maxHull}
-                                    </span>
-                                  </div>
-                                  <div className="h-2 bg-gray-700 rounded overflow-hidden">
-                                    <div
-                                      className={`h-full transition-all ${
-                                        hullPercent < 25 ? 'bg-red-500' :
-                                        hullPercent < 50 ? 'bg-yellow-500' : 'bg-cyan-500'
-                                      }`}
-                                      style={{ width: `${hullPercent}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
                         </div>
                       ) : (
                         <div className="h-[200px] bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-600 flex items-center justify-center">

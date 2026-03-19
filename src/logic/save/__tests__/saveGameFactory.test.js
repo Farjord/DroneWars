@@ -63,8 +63,6 @@ describe('createNewSave', () => {
     expect(save.playerProfile.stats).toBeDefined();
     expect(save.playerProfile.reputation).toBeDefined();
     expect(save.inventory).toEqual({});
-    expect(save.droneInstances).toEqual([]);
-    expect(save.shipComponentInstances).toEqual([]);
     expect(save.discoveredCards).toEqual([]);
     expect(save.currentRunState).toBeNull();
     expect(save.quickDeployments).toEqual([]);
@@ -85,11 +83,9 @@ describe('createNewSave', () => {
     const save1 = createNewSave();
     save1.shipSlots.push('MUTATED');
     save1.playerProfile.credits = 999999;
-    save1.droneInstances.push('MUTATED');
 
     const save2 = createNewSave();
     expect(save2.shipSlots).toHaveLength(6);
     expect(save2.playerProfile.credits).not.toBe(999999);
-    expect(save2.droneInstances).toEqual([]);
   });
 });

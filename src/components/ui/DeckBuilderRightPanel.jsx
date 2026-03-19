@@ -18,10 +18,9 @@ const DeckBuilderRightPanel = ({
   deckListForDisplay, baseCardCounts,
   deck, onDeckChange,
   typeLimits, typeCounts,
-  droneListForDisplay, droneInstances,
+  droneListForDisplay,
   onDronesChange,
   selectedShipComponents, activeComponentCollection,
-  componentInstances,
   // Statistics
   deckStats, droneStats,
   activeChartView, setActiveChartView,
@@ -274,34 +273,6 @@ const DeckBuilderRightPanel = ({
                           + Bonus Stats
                         </div>
                       )}
-                      {/* Hull display for extraction mode */}
-                      {mode === 'extraction' && componentInstances.length > 0 && (() => {
-                        const inst = componentInstances.find(i => i.componentId === componentEntry[0]);
-                        if (inst) {
-                          const hullPercent = (inst.currentHull / inst.maxHull) * 100;
-                          const isDamaged = inst.currentHull < inst.maxHull;
-                          return (
-                            <div className="mt-2 p-2 bg-gray-800/50 rounded">
-                              <div className="text-xs text-gray-400 mb-1">Hull</div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex-grow bg-gray-700 rounded h-2 overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all ${hullPercent < 50 ? 'bg-red-500' : 'bg-green-500'}`}
-                                    style={{ width: `${hullPercent}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs font-bold">{inst.currentHull}/{inst.maxHull}</span>
-                              </div>
-                              {isDamaged && (
-                                <div className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
-                                  <AlertTriangle size={12} /> Repair Needed
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
                     </div>
                   ) : (
                     <div className="text-center text-gray-500 italic text-xs py-4">

@@ -25,7 +25,7 @@ class SaveGameService {
    * @param {Array} quickDeployments - Quick deploy templates (max 5)
    * @returns {Object} Save data object
    */
-  serialize(playerProfile, inventory, droneInstances, shipComponentInstances, discoveredCards, shipSlots, currentRunState = null, quickDeployments = []) {
+  serialize(playerProfile, inventory, discoveredCards, shipSlots, currentRunState = null, quickDeployments = []) {
     const saveData = {
       saveVersion: SAVE_VERSION,
       savedAt: Date.now(),
@@ -34,8 +34,6 @@ class SaveGameService {
         lastPlayedAt: Date.now(),
       },
       inventory: JSON.parse(JSON.stringify(inventory)),  // Deep copy
-      droneInstances: JSON.parse(JSON.stringify(droneInstances)),  // Deep copy
-      shipComponentInstances: JSON.parse(JSON.stringify(shipComponentInstances)),  // Deep copy
       discoveredCards: JSON.parse(JSON.stringify(discoveredCards)),  // Deep copy
       shipSlots: JSON.parse(JSON.stringify(shipSlots)),  // Deep copy
       currentRunState: currentRunState ? JSON.parse(JSON.stringify(currentRunState)) : null,
@@ -48,7 +46,7 @@ class SaveGameService {
   /**
    * Deserialize JSON to game state
    * @param {Object} saveData - Save data from file
-   * @returns {Object} Game state { playerProfile, inventory, droneInstances, shipComponentInstances, discoveredCards, shipSlots, currentRunState }
+   * @returns {Object} Game state { playerProfile, inventory, discoveredCards, shipSlots, currentRunState }
    */
   deserialize(saveData) {
     // Validate

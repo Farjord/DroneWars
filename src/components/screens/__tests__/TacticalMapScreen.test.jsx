@@ -41,7 +41,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, null);
 
       // Each section should have hull=10 (baseHull with 0 modifiers)
       sections.forEach(section => {
@@ -62,7 +62,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, null);
 
       // Each section should have hull=12
       sections.forEach(section => {
@@ -83,7 +83,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, null);
 
       // Each section should have hull=5
       sections.forEach(section => {
@@ -104,7 +104,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, null);
 
       expect(sections[0].thresholds).toBeDefined();
       expect(sections[0].thresholds.damaged).toBe(6);
@@ -119,7 +119,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, null);
 
       expect(sections[0].thresholds).toBeDefined();
       expect(sections[0].thresholds.damaged).toBe(5);
@@ -144,7 +144,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSections({}, 0, [], runShipSections);
+      const sections = buildShipSections({}, 0, runShipSections);
 
       expect(sections[0].hull).toBe(5);
       expect(sections[0].maxHull).toBe(8);
@@ -979,7 +979,6 @@ describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
         },
         activeDeck: { cards: [] }
       }],
-      singlePlayerShipComponentInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0,
@@ -1023,7 +1022,6 @@ describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
         currentScreen: 'TacticalMap',
         currentRunState: null, // <-- Extraction cleared the run state
         singlePlayerShipSlots: [],
-        singlePlayerShipComponentInstances: [],
         singlePlayerProfile: { credits: 1000 }
       });
 
@@ -1075,7 +1073,6 @@ describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
           detection: 25
         },
         singlePlayerShipSlots: [],
-        singlePlayerShipComponentInstances: [],
         singlePlayerProfile: { credits: 1000 }
       });
 
@@ -1125,7 +1122,6 @@ describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
           shipSlotId: 999 // <-- No slot with this ID
         },
         singlePlayerShipSlots: [{ id: 1, shipId: 'SHIP_001', shipComponents: {} }], // Only slot 1 exists
-        singlePlayerShipComponentInstances: [],
         singlePlayerProfile: { credits: 1000 }
       });
 

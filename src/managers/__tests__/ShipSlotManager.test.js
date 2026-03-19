@@ -10,12 +10,6 @@ vi.mock('../../data/economyData.js', () => ({
   }
 }));
 
-vi.mock('../../data/shipSectionData.js', () => ({
-  shipComponentCollection: [
-    { id: 'comp1', name: 'Test Bridge', type: 'Bridge', hull: 8, maxHull: 8 },
-  ]
-}));
-
 vi.mock('../../data/saveGameSchema.js', () => ({
   starterPoolCards: ['starter_card_1'],
   starterPoolDroneNames: ['Starter Drone'],
@@ -61,8 +55,6 @@ function createMockGSM(stateOverrides = {}) {
       { id: 2, status: 'locked', decklist: [], droneSlots: [], sectionSlots: {} },
     ],
     singlePlayerInventory: {},
-    singlePlayerDroneInstances: [],
-    singlePlayerShipComponentInstances: [],
     ...stateOverrides,
   };
   return {
@@ -118,6 +110,69 @@ describe('ShipSlotManager', () => {
     });
   });
 
+  // --- Ship Assignment ---
+
+  describe('assignShipToSlot', () => {
+    it('consumes ship from inventory and assigns to empty slot', () => {
+      gsm.state.singlePlayerInventory = { SHIP_002: 2 };
+      // Slot 1 needs to be empty for assignment
+      gsm.state.singlePlayerShipSlots[1] = {
+        ...gsm.state.singlePlayerShipSlots[1],
+        status: 'empty',
+        shipId: null,
+      };
+
+      const result = manager.assignShipToSlot(1, 'SHIP_002');
+      expect(result).toEqual({ success: true });
+      expect(gsm.state.singlePlayerInventory.SHIP_002).toBe(1);
+      expect(gsm.state.singlePlayerShipSlots.find(s => s.id === 1).shipId).toBe('SHIP_002');
+      expect(gsm.state.singlePlayerShipSlots.find(s => s.id === 1).status).toBe('active');
+    });
+
+    it('removes inventory key when count reaches 0', () => {
+      gsm.state.singlePlayerInventory = { SHIP_002: 1 };
+      gsm.state.singlePlayerShipSlots[1] = {
+        ...gsm.state.singlePlayerShipSlots[1],
+        status: 'empty',
+        shipId: null,
+      };
+
+      manager.assignShipToSlot(1, 'SHIP_002');
+      expect(gsm.state.singlePlayerInventory.SHIP_002).toBeUndefined();
+    });
+
+    it('fails if ship not in inventory', () => {
+      gsm.state.singlePlayerShipSlots[1] = {
+        ...gsm.state.singlePlayerShipSlots[1],
+        status: 'empty',
+        shipId: null,
+      };
+
+      const result = manager.assignShipToSlot(1, 'SHIP_999');
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/No SHIP_999 available/);
+    });
+
+    it('fails on slot 0', () => {
+      const result = manager.assignShipToSlot(0, 'SHIP_002');
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Slot 0/);
+    });
+
+    it('fails if slot already has a ship (active)', () => {
+      // Slot 1 is active by default in mock
+      const result = manager.assignShipToSlot(1, 'SHIP_002');
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/already has a ship/);
+    });
+
+    it('fails if slot is locked', () => {
+      const result = manager.assignShipToSlot(2, 'SHIP_002');
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/locked/);
+    });
+  });
+
   // --- Slot CRUD ---
 
   describe('slot CRUD', () => {
@@ -128,7 +183,6 @@ describe('ShipSlotManager', () => {
         droneSlots: [{ slotIndex: 0, slotDamaged: false, assignedDrone: 'DroneA' }],
         drones: ['DroneA'],
         shipComponents: { comp1: 'l' },
-        shipId: 'ship_1',
       };
       manager.saveShipSlotDeck(1, deckData);
       const savedSlot = gsm.state.singlePlayerShipSlots.find(s => s.id === 1);
@@ -137,13 +191,25 @@ describe('ShipSlotManager', () => {
       expect(savedSlot.decklist).toEqual(deckData.decklist);
     });
 
-    it('deleteShipSlotDeck returns non-starter cards to inventory and resets slot', () => {
+    it('deleteShipSlotDeck resets slot and returns ship to inventory', () => {
+      // Set up slot with a ship
+      gsm.state.singlePlayerShipSlots[1].shipId = 'SHIP_TEST';
+      gsm.state.singlePlayerInventory = {};
+
       manager.deleteShipSlotDeck(1);
       const slot = gsm.state.singlePlayerShipSlots.find(s => s.id === 1);
       expect(slot.status).toBe('empty');
       expect(slot.decklist).toEqual([]);
-      // card1 is not a starter card, so 2 copies should return to inventory
-      expect(gsm.state.singlePlayerInventory.card1).toBe(2);
+      // Ship should be returned to inventory
+      expect(gsm.state.singlePlayerInventory.SHIP_TEST).toBe(1);
+    });
+
+    it('deleteShipSlotDeck does not modify inventory when slot has no ship', () => {
+      gsm.state.singlePlayerShipSlots[1].shipId = null;
+      gsm.state.singlePlayerInventory = {};
+
+      manager.deleteShipSlotDeck(1);
+      expect(gsm.state.singlePlayerInventory).toEqual({});
     });
 
     it('deleteShipSlotDeck resets defaultShipSlotId to 0 when deleting the default slot', () => {
@@ -171,16 +237,14 @@ describe('ShipSlotManager', () => {
     });
 
     it('repairSectionSlotPartial caps repair at actual damage and returns remaining', () => {
-      // Lane 'l' has 3 damage, request 10 HP repair — should cap at 3
       const result = manager.repairSectionSlotPartial(1, 'l', 10);
       expect(result.success).toBe(true);
       expect(result.repairedHP).toBe(3);
       expect(result.remainingDamage).toBe(0);
-      expect(result.cost).toBe(30); // 3 * 10
+      expect(result.cost).toBe(30);
     });
 
     it('repairSectionSlotPartial repairs partial amount when requested less than damage', () => {
-      // Lane 'r' has 5 damage, repair only 2
       const result = manager.repairSectionSlotPartial(1, 'r', 2);
       expect(result.success).toBe(true);
       expect(result.repairedHP).toBe(2);
@@ -201,66 +265,12 @@ describe('ShipSlotManager', () => {
 
     it('repair methods fail on undamaged targets', () => {
       const results = [
-        manager.repairSectionSlot(1, 'm'),    // lane 'm' has 0 damage
+        manager.repairSectionSlot(1, 'm'),
       ];
       for (const result of results) {
         expect(result.success).toBe(false);
         expect(result.reason).toMatch(/not damaged/);
       }
-    });
-  });
-
-  // --- Instance Management ---
-
-  describe('instance management', () => {
-    it('createDroneInstance returns instanceId for non-starter drones, null for starter', () => {
-      const id = manager.createDroneInstance('CustomDrone', 1);
-      expect(id).toMatch(/^DRONE_/);
-      expect(gsm.state.singlePlayerDroneInstances).toHaveLength(1);
-
-      const starterId = manager.createDroneInstance('Starter Drone', 1);
-      expect(starterId).toBeNull();
-    });
-
-    it('getDroneDamageStateForSlot returns {} for slot 0, damage map for others', () => {
-      expect(manager.getDroneDamageStateForSlot(0)).toEqual({});
-
-      // Add a drone instance for slot 1
-      gsm.state.singlePlayerDroneInstances = [
-        { instanceId: 'DRONE_1', droneName: 'Alpha', shipSlotId: 1, isDamaged: true },
-        { instanceId: 'DRONE_2', droneName: 'Beta', shipSlotId: 1, isDamaged: false },
-        { instanceId: 'DRONE_3', droneName: 'Gamma', shipSlotId: 2, isDamaged: true },
-      ];
-      const state = manager.getDroneDamageStateForSlot(1);
-      expect(state).toEqual({ Alpha: true, Beta: false });
-    });
-
-    it('createComponentInstance returns instanceId for non-starter, throws for unknown', () => {
-      const id = manager.createComponentInstance('comp1', 1);
-      expect(id).toMatch(/^COMP_/);
-      expect(gsm.state.singlePlayerShipComponentInstances).toHaveLength(1);
-
-      const starterId = manager.createComponentInstance('starter_card_1', 1);
-      expect(starterId).toBeNull();
-
-      expect(() => manager.createComponentInstance('nonexistent', 1)).toThrow(/not found/);
-    });
-
-    it('updateDroneInstance updates damage state for existing instance', () => {
-      gsm.state.singlePlayerDroneInstances = [
-        { instanceId: 'DRONE_1', droneName: 'Alpha', shipSlotId: 1, isDamaged: false },
-      ];
-      manager.updateDroneInstance('DRONE_1', true);
-      expect(gsm.state.singlePlayerDroneInstances[0].isDamaged).toBe(true);
-    });
-
-    it('findDroneInstance returns matching instance or null', () => {
-      gsm.state.singlePlayerDroneInstances = [
-        { instanceId: 'DRONE_1', droneName: 'Alpha', shipSlotId: 1, isDamaged: false },
-      ];
-      expect(manager.findDroneInstance(1, 'Alpha')).toBeTruthy();
-      expect(manager.findDroneInstance(1, 'Beta')).toBeNull();
-      expect(manager.findDroneInstance(2, 'Alpha')).toBeNull();
     });
   });
 
@@ -270,26 +280,12 @@ describe('ShipSlotManager', () => {
     it('setDefaultShipSlot throws on invalid or inactive slot', () => {
       expect(() => manager.setDefaultShipSlot(-1)).toThrow(/Invalid slot ID/);
       expect(() => manager.setDefaultShipSlot(6)).toThrow(/Invalid slot ID/);
-      expect(() => manager.setDefaultShipSlot(2)).toThrow(/not active/); // status: 'locked'
+      expect(() => manager.setDefaultShipSlot(2)).toThrow(/not active/);
     });
 
     it('setDefaultShipSlot updates profile for valid active slot', () => {
       manager.setDefaultShipSlot(1);
       expect(gsm.state.singlePlayerProfile.defaultShipSlotId).toBe(1);
-    });
-
-    it('clearSlotInstances removes only instances for the target slot', () => {
-      gsm.state.singlePlayerDroneInstances = [
-        { instanceId: 'D1', shipSlotId: 1 },
-        { instanceId: 'D2', shipSlotId: 2 },
-      ];
-      gsm.state.singlePlayerShipComponentInstances = [
-        { instanceId: 'C1', shipSlotId: 1 },
-        { instanceId: 'C2', shipSlotId: 2 },
-      ];
-      manager.clearSlotInstances(1);
-      expect(gsm.state.singlePlayerDroneInstances).toEqual([{ instanceId: 'D2', shipSlotId: 2 }]);
-      expect(gsm.state.singlePlayerShipComponentInstances).toEqual([{ instanceId: 'C2', shipSlotId: 2 }]);
     });
   });
 });

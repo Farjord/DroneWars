@@ -78,8 +78,6 @@ const createMockGameState = (overrides = {}) => ({
       shipComponents: { left: 'COMP1', middle: 'COMP2', right: 'COMP3' }
     }
   ],
-  singlePlayerShipComponentInstances: [],
-  singlePlayerDroneInstances: [],
   singlePlayerProfile: {
     credits: 1000,
     securityTokens: 0,
@@ -647,8 +645,6 @@ describe('Starter Deck Warning Integration', () => {
         createCustomSlot(1, 'Custom Ship 1'),
         createCustomSlot(2, 'Custom Ship 2')
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0
@@ -690,8 +686,6 @@ describe('Starter Deck Warning Integration', () => {
         createStarterSlot(),
         createCustomSlot(1, 'Custom Ship 1')
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0
@@ -731,8 +725,6 @@ describe('Starter Deck Warning Integration', () => {
       singlePlayerShipSlots: [
         createStarterSlot() // Only starter, no custom decks
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0
@@ -774,8 +766,6 @@ describe('Starter Deck Warning Integration', () => {
         createStarterSlot(),
         createCustomSlot(1, 'Custom Ship 1')
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0
@@ -822,8 +812,6 @@ describe('Starter Deck Warning Integration', () => {
         createStarterSlot(),
         createCustomSlot(1, 'Custom Ship 1')
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0
@@ -869,8 +857,6 @@ describe('Starter Deck Warning Integration', () => {
       singlePlayerShipSlots: [
         createStarterSlot() // Only starter, no custom decks
       ],
-      singlePlayerShipComponentInstances: [],
-      singlePlayerDroneInstances: [],
       singlePlayerProfile: {
         credits: 1000,
         securityTokens: 0

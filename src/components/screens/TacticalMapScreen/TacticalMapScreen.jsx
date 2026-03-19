@@ -160,7 +160,7 @@ function TacticalMapScreen() {
 
   // Read run state from TacticalMapStateManager
   // This ensures backgroundIndex and other critical data persists across combat transitions
-  const { singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
+  const { singlePlayerShipSlots, quickDeployments } = gameState;
   const currentRunState = tacticalMapRunState;
 
   // Shared refs passed to hooks (used by subscription effects, movement loop, and handlers)
@@ -435,11 +435,10 @@ function TacticalMapScreen() {
   }
 
   // Build ship sections with hull data for HUD display
-  // Priority: currentRunState.shipSections (live damage) > shipComponentInstances > base data
+  // Priority: currentRunState.shipSections (live damage) > sectionSlots damage > base data
   const shipSections = buildShipSections(
     shipSlot,
     currentRunState.shipSlotId,
-    singlePlayerShipComponentInstances || [],
     currentRunState.shipSections
   );
 

@@ -120,9 +120,9 @@ export function useTacticalMovement({
 
     debugLog('MOVEMENT', `Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
 
-    // Check for MIA trigger
+    // Check for max detection trigger
     if (newDetection >= 100) {
-      DetectionManager.triggerMIA();
+      DetectionManager.triggerMaxDetection();
       // Signal to stop movement loop BEFORE encounter check to prevent race condition
       // where both MIA screen and encounter modal appear simultaneously
       shouldStopMovement.current = true;

@@ -23,36 +23,20 @@ vi.mock('../../../data/playerDeckData.js', () => ({
 const baseProfile = { credits: 100, stats: {} };
 
 describe('createCopyStarterDeckSlot', () => {
-  it('returns deck data with starter cards copied', () => {
-    const result = createCopyStarterDeckSlot(1, baseProfile, {}, [], []);
+  it('returns deck data with starter cards copied (no shipId — assigned separately)', () => {
+    const result = createCopyStarterDeckSlot(1, baseProfile);
     expect(result).not.toBeNull();
     expect(result.deckData.decklist).toEqual([
       { id: 'CARD_A', quantity: 2 },
       { id: 'CARD_B', quantity: 1 }
     ]);
-    expect(result.deckData.shipId).toBe('SHIP_STARTER');
+    expect(result.deckData.shipId).toBeUndefined();
     expect(result.deckData.name).toBe('Ship 1');
   });
 
-  it('adds cards and ship to inventory', () => {
-    const result = createCopyStarterDeckSlot(1, baseProfile, { CARD_A: 3 }, [], []);
-    expect(result.inventoryUpdate.CARD_A).toBe(5); // 3 existing + 2 from starter
-    expect(result.inventoryUpdate.CARD_B).toBe(1);
-    expect(result.inventoryUpdate.SHIP_STARTER).toBe(1);
-  });
-
-  it('creates drone instances for assigned slots only', () => {
-    const result = createCopyStarterDeckSlot(2, baseProfile, {}, [], []);
-    expect(result.droneInstances).toHaveLength(1);
-    expect(result.droneInstances[0].droneName).toBe('Scout');
-    expect(result.droneInstances[0].shipSlotId).toBe(2);
-  });
-
-  it('creates component instances', () => {
-    const result = createCopyStarterDeckSlot(1, baseProfile, {}, [], []);
-    expect(result.componentInstances).toHaveLength(1);
-    expect(result.componentInstances[0].componentId).toBe('COMP_BRIDGE');
-    expect(result.componentInstances[0].shipSlotId).toBe(1);
+  it('returns profileUpdate with deducted credits', () => {
+    const result = createCopyStarterDeckSlot(1, baseProfile);
+    expect(result.profileUpdate.credits).toBe(100); // cost is 0
   });
 
   it('returns null when credits insufficient (non-zero cost)', async () => {
@@ -61,7 +45,7 @@ describe('createCopyStarterDeckSlot', () => {
     const originalCost = ECONOMY.STARTER_DECK_COPY_COST;
     ECONOMY.STARTER_DECK_COPY_COST = 500;
 
-    const result = createCopyStarterDeckSlot(1, { credits: 100 }, {}, [], []);
+    const result = createCopyStarterDeckSlot(1, { credits: 100 });
     expect(result).toBeNull();
 
     ECONOMY.STARTER_DECK_COPY_COST = originalCost;
@@ -69,11 +53,11 @@ describe('createCopyStarterDeckSlot', () => {
 });
 
 describe('createEmptyDeckSlot', () => {
-  it('returns empty deck data', () => {
+  it('returns empty deck data (no shipId — assigned separately)', () => {
     const result = createEmptyDeckSlot(3, baseProfile);
     expect(result).not.toBeNull();
     expect(result.deckData.decklist).toEqual([]);
-    expect(result.deckData.shipId).toBeNull();
+    expect(result.deckData.shipId).toBeUndefined();
     expect(result.deckData.name).toBe('Ship 3');
   });
 
