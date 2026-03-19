@@ -153,7 +153,19 @@ let mockMoveEffectCounter = 0;
 vi.mock('../../effects/MovementEffectProcessor.js', () => {
   return {
     default: class MockMovementProcessor {
-      executeSingleMove(card, drone, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx) {
+      constructor() {
+        // Deferred triggers: events are captured in deferredTriggerContext._mock* fields
+        this.resolveDeferredTriggers = vi.fn().mockImplementation((deferredCtx, playerStates) => {
+          const newStates = JSON.parse(JSON.stringify(playerStates));
+          return {
+            newPlayerStates: newStates,
+            triggerAnimationEvents: deferredCtx._mockTriggerEvents || [],
+            mineAnimationEvents: deferredCtx._mockMineEvents || [],
+            goAgain: false
+          };
+        });
+      }
+      executeSingleMove(card, drone, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx, insertionIndex, options) {
         const effectIdx = mockMoveEffectCounter++;
         const perEffect = mockMovePerEffect[effectIdx];
         const droneOwnerId = drone.owner || actingPlayerId;
@@ -161,13 +173,34 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => {
           newStates[droneOwnerId].dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
         const movedDrone = { ...drone, isExhausted: !card.effects?.[0]?.properties?.includes('DO_NOT_EXHAUST') };
         newStates[droneOwnerId].dronesOnBoard[toLane].push(movedDrone);
-        return {
+
+        const triggerEvents = perEffect?.triggerEvents ?? [...mockMoveTriggerEvents];
+        const mineEvents = perEffect?.mineEvents ?? [...mockMoveMineEvents];
+
+        const base = {
           newPlayerStates: newStates,
           postMovementState: JSON.parse(JSON.stringify(newStates)),
           effectResult: { movedDrones: [movedDrone], fromLane, toLane, wasSuccessful: true },
           shouldEndTurn: !card.effects?.[0]?.goAgain,
-          triggerAnimationEvents: perEffect?.triggerEvents ?? [...mockMoveTriggerEvents],
-          mineAnimationEvents: perEffect?.mineEvents ?? [...mockMoveMineEvents],
+          animationEvents: [],
+        };
+
+        if (options?.deferTriggers) {
+          return {
+            ...base,
+            triggerAnimationEvents: [],
+            mineAnimationEvents: [],
+            deferredTriggerContext: {
+              movedDrones: [movedDrone], fromLane, toLane, droneOwnerId, actingPlayerId,
+              _mockTriggerEvents: triggerEvents,
+              _mockMineEvents: mineEvents,
+            }
+          };
+        }
+        return {
+          ...base,
+          triggerAnimationEvents: triggerEvents,
+          mineAnimationEvents: mineEvents,
         };
       }
       executeMultiMove(card, drones, fromLane, toLane, actingPlayerId, newStates, opponentId, ctx) {

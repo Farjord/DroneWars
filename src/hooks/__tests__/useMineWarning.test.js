@@ -128,6 +128,7 @@ function makeHookProps(overrides = {}) {
       techSlots: { lane1: [], lane2: [], lane3: [] },
     },
     opponentPlayerState: {
+      dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
       techSlots: { lane1: [], lane2: [], lane3: [] },
     },
     ...overrides,
@@ -174,13 +175,14 @@ describe('useMineWarning hook', () => {
     expect(result.current.warnedMineIds).toEqual([mine.id]);
   });
 
-  it('returns mine IDs during drag-attack (Jitter Mine in attacker lane)', () => {
+  it('returns mine IDs during drag-attack on opponent drone (Jitter Mine in attacker lane)', () => {
     const mine = makeTech('Jitter Mine');
     const { result } = renderHook(() =>
       useMineWarning(makeHookProps({
         draggedDrone: { drone: { id: 'drone-1' }, sourceLane: 'lane1' },
-        hoveredTarget: { type: 'drone', isOpponent: true, target: { id: 'opp-1' } },
+        hoveredTarget: { type: 'drone', target: { id: 'opp-1' }, lane: 'lane2' },
         opponentPlayerState: {
+          dronesOnBoard: { lane1: [], lane2: [{ id: 'opp-1' }], lane3: [] },
           techSlots: { lane1: [mine], lane2: [], lane3: [] },
         },
       }))
@@ -188,18 +190,54 @@ describe('useMineWarning hook', () => {
     expect(result.current.warnedMineIds).toEqual([mine.id]);
   });
 
-  it('returns mine IDs during click-attack (selectedDrone + hovered opponent)', () => {
+  it('returns mine IDs during click-attack on opponent drone (selectedDrone + hovered opponent)', () => {
     const mine = makeTech('Jitter Mine');
     const { result } = renderHook(() =>
       useMineWarning(makeHookProps({
         selectedDrone: { id: 'drone-1' },
-        hoveredTarget: { type: 'drone', isOpponent: true, target: { id: 'opp-1' } },
+        hoveredTarget: { type: 'drone', target: { id: 'opp-1' }, lane: 'lane2' },
         turnPhase: 'action',
         localPlayerState: {
           dronesOnBoard: { lane1: [{ id: 'drone-1' }], lane2: [], lane3: [] },
           techSlots: { lane1: [], lane2: [], lane3: [] },
         },
         opponentPlayerState: {
+          dronesOnBoard: { lane1: [], lane2: [{ id: 'opp-1' }], lane3: [] },
+          techSlots: { lane1: [mine], lane2: [], lane3: [] },
+        },
+      }))
+    );
+    expect(result.current.warnedMineIds).toEqual([mine.id]);
+  });
+
+  it('returns mine IDs during drag-attack on ship section', () => {
+    const mine = makeTech('Jitter Mine');
+    const { result } = renderHook(() =>
+      useMineWarning(makeHookProps({
+        draggedDrone: { drone: { id: 'drone-1' }, sourceLane: 'lane1' },
+        hoveredTarget: { type: 'section', target: { sectionKey: 'weapons' }, isOpponent: true },
+        opponentPlayerState: {
+          dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+          techSlots: { lane1: [mine], lane2: [], lane3: [] },
+        },
+      }))
+    );
+    expect(result.current.warnedMineIds).toEqual([mine.id]);
+  });
+
+  it('returns mine IDs during click-attack on ship section', () => {
+    const mine = makeTech('Jitter Mine');
+    const { result } = renderHook(() =>
+      useMineWarning(makeHookProps({
+        selectedDrone: { id: 'drone-1' },
+        hoveredTarget: { type: 'section', target: { sectionKey: 'weapons' }, isOpponent: true },
+        turnPhase: 'action',
+        localPlayerState: {
+          dronesOnBoard: { lane1: [{ id: 'drone-1' }], lane2: [], lane3: [] },
+          techSlots: { lane1: [], lane2: [], lane3: [] },
+        },
+        opponentPlayerState: {
+          dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
           techSlots: { lane1: [mine], lane2: [], lane3: [] },
         },
       }))

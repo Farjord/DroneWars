@@ -24,10 +24,10 @@ const renderDronesOnBoard = ({
   handleTokenClick, handleAbilityIconClick, selectedDrone, recentlyHitDrones,
   potentialInterceptors, potentialGuardians, droneRefs, mandatoryAction,
   validAbilityTargets, validCardTargets, affectedDroneIds, setHoveredTarget,
-  hoveredTarget, interceptedBadge, draggedDrone, handleDroneDragStart,
+  hoveredTarget, draggedDrone, handleDroneDragStart,
   handleDroneDragEnd, draggedActionCard, handleActionCardDragEnd,
   getLocalPlayerId, getOpponentPlayerId, abilityMode, effectChainState,
-  selectedCard, hoveredLane, insertionPreview,
+  selectedCard, hoveredLane, insertionPreview, interceptedBadge,
 }) => {
   // When any drone is hovered or selected during targeting, dim the rest
   // In abilityMode, selectedDrone is the ability *source* — not a target focus
@@ -130,7 +130,6 @@ const renderDronesOnBoard = ({
               onMouseLeave={() => {
                 setHoveredTarget(null);
               }}
-              interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
               onDragStart={
@@ -180,6 +179,7 @@ const renderDronesOnBoard = ({
               isElevated={false}
               isInvalidTarget={isInvalidTarget}
               anyTargetFocused={anyTargetFocused}
+              interceptedBadge={interceptedBadge}
                />
           );
       }).filter(Boolean);
@@ -271,7 +271,6 @@ const SingleLaneView = ({
   mandatoryAction,
   setHoveredTarget,
   hoveredTarget,
-  interceptedBadge,
   draggedCard,
   handleCardDragEnd,
   draggedDrone,
@@ -288,6 +287,8 @@ const SingleLaneView = ({
   insertionPreview = null,
   setInsertionPreview = null,
   onLaneMouseMove = null,
+  // Intercepted badge state
+  interceptedBadge = null,
 }) => {
   const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
 
@@ -451,7 +452,6 @@ const SingleLaneView = ({
           affectedDroneIds,
           setHoveredTarget,
           hoveredTarget,
-          interceptedBadge,
           draggedDrone,
           handleDroneDragStart,
           handleDroneDragEnd,
@@ -464,6 +464,7 @@ const SingleLaneView = ({
           selectedCard,
           hoveredLane,
           insertionPreview,
+          interceptedBadge,
         })}
       </div>
     </div>

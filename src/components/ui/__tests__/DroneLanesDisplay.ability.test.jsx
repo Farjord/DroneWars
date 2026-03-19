@@ -92,8 +92,7 @@ describe('DroneLanesDisplay - Ability Mode Props', () => {
     potentialGuardians: [],
     droneRefs: { current: {} },
     mandatoryAction: null,
-    setHoveredTarget: vi.fn(),
-    interceptedBadge: null
+    setHoveredTarget: vi.fn()
   };
 
   beforeEach(() => {

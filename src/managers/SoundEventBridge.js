@@ -82,6 +82,11 @@ class SoundEventBridge {
           const soundId = getSoundForEvent('animationStarted', event.payload?.animationType);
           if (soundId) {
             this.soundManager.play(soundId);
+          } else if (event.payload?.visualType) {
+            const visualSoundId = getSoundForEvent('cardVisualStarted', event.payload.visualType);
+            if (visualSoundId) {
+              this.soundManager.play(visualSoundId);
+            }
           }
         }
         // Detect failed run screen for defeat music override

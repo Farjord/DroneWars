@@ -31,6 +31,12 @@ vi.mock('../../effects/MovementEffectProcessor.js', () => ({
   default: class MockMovementEffectProcessor {
     constructor() {
       this.executeSingleMove = mockExecuteSingleMove;
+      this.resolveDeferredTriggers = vi.fn().mockImplementation((ctx, states) => ({
+        newPlayerStates: JSON.parse(JSON.stringify(states)),
+        triggerAnimationEvents: [],
+        mineAnimationEvents: [],
+        goAgain: false
+      }));
     }
   }
 }));

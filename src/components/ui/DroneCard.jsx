@@ -125,9 +125,9 @@ const DroneCard = ({
   const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
 
   // 3D tilt parallax during drag + hover
-  const glowShadow = isDisabled ? null
-    : `0 0 6px var(--card-tactic-glow-dim), 0 0 12px var(--card-tactic-glow-dim)`;
-  const tiltRef = useCardTilt(isDragging, { glowShadow });
+  const glowFilter = isDisabled ? null
+    : `drop-shadow(0 0 6px var(--card-tactic-glow-dim)) drop-shadow(0 0 12px var(--card-tactic-glow-dim))`;
+  const tiltRef = useCardTilt(isDragging, { glowFilter });
 
   return (
     <div ref={tiltRef} style={{ width: '225px', height: '275px', flexShrink: 0, ...scaleStyle }}>
@@ -140,7 +140,7 @@ const DroneCard = ({
         ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
         ${isDisabled ? 'saturate-50' : ''}
-        ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
+        ${isDragging ? 'ring-2 ring-cyan-400' : ''}
       `}
       style={{
         width: '100%',

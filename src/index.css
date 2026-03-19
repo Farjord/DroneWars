@@ -58,7 +58,11 @@ img {
 
   .ai-opponent-card.selected {
     border-color: #ef4444;
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+
+  .ai-opponent-card-glow {
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))
+            drop-shadow(0 0 15px rgba(239, 68, 68, 0.25));
   }
 
   .ai-opponent-card-bg {
@@ -113,7 +117,11 @@ img {
 
   .vs-deck-card.selected {
     border-color: #22d3ee;
-    box-shadow: 0 0 15px rgba(34, 211, 238, 0.4);
+  }
+
+  .vs-deck-card-glow {
+    filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4))
+            drop-shadow(0 0 15px rgba(34, 211, 238, 0.25));
   }
 
   .vs-deck-card--custom {
@@ -749,6 +757,15 @@ img {
 
 .drone-float {
   animation: subtleSway 5s ease-in-out infinite;
+}
+
+/* Marked drone target glow animation */
+.marked-glow {
+  animation: targetGlow 2s ease-in-out infinite;
+}
+@keyframes targetGlow {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 2px rgba(239, 68, 68, 0.8)); }
+  50% { filter: brightness(1.5) drop-shadow(0 0 8px rgba(239, 68, 68, 1)); }
 }
 
 

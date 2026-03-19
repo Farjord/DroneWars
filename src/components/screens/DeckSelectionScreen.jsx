@@ -400,8 +400,8 @@ function DeckSelectionScreen({ onStepComplete }) {
         }}>
           {/* VS Mode Decks */}
           {vsDecks.map((deck) => (
+            <div key={deck.id} className={selectedDeck?.id === deck.id ? 'vs-deck-card-glow' : ''}>
             <div
-              key={deck.id}
               className={`vs-deck-card ${selectedDeck?.id === deck.id ? 'selected' : ''}`}
               onClick={() => handleSelectDeck(deck)}
               onMouseEnter={() => SoundManager.getInstance().play('hover_over')}
@@ -452,6 +452,7 @@ function DeckSelectionScreen({ onStepComplete }) {
                   </button>
                 </div>
               </div>
+            </div>
             </div>
           ))}
 

@@ -40,6 +40,7 @@ import useClickHandlers from './hooks/useClickHandlers.js';
 import useGameLifecycle from './hooks/useGameLifecycle.js';
 import useResolvers from './hooks/useResolvers.js';
 import useActionRouting from './hooks/useActionRouting.js';
+import useWinnerModal from './hooks/useWinnerModal.js';
 import clientStateStore from './client/clientStateStore.singleton.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
@@ -158,7 +159,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [modalContent, setModalContent] = useState(null);
   const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
   const [cardToView, setCardToView] = useState(null);
-  const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
   const [showOpponentDronesModal, setShowOpponentDronesModal] = useState(false);
@@ -313,6 +313,7 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 3.5 STATE AND REFS DEPENDENT ON GAMESTATE ---
   // State and refs that require gameState values for initialization.
   // Positioned after gameState destructuring to ensure proper initialization order.
+  const { showWinnerModal, dismissWinnerModal } = useWinnerModal(winner);
   const [lastCurrentPlayer, setLastCurrentPlayer] = useState(currentPlayer);
 
   // Refs for async operations that need gameState values
@@ -649,6 +650,7 @@ const App = ({ phaseAnimationQueue }) => {
     handleConfirmInterception,
   } = useInterception({
     gameState,
+    gameStateManager,
     localPlayerState,
     opponentPlayerState,
     selectedDrone,
@@ -808,13 +810,7 @@ const App = ({ phaseAnimationQueue }) => {
   }, [phaseAnimationQueue]);
 
   // --- 8.3 WIN CONDITION MONITORING ---
-  // Win conditions are now checked automatically by ActionProcessor after attacks, abilities, and card plays
-  // This effect shows the winner modal when a winner is detected
-  useEffect(() => {
-    if (winner && !showWinnerModal) {
-      setShowWinnerModal(true);
-    }
-  }, [winner, showWinnerModal]);
+  // Winner modal visibility is now managed by useWinnerModal hook
 
   // --- 8.4 CARD SELECTION PENDING (STATE-BASED DELIVERY) ---
   // Monitors cardSelectionPending for multiplayer search_and_draw modal display.
@@ -916,7 +912,7 @@ const App = ({ phaseAnimationQueue }) => {
     setSelectedDrone, setModalContent, setAbilityMode, setValidAbilityTargets,
     setMandatoryAction, setShowMandatoryActionModal, setConfirmationModal,
     setSelectedCard, setValidCardTargets, setCardConfirmation,
-    setShowWinnerModal, setShowAbandonRunModal, setShowAddCardModal,
+    dismissWinnerModal, setShowAbandonRunModal, setShowAddCardModal,
     setOptionalDiscardCount, setDeck, setCardToView,
     // Functions
     submitAction, getLocalPlayerId, getOpponentPlayerId,
@@ -1333,7 +1329,7 @@ const App = ({ phaseAnimationQueue }) => {
         onCloseCardDetail={() => setCardToView(null)}
         onCloseAiCardPlayReport={() => setAiCardPlayReport(null)}
         onCloseAiDecisionLog={() => setAiDecisionLogToShow(null)}
-        onCloseWinnerModal={() => setShowWinnerModal(false)}
+        onCloseWinnerModal={dismissWinnerModal}
         onCancelAbandonRun={() => setShowAbandonRunModal(false)}
         onConfirmAbandonRun={handleConfirmAbandonRun}
         onCloseViewShipSection={() => setViewShipSectionModal(null)}

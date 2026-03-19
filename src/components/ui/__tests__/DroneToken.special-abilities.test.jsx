@@ -142,7 +142,6 @@ describe('DroneToken - SpecialAbilityIcons', () => {
       droneRefs: { current: {} },
       mandatoryAction: null,
       localPlayerState: { energy: 5 },
-      interceptedBadge: null,
       onDragStart: vi.fn(),
       onDragDrop: vi.fn(),
       isDragging: false,

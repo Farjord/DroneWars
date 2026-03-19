@@ -78,8 +78,7 @@ describe('DroneLanesDisplay action card drop', () => {
     potentialGuardians: [],
     droneRefs: { current: {} },
     mandatoryAction: null,
-    setHoveredTarget: vi.fn(),
-    interceptedBadge: null
+    setHoveredTarget: vi.fn()
   };
 
   describe('lane drop detection for LANE targeting cards', () => {

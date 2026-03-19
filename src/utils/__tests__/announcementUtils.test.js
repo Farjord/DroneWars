@@ -270,6 +270,24 @@ describe('extractAnnouncements', () => {
     expect(announcements[0].id).not.toBe(announcements[1].id);
   });
 
+  it('extracts INTERCEPTION_ANNOUNCEMENT into announcements', () => {
+    const allAnimations = [
+      {
+        animationName: 'INTERCEPTION_ANNOUNCEMENT',
+        payload: { phase: 'interceptionDeciding', text: 'OPPONENT DECIDING INTERCEPTION' },
+      },
+      { animationName: 'DRONE_ATTACK', payload: { damage: 5 } },
+    ];
+
+    const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
+
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0].phaseName).toBe('interceptionDeciding');
+    expect(announcements[0].phaseText).toBe('OPPONENT DECIDING INTERCEPTION');
+    expect(visualAnimations).toHaveLength(1);
+    expect(visualAnimations[0].animationName).toBe('DRONE_ATTACK');
+  });
+
   it('passes through variant and subtitleVariant from payload', () => {
     const allAnimations = [
       {

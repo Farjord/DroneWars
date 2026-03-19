@@ -61,8 +61,14 @@ function GameFooter({
   onCardPlayWarning,
   onCardPlayWarningClear
 }) {
+  const isTargetingFromFooter = selectedCard || draggedActionCard || draggedCard;
+
   return (
-    <footer className={styles.footer} data-footer>
+    <footer
+      className={styles.footer}
+      data-footer
+      style={isTargetingFromFooter ? { zIndex: 150 } : undefined}
+    >
       <div className={`${styles.contentContainer} ${footerView === 'log' ? styles.contentContainerWithBg : ''}`}>
         <div className={styles.contentWrapper}>
           {footerView === 'hand' && (

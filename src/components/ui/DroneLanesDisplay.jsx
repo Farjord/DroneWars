@@ -37,7 +37,6 @@ const DroneLanesDisplay = ({
   mandatoryAction,
   setHoveredTarget,
   hoveredTarget,
-  interceptedBadge,
   draggedCard,
   handleCardDragEnd,
   draggedDrone,
@@ -49,7 +48,8 @@ const DroneLanesDisplay = ({
   setHoveredLane = null,
   onLaneDrop = null,
   onLaneDragOver = null,
-  laneControl = { lane1: null, lane2: null, lane3: null }
+  laneControl = { lane1: null, lane2: null, lane3: null },
+  interceptedBadge = null,
 }) => {
   const sharedProps = {
     isPlayer,
@@ -80,7 +80,6 @@ const DroneLanesDisplay = ({
     mandatoryAction,
     setHoveredTarget,
     hoveredTarget,
-    interceptedBadge,
     draggedCard,
     handleCardDragEnd,
     draggedDrone,
@@ -93,6 +92,7 @@ const DroneLanesDisplay = ({
     onLaneDrop,
     onLaneDragOver,
     laneControl,
+    interceptedBadge,
   };
 
   return (

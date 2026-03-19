@@ -208,9 +208,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
    * @param {Object} newPlayerStates - Cloned player states (already cloned by caller)
    * @param {string} opponentPlayerId - Opponent player ID
    * @param {Object} context - Effect execution context
+   * @param {number|null} [insertionIndex=null] - Position to insert drone in destination lane
+   * @param {Object} [options={}] - Execution options
+   * @param {boolean} [options.deferTriggers] - Skip inline trigger resolution; return deferredTriggerContext instead
    * @returns {Object} Result with newPlayerStates or error
    */
-  executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context, insertionIndex = null) {
+  executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context, insertionIndex = null, options = {}) {
     const effect = card.effects[0];
     const { callbacks, placedSections } = context;
 
@@ -345,6 +348,33 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       actingPlayerId: droneOwnerId
     });
 
+    // When deferTriggers is set, skip inline trigger resolution and return
+    // context for the caller to resolve triggers after POST conditionals.
+    if (options.deferTriggers) {
+      return {
+        newPlayerStates,
+        postMovementState,
+        animationEvents: movementAnimation,
+        effectResult: {
+          movedDrones: [movedDrone],
+          fromLane,
+          toLane,
+          wasSuccessful: true
+        },
+        shouldEndTurn: !card.effects[0].goAgain,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true,
+        triggerAnimationEvents: [],
+        mineAnimationEvents: [],
+        deferredTriggerContext: {
+          movedDrones: [movedDrone], fromLane, toLane, droneOwnerId,
+          actingPlayerId, placedSections, logCallback,
+          cardGoAgain: card.effects[0].goAgain,
+          pairSet: context.pairSet, chainDepth: context.chainDepth
+        }
+      };
+    }
+
     // Resolve post-move triggers: ON_MOVE + auras + Rally Beacon + mines
     const postMoveResult = this._resolvePostMoveTriggers({
       movedDrones: [movedDrone],
@@ -431,13 +461,6 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           triggerAnimationEvents.push(...moveResult.animationEvents);
         }
       }
-      // DOES_NOT_EXHAUST: If ON_MOVE trigger returned doesNotExhaust, un-exhaust the moved drone
-      if (moveResult.doesNotExhaust) {
-        const droneInState = newPlayerStates[droneOwnerId].dronesOnBoard[toLane]?.find(d => d.id === movedDrone.id);
-        if (droneInState) {
-          droneInState.isExhausted = false;
-        }
-      }
     }
 
     // ON_LANE_MOVEMENT_OUT fires for friendly drones leaving the source lane
@@ -521,6 +544,31 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }
 
     return { triggerAnimationEvents, mineAnimationEvents, goAgain };
+  }
+
+  /**
+   * Resolve deferred post-move triggers against current (post-conditional) state.
+   * Called by EffectChainProcessor after POST conditionals have been evaluated.
+   *
+   * @param {Object} deferredContext - Context captured at movement time
+   * @param {Object} currentPlayerStates - Player states after POST conditionals
+   * @returns {Object} { newPlayerStates, triggerAnimationEvents, mineAnimationEvents, goAgain }
+   */
+  resolveDeferredTriggers(deferredContext, currentPlayerStates) {
+    const newPlayerStates = {
+      player1: JSON.parse(JSON.stringify(currentPlayerStates.player1)),
+      player2: JSON.parse(JSON.stringify(currentPlayerStates.player2)),
+    };
+    const result = this._resolvePostMoveTriggers({
+      ...deferredContext,
+      newPlayerStates
+    });
+    return {
+      newPlayerStates,
+      triggerAnimationEvents: result.triggerAnimationEvents,
+      mineAnimationEvents: result.mineAnimationEvents,
+      goAgain: result.goAgain
+    };
   }
 
   _findDroneOwner(droneId, playerStates) {

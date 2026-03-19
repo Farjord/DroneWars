@@ -16,6 +16,9 @@ vi.mock('../../triggers/triggerConstants.js', () => ({
 // MovementEffectProcessor: not relevant
 vi.mock('../../effects/MovementEffectProcessor.js', () => ({
   default: class MockMovementProcessor {
+    constructor() {
+      this.resolveDeferredTriggers = () => ({ newPlayerStates: {}, triggerAnimationEvents: [], mineAnimationEvents: [], goAgain: false });
+    }
     executeSingleMove() { return { newPlayerStates: {}, animationEvents: [] }; }
   }
 }));

@@ -45,6 +45,11 @@ export const SOUND_MANIFEST = {
     channel: 'sfx',
     volume: 0.5
   },
+  shield_allocate: {
+    path: `${BASE_PATH}shield-allocate.wav`,
+    channel: 'sfx',
+    volume: 0.4
+  },
   card_hover_over: {
     path: `${BASE_PATH}card-hover-over.mp3`,
     channel: 'sfx',
@@ -67,7 +72,7 @@ export const SOUND_MANIFEST = {
 
   // Deployment
   deploy_teleport: {
-    path: `${BASE_PATH}deploy-teleport.wav`,
+    path: `${BASE_PATH}deploy-teleport.mp3`,
     channel: 'sfx',
     volume: 0.3
   },
@@ -92,21 +97,21 @@ export const SOUND_MANIFEST = {
   },
 
   // Tech slot sounds
-  tech_deploy:     { path: `${BASE_PATH}deploy-teleport.wav`,  channel: 'sfx', volume: 0.3 },
+  tech_deploy:     { path: `${BASE_PATH}deploy-teleport.mp3`,  channel: 'sfx', volume: 0.3 },
   tech_destroy:    { path: `${BASE_PATH}explosion-small.wav`,  channel: 'sfx', volume: 0.4 },
   tech_warning:    { path: `${BASE_PATH}card-hover-over.mp3`,  channel: 'sfx', volume: 0.15 },
   mine_warning:    { path: `${BASE_PATH}mine_warning.mp3`,    channel: 'sfx', volume: 0.3 },
 
   // Combat sounds
   laser_fire:      { path: `${BASE_PATH}laser-fire.mp3`,      channel: 'sfx', volume: 0.4 },
-  shield_hit:      { path: `${BASE_PATH}shield-hit.wav`,      channel: 'sfx', volume: 0.4 },
+  shield_hit:      { path: `${BASE_PATH}shield-hit.mp3`,      channel: 'sfx', volume: 0.4 },
   explosion_small: { path: `${BASE_PATH}explosion-small.wav`, channel: 'sfx', volume: 0.4 },
   explosion_large: { path: `${BASE_PATH}explosion-large.wav`, channel: 'sfx', volume: 0.4 },
   // Music tracks (looping, managed by MusicManager)
   music_menu:      { path: `${MUSIC_BASE_PATH}menu.ogg`,      channel: 'music', volume: 0.4 },
   music_hangar:    { path: `${MUSIC_BASE_PATH}hangar.ogg`,    channel: 'music', volume: 0.35 },
   music_tactical:  { path: `${MUSIC_BASE_PATH}tactical.ogg`,  channel: 'music', volume: 0.35 },
-  music_combat:    { path: `${MUSIC_BASE_PATH}combat.ogg`,    channel: 'music', volume: 0.3 },
+  music_combat:    { path: `${MUSIC_BASE_PATH}combat.mp3`,    channel: 'music', volume: 0.3 },
   music_deploying: { path: `${MUSIC_BASE_PATH}deploying.ogg`, channel: 'music', volume: 0.35 },
   music_victory:   { path: `${MUSIC_BASE_PATH}victory.ogg`,   channel: 'music', volume: 0.35 },
   music_defeat:    { path: `${MUSIC_BASE_PATH}defeat.ogg`,    channel: 'music', volume: 0.35 },
@@ -125,6 +130,7 @@ export const SOUND_MANIFEST = {
  * Sources:
  *   - phaseAnimation: PhaseAnimationQueue 'animationStarted' events
  *   - actionCompleted: ActionProcessor 'action_completed' events
+ *   - cardVisualStarted: Card visual effect sounds (keyed by visualType)
  *   - stateChange: GameStateManager/CombatStateManager state change events
  */
 export const SOUND_EVENT_MAP = {
@@ -154,6 +160,11 @@ export const SOUND_EVENT_MAP = {
     DRONE_DESTROYED: 'explosion_large',
     SECTION_DESTROYED: 'explosion_large',
     SECTION_DAMAGED: 'explosion_small',
+  },
+
+  // Card visual effect sounds (keyed by visualType from CARD_VISUAL animations)
+  cardVisualStarted: {
+    LASER_BLAST: 'laser_fire',
   },
 
   // Turn change events (keyed by turn ownership)

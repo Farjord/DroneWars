@@ -52,7 +52,7 @@ export function personalizeAnnouncements(animations, playerId, state) {
  * Mirrors GameClient._extractAndQueueAnnouncements but as a pure function.
  */
 export function extractAnnouncements(allAnimations) {
-  const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT']);
+  const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT', 'INTERCEPTION_ANNOUNCEMENT']);
   const visualAnimations = [];
   const announcements = [];
 

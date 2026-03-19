@@ -278,15 +278,17 @@ const BattleColumn = ({
 }) => {
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
-  // During drone drag, dissolve the source lane's stacking context so the
-  // dragged drone (z-50) escapes to root level and paints above the
-  // TargetingArrow SVGs (z-15). Only dissolve the lane that actually
-  // contains the dragged drone.
+  // During drone drag or attack targeting, dissolve the source lane's stacking
+  // context so the drone (z-[150]) escapes to root level and paints above the
+  // TargetingArrow SVGs (z-100). Only dissolve the lane that actually contains
+  // the dragged/selected drone.
   const draggedId = draggedDrone?.drone?.id;
   const dragInPlayerLane = draggedId && draggedDrone.sourceLane === laneId &&
     localPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedId);
   const dragInOpponentLane = draggedId && draggedDrone.sourceLane === laneId &&
     opponentPlayerState.dronesOnBoard[laneId]?.some(d => d.id === draggedId);
+  const selectedDroneInPlayerLane = selectedDrone &&
+    localPlayerState.dronesOnBoard[laneId]?.some(d => d.id === selectedDrone.id);
 
   // Shared props for SingleLaneView (both opponent and player lanes)
   const sharedLaneProps = {
@@ -316,7 +318,6 @@ const BattleColumn = ({
     mandatoryAction,
     setHoveredTarget,
     hoveredTarget,
-    interceptedBadge,
     draggedDrone,
     handleDroneDragStart,
     handleDroneDragEnd,
@@ -328,6 +329,7 @@ const BattleColumn = ({
     insertionPreview,
     setInsertionPreview,
     onLaneMouseMove,
+    interceptedBadge,
   };
 
   // Shared props for ShipSectionSlot
@@ -353,7 +355,7 @@ const BattleColumn = ({
 
 
   return (
-    <div className="flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
+    <div className="relative flex flex-col items-center min-w-0" style={{ overflow: 'visible', height: '100%' }}>
       {/* Opponent Ship Section — 30% height, behind lanes */}
       <div style={{ height: '27.5%', width: '100%', marginTop: '2.5%', position: 'relative', zIndex: 1 }}>
         <ShipSectionSlot
@@ -404,7 +406,7 @@ const BattleColumn = ({
       </div>
 
       {/* Player Lane — 29% height */}
-      <div data-lane-wrapper style={{ height: '29%', width: '100%', position: 'relative', zIndex: dragInPlayerLane ? undefined : 5 }}>
+      <div data-lane-wrapper style={{ height: '29%', width: '100%', position: 'relative', zIndex: (dragInPlayerLane || selectedDroneInPlayerLane) ? undefined : 5 }}>
         <SingleLaneView
           laneId={laneId}
           isPlayer={true}

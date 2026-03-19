@@ -58,8 +58,7 @@ describe('DroneLanesDisplay drag-and-drop', () => {
     potentialGuardians: [],
     droneRefs: { current: {} },
     mandatoryAction: null,
-    setHoveredTarget: vi.fn(),
-    interceptedBadge: null
+    setHoveredTarget: vi.fn()
   };
 
   describe('drop detection', () => {

@@ -58,8 +58,7 @@ describe('DroneToken - Deployment Order Badge', () => {
     isActionTarget: false,
     droneRefs: { current: {} },
     mandatoryAction: null,
-    localPlayerState: { energy: 5 },
-    interceptedBadge: null
+    localPlayerState: { energy: 5 }
   };
 
   it('should display order badge when deploymentOrderNumber prop is provided', () => {
@@ -155,8 +154,7 @@ describe('DroneToken - Interceptor Glow Colors', () => {
     isActionTarget: false,
     droneRefs: { current: {} },
     mandatoryAction: null,
-    localPlayerState: { energy: 5 },
-    interceptedBadge: null
+    localPlayerState: { energy: 5 }
   };
 
   describe('player interceptor (cyan glow)', () => {

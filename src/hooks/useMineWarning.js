@@ -78,10 +78,30 @@ export function getThreatenedMines(actionType, targetLaneId, opponentTechSlots) 
 }
 
 /**
+ * Checks whether the hovered target belongs to the opponent.
+ * Drone hover shape ({ target, type: 'drone', lane }) lacks isOpponent,
+ * so we check if the drone ID exists in the opponent's board.
+ * Section hover shape ({ target, type: 'section', isOpponent }) has the flag directly.
+ */
+function isOpponentTarget(hoveredTarget, opponentPlayerState) {
+  if (!hoveredTarget) return false;
+  if (hoveredTarget.type === 'section') return hoveredTarget.isOpponent === true;
+  if (hoveredTarget.type === 'drone') {
+    const droneId = hoveredTarget.target?.id;
+    if (!droneId) return false;
+    for (const drones of Object.values(opponentPlayerState.dronesOnBoard || {})) {
+      if (drones.some(d => d.id === droneId)) return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+/**
  * Detects the current action type and target lane from drag/click state.
  * Returns { actionType, targetLaneId } or nulls when no warning-eligible action is active.
  */
-function detectAction(draggedCard, draggedDrone, insertionPreview, selectedDrone, hoveredTarget, turnPhase, localPlayerState) {
+function detectAction(draggedCard, draggedDrone, insertionPreview, selectedDrone, hoveredTarget, turnPhase, localPlayerState, opponentPlayerState) {
   // Deployment: dragging a card with an insertion preview
   if (draggedCard && insertionPreview) {
     return { actionType: 'deployment', targetLaneId: insertionPreview.laneId };
@@ -92,13 +112,13 @@ function detectAction(draggedCard, draggedDrone, insertionPreview, selectedDrone
     return { actionType: 'movement', targetLaneId: insertionPreview.laneId };
   }
 
-  // Attack (drag): dragging a drone over an opponent drone target
-  if (draggedDrone && hoveredTarget?.type === 'drone' && hoveredTarget?.isOpponent) {
+  // Attack (drag): dragging a drone over an opponent target (drone or section)
+  if (draggedDrone && hoveredTarget && isOpponentTarget(hoveredTarget, opponentPlayerState)) {
     return { actionType: 'attack', targetLaneId: draggedDrone.sourceLane };
   }
 
-  // Attack (click): selected drone + hovering an opponent drone during action phase
-  if (selectedDrone && hoveredTarget?.type === 'drone' && hoveredTarget?.isOpponent && turnPhase === 'action') {
+  // Attack (click): selected drone + hovering an opponent target during action phase
+  if (selectedDrone && hoveredTarget && isOpponentTarget(hoveredTarget, opponentPlayerState) && turnPhase === 'action') {
     const attackerLane = getLaneOfDrone(selectedDrone.id, localPlayerState);
     if (attackerLane) {
       return { actionType: 'attack', targetLaneId: attackerLane };
@@ -127,7 +147,7 @@ export default function useMineWarning({
 }) {
   const { actionType, targetLaneId } = detectAction(
     draggedCard, draggedDrone, insertionPreview,
-    selectedDrone, hoveredTarget, turnPhase, localPlayerState
+    selectedDrone, hoveredTarget, turnPhase, localPlayerState, opponentPlayerState
   );
 
   const warnedMineIds = useMemo(() => {

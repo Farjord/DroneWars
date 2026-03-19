@@ -35,12 +35,12 @@ describe('ActionCard isDragging visual feedback', () => {
       />
     );
 
-    // The outer card element should have positive feedback classes (cyan glow)
+    // The outer card element should have positive feedback classes (cyan ring)
+    // Note: glow is now applied via filter: drop-shadow() on the tilt wrapper parent,
+    // so we only check for ring classes here (shadow-lg was removed as it was clipped by clip-path)
     const cardElement = container.firstChild.firstChild;
     expect(cardElement.className).toContain('ring-2');
     expect(cardElement.className).toContain('ring-cyan-400');
-    expect(cardElement.className).toContain('shadow-lg');
-    expect(cardElement.className).toContain('shadow-cyan-500/50');
   });
 
   it('should NOT apply negative styling (opacity/scale reduction) when isDragging is true', () => {

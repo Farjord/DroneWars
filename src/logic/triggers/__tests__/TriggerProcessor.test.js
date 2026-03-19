@@ -2472,6 +2472,38 @@ describe('TriggerProcessor', () => {
       expect(drone.isExhausted).toBe(false);
     });
 
+    it('STATE_SNAPSHOT includes triggerUsesMap when usesPerRound ability fires', () => {
+      const triggeringDrone = {
+        id: 'blitz4', name: 'TestDoesNotExhaustLimitedDrone',
+        attack: 3, hull: 4, shields: 1, speed: 2, isExhausted: true,
+        triggerUsesMap: {}
+      };
+
+      basePlayerStates.player1.dronesOnBoard.lane1 = [triggeringDrone];
+
+      const result = processor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
+        lane: 'lane1',
+        triggeringDrone,
+        triggeringPlayerId: 'player1',
+        actingPlayerId: 'player1',
+        playerStates: basePlayerStates,
+        placedSections: {},
+        logCallback: vi.fn()
+      });
+
+      expect(result.triggered).toBe(true);
+      expect(result.doesNotExhaust).toBe(true);
+
+      const snapshots = result.animationEvents.filter(e => e.type === 'STATE_SNAPSHOT');
+      expect(snapshots.length).toBeGreaterThan(0);
+
+      for (const snap of snapshots) {
+        const drone = snap.snapshotPlayerStates.player1.dronesOnBoard.lane1
+          .find(d => d.id === 'blitz4');
+        expect(drone.triggerUsesMap['Limited Rapid Response']).toBe(1);
+      }
+    });
+
     it('usesPerRound exhausted: drone stays exhausted when trigger cannot fire', () => {
       const triggeringDrone = {
         id: 'blitz3', name: 'TestDoesNotExhaustLimitedDrone',

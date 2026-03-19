@@ -55,7 +55,11 @@ vi.mock('../../effects/conditional/ConditionalEffectProcessor.js', () => ({
 
 // Mock MovementEffectProcessor
 vi.mock('../../effects/MovementEffectProcessor.js', () => ({
-  default: class MockMovementProcessor {}
+  default: class MockMovementProcessor {
+    constructor() {
+      this.resolveDeferredTriggers = () => ({ newPlayerStates: {}, triggerAnimationEvents: [], mineAnimationEvents: [], goAgain: false });
+    }
+  }
 }));
 
 import EffectChainProcessor from '../EffectChainProcessor';

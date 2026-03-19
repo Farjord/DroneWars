@@ -701,9 +701,9 @@ const QuickDeployEditorScreen = () => {
                   droneRefs={droneRefs}
                   mandatoryAction={null}
                   setHoveredTarget={() => {}}
-                  interceptedBadge={null}
                   draggedDrone={draggedDrone}
                   handleDroneDragEnd={handleDroneDragEnd}
+                  interceptedBadge={null}
                 />
               </EditorStatsProvider>
             </div>

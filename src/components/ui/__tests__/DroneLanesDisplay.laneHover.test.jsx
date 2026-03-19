@@ -94,7 +94,6 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
     mandatoryAction: null,
     setHoveredTarget: vi.fn(),
     hoveredTarget: null,
-    interceptedBadge: null,
     draggedCard: null,
     handleCardDragEnd: vi.fn(),
     draggedDrone: null,

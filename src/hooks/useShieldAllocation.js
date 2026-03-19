@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { calculateRoundStartReset } from '../logic/shields/ShieldResetUtils.js';
+import SoundManager from '../managers/SoundManager.js';
 
 /**
  * @param {Object} deps - External dependencies from App.jsx
@@ -142,6 +143,7 @@ const useShieldAllocation = ({
         [sectionName]: currentPending + 1
       }));
       setPendingShieldsRemaining(prev => prev - 1);
+      SoundManager.getInstance().play('shield_allocate');
 
       debugLog('SHIELD_CLICKS', `✅ Added shield to ${sectionName} in pending state`, {
         newPending: currentPending + 1,
@@ -172,6 +174,7 @@ const useShieldAllocation = ({
     });
 
     if (result.success) {
+      SoundManager.getInstance().play('shield_allocate');
       setPendingShieldChanges(prev => ({
         ...prev,
         [sectionName]: (prev[sectionName] || 0) - 1
@@ -191,6 +194,7 @@ const useShieldAllocation = ({
     });
 
     if (result.success) {
+      SoundManager.getInstance().play('shield_allocate');
       setPendingShieldChanges(prev => ({
         ...prev,
         [sectionName]: (prev[sectionName] || 0) + 1

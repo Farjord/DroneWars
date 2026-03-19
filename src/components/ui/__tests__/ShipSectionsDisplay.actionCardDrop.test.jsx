@@ -127,7 +127,6 @@ describe('BattleColumn ship section action card drop', () => {
     handleAbilityIconClick: vi.fn(),
     setHoveredTarget: vi.fn(),
     onViewShipSection: vi.fn(),
-    interceptedBadge: null,
     draggedCard: null,
     handleCardDragEnd: vi.fn(),
     draggedDrone: null,

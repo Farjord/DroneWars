@@ -9,6 +9,7 @@ import { calculatePotentialInterceptors } from '../logic/combat/InterceptionProc
 /**
  * @param {Object} deps - External dependencies from App.jsx
  * @param {Object} deps.gameState - Current game state
+ * @param {Object} deps.gameStateManager - GameStateManager for event subscription
  * @param {Object} deps.localPlayerState - Local player's state
  * @param {Object} deps.opponentPlayerState - Opponent player's state
  * @param {Object|null} deps.selectedDrone - Currently selected drone (click-selected)
@@ -21,6 +22,7 @@ import { calculatePotentialInterceptors } from '../logic/combat/InterceptionProc
  */
 const useInterception = ({
   gameState,
+  gameStateManager,
   localPlayerState,
   opponentPlayerState,
   selectedDrone,
@@ -106,14 +108,28 @@ const useInterception = ({
     }
   }, [gameState.interceptionPending, getLocalPlayerId]);
 
-  // Monitor gameState.lastInterception for badge display only
+  // Subscribe to interception event for immediate badge display (before animations)
+  useEffect(() => {
+    if (!gameStateManager) return;
+    const unsubscribe = gameStateManager.subscribe((event) => {
+      if (event.type === 'INTERCEPTION_OCCURRED' && event.payload?.lastInterception) {
+        const { interceptor, lane, timestamp } = event.payload.lastInterception;
+        setInterceptedBadge({ droneId: interceptor.id, lane, timestamp });
+      }
+    });
+    return unsubscribe;
+  }, [gameStateManager]);
+
+  // Fallback: monitor gameState.lastInterception for badge display
+  // (covers cases where animation pipeline is absent and state is applied immediately)
   useEffect(() => {
     if (gameState.lastInterception) {
-      const { interceptor, timestamp } = gameState.lastInterception;
+      const { interceptor, lane, timestamp } = gameState.lastInterception;
 
       setInterceptedBadge({
         droneId: interceptor.id,
-        timestamp: timestamp
+        lane,
+        timestamp,
       });
     }
   }, [gameState.lastInterception]);

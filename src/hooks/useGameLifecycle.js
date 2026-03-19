@@ -40,7 +40,7 @@ export default function useGameLifecycle({
   setSelectedCard,
   setValidCardTargets,
   setCardConfirmation,
-  setShowWinnerModal,
+  dismissWinnerModal,
   setShowAbandonRunModal,
   setShowAddCardModal,
   setOptionalDiscardCount,
@@ -91,7 +91,7 @@ export default function useGameLifecycle({
     setSelectedCard(null);
     setValidCardTargets([]);
     setCardConfirmation(null);
-    setShowWinnerModal(false);
+    dismissWinnerModal();
   };
 
   // --- handleReset ---

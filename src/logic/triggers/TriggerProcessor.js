@@ -155,6 +155,14 @@ class TriggerProcessor {
         anyTriggered = true;
         currentStates = result.newPlayerStates;
 
+        // Increment per-round usage counter (per-ability) BEFORE snapshot
+        // so UI reads updated triggerUsesMap and can grey out icons correctly.
+        // Note: if DOES_NOT_EXHAUST ever coexists with cascading effects,
+        // preCascadePlayerStates would lack this increment — revisit snapshot source if that happens.
+        if (ability.usesPerRound != null) {
+          currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates, ability.name);
+        }
+
         // Apply DOES_NOT_EXHAUST before snapshot so animation never shows drone exhausted
         if (result.doesNotExhaust && triggeringDrone) {
           const drones = currentStates[triggeringPlayerId]?.dronesOnBoard?.[lane] || [];
@@ -213,10 +221,6 @@ class TriggerProcessor {
           attackerDestroyedByCounter = true;
         }
 
-        // Increment per-round usage counter (per-ability)
-        if (ability.usesPerRound != null) {
-          currentStates = this._incrementTriggerUses(reactorDrone.id, reactorPlayerId, reactorLane, currentStates, ability.name);
-        }
       }
     }
 

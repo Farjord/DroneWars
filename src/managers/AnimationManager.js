@@ -709,7 +709,10 @@ class AnimationManager {
           });
 
           // Emit sound cue for sequential animation
-          this.gameStateManager.emit('ANIMATION_STARTED', { animationType: effect.animationName });
+          this.gameStateManager.emit('ANIMATION_STARTED', {
+            animationType: effect.animationName,
+            visualType: effect.payload?.visualType
+          });
 
           await new Promise(resolve => {
             handler({

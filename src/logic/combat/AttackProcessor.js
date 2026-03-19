@@ -434,16 +434,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                 }
             }
 
-            // DOES_NOT_EXHAUST: If ON_ATTACK trigger returned doesNotExhaust, un-exhaust the attacker
-            if (afterAttackResult.doesNotExhaust) {
-                for (const lk in newPlayerStates[attackingPlayerId].dronesOnBoard) {
-                    const idx = newPlayerStates[attackingPlayerId].dronesOnBoard[lk].findIndex(d => d.id === attacker.id);
-                    if (idx !== -1) {
-                        newPlayerStates[attackingPlayerId].dronesOnBoard[lk][idx].isExhausted = false;
-                        break;
-                    }
-                }
-            }
         }
     }
 

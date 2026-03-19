@@ -101,6 +101,9 @@ vi.mock('../../effects/conditional/ConditionalEffectProcessor.js', () => ({
 
 vi.mock('../../effects/MovementEffectProcessor.js', () => ({
   default: class MockMovementProcessor {
+    constructor() {
+      this.resolveDeferredTriggers = () => ({ newPlayerStates: {}, triggerAnimationEvents: [], mineAnimationEvents: [], goAgain: false });
+    }
     executeSingleMove() { return { newPlayerStates: {}, effectResult: {}, triggerAnimationEvents: [], mineAnimationEvents: [] }; }
     executeMultiMove() { return { newPlayerStates: {}, effectResult: {}, triggerAnimationEvents: [], mineAnimationEvents: [] }; }
   }

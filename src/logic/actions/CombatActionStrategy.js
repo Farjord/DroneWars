@@ -50,12 +50,17 @@ export async function processAttack(payload, ctx) {
         }
       });
 
-      // AI Defender - wait then decide automatically
+      // AI Defender - decide automatically, announce via animation pipeline
       if (ctx.isPlayerAI(defendingPlayerId)) {
         debugLog('COMBAT', '🛡️ [INTERCEPTION] AI defender has interceptors');
 
-        // Wait 1 second (modal visible to human attacker)
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Emit announcement — client displays overlay before attack animations
+        // (AnnouncementQueue plays before visual anims via waitUntilIdle)
+        ctx.captureAnimations([{
+          animationName: 'INTERCEPTION_ANNOUNCEMENT',
+          timing: 'pre-state',
+          payload: { phase: 'interceptionDeciding', text: 'OPPONENT DECIDING INTERCEPTION' },
+        }]);
 
         // AI makes decision
         const aiPhaseProcessor = ctx.getAiPhaseProcessor();
@@ -72,18 +77,8 @@ export async function processAttack(payload, ctx) {
 
           debugLog('COMBAT', '🛡️ [INTERCEPTION] AI decision:', decision.interceptor ? 'INTERCEPT' : 'DECLINE');
 
-          // Apply decision
           if (decision.interceptor) {
             finalAttackDetails.interceptor = decision.interceptor;
-
-            // Emit interception result for badge display
-            ctx.setState({
-              lastInterception: {
-                interceptor: decision.interceptor,
-                originalTarget: attackDetails.target,
-                timestamp: Date.now()
-              }
-            });
           }
         }
 
@@ -104,6 +99,18 @@ export async function processAttack(payload, ctx) {
         };
       }
     }
+  }
+
+  // Show intercepted badge for all interceptions (AI and human resubmission)
+  if (finalAttackDetails.interceptor) {
+    ctx.setState({
+      lastInterception: {
+        interceptor: finalAttackDetails.interceptor,
+        originalTarget: attackDetails.target,
+        lane: attackDetails.lane,
+        timestamp: Date.now()
+      }
+    });
   }
 
   const logCallback = (entry) => {
@@ -249,7 +256,10 @@ export async function processMove(payload, ctx) {
   };
 
   // Apply ON_MOVE effects via TriggerProcessor (fires for all drones per PRD 3.3)
+  console.log('[DEBUG-CAS] About to create TriggerProcessor');
   const triggerProcessor = new TriggerProcessor();
+  console.log('[DEBUG-CAS] TriggerProcessor created, calling fireTrigger');
+  console.log('[DEBUG-CAS] typeof fireTrigger:', typeof triggerProcessor.fireTrigger);
   let opponentState = JSON.parse(JSON.stringify(opponentPlayerState));
   const moveResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
     lane: toLane,
@@ -271,13 +281,10 @@ export async function processMove(payload, ctx) {
     opponentState = moveResult.newPlayerStates[opponentPlayerId];
   }
 
-  // DOES_NOT_EXHAUST: If ON_MOVE trigger returned doesNotExhaust, un-exhaust the moved drone
+  // DOES_NOT_EXHAUST: Patch bridge snapshot so animation never shows drone exhausted
+  // (TriggerProcessor already handles isExhausted=false on the returned newPlayerStates,
+  // but preTriggerIntermediateState is a separate deep copy it doesn't know about)
   if (moveResult.doesNotExhaust) {
-    const droneInState = stateAfterMoveEffects.dronesOnBoard[toLane]?.find(d => d.id === droneId);
-    if (droneInState) {
-      droneInState.isExhausted = false;
-    }
-    // Also patch bridge snapshot so animation never shows drone exhausted
     const droneInIntermediate = preTriggerIntermediateState[playerId]?.dronesOnBoard?.[toLane]?.find(d => d.id === droneId);
     if (droneInIntermediate) {
       droneInIntermediate.isExhausted = false;

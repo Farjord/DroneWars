@@ -111,6 +111,14 @@ class GameClient extends GameServer {
     // Preserve local gameMode from current store state
     state = { ...state, gameMode: this.getState().gameMode, localPlayerId: this.playerId };
 
+    // Notify UI of interception immediately (before animation pipeline)
+    if (state.lastInterception) {
+      const gsm = this.clientStateStore?.gameStateManager;
+      if (gsm) {
+        gsm.emit('INTERCEPTION_OCCURRED', { lastInterception: state.lastInterception });
+      }
+    }
+
     // No visual animations — apply state immediately.
     // Announcement overlay (if any) covers the full screen, so background
     // UI updates are invisible. This lets hooks react to phase transitions

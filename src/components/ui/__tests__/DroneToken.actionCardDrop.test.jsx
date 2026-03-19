@@ -74,8 +74,7 @@ describe('DroneToken action card drop', () => {
     isActionTarget: false,
     droneRefs: { current: {} },
     mandatoryAction: null,
-    localPlayerState: { energy: 5 },
-    interceptedBadge: null
+    localPlayerState: { energy: 5 }
   };
 
   describe('drop detection', () => {

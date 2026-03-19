@@ -11,7 +11,7 @@ import {
   Feather, Anchor, ShieldCheck, RadioTower, Zap,
   ShieldAlert, ZapOff, Anvil, Sparkles, ArrowBigUp,
 } from 'lucide-react';
-import { NoEntryIcon } from './StatusEffectIcons.jsx';
+import { NoEntryIcon } from './RightSideIcons.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
 import droneTooltipDescriptions from '../../data/descriptions/droneTooltipDescriptions.js';
 

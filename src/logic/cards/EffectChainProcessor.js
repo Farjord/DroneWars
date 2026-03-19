@@ -415,6 +415,21 @@ class EffectChainProcessor {
         }
       }
 
+      // Resolve deferred movement triggers AFTER POST conditionals
+      if (result.deferredTriggerContext) {
+        result.preTriggerState = JSON.parse(JSON.stringify(currentStates));
+
+        const triggerResult = this.movementProcessor.resolveDeferredTriggers(
+          result.deferredTriggerContext, currentStates
+        );
+        currentStates = triggerResult.newPlayerStates;
+        effectTriggerEvents.push(
+          ...(triggerResult.triggerAnimationEvents || []),
+          ...(triggerResult.mineAnimationEvents || [])
+        );
+        if (triggerResult.goAgain) dynamicGoAgain = true;
+      }
+
       // Propagate goAgain from movement effects (Rally Beacon)
       if (result.goAgain) dynamicGoAgain = true;
 
@@ -532,7 +547,8 @@ class EffectChainProcessor {
 
     const result = this.movementProcessor.executeSingleMove(
       pseudoCard, selection.target, selection.lane, selection.destination,
-      playerId, newStates, opponentId, moveContext, selection.insertionIndex
+      playerId, newStates, opponentId, moveContext, selection.insertionIndex,
+      { deferTriggers: true }
     );
 
     if (result.error) {
@@ -542,10 +558,11 @@ class EffectChainProcessor {
     return {
       newPlayerStates: result.newPlayerStates,
       animationEvents: result.animationEvents || [],
-      triggerAnimationEvents: [...(result.triggerAnimationEvents || []), ...(result.mineAnimationEvents || [])],
+      triggerAnimationEvents: [],
       preTriggerState: result.postMovementState,
       effectResult: result.effectResult,
       goAgain: !result.shouldEndTurn,
+      deferredTriggerContext: result.deferredTriggerContext,
     };
   }
 

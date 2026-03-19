@@ -70,7 +70,6 @@ const defaultProps = {
   droneRefs: { current: {} },
   mandatoryAction: null,
   localPlayerState: { energy: 5 },
-  interceptedBadge: null,
 };
 
 describe('DroneToken - Tooltip Integration', () => {

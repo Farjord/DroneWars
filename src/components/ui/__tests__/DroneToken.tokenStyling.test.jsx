@@ -56,8 +56,7 @@ describe('DroneToken - Token Styling', () => {
     isActionTarget: false,
     droneRefs: { current: {} },
     mandatoryAction: null,
-    localPlayerState: { energy: 5 },
-    interceptedBadge: null
+    localPlayerState: { energy: 5 }
   };
 
   it('renders token drone with desaturated name bar (bg-slate-600) when isToken is true on instance', () => {

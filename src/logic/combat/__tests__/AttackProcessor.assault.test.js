@@ -140,8 +140,11 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       mockPlayerStates.player2.dronesOnBoard.lane1 = [targetDrone]
 
       // Mock trigger to return doesNotExhaust for ON_ATTACK
+      // Real TriggerProcessor sets isExhausted=false internally before returning
       mockFireTrigger = vi.fn().mockImplementation((triggerType) => {
         if (triggerType === 'ON_ATTACK') {
+          const attacker = mockPlayerStates.player1.dronesOnBoard.lane1.find(d => d.id === strikerDrone.id);
+          if (attacker) attacker.isExhausted = false;
           return { triggered: true, newPlayerStates: mockPlayerStates, animationEvents: [], doesNotExhaust: true, statModsApplied: false };
         }
         return { triggered: false, newPlayerStates: null, animationEvents: [], statModsApplied: false };

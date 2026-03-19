@@ -74,9 +74,9 @@ const ActionCard = ({
 
   // 3D tilt parallax during drag + hover, with type-colored glow
   const typeKey = type?.toLowerCase() || 'upgrade';
-  const glowShadow = isDisabled ? null
-    : `0 0 6px var(--card-${typeKey}-glow-dim), 0 0 12px var(--card-${typeKey}-glow-dim)`;
-  const tiltRef = useCardTilt(isDragging, { glowShadow });
+  const glowFilter = isDisabled ? null
+    : `drop-shadow(0 0 6px var(--card-${typeKey}-glow-dim)) drop-shadow(0 0 12px var(--card-${typeKey}-glow-dim))`;
+  const tiltRef = useCardTilt(isDragging, { glowFilter });
 
   // Debug logging for ALL renders to diagnose re-rendering issue
   debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
@@ -123,7 +123,7 @@ const ActionCard = ({
         ${colors.border}
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
-        ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
+        ${isDragging ? 'ring-2 ring-cyan-400' : ''}
       `}
       style={{
         width: '100%',

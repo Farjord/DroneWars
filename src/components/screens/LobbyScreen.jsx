@@ -301,8 +301,8 @@ function LobbyScreen() {
               marginBottom: '2rem'
             }}>
               {aiPersonalities.filter(ai => ai.modes && ai.modes.includes('vs')).map((ai) => (
+                <div key={ai.name} className={selectedAI?.name === ai.name ? 'ai-opponent-card-glow' : ''}>
                 <div
-                  key={ai.name}
                   className={`ai-opponent-card ${selectedAI?.name === ai.name ? 'selected' : ''}`}
                   onClick={() => { SoundManager.getInstance().play('ui_click'); handleSelectAI(ai); }}
                   onMouseEnter={() => SoundManager.getInstance().play('hover_over')}
@@ -369,6 +369,7 @@ function LobbyScreen() {
                       </button>
                     </div>
                   </div>
+                </div>
                 </div>
               ))}
             </div>

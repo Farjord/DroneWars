@@ -10,12 +10,11 @@ import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import useCardTilt from '../../hooks/useCardTilt.js';
 import InterceptedBadge from './InterceptedBadge.jsx';
-import StatusEffectIcons from './StatusEffectIcons.jsx';
-import TraitIndicators from './TraitIndicators.jsx';
+import LeftSideIcons from './LeftSideIcons.jsx';
+import RightSideIcons from './RightSideIcons.jsx';
 import DroneTooltipPanel, { buildTooltipItems } from './DroneTooltipPanel.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { FACTION_COLORS } from '../../utils/factionColors.js';
-import { Gauge, Crosshair } from 'lucide-react';
 
 /**
  * INVALID TARGET INDICATOR COMPONENT
@@ -54,90 +53,6 @@ const StatHexagon = ({ value, isFlat, bgColor, textColor, borderColor = 'bg-blac
   </div>
 );
 
-/**
- * ABILITY ICON COMPONENT
- * Renders clickable ability button for drone tokens.
- * @param {Function} onClick - Callback when ability button is clicked
- */
-const AbilityIcon = ({ onClick, disabled }) => (
-  <button
-    onClick={disabled ? undefined : onClick}
-    className={`absolute top-5 -right-3.5 w-7 h-7 bg-slate-800 rounded-full flex items-center justify-center border z-20 transition-all ${
-      disabled
-        ? 'border-gray-500 cursor-not-allowed opacity-60'
-        : 'border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/50 cursor-pointer'
-    }`}
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={disabled ? 'text-gray-500' : 'text-cyan-400'}>
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-    </svg>
-  </button>
-);
-
-/**
- * SPECIAL ABILITY ICONS COMPONENT
- * Renders RAPID/ASSAULT status icons on left side of drone token.
- * Icons are full color when available, greyed out when used.
- * @param {Object} drone - The drone data object
- */
-const SpecialAbilityIcons = ({ drone, isPlayer }) => {
-  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-
-  const hasRapid = baseDrone?.abilities?.some(a => a.keywordIcon === 'RAPID');
-  const hasAssault = baseDrone?.abilities?.some(a => a.keywordIcon === 'ASSAULT');
-
-  if (!hasRapid && !hasAssault) return null;
-
-  const icons = [];
-
-  if (hasRapid) {
-    const isUsed = (drone.triggerUsesMap?.['Rapid Response'] || 0) >= 1;
-    icons.push(
-      <div
-        key="rapid"
-        className={`w-6 h-6 rounded-full flex items-center justify-center border ${
-          isUsed
-            ? 'bg-slate-700 border-slate-500'
-            : isPlayer
-              ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
-              : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
-        }`}
-      >
-        <Gauge
-          size={14}
-          className={isUsed ? 'text-slate-500' : 'text-blue-400'}
-        />
-      </div>
-    );
-  }
-
-  if (hasAssault) {
-    const isUsed = (drone.triggerUsesMap?.['Assault Protocol'] || 0) >= 1;
-    icons.push(
-      <div
-        key="assault"
-        className={`w-6 h-6 rounded-full flex items-center justify-center border ${
-          isUsed
-            ? 'bg-slate-700 border-slate-500'
-            : isPlayer
-              ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
-              : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
-        }`}
-      >
-        <Crosshair
-          size={14}
-          className={isUsed ? 'text-slate-500' : 'text-red-400'}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="absolute top-5 -left-3.5 flex flex-col gap-1 z-20">
-      {icons}
-    </div>
-  );
-};
 
 /**
  * DRONE TOKEN COMPONENT
@@ -159,7 +74,6 @@ const SpecialAbilityIcons = ({ drone, isPlayer }) => {
  * @param {Object} droneRefs - Ref object for drone DOM elements
  * @param {Object} mandatoryAction - Current mandatory action state
  * @param {Object} localPlayerState - Local player state
- * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  * @param {number|null} deploymentOrderNumber - Deployment order number (1-based) to display as badge, or null to hide
  */
 const DroneToken = ({
@@ -179,7 +93,6 @@ const DroneToken = ({
   droneRefs,
   mandatoryAction,
   localPlayerState,
-  interceptedBadge,
   enableFloatAnimation = false,
   deploymentOrderNumber = null,
   onDragStart,
@@ -207,6 +120,8 @@ const DroneToken = ({
   isSameLaneGhost = false,
   // Positional index within the lane (for insertion calculator DOM queries)
   droneIndex = null,
+  // Intercepted badge state — { droneId, timestamp } or null
+  interceptedBadge = null,
 }) => {
   // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
   const isVisuallyOwned = drone.deployedBy
@@ -217,12 +132,12 @@ const DroneToken = ({
 
   // 3D tilt parallax during drag + hover (subtler than ActionCard)
   const glowColor = `${fc.accent}59`; // 59 hex ≈ 0.35 opacity
-  const glowShadow = drone.isExhausted ? null
-    : `0 0 6px ${glowColor}, 0 0 12px ${glowColor}`;
+  const glowFilter = drone.isExhausted ? null
+    : `drop-shadow(0 0 6px ${glowColor}) drop-shadow(0 0 12px ${glowColor})`;
   const tiltRef = useCardTilt(isDragging, {
     maxTiltDrag: 10,
     maxTiltHover: 5,
-    glowShadow
+    glowFilter
   });
 
   // Performance logging for drag investigation - only log when dragging is active
@@ -382,7 +297,7 @@ const DroneToken = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
+      className={`relative ${isDragging || isSelected ? 'z-[150]' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
       data-drone-token=""
       data-dragging={isDragging || undefined}
       data-drone-index={droneIndex}
@@ -395,11 +310,11 @@ const DroneToken = ({
       }}
     >
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
-      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`} style={selectedGlowStyle}>
+      <div className={`w-full h-full rounded-lg ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`} style={selectedGlowStyle}>
         {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
         <div ref={tiltRef} className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
-        <div className={`w-full h-full ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`} style={actionTargetStyle}>
+        <div className={`w-full h-full rounded-lg ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`} style={actionTargetStyle}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
             {/* Main Token Body */}
@@ -467,38 +382,21 @@ const DroneToken = ({
             <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isVisuallyOwned ? 'bg-cyan-400' : 'bg-red-500'} />
         </div>
 
-        {/* Overlapping Ability Icon */}
-        {isPlayer && activeAbilities.length > 0 && (
-            <div className={teleportingEffect}>
-                <AbilityIcon
-                  disabled={!isAbilityUsable(activeAbilities[0])}
-                  onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])}
-                />
-            </div>
-        )}
-
-        {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
+        {/* Left Side Icons (Marked/RAPID/ASSAULT/PASSIVE/INERT) */}
         <div className={teleportingEffect}>
-            <SpecialAbilityIcons drone={drone} isPlayer={isVisuallyOwned} />
+            <LeftSideIcons drone={drone} effectiveStats={effectiveStats} isPlayer={isVisuallyOwned} />
         </div>
 
-        {/* Trait Indicators (Marked/PASSIVE/INERT) - Top-left side */}
+        {/* Right Side Icons (Ability button + status effects) */}
         <div className={teleportingEffect}>
-            <TraitIndicators drone={drone} effectiveStats={effectiveStats} />
+            <RightSideIcons
+              drone={drone}
+              isPlayer={isPlayer}
+              activeAbilities={isPlayer ? activeAbilities : []}
+              isAbilityUsable={isAbilityUsable}
+              onAbilityClick={onAbilityClick}
+            />
         </div>
-
-        {/* Status Effect Icons - Right side */}
-        <div className={teleportingEffect}>
-            <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
-        </div>
-
-        {/* Intercepted Badge */}
-        {interceptedBadge && interceptedBadge.droneId === drone.id && (
-          <InterceptedBadge
-            droneId={drone.id}
-            timestamp={interceptedBadge.timestamp}
-          />
-        )}
 
         {/* Deployment Order Badge - shown in quick deploy editor, centered underneath token */}
         {deploymentOrderNumber != null && (
@@ -519,6 +417,14 @@ const DroneToken = ({
       {/* End Tilt Wrapper */}
       </div>
       {/* End Scale Wrapper */}
+
+      {/* Intercepted Badge — centered on this drone */}
+      {interceptedBadge && interceptedBadge.droneId === drone.id && (
+        <InterceptedBadge
+          droneId={interceptedBadge.droneId}
+          timestamp={interceptedBadge.timestamp}
+        />
+      )}
 
       {/* Tooltip toasts — CSS-only hover visibility */}
       {tooltipItems.length > 0 && (
