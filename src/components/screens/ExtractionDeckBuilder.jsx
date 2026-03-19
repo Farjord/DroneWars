@@ -341,15 +341,6 @@ const ExtractionDeckBuilder = () => {
     }
   };
 
-  // Handle drone slot repair
-  const handleRepairDroneSlot = (position) => {
-    if (isReadOnly || !slotId) return;
-    const result = gameStateManager.repairDroneSlot(slotId, position);
-    if (!result.success) {
-      debugLog('DECK_BUILDER', 'Failed to repair drone slot:', result.reason);
-    }
-  };
-
   // Handle section slot repair
   const handleRepairSectionSlot = (lane) => {
     if (isReadOnly || !slotId) return;
@@ -415,7 +406,6 @@ const ExtractionDeckBuilder = () => {
           shipSlot={slot}
           droneSlots={droneSlots}
           credits={singlePlayerProfile?.credits || 0}
-          onRepairDroneSlot={handleRepairDroneSlot}
           onRepairSectionSlot={handleRepairSectionSlot}
         />
       </div>

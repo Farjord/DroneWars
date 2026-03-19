@@ -9,21 +9,20 @@ import { debugLog } from '../../utils/debugLogger.js';
 // --- Drone Slot Migrations ---
 
 /**
- * Create empty drone slots array with new format
- * @returns {Array} 5 empty slots with { slotIndex, slotDamaged, assignedDrone }
+ * Create empty drone slots array
+ * @returns {Array} 5 empty slots with { slotIndex, assignedDrone }
  */
 export function createEmptyDroneSlots() {
   return Array.from({ length: 5 }, (_, i) => ({
     slotIndex: i,
-    slotDamaged: false,
     assignedDrone: null
   }));
 }
 
 /**
  * Migrate drone slots from old format to new format
- * Old format: { droneName, isDamaged }
- * New format: { slotIndex, slotDamaged, assignedDrone }
+ * Old format: { droneName, isDamaged } or { slotDamaged, assignedDrone }
+ * New format: { slotIndex, assignedDrone }
  * @param {Array} oldSlots - Old format slots or null/undefined
  * @returns {Array} New format slots (5 slots)
  */
@@ -37,7 +36,6 @@ export function migrateDroneSlotsToNewFormat(oldSlots) {
 
   return oldSlots.map((slot, i) => ({
     slotIndex: i,
-    slotDamaged: slot.slotDamaged ?? slot.isDamaged ?? false,
     assignedDrone: slot.assignedDrone ?? slot.droneName ?? null
   }));
 }
@@ -45,7 +43,7 @@ export function migrateDroneSlotsToNewFormat(oldSlots) {
 /**
  * Convert legacy drone array format to new droneSlots format
  * Legacy format: [{ name }] (just drone names)
- * New format: [{ slotIndex, slotDamaged, assignedDrone }]
+ * New format: [{ slotIndex, assignedDrone }]
  * @param {Array} drones - Legacy format: [{ name, isDamaged? }]
  * @returns {Array} New format slots (5 slots)
  */
@@ -56,7 +54,6 @@ export function convertDronesToSlots(drones = []) {
     if (drone) {
       slots[i] = {
         slotIndex: i,
-        slotDamaged: drone.isDamaged || false,
         assignedDrone: drone.name || null
       };
     }

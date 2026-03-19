@@ -1026,7 +1026,6 @@ class GameStateManager {
   deleteShipSlotDeck(slotId) { this.shipSlotManager.deleteShipSlotDeck(slotId); }
   clearSlotInstances(slotId) { this.shipSlotManager.clearSlotInstances(slotId); }
   updateShipSlotDroneOrder(slotId, newDroneSlots) { this.shipSlotManager.updateShipSlotDroneOrder(slotId, newDroneSlots); }
-  repairDroneSlot(slotId, position) { return this.shipSlotManager.repairDroneSlot(slotId, position); }
   repairSectionSlot(slotId, lane) { return this.shipSlotManager.repairSectionSlot(slotId, lane); }
   repairSectionSlotPartial(slotId, lane, hpToRepair) { return this.shipSlotManager.repairSectionSlotPartial(slotId, lane, hpToRepair); }
   createDroneInstance(droneName, slotId) { return this.shipSlotManager.createDroneInstance(droneName, slotId); }

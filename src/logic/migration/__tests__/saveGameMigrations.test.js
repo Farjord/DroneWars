@@ -22,7 +22,6 @@ describe('createEmptyDroneSlots', () => {
     slots.forEach((slot, i) => {
       expect(slot).toEqual({
         slotIndex: i,
-        slotDamaged: false,
         assignedDrone: null,
       });
     });
@@ -52,18 +51,18 @@ describe('migrateDroneSlotsToNewFormat', () => {
       { slotIndex: 4, isDamaged: false, droneName: null },
     ];
     const result = migrateDroneSlotsToNewFormat(oldSlots);
-    expect(result[0]).toEqual({ slotIndex: 0, slotDamaged: true, assignedDrone: 'Scout' });
-    expect(result[1]).toEqual({ slotIndex: 1, slotDamaged: false, assignedDrone: null });
-    expect(result[2]).toEqual({ slotIndex: 2, slotDamaged: false, assignedDrone: 'Bomber' });
+    expect(result[0]).toEqual({ slotIndex: 0, assignedDrone: 'Scout' });
+    expect(result[1]).toEqual({ slotIndex: 1, assignedDrone: null });
+    expect(result[2]).toEqual({ slotIndex: 2, assignedDrone: 'Bomber' });
   });
 
-  test('new format { slotDamaged, assignedDrone } passes through unchanged', () => {
+  test('new format { assignedDrone } passes through unchanged', () => {
     const newSlots = [
-      { slotIndex: 0, slotDamaged: true, assignedDrone: 'Scout' },
-      { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Bomber' },
-      { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-      { slotIndex: 4, slotDamaged: false, assignedDrone: null },
+      { slotIndex: 0, assignedDrone: 'Scout' },
+      { slotIndex: 1, assignedDrone: null },
+      { slotIndex: 2, assignedDrone: 'Bomber' },
+      { slotIndex: 3, assignedDrone: null },
+      { slotIndex: 4, assignedDrone: null },
     ];
     const result = migrateDroneSlotsToNewFormat(newSlots);
     expect(result).toEqual(newSlots);
@@ -78,9 +77,9 @@ describe('migrateDroneSlotsToNewFormat', () => {
       { slotIndex: 4, slotDamaged: false, assignedDrone: null },
     ];
     const result = migrateDroneSlotsToNewFormat(mixedSlots);
-    expect(result[0]).toEqual({ slotIndex: 0, slotDamaged: true, assignedDrone: 'Scout' });
-    expect(result[1]).toEqual({ slotIndex: 1, slotDamaged: true, assignedDrone: 'Bomber' });
-    expect(result[3]).toEqual({ slotIndex: 3, slotDamaged: false, assignedDrone: null });
+    expect(result[0]).toEqual({ slotIndex: 0, assignedDrone: 'Scout' });
+    expect(result[1]).toEqual({ slotIndex: 1, assignedDrone: 'Bomber' });
+    expect(result[3]).toEqual({ slotIndex: 3, assignedDrone: null });
   });
 });
 
@@ -100,10 +99,10 @@ describe('convertDronesToSlots', () => {
     ];
     const result = convertDronesToSlots(drones);
     expect(result).toHaveLength(5);
-    expect(result[0]).toEqual({ slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout' });
-    expect(result[1]).toEqual({ slotIndex: 1, slotDamaged: true, assignedDrone: 'Bomber' });
-    expect(result[2]).toEqual({ slotIndex: 2, slotDamaged: false, assignedDrone: null });
-    expect(result[4]).toEqual({ slotIndex: 4, slotDamaged: false, assignedDrone: null });
+    expect(result[0]).toEqual({ slotIndex: 0, assignedDrone: 'Scout' });
+    expect(result[1]).toEqual({ slotIndex: 1, assignedDrone: 'Bomber' });
+    expect(result[2]).toEqual({ slotIndex: 2, assignedDrone: null });
+    expect(result[4]).toEqual({ slotIndex: 4, assignedDrone: null });
   });
 
   test('full array fills all 5 slots', () => {
@@ -203,7 +202,6 @@ describe('migrateShipSlotToNewFormat', () => {
     expect(result.droneSlots).toHaveLength(5);
     expect(result.droneSlots[0].assignedDrone).toBe('Scout');
     expect(result.droneSlots[1].assignedDrone).toBe('Bomber');
-    expect(result.droneSlots[1].slotDamaged).toBe(true);
     expect(result.sectionSlots.l.componentId).toBe('shield');
     expect(result.sectionSlots.m.componentId).toBe('cannon');
     expect(result).not.toHaveProperty('drones');

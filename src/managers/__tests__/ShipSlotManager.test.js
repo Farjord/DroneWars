@@ -6,7 +6,6 @@ import ShipSlotManager from '../ShipSlotManager.js';
 vi.mock('../../data/economyData.js', () => ({
   ECONOMY: {
     DECK_SLOT_UNLOCK_COSTS: { 2: 500, 3: 1000, 4: 2000, 5: 5000 },
-    DRONE_SLOT_REPAIR_COST: 50,
     SECTION_DAMAGE_REPAIR_COST: 10,
   }
 }));

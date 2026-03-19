@@ -186,7 +186,7 @@ const ShipSlotCard = ({
           </div>
         )}
 
-        {/* Empty/MIA State Messages */}
+        {/* Empty State Message */}
         {shipSlot.status === 'empty' && (
           <div className="text-gray-500 italic">Click to configure</div>
         )}

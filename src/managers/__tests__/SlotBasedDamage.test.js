@@ -400,7 +400,6 @@ describe('Slot-Based Damage Model', () => {
       expect(migrated.droneSlots).toBeDefined();
       expect(migrated.droneSlots.length).toBe(5);
       expect(migrated.droneSlots[0].assignedDrone).toBe('Dart');
-      expect(migrated.droneSlots[0].slotDamaged).toBe(false);
       expect(migrated.droneSlots[1].assignedDrone).toBe('Mammoth');
       expect(migrated.droneSlots[2].assignedDrone).toBeNull(); // Padded
     });
@@ -430,7 +429,6 @@ describe('Slot-Based Damage Model', () => {
       expect(migrated.droneSlots.length).toBe(5);
       migrated.droneSlots.forEach(slot => {
         expect(slot.assignedDrone).toBeNull();
-        expect(slot.slotDamaged).toBe(false);
       });
     });
   });

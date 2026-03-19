@@ -148,7 +148,7 @@ function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
           {getStatusMessage()}
         </p>
 
-        {/* Final MIA Status (shows when complete) */}
+        {/* Final Status (shows when complete) */}
         {progress >= 100 && (
           <div className="failed-run-final-status">
             {getFinalStatus()}

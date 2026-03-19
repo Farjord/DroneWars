@@ -1,6 +1,6 @@
 /* ========================================
    FAILED RUN LOADING SCREEN STYLES
-   Warning-themed transition screen for failed runs (MIA)
+   Warning-themed transition screen for failed runs
    ======================================== */
 
 .failed-run-overlay {
@@ -220,7 +220,7 @@
   letter-spacing: 0.1em;
 }
 
-/* Final MIA Status */
+/* Final Status */
 .failed-run-final-status {
   font-family: 'Orbitron', 'Segoe UI', sans-serif;
   font-size: 1.5rem;

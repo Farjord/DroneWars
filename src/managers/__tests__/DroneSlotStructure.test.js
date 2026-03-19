@@ -53,9 +53,9 @@ describe('Drone Slot Structure - New Format', () => {
 
       const newFormat = migrateDroneSlotsToNewFormat(oldFormat);
 
-      expect(newFormat[0]).toEqual({ slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' });
-      expect(newFormat[1]).toEqual({ slotIndex: 1, slotDamaged: true, assignedDrone: 'Mammoth' });
-      expect(newFormat[2]).toEqual({ slotIndex: 2, slotDamaged: false, assignedDrone: null });
+      expect(newFormat[0]).toEqual({ slotIndex: 0, assignedDrone: 'Dart' });
+      expect(newFormat[1]).toEqual({ slotIndex: 1, assignedDrone: 'Mammoth' });
+      expect(newFormat[2]).toEqual({ slotIndex: 2, assignedDrone: null });
     });
 
     it('should handle null/undefined old slots', () => {
@@ -67,34 +67,34 @@ describe('Drone Slot Structure - New Format', () => {
       expect(newFormat2).toHaveLength(5);
     });
 
-    it('should preserve damage state during migration', () => {
+    it('should correctly migrate assignedDrone from old droneName field', () => {
       const oldFormat = [
         { droneName: 'Dart', isDamaged: true },
         { droneName: null, isDamaged: true },
-        { droneName: null, isDamaged: false },
+        { droneName: 'Mammoth', isDamaged: false },
         { droneName: null, isDamaged: false },
         { droneName: null, isDamaged: false }
       ];
 
       const newFormat = migrateDroneSlotsToNewFormat(oldFormat);
 
-      expect(newFormat[0].slotDamaged).toBe(true);
-      expect(newFormat[1].slotDamaged).toBe(true);
-      expect(newFormat[2].slotDamaged).toBe(false);
+      expect(newFormat[0].assignedDrone).toBe('Dart');
+      expect(newFormat[1].assignedDrone).toBeNull();
+      expect(newFormat[2].assignedDrone).toBe('Mammoth');
     });
 
     it('should handle already-migrated format (idempotent)', () => {
       const alreadyNew = [
-        { slotIndex: 0, slotDamaged: true, assignedDrone: 'Dart' },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+        { slotIndex: 0, assignedDrone: 'Dart' },
+        { slotIndex: 1, assignedDrone: null },
+        { slotIndex: 2, assignedDrone: null },
+        { slotIndex: 3, assignedDrone: null },
+        { slotIndex: 4, assignedDrone: null }
       ];
 
       const result = migrateDroneSlotsToNewFormat(alreadyNew);
 
-      expect(result[0]).toEqual({ slotIndex: 0, slotDamaged: true, assignedDrone: 'Dart' });
+      expect(result[0]).toEqual({ slotIndex: 0, assignedDrone: 'Dart' });
     });
 
     it('should migrate legacy drones array format', () => {

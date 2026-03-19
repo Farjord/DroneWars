@@ -24,6 +24,36 @@ class RunLifecycleManager {
   }
 
   /**
+   * Persist section damage from run state to ship slot sectionSlots.
+   * Slot 0 (starter deck) is always exempt.
+   * @param {Array} shipSlots - Mutable ship slots array
+   * @param {Object} runState - Run state with shipSlotId, shipSections
+   */
+  _persistSectionDamage(shipSlots, runState) {
+    if (runState.shipSlotId === 0 || !runState.shipSections) return;
+
+    const slotIndex = shipSlots.findIndex(s => s.id === runState.shipSlotId);
+    if (slotIndex < 0 || !shipSlots[slotIndex].sectionSlots) return;
+
+    const shipSlot = { ...shipSlots[slotIndex] };
+    const newSectionSlots = { ...shipSlot.sectionSlots };
+
+    Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
+      const lane = sectionData.lane;
+      if (lane && newSectionSlots[lane]) {
+        const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
+        newSectionSlots[lane] = {
+          ...newSectionSlots[lane],
+          damageDealt: Math.max(0, damageDealt)
+        };
+      }
+    });
+
+    shipSlot.sectionSlots = newSectionSlots;
+    shipSlots[slotIndex] = shipSlot;
+  }
+
+  /**
    * Start extraction run
    * @param {Object} options
    * @param {number} options.shipSlotId - Ship slot ID to use (0-5)
@@ -257,7 +287,7 @@ class RunLifecycleManager {
 
   /**
    * End extraction run
-   * @param {boolean} success - True if successful extraction, false if MIA
+   * @param {boolean} success - True if successful extraction, false if failed
    */
   endRun(success = true) {
     debugLog('SP_COMBAT', '=== END RUN CALLED ===', {
@@ -391,55 +421,12 @@ class RunLifecycleManager {
       debugLog('EXTRACTION', 'Run ended successfully - loot transferred');
 
       // Persist ship section hull damage using slot-based format
-      if (runState.shipSlotId !== 0 && runState.shipSections) {
-        const slotIndex = newShipSlots.findIndex(s => s.id === runState.shipSlotId);
-
-        if (slotIndex >= 0 && newShipSlots[slotIndex].sectionSlots) {
-          const shipSlot = { ...newShipSlots[slotIndex] };
-          const newSectionSlots = { ...shipSlot.sectionSlots };
-
-          Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
-            const lane = sectionData.lane;
-            if (lane && newSectionSlots[lane]) {
-              const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
-              newSectionSlots[lane] = {
-                ...newSectionSlots[lane],
-                damageDealt: Math.max(0, damageDealt)
-              };
-            }
-          });
-
-          shipSlot.sectionSlots = newSectionSlots;
-          newShipSlots[slotIndex] = shipSlot;
-          debugLog('EXTRACTION', 'Ship section hull damage persisted to sectionSlots');
-        }
-      }
+      this._persistSectionDamage(newShipSlots, runState);
+      debugLog('EXTRACTION', 'Ship section hull damage persisted to sectionSlots');
     } else {
       // Failed run: Persist section damage, lose all loot
       // Slot 0 (Starter Deck) is exempt — no damage persisted, just lose loot
-      if (runState.shipSlotId !== 0 && runState.shipSections) {
-        const slotIndex = newShipSlots.findIndex(s => s.id === runState.shipSlotId);
-
-        if (slotIndex >= 0 && newShipSlots[slotIndex].sectionSlots) {
-          const shipSlot = { ...newShipSlots[slotIndex] };
-          const newSectionSlots = { ...shipSlot.sectionSlots };
-
-          Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
-            const lane = sectionData.lane;
-            if (lane && newSectionSlots[lane]) {
-              const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
-              newSectionSlots[lane] = {
-                ...newSectionSlots[lane],
-                damageDealt: Math.max(0, damageDealt)
-              };
-            }
-          });
-
-          shipSlot.sectionSlots = newSectionSlots;
-          newShipSlots[slotIndex] = shipSlot;
-          debugLog('EXTRACTION', 'Failed run - section damage persisted to sectionSlots');
-        }
-      }
+      this._persistSectionDamage(newShipSlots, runState);
 
       // Update statistics
       newProfile.stats.runsLost++;

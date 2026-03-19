@@ -15,9 +15,6 @@ export const ECONOMY = {
   // Cost per 1 point of damage to repair a section slot
   SECTION_DAMAGE_REPAIR_COST: 200,
 
-  // Flat cost to repair a damaged drone slot
-  DRONE_SLOT_REPAIR_COST: 500,
-
   // ========================================
   // REPLICATION COSTS
   // ========================================
@@ -29,16 +26,6 @@ export const ECONOMY = {
     Rare: 3000,
     Mythic: 5000
   },
-
-  // ========================================
-  // RUN FAILURE RECOVERY (Scaled by Deck Value)
-  // ========================================
-
-  // Recovery cost = max(FLOOR, deckValue * MULTIPLIER)
-  // Deck value = sum of replication costs for non-starter cards
-  //            + blueprint costs for non-starter ships/drones/components
-  MIA_RECOVERY_MULTIPLIER: 0.5,    // 50% of deck's total value
-  MIA_RECOVERY_FLOOR: 500,         // Minimum recovery cost
 
   // ========================================
   // STARTING VALUES

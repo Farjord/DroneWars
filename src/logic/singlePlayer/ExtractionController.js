@@ -37,8 +37,7 @@ export function calculateExtractedCredits(loot) {
  * 1. Player reaches extraction gate
  * 2. Blockade check: roll < detection = combat encounter
  * 3. If safe or after winning blockade: process extraction
- * 4. Drone damage check if hull < 50%
- * 5. Transfer loot, show summary, return to hangar
+ * 4. Transfer loot, show summary, return to hangar
  */
 class ExtractionController {
   constructor() {
