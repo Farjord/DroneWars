@@ -152,7 +152,7 @@ export function calculateLoadoutValue(shipSlot) {
  * Calculate reputation gain for a run
  * @param {number} loadoutValue - Total loadout value
  * @param {number} tier - Map tier (1, 2, or 3)
- * @param {boolean} success - Whether the run was successful (extraction vs MIA)
+ * @param {boolean} success - Whether the run was successful (extraction vs failure)
  * @returns {Object} Reputation gain details
  */
 export function calculateRepGain(loadoutValue, tier, success) {
@@ -165,7 +165,7 @@ export function calculateRepGain(loadoutValue, tier, success) {
   const wasCapped = loadoutValue > tierCap;
 
   // Apply success/failure multiplier
-  const multiplier = success ? 1.0 : REPUTATION.MIA_MULTIPLIER;
+  const multiplier = success ? 1.0 : REPUTATION.FAILURE_MULTIPLIER;
   const finalRep = Math.floor(cappedValue * multiplier);
 
   return {

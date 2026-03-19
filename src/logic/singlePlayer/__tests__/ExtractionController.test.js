@@ -23,12 +23,6 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }))
 
-vi.mock('../DroneDamageProcessor.js', () => ({
-  default: {
-    process: vi.fn(() => [])
-  }
-}))
-
 vi.mock('../../detection/DetectionManager.js', () => ({
   default: {
     getCurrentDetection: vi.fn(() => 50) // Default 50% detection

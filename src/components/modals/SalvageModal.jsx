@@ -23,7 +23,7 @@ import IconPOI from '../icons/IconPOI.jsx';
  * @param {Function} onLeave - Callback to leave POI (collect revealed items)
  * @param {Function} onEngageCombat - Callback when encounter triggered
  * @param {Function} onEscape - Callback to escape combat (takes damage, no rewards)
- * @param {Function} onQuit - Callback for MIA (quit when encounter triggered)
+ * @param {Function} onQuit - Callback for quitting (abort mission when encounter triggered)
  */
 function SalvageModal({
   salvageState,
@@ -55,11 +55,6 @@ function SalvageModal({
   } = salvageState;
 
   const poiData = poi?.poiData || {};
-
-  // Calculate if leaving after salvage would cause MIA
-  const threatIncrease = poiData.threatIncrease || tierConfig?.detectionTriggers?.looting || 10;
-  const detectionAfterLeave = detection + threatIncrease;
-  const wouldCauseMIA = detectionAfterLeave >= 100;
 
   // Get pack info for display
   const packInfo = poiData.rewardType ? packTypes[poiData.rewardType] : null;
@@ -166,7 +161,7 @@ function SalvageModal({
   /**
    * Determine which buttons to show
    */
-  const canSalvage = !isScanning && !encounterTriggered && currentSlotIndex < totalSlots && !wouldCauseMIA;
+  const canSalvage = !isScanning && !encounterTriggered && currentSlotIndex < totalSlots;
   const hasRevealedAny = slots.some(s => s.revealed);
   const allSlotsRevealed = currentSlotIndex >= totalSlots;
 
@@ -275,7 +270,7 @@ function SalvageModal({
           )}
 
           {/* Info about leaving */}
-          {!encounterTriggered && !allSlotsRevealed && !wouldCauseMIA && (
+          {!encounterTriggered && !allSlotsRevealed && (
             <p className="salvage-info-text">
               {currentSlotIndex < totalSlots
                 ? `${totalSlots - currentSlotIndex} slot${totalSlots - currentSlotIndex > 1 ? 's' : ''} remaining. Each salvage increases encounter chance.`
@@ -283,28 +278,6 @@ function SalvageModal({
             </p>
           )}
 
-          {/* MIA Warning - Salvaging would result in MIA */}
-          {wouldCauseMIA && !encounterTriggered && (
-            <div className="dw-modal-info-box" style={{
-              marginTop: '16px',
-              '--modal-theme': 'var(--modal-danger)',
-              '--modal-theme-bg': 'var(--modal-danger-bg)',
-              '--modal-theme-border': 'var(--modal-danger-border)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <AlertTriangle size={28} style={{ color: 'var(--modal-danger)' }} />
-                <div>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)', textTransform: 'uppercase' }}>Warning</p>
-                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--modal-danger)' }}>
-                    SALVAGING WOULD RESULT IN MIA
-                  </p>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
-                    Leaving adds +{threatIncrease}% detection ({Math.round(detectionAfterLeave)}% total)
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Actions */}

@@ -175,16 +175,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       }
     }
 
-    // Check drone slots for damage (using slot-based damage model)
-    if (slot.droneSlots && slot.droneSlots.length > 0 && currentSlotId !== 0) {
-      for (const droneSlot of slot.droneSlots) {
-        if (droneSlot.assignedDrone && droneSlot.slotDamaged) {
-          // Note: Slot damage reduces drone limit but doesn't prevent deployment
-          // This check is kept for consistency but may be adjusted based on game design
-        }
-      }
-    }
-
     // Check entry cost (if any)
     const entryCost = selectedMap.entryCost || 0;
     if (singlePlayerProfile.credits < entryCost) {

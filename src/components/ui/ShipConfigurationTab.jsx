@@ -12,10 +12,9 @@ import fullDroneCollection from '../../data/droneData.js';
 import {
   calculateSectionHull,
   getDroneEffectiveLimit,
-  calculateDroneSlotRepairCost,
   calculateSectionRepairCost,
   validateShipSlot
-} from '../../logic/combat/slotDamageUtils.js';
+} from '../../logic/combat/shipSlotUtils.js';
 
 /**
  * Hull bar component for displaying section health
@@ -112,13 +111,10 @@ const SectionSlotDisplay = ({ lane, sectionSlot, shipSlot, onRepair, credits, re
 };
 
 /**
- * Drone slot display with damage indicator
- * Supports both new format (assignedDrone, slotDamaged) and legacy format (droneName, isDamaged)
+ * Drone slot display
  */
-const DroneSlotDisplay = ({ slotIndex, droneSlot, shipSlot, onRepair, credits, readOnly }) => {
-  // Support both new and legacy field names
-  const droneName = droneSlot?.assignedDrone ?? droneSlot?.droneName ?? null;
-  const isDamaged = droneSlot?.slotDamaged ?? droneSlot?.isDamaged ?? false;
+const DroneSlotDisplay = ({ slotIndex, droneSlot, shipSlot }) => {
+  const droneName = droneSlot?.assignedDrone ?? null;
 
   if (!droneName) {
     return (
@@ -131,14 +127,10 @@ const DroneSlotDisplay = ({ slotIndex, droneSlot, shipSlot, onRepair, credits, r
     );
   }
 
-  const drone = fullDroneCollection.find(d => d.name === droneName);
   const effectiveLimit = getDroneEffectiveLimit(shipSlot, slotIndex);
-  const baseLimit = drone?.limit || 1;
-  const repairCost = calculateDroneSlotRepairCost();
-  const canAffordRepair = credits >= repairCost;
 
   return (
-    <div className={`dw-config-drone-slot ${isDamaged ? 'dw-config-drone-slot--damaged' : ''}`}>
+    <div className="dw-config-drone-slot">
       {/* Slot Number */}
       <div className="text-xs text-gray-500 mb-1">Slot {slotIndex + 1}</div>
 
@@ -148,36 +140,9 @@ const DroneSlotDisplay = ({ slotIndex, droneSlot, shipSlot, onRepair, credits, r
       </div>
 
       {/* Limit Display */}
-      <div className={`text-xs mt-1 ${isDamaged ? 'text-yellow-400' : 'text-gray-400'}`}>
+      <div className="text-xs mt-1 text-gray-400">
         Limit: {effectiveLimit}
-        {isDamaged && baseLimit > 1 && (
-          <span className="text-red-400 ml-1">(-1)</span>
-        )}
       </div>
-
-      {/* Damage Indicator */}
-      {isDamaged && (
-        <div className="flex items-center gap-1 mt-1">
-          <AlertTriangle size={10} className="text-yellow-400" />
-          <span className="text-xs text-yellow-400">Damaged</span>
-        </div>
-      )}
-
-      {/* Repair Button */}
-      {isDamaged && !readOnly && (
-        <button
-          onClick={() => onRepair(slotIndex)}
-          disabled={!canAffordRepair}
-          className={`w-full mt-2 py-1 px-2 rounded text-xs font-medium flex items-center justify-center gap-1 transition-colors ${
-            canAffordRepair
-              ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          <Wrench size={10} />
-          {repairCost} cr
-        </button>
-      )}
     </div>
   );
 };
@@ -189,7 +154,6 @@ const ShipConfigurationTab = ({
   shipSlot,
   droneSlots = null,  // Current editing state (preferred) or falls back to shipSlot.droneSlots
   credits = 0,
-  onRepairDroneSlot,
   onRepairSectionSlot,
   readOnly = false
 }) => {
@@ -274,9 +238,6 @@ const ShipConfigurationTab = ({
               slotIndex={index}
               droneSlot={droneSlot}
               shipSlot={shipSlotForValidation}
-              onRepair={onRepairDroneSlot}
-              credits={credits}
-              readOnly={readOnly}
             />
           ))}
         </div>
@@ -284,12 +245,9 @@ const ShipConfigurationTab = ({
 
       {/* Info Box */}
       <div className="mt-6 p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400">
-        <p className="mb-2">
-          <strong className="text-gray-300">Slot-Based Damage:</strong> Damage is tied to slot positions, not items.
-          Swapping drones or components doesn't affect damage state.
-        </p>
         <p>
-          <strong className="text-gray-300">Damaged Drone Slots:</strong> Reduce the drone's deployment limit by 1.
+          <strong className="text-gray-300">Section Damage:</strong> Ship sections take damage during runs.
+          Repair damaged sections in the Repair Bay.
         </p>
       </div>
     </div>

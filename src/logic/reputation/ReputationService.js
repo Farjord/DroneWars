@@ -90,10 +90,10 @@ class ReputationService {
     const loadoutResult = calculateReputationResult(shipSlot, tier, success, currentRep);
 
     // Add combat reputation (new system)
-    // Combat rep is reduced by 25% on MIA (same as loadout rep)
+    // Combat rep is reduced by 25% on failure (same as loadout rep)
     const finalCombatRep = success
       ? combatReputation
-      : Math.floor(combatReputation * REPUTATION.MIA_MULTIPLIER);
+      : Math.floor(combatReputation * REPUTATION.FAILURE_MULTIPLIER);
 
     // Total rep gain = loadout rep + combat rep
     const totalRepGain = loadoutResult.repGained + finalCombatRep;

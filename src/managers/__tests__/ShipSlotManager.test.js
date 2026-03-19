@@ -162,14 +162,6 @@ describe('ShipSlotManager', () => {
   // --- Repair Operations ---
 
   describe('repair operations', () => {
-    it('repairDroneSlot deducts credits and clears damage on a damaged slot', () => {
-      const result = manager.repairDroneSlot(1, 0);
-      expect(result.success).toBe(true);
-      expect(gsm.state.singlePlayerProfile.credits).toBe(950); // 1000 - 50
-      const repairedSlot = gsm.state.singlePlayerShipSlots.find(s => s.id === 1);
-      expect(repairedSlot.droneSlots[0].slotDamaged).toBe(false);
-    });
-
     it('repairSectionSlot full repair sets damageDealt to 0 and deducts correct cost', () => {
       const result = manager.repairSectionSlot(1, 'l');
       expect(result.success).toBe(true);
@@ -198,7 +190,6 @@ describe('ShipSlotManager', () => {
 
     it('all repair methods refuse slot 0', () => {
       const methods = [
-        () => manager.repairDroneSlot(0, 0),
         () => manager.repairSectionSlot(0, 'l'),
         () => manager.repairSectionSlotPartial(0, 'l', 1),
       ];
@@ -211,7 +202,6 @@ describe('ShipSlotManager', () => {
 
     it('repair methods fail on undamaged targets', () => {
       const results = [
-        manager.repairDroneSlot(1, 1),       // slot 1, position 1 is not damaged
         manager.repairSectionSlot(1, 'm'),    // lane 'm' has 0 damage
       ];
       for (const result of results) {

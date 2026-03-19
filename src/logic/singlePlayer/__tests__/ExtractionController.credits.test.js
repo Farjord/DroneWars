@@ -161,10 +161,6 @@ describe('ExtractionController Credit Calculation', () => {
       }));
 
       // Mock other dependencies
-      vi.doMock('../DroneDamageProcessor.js', () => ({
-        default: { process: vi.fn().mockReturnValue([]) }
-      }));
-
       vi.doMock('../../detection/DetectionManager.js', () => ({
         default: { getCurrentDetection: vi.fn().mockReturnValue(0) }
       }));

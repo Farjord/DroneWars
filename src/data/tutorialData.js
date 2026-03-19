@@ -88,7 +88,7 @@ export const TUTORIALS = {
       },
       {
         heading: 'Requirements',
-        content: 'To replicate a card you must currently own at least one copy of it. Cards that you have previously owned, but have gone \'MIA\' during a run, cannot be replicated. You also need sufficient credits to cover the replication cost.',
+        content: 'To replicate a card you must currently own at least one copy of it. You also need sufficient credits to cover the replication cost.',
       },
       {
         heading: 'Replicated Cards',
@@ -188,7 +188,7 @@ export const TUTORIALS = {
       },
       {
         heading: 'Encounters',
-        content: 'When you encounter hostiles, you\'ll enter combat. Win to proceed and claim loot; lose and your ship becomes MIA. Damaged units and lost cargo are the price of defeat.',
+        content: 'When you encounter hostiles, you\'ll enter combat. Win to proceed and claim loot; lose and your ship takes damage. Lost cargo is the price of defeat.',
       },
       {
         heading: 'Points of Interest',
@@ -208,7 +208,7 @@ export const TUTORIALS = {
     sections: [
       {
         heading: 'Ship Slots',
-        content: 'The standard Ship is always available to you. However, it does not gain reputation and cannot be modified. Additional slots be purchased, allowing you to create and customise your own load out and include Cards, Drones even Ships and Ship Sections. These loadouts then earn you reputation, based off the rarity of the items in your loadout. However, if you fail to extract from a run, your loadout will be classed as MIA - requiring you to pay for salvage costs.',
+        content: 'The standard Ship is always available to you. However, it does not gain reputation and cannot be modified. Additional slots can be purchased, allowing you to create and customise your own loadout and include Cards, Drones, even Ships and Ship Sections. These loadouts then earn you reputation, based on the rarity of the items in your loadout. However, if you fail to extract from a run, your ship will take damage and all collected loot will be lost.',
       },
       {
         heading: 'Deck Construction',

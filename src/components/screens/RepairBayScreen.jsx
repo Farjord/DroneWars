@@ -19,10 +19,9 @@ import { getShipById } from '../../data/shipData';
 import repairService from '../../logic/economy/RepairService';
 import { resolveShipSectionImage } from '../../logic/cards/shipSectionImageResolver';
 import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
-import { validateShipSlot } from '../../logic/combat/slotDamageUtils.js';
+import { validateShipSlot } from '../../logic/combat/shipSlotUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService';
-import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import ReputationTrack from '../ui/ReputationTrack';
 import {
   getDroneByName,
@@ -42,8 +41,6 @@ export { resolveComponentIdForLane } from '../../logic/singlePlayer/repairHelper
 const DroneSlotDisplay = ({
   index,
   droneSlot,
-  onRepair,
-  credits,
   isDragging,
   isDragOver,
   onDragStart,
@@ -52,10 +49,7 @@ const DroneSlotDisplay = ({
   onDrop
 }) => {
   const droneName = droneSlot?.assignedDrone;
-  const isDamaged = droneSlot?.slotDamaged ?? false;
   const droneData = droneName ? getDroneByName(droneName) : null;
-  const repairCost = droneName && repairService.getDroneRepairCost ? repairService.getDroneRepairCost(droneName) : 500;
-  const canAfford = credits >= repairCost;
 
   if (!droneName || !droneData) {
     return (
@@ -83,14 +77,6 @@ const DroneSlotDisplay = ({
         Slot {index + 1}
       </div>
 
-      {/* Damage Indicator */}
-      {isDamaged && (
-        <div className="absolute top-2 right-2 z-10 bg-yellow-500/90 px-2 py-1 rounded text-xs text-black font-medium flex items-center gap-1">
-          <AlertTriangle size={10} />
-          Damaged
-        </div>
-      )}
-
       {/* Drone Card */}
       <DroneCard
         drone={droneData}
@@ -98,25 +84,6 @@ const DroneSlotDisplay = ({
         isSelectable={false}
         deployedCount={0}
       />
-
-      {/* Repair Button */}
-      {isDamaged && (
-        <button
-          className={`w-full mt-2 py-2 px-3 rounded text-xs flex items-center justify-center gap-2 ${
-            canAfford
-              ? 'bg-green-600 hover:bg-green-500 text-white'
-              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (canAfford) onRepair(index);
-          }}
-          disabled={!canAfford}
-        >
-          <Wrench size={12} />
-          Repair ({repairCost} cr)
-        </button>
-      )}
     </div>
   );
 };
@@ -196,24 +163,6 @@ const RepairBayScreen = () => {
 
     setFeedback({ type: 'success', message: 'Drones reordered' });
     setTimeout(() => setFeedback(null), 2000);
-  };
-
-  // Handle drone repair
-  const handleRepairDrone = async (slotIndex) => {
-    try {
-      const result = repairService.repairDroneSlot
-        ? await repairService.repairDroneSlot(selectedSlotId, slotIndex)
-        : { success: false, error: 'Repair service not available' };
-
-      if (result.success) {
-        setFeedback({ type: 'success', message: `Drone repaired for ${result.cost} credits` });
-      } else {
-        setFeedback({ type: 'error', message: result.error || 'Repair failed' });
-      }
-    } catch (error) {
-      setFeedback({ type: 'error', message: 'Repair failed' });
-    }
-    setTimeout(() => setFeedback(null), 3000);
   };
 
   // Handle section repair (full)
@@ -424,8 +373,6 @@ const RepairBayScreen = () => {
                       key={index}
                       index={index}
                       droneSlot={droneSlot}
-                      onRepair={handleRepairDrone}
-                      credits={credits}
                       isDragging={draggedIndex === index}
                       isDragOver={dragOverIndex === index}
                       onDragStart={handleDragStart(index)}
@@ -464,7 +411,6 @@ const RepairBayScreen = () => {
               const isDefault = singlePlayerProfile?.defaultShipSlotId === slot.id;
               const isActive = slot.status === 'active';
               const isEmpty = slot.status === 'empty';
-              const isMia = slot.status === 'mia';
               const isSelected = slot.id === selectedSlotId;
               const isSlot0 = slot.id === 0;
 
@@ -508,7 +454,6 @@ const RepairBayScreen = () => {
               // Determine slot state class
               const getSlotClass = () => {
                 if (!isUnlocked) return 'dw-deck-slot--locked';
-                if (isMia) return 'dw-deck-slot--mia';
                 if (isEmpty) return 'dw-deck-slot--empty';
                 if (isUndeployable) return 'dw-deck-slot--undeployable';
                 if (isSelected) return 'dw-deck-slot--active';
@@ -556,7 +501,7 @@ const RepairBayScreen = () => {
                     <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                       {/* Header Row: Slot name/id + Star */}
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : isUndeployable ? 'text-red-400' : 'text-cyan-400'}`}>
+                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isUndeployable ? 'text-red-400' : 'text-cyan-400'}`}>
                           {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
                           {isActive && isUndeployable && (
                             <AlertTriangle size={14} className="text-red-400" title="Ship undeployable - all sections destroyed" />
@@ -585,7 +530,7 @@ const RepairBayScreen = () => {
 
                       {/* Deck Name */}
                       <div className="font-medium text-white text-sm truncate">
-                        {isActive ? (slot.name || 'Unnamed Deck') : isMia ? 'MIA' : 'Empty Slot'}
+                        {isActive ? (slot.name || 'Unnamed Deck') : 'Empty Slot'}
                       </div>
 
                       {/* Stats for active slots */}
@@ -606,7 +551,7 @@ const RepairBayScreen = () => {
                         hasDamage ? (
                           <div className="flex items-center gap-1 mt-2 text-yellow-400 text-xs">
                             <AlertTriangle size={12} />
-                            {damage.total} damaged ({damage.drones} drone{damage.drones !== 1 ? 's' : ''}, {damage.sections} section{damage.sections !== 1 ? 's' : ''})
+                            {damage.total} section{damage.sections !== 1 ? 's' : ''} damaged
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 mt-2 text-green-400 text-xs">
@@ -614,13 +559,6 @@ const RepairBayScreen = () => {
                             No damage
                           </div>
                         )
-                      )}
-
-                      {/* MIA indicator */}
-                      {isMia && (
-                        <div className="text-xs text-red-400 mt-1">
-                          Recover in Hangar
-                        </div>
                       )}
 
                       {/* Empty slot indicator */}

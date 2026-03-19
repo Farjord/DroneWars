@@ -210,16 +210,8 @@ const DeckBuilderRightPanel = ({
       <div className="flex-grow overflow-y-auto pr-2 deck-list dw-modal-scroll">
         {droneListForDisplay.length > 0 ? (
           droneListForDisplay.map(drone => {
-            // Check for damage indicator (extraction mode only)
-            const droneInstance = droneInstances.find(i => i.droneName === drone.name);
-            const isDamaged = drone.hasDamagedInstance || droneInstance?.isDamaged;
-
             return (
-              <div key={drone.name} className={`deck-list-item ${isDamaged ? 'bg-yellow-900/20 border-l-2 border-yellow-500' : ''}`}>
-                {/* Damage indicator */}
-                {isDamaged && (
-                  <AlertTriangle size={16} className="text-yellow-400 flex-shrink-0 mr-2" title="Damaged - Cannot deploy until repaired" />
-                )}
+              <div key={drone.name} className="deck-list-item">
                 {/* Eye icon to view drone details */}
                 <button
                   onClick={() => setDetailedDrone(drone)}

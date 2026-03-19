@@ -109,7 +109,7 @@ function WaypointConfirmationModal({
             <div className="dw-modal-info-box" style={{ marginTop: '16px', '--modal-theme': '#eab308', '--modal-theme-bg': 'rgba(234, 179, 8, 0.08)', '--modal-theme-border': 'rgba(234, 179, 8, 0.4)' }}>
               <p className="dw-modal-info-title" style={{ color: '#eab308' }}>Critical Threat</p>
               <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>
-                Risk of MIA if mission continues.
+                Risk of failure if mission continues.
               </p>
             </div>
           )}

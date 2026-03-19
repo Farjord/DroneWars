@@ -152,7 +152,7 @@ vi.mock('../../../utils/seededRandom.js', () => ({
   }
 }));
 
-vi.mock('../../combat/slotDamageUtils.js', () => ({
+vi.mock('../../combat/shipSlotUtils.js', () => ({
   buildActiveDronePool: vi.fn(() => [
     { name: 'Dart', limit: 2, effectiveLimit: 2 }
   ])

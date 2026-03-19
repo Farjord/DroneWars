@@ -57,10 +57,10 @@ class SaveGameService {
       throw new Error(`Invalid save file: ${validation.errors.join(', ')}`);
     }
 
-    // Check for MIA condition
+    // Check for abandoned run condition (unexpected exit during run)
     if (saveData.currentRunState !== null) {
-      debugLog('SAVE', '⚠️ Save file has active run state - triggering MIA protocol');
-      saveData = this.triggerMIA(saveData);
+      debugLog('SAVE', '⚠️ Save file has active run state - triggering abandoned run protocol');
+      saveData = this.handleAbandonedRun(saveData);
     }
 
     // Migrate quickDeployments: filter old versions and ensure deploymentOrder exists
@@ -79,33 +79,30 @@ class SaveGameService {
       shipComponentInstances: saveData.shipComponentInstances,
       discoveredCards: saveData.discoveredCards,
       shipSlots: saveData.shipSlots,
-      currentRunState: null,  // Always null on load (MIA if was active)
+      currentRunState: null,  // Always null on load (abandoned if was active)
       quickDeployments: migratedQuickDeployments,
     };
   }
 
   /**
-   * Trigger MIA protocol
+   * Handle abandoned run
    * Called when save file has currentRunState (unexpected exit during run)
    * @param {Object} saveData - Save data with active run
-   * @returns {Object} Modified save data with MIA applied
+   * @returns {Object} Modified save data with abandoned run handled
    */
-  triggerMIA(saveData) {
+  handleAbandonedRun(saveData) {
     const runState = saveData.currentRunState;
     if (!runState) return saveData;
 
     // Find active ship slot
     const activeSlot = saveData.shipSlots.find(slot => slot.id === runState.shipSlotId);
     if (!activeSlot) {
-      debugLog('SAVE', '⚠️ MIA: Could not find ship slot', runState.shipSlotId);
+      debugLog('SAVE', '⚠️ Abandoned run: Could not find ship slot', runState.shipSlotId);
       return saveData;
     }
 
-    // Mark ship as MIA
-    activeSlot.status = 'mia';
-
     // Wipe collected loot (not transferred to inventory)
-    debugLog('SAVE', 'MIA triggered: Loot lost', runState.collectedLoot);
+    debugLog('SAVE', 'Run abandoned: Loot lost', runState.collectedLoot);
 
     // Clear run state
     saveData.currentRunState = null;

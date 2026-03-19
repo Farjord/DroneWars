@@ -145,7 +145,7 @@ describe('RunLifecycleManager', () => {
     });
 
     it('throws for a non-active ship slot', () => {
-      gsm.state.singlePlayerShipSlots[1].status = 'mia';
+      gsm.state.singlePlayerShipSlots[1].status = 'empty';
       expect(() => rlm.startRun({ shipSlotId: 1, mapTier: 1 })).toThrow(/not active/);
     });
 
@@ -282,7 +282,7 @@ describe('RunLifecycleManager', () => {
       expect(finalCall.lastRunSummary.reputation.repGained).toBe(10);
     });
 
-    it('on failure (MIA): marks non-zero slot as MIA and increments runsLost', () => {
+    it('on failure: persists section damage for non-zero slot and increments runsLost', () => {
       const mockRunState = createMockRunState();
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
@@ -290,9 +290,12 @@ describe('RunLifecycleManager', () => {
 
       const finalCall = gsm.setState.mock.calls[0][0];
 
-      // Slot 1 marked as MIA
+      // Slot 1 stays active (no MIA), but section damage persisted
       const slot1 = finalCall.singlePlayerShipSlots.find(s => s.id === 1);
-      expect(slot1.status).toBe('mia');
+      expect(slot1.status).toBe('active');
+      expect(slot1.sectionSlots.m.damageDealt).toBe(2); // bridge: maxHull 8 - hull 6 = 2
+      expect(slot1.sectionSlots.l.damageDealt).toBe(0); // powerCell: 8 - 8 = 0
+      expect(slot1.sectionSlots.r.damageDealt).toBe(2); // droneControlHub: 8 - 6 = 2
 
       // runsLost incremented, runsCompleted unchanged
       expect(finalCall.singlePlayerProfile.stats.runsLost).toBe(1);
@@ -302,7 +305,7 @@ describe('RunLifecycleManager', () => {
       expect(finalCall.singlePlayerProfile.credits).toBe(1000);
     });
 
-    it('on failure: slot 0 does NOT go MIA', () => {
+    it('on failure: slot 0 does not persist damage', () => {
       const mockRunState = createMockRunState({ shipSlotId: 0 });
       tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
@@ -311,6 +314,8 @@ describe('RunLifecycleManager', () => {
       const finalCall = gsm.setState.mock.calls[0][0];
       const slot0 = finalCall.singlePlayerShipSlots.find(s => s.id === 0);
       expect(slot0.status).toBe('active');
+      // Slot 0 section damage should be unchanged (0)
+      expect(slot0.sectionSlots.m.damageDealt).toBe(0);
     });
   });
 });

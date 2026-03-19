@@ -175,7 +175,7 @@ const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints, mapRadius }) => {
   const getStatusClass = (wouldMIA) => wouldMIA ? 'escape-critical' : 'escape-safe';
   const getGateLabel = (routeData) => {
     if (!routeData?.gate) return '?';
-    if (routeData.wouldMIA) return 'MIA';
+    if (routeData.wouldMIA) return 'BLOCKED';
     return axialToDisplayLabel(routeData.gate.q, routeData.gate.r, mapRadius);
   };
 

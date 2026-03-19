@@ -7,7 +7,6 @@ import React from 'react';
  * Visual states:
  * - active: Slot has a configured deck ready for deployment
  * - empty: Slot is not configured (no deck)
- * - MIA: Slot's ship was lost during a run
  */
 const ShipSlotCard = ({
   shipSlot,
@@ -32,7 +31,6 @@ const ShipSlotCard = ({
   const calculateOverallHullPercentage = () => {
     if (shipSlot.id === 0) return 100; // Starter deck never damaged
     if (shipSlot.status === 'empty') return 0;
-    if (shipSlot.status === 'mia') return 0;
 
     const components = shipSlot.shipComponents;
     if (!components) return 100;
@@ -64,7 +62,6 @@ const ShipSlotCard = ({
    * Get status badge color based on hull percentage
    */
   const getStatusColor = () => {
-    if (shipSlot.status === 'mia') return 'bg-red-500';
     if (shipSlot.status === 'empty') return 'bg-gray-500';
 
     const hullPercentage = calculateOverallHullPercentage();
@@ -77,7 +74,6 @@ const ShipSlotCard = ({
    * Get status text
    */
   const getStatusText = () => {
-    if (shipSlot.status === 'mia') return 'MIA';
     if (shipSlot.status === 'empty') return 'EMPTY';
     if (shipSlot.status === 'active') {
       const hullPercentage = calculateOverallHullPercentage();
@@ -98,7 +94,7 @@ const ShipSlotCard = ({
    * Render mini component preview (3 components)
    */
   const renderComponentPreview = () => {
-    if (shipSlot.status === 'empty' || shipSlot.status === 'mia') {
+    if (shipSlot.status === 'empty') {
       return null;
     }
 
@@ -143,14 +139,13 @@ const ShipSlotCard = ({
   const statusColor = getStatusColor();
   const statusText = getStatusText();
   const droneCount = getDroneCount();
-  const isDisabled = shipSlot.status === 'mia';
-  const isClickable = !isDisabled && onClick;
+  const isClickable = onClick;
 
   return (
     <div
       className={`
         relative p-4 bg-gray-800 border-2 rounded-lg transition-all
-        ${isDisabled ? 'border-gray-600 opacity-50 cursor-not-allowed' : 'border-gray-600'}
+        ${'border-gray-600'}
         ${isClickable ? 'hover:border-blue-400 hover:shadow-lg cursor-pointer' : ''}
       `}
       onClick={isClickable ? onClick : undefined}
@@ -194,9 +189,6 @@ const ShipSlotCard = ({
         {/* Empty/MIA State Messages */}
         {shipSlot.status === 'empty' && (
           <div className="text-gray-500 italic">Click to configure</div>
-        )}
-        {shipSlot.status === 'mia' && (
-          <div className="text-red-400 italic">Lost in action</div>
         )}
       </div>
 

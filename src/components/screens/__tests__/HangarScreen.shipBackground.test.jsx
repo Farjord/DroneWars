@@ -124,18 +124,18 @@ describe('HangarScreen - Ship Image Backgrounds', () => {
       expect(shipImage).toBeNull();
     });
 
-    it('should return null for MIA slots', () => {
-      const miaSlot = {
+    it('should return null for empty slots', () => {
+      const emptySlot = {
         id: 1,
-        status: 'mia',
-        shipId: 'SHIP_001', // Has a shipId but status is mia
+        status: 'empty',
+        shipId: 'SHIP_001', // Has a shipId but status is empty
       };
 
-      const isActive = miaSlot.status === 'active';
-      const ship = isActive && miaSlot.shipId ? mockGetShipById(miaSlot.shipId) : null;
+      const isActive = emptySlot.status === 'active';
+      const ship = isActive && emptySlot.shipId ? mockGetShipById(emptySlot.shipId) : null;
       const shipImage = ship?.image || null;
 
-      // MIA slots should NOT show ship image (status !== 'active')
+      // Empty slots should NOT show ship image (status !== 'active')
       expect(shipImage).toBeNull();
     });
 

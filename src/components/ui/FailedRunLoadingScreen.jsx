@@ -1,7 +1,7 @@
 // ========================================
 // FAILED RUN LOADING SCREEN
 // ========================================
-// Full-screen transition displayed when a run fails (MIA)
+// Full-screen transition displayed when a run fails
 // Shows failure type-specific messages and auto-transitions after ~2 seconds
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -11,7 +11,7 @@ import './FailedRunLoadingScreen.css';
  * FailedRunLoadingScreen - Brief transition screen for failed runs
  *
  * @param {string} failureType - Type of failure: 'combat' | 'detection' | 'abandon'
- * @param {boolean} isStarterDeck - If true, show "RUN FAILED" instead of "SHIP MARKED MIA"
+ * @param {boolean} isStarterDeck - If true, show "RUN FAILED" instead of "SHIP DAMAGED"
  * @param {Function} onComplete - Callback when loading completes
  */
 function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
@@ -80,14 +80,14 @@ function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
     if (progress < 60) return 'Logging final position...';
     if (progress < 80) return 'Securing emergency beacon...';
     if (progress < 100) return 'Finalizing mission report...';
-    return isStarterDeck ? 'RUN FAILED' : 'SHIP MARKED MIA';
+    return 'RUN FAILED';
   };
 
   /**
    * Get final status text
    */
   const getFinalStatus = () => {
-    return isStarterDeck ? 'RUN FAILED' : 'SHIP MARKED MIA';
+    return isStarterDeck ? 'RUN FAILED' : 'SHIP DAMAGED — REPAIRS REQUIRED';
   };
 
   return (

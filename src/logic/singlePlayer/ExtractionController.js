@@ -6,7 +6,6 @@
 
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
-import DroneDamageProcessor from './DroneDamageProcessor.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { ECONOMY } from '../../data/economyData.js';
@@ -232,13 +231,7 @@ class ExtractionController {
       });
     }
 
-    // 1. Process drone damage (if hull < 50%)
-    let dronesDamaged = [];
-    if (shipSlot) {
-      dronesDamaged = DroneDamageProcessor.process(shipSlot, currentRunState);
-    }
-
-    // 2. Build summary before endRun clears state
+    // 1. Build summary before endRun clears state
     // Calculate credits from extracted salvage items (not legacy creditsEarned)
     const extractedCredits = calculateExtractedCredits(lootToTransfer);
 
@@ -247,7 +240,6 @@ class ExtractionController {
       cardsAcquired: lootToTransfer.filter(i => i.type === 'card').length,
       blueprintsAcquired: lootToTransfer.filter(i => i.type === 'blueprint').length,
       creditsEarned: extractedCredits,
-      dronesDamaged,
       finalHull: currentRunState.currentHull,
       maxHull: currentRunState.maxHull,
       hullPercent: currentRunState.maxHull > 0
@@ -256,13 +248,13 @@ class ExtractionController {
       itemsDiscarded: selectedLoot ? lootCount - selectedLoot.length : 0
     };
 
-    // 3. End run with success (transfers loot, adds credits)
+    // 2. End run with success (transfers loot, adds credits)
     gameStateManager.endRun(true);
 
-    // 4. Record mission progress for successful extraction
+    // 3. Record mission progress for successful extraction
     MissionService.recordProgress('EXTRACTION_COMPLETE', {});
 
-    // 5. Record credits earned for mission progress
+    // 4. Record credits earned for mission progress
     if (extractedCredits > 0) {
       MissionService.recordProgress('CREDITS_EARNED', { amount: extractedCredits });
     }
@@ -273,8 +265,8 @@ class ExtractionController {
   }
 
   /**
-   * Abandon run (triggers MIA)
-   * Player loses all collected loot, deck marked as MIA
+   * Abandon run
+   * Player loses all collected loot, section damage persisted
    */
   abandonRun() {
     // IMMEDIATELY signal abort - this must be the FIRST operation
@@ -300,7 +292,7 @@ class ExtractionController {
       hasPlayer2: !!gameStateManager.get('player2'),
       hasCurrentRunState: tacticalMapStateManager.isRunActive()
     });
-    debugLog('EXTRACTION', 'Run abandoned - MIA triggered');
+    debugLog('EXTRACTION', 'Run abandoned - loot lost, damage persisted');
 
     // Get isStarterDeck BEFORE endRun clears the run state
     const runState = tacticalMapStateManager.getState();
@@ -312,7 +304,7 @@ class ExtractionController {
       gameStateManager.resetGameState();
     }
 
-    // End run as failure (MIA)
+    // End run as failure (damage persisted, loot lost)
     gameStateManager.endRun(false);
 
     debugLog('SP_COMBAT', 'State after endRun():', {

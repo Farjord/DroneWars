@@ -35,9 +35,7 @@ export const createCopyStarterDeckSlot = (
       newDroneInstances.push({
         id: `DRONE_${crypto.randomUUID()}`,
         droneName: slot.assignedDrone,
-        shipSlotId: slotId,
-        isDamaged: false,
-        isMIA: false
+        shipSlotId: slotId
       });
     }
   });

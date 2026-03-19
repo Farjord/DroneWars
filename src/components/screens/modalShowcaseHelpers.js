@@ -590,19 +590,6 @@ export const getMockPropsForModal = (modalName) => {
         onConfirm: () => console.log('Abandon confirmed')
       }
     },
-    'MIARecoveryModal': {
-      category: 'danger',
-      props: {
-        shipSlot: {
-          id: 1,
-          name: 'Ship Slot 1',
-          status: 'mia',
-          drones: [getMockDrone('Dart'), getMockDrone('Mammoth')],
-          shipComponents: { left: 'comp1', middle: 'comp2', right: 'comp3' }
-        },
-        onClose: () => console.log('MIA Recovery closed')
-      }
-    },
     'MapOverviewModal': {
       category: 'extraction',
       props: {
@@ -1047,7 +1034,7 @@ export const getModalsByCategory = () => {
       'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal',
       'DroneBlueprintRewardModal',
       // Danger modals
-      'AbandonRunModal', 'MIARecoveryModal',
+      'AbandonRunModal',
       // Confirmation modals
       'DeploymentConfirmationModal', 'CardConfirmationModal', 'DroneAbilityConfirmationModal',
       'ShipAbilityConfirmationModal', 'MoveConfirmationModal',
@@ -1077,7 +1064,7 @@ export const getModalsByCategory = () => {
       'DroneBlueprintRewardModal'
     ],
     danger: [
-      'AbandonRunModal', 'MIARecoveryModal'
+      'AbandonRunModal'
     ],
     confirmation: [
       'DeploymentConfirmationModal', 'CardConfirmationModal', 'DroneAbilityConfirmationModal',

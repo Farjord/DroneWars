@@ -75,14 +75,13 @@ export const calculateSectionHull = (shipSlot, lane) => {
 };
 
 /**
- * Count damage in a ship slot (damaged drones and sections)
+ * Count damage in a ship slot (damaged sections only)
  * @param {Object} slot - Ship slot object
- * @returns {{drones: number, sections: number, total: number}} Damage counts
+ * @returns {{sections: number, total: number}} Damage counts
  */
 export const countDamage = (slot) => {
-  if (!slot || slot.status !== 'active') return { drones: 0, sections: 0, total: 0 };
+  if (!slot || slot.status !== 'active') return { sections: 0, total: 0 };
 
-  const damagedDrones = (slot.droneSlots || []).filter(s => s.slotDamaged && s.assignedDrone).length;
   const damagedSections = ['l', 'm', 'r'].filter(lane => {
     const componentId = resolveComponentIdForLane(slot, lane);
     const sectionSlot = slot.sectionSlots?.[lane];
@@ -90,8 +89,7 @@ export const countDamage = (slot) => {
   }).length;
 
   return {
-    drones: damagedDrones,
     sections: damagedSections,
-    total: damagedDrones + damagedSections,
+    total: damagedSections,
   };
 };

@@ -161,7 +161,7 @@ function DetectionMeter({ detection }) {
       {detection >= 80 && (
         <div className="meter-warning">
           <IconWarning size={14} className="icon-critical" />
-          <span>WARNING: Approaching MIA threshold</span>
+          <span>WARNING: Approaching maximum detection</span>
         </div>
       )}
     </div>

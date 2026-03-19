@@ -10,21 +10,19 @@ import { useGameState } from '../../hooks/useGameState';
 import { getAllShips } from '../../data/shipData';
 
 /**
- * Count damage in a ship slot (drones + sections)
+ * Count damage in a ship slot (sections only)
  */
 const countDamage = (slot) => {
-  if (!slot || slot.status !== 'active') return { drones: 0, sections: 0, total: 0 };
+  if (!slot || slot.status !== 'active') return { sections: 0, total: 0 };
 
-  const damagedDrones = (slot.droneSlots || []).filter(s => s.slotDamaged && s.assignedDrone).length;
   const damagedSections = ['l', 'm', 'r'].filter(lane => {
     const sectionSlot = slot.sectionSlots?.[lane];
     return sectionSlot?.componentId && (sectionSlot.damageDealt || 0) > 0;
   }).length;
 
   return {
-    drones: damagedDrones,
     sections: damagedSections,
-    total: damagedDrones + damagedSections
+    total: damagedSections
   };
 };
 

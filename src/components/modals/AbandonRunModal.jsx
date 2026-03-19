@@ -1,7 +1,7 @@
 /**
  * AbandonRunModal.jsx
  * Confirmation dialog when player wants to abandon their run
- * Shows consequences (MIA, loot loss) before confirming
+ * Shows consequences (loot loss, ship damage) before confirming
  */
 
 import React from 'react';
@@ -12,7 +12,7 @@ import { AlertTriangle, X } from 'lucide-react';
  *
  * @param {boolean} show - Whether to show the modal
  * @param {Function} onCancel - Cancel callback (close modal)
- * @param {Function} onConfirm - Confirm callback (trigger MIA)
+ * @param {Function} onConfirm - Confirm callback (abandon run)
  * @param {number} lootCount - Number of loot items that will be lost
  * @param {number} creditsEarned - Credits that will be lost
  */
@@ -36,7 +36,7 @@ function AbandonRunModal({ show, onCancel, onConfirm, lootCount = 0, creditsEarn
         {/* Warning Content */}
         <div className="dw-modal-body">
           <p className="dw-modal-text">
-            Your ship will be marked as MIA and all progress from this run will be lost.
+            Your ship will take damage and all progress from this run will be lost.
           </p>
 
           <div className="dw-modal-info-box">
@@ -54,7 +54,7 @@ function AbandonRunModal({ show, onCancel, onConfirm, lootCount = 0, creditsEarn
 
             <div className="dw-modal-consequence">
               <span className="dw-modal-consequence-icon"><X size={14} /></span>
-              <span>Your deck will be marked as MIA</span>
+              <span>Your ship will take damage</span>
             </div>
           </div>
         </div>

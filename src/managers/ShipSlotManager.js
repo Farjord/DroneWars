@@ -12,7 +12,7 @@ import { convertComponentsToSectionSlots } from '../logic/migration/saveGameMigr
 import { debugLog } from '../utils/debugLogger.js';
 
 /** Template for an empty drone slot entry */
-const EMPTY_DRONE_SLOT = { slotDamaged: false, assignedDrone: null };
+const EMPTY_DRONE_SLOT = { assignedDrone: null };
 
 /** Template for an empty section slot entry */
 const EMPTY_SECTION_SLOT = { componentId: null, damageDealt: 0 };
@@ -265,7 +265,6 @@ class ShipSlotManager {
 
   /**
    * Update drone slot order for a ship slot (for Repair Bay reordering)
-   * Swaps only assignedDrone values; slotDamaged stays with the slot position
    * @param {number} slotId - Ship slot ID (0-5)
    * @param {Array} newDroneSlots - Updated drone slots array
    */
@@ -288,63 +287,6 @@ class ShipSlotManager {
   }
 
   // --- REPAIR OPERATIONS ---
-
-  /**
-   * Repair a damaged drone slot
-   * @param {number} slotId - Ship slot ID (1-5, cannot modify 0)
-   * @param {number} position - Drone slot position (0-4)
-   * @returns {Object} { success, reason? }
-   */
-  repairDroneSlot(slotId, position) {
-    if (slotId === 0) {
-      return { success: false, reason: 'Cannot modify Slot 0 (immutable starter deck)' };
-    }
-
-    const slots = [...this.gsm.state.singlePlayerShipSlots];
-    const slotIndex = slots.findIndex(s => s.id === slotId);
-
-    if (slotIndex === -1) {
-      return { success: false, reason: `Slot ${slotId} not found` };
-    }
-
-    const slot = slots[slotIndex];
-    if (!slot.droneSlots?.[position]) {
-      return { success: false, reason: `Drone position ${position} not found` };
-    }
-
-    // Support both old (isDamaged) and new (slotDamaged) field names
-    const droneSlot = slot.droneSlots[position];
-    const isCurrentlyDamaged = droneSlot.slotDamaged ?? droneSlot.isDamaged ?? false;
-
-    if (!isCurrentlyDamaged) {
-      return { success: false, reason: 'Drone slot is not damaged' };
-    }
-
-    const cost = ECONOMY.DRONE_SLOT_REPAIR_COST || 50;
-    const profile = { ...this.gsm.state.singlePlayerProfile };
-
-    if (profile.credits < cost) {
-      return { success: false, reason: `Insufficient credits. Need ${cost}, have ${profile.credits}` };
-    }
-
-    profile.credits -= cost;
-
-    // Repair the slot (set both old and new field names for compatibility)
-    slots[slotIndex] = {
-      ...slot,
-      droneSlots: slot.droneSlots.map((ds, i) =>
-        i === position ? { ...ds, slotDamaged: false, isDamaged: false } : ds
-      )
-    };
-
-    this.gsm.setState({
-      singlePlayerShipSlots: slots,
-      singlePlayerProfile: profile
-    });
-
-    debugLog('SP_REPAIR', `Repaired drone slot ${position} in ship slot ${slotId} for ${cost} credits`);
-    return { success: true };
-  }
 
   /**
    * Repair a damaged section slot (fully repairs all damage)

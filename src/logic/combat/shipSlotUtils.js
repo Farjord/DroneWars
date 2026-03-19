@@ -1,5 +1,5 @@
 /**
- * Slot-Based Damage Utilities
+ * Ship Slot Utilities
  * Helper functions for calculating hull, damage effects, repair costs, and validation
  */
 
@@ -67,7 +67,7 @@ export function addDroneToSlots(slots, droneName) {
 }
 
 /**
- * Remove a drone from slots (preserves slotDamaged state)
+ * Remove a drone from slots
  * @param {Array} slots - Current drone slots array
  * @param {string} droneName - Name of drone to remove
  * @returns {Array} Updated slots array (new reference)
@@ -84,28 +84,19 @@ export function removeDroneFromSlots(slots, droneName) {
 }
 
 /**
- * Get the drone name from a slot (supports both old and new field names)
+ * Get the drone name from a slot
  * @param {Object} slot - Drone slot object
  * @returns {string|null} Drone name or null
  */
 function getSlotDroneName(slot) {
-  return slot?.assignedDrone ?? slot?.droneName ?? null;
+  return slot?.assignedDrone ?? null;
 }
 
 /**
- * Check if a slot is damaged (supports both old and new field names)
- * @param {Object} slot - Drone slot object
- * @returns {boolean} Whether slot is damaged
- */
-function isSlotDamaged(slot) {
-  return slot?.slotDamaged ?? slot?.isDamaged ?? false;
-}
-
-/**
- * Get effective deployment limit for a drone in a slot
+ * Get deployment limit for a drone in a slot
  * @param {Object} shipSlot - Ship slot with droneSlots
  * @param {number} slotIndex - Drone slot index (0-4)
- * @returns {number} Effective limit (reduced by 1 if damaged, min 1)
+ * @returns {number} Base limit from drone data
  */
 export function getDroneEffectiveLimit(shipSlot, slotIndex) {
   const droneSlot = shipSlot.droneSlots?.[slotIndex];
@@ -117,22 +108,7 @@ export function getDroneEffectiveLimit(shipSlot, slotIndex) {
 
   // Find drone data for base limit
   const droneData = fullDroneCollection.find(d => d.name === droneName);
-  const baseLimit = droneData?.limit || 1;
-
-  // Apply -1 if slot is damaged
-  if (isSlotDamaged(droneSlot)) {
-    return Math.max(1, baseLimit - 1);
-  }
-
-  return baseLimit;
-}
-
-/**
- * Calculate repair cost for a damaged drone slot
- * @returns {number} Flat repair cost
- */
-export function calculateDroneSlotRepairCost() {
-  return ECONOMY.DRONE_SLOT_REPAIR_COST || 50;
+  return droneData?.limit || 1;
 }
 
 /**
@@ -155,7 +131,7 @@ export function validateShipSlot(shipSlot) {
   let isIncomplete = false;
   let isUndeployable = false;
 
-  // Check drone slots for empty (supports both old and new field names)
+  // Check drone slots for empty
   const filledDroneSlots = shipSlot.droneSlots?.filter(s => getSlotDroneName(s)) || [];
   if (filledDroneSlots.length < 5) {
     isIncomplete = true;
@@ -209,7 +185,6 @@ export function buildActiveDronePool(shipSlot) {
         pool.push({
           ...droneData,
           slotIndex: slot.slotIndex ?? index,
-          slotDamaged: isSlotDamaged(slot),
           effectiveLimit: getDroneEffectiveLimit(shipSlot, index)
         });
       }
@@ -239,8 +214,7 @@ export function syncDroneSlotsToLegacy(shipSlot) {
   return shipSlot.droneSlots
     .filter(slot => getSlotDroneName(slot))
     .map(slot => ({
-      name: getSlotDroneName(slot),
-      isDamaged: isSlotDamaged(slot)
+      name: getSlotDroneName(slot)
     }));
 }
 

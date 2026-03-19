@@ -99,15 +99,10 @@ export function calculateAvailableDrones(targetSlotId, shipSlots, droneInstances
         availableCount = Math.max(0, ownedInstances - usedElsewhere);
       }
 
-      // Check for damaged instances (only relevant for non-starter drones)
-      const relevantInstances = instancesByName[drone.name] || [];
-      const hasDamagedInstance = relevantInstances.some(inst => inst.isDamaged);
-
       return {
         ...drone,
         availableCount,
         isStarterPool,
-        hasDamagedInstance: !isStarterPool && hasDamagedInstance
       };
     }).filter(drone => drone.availableCount > 0);
 }

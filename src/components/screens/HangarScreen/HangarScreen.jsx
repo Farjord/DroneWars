@@ -12,7 +12,7 @@ import HangarHexMap from '../../ui/HangarHexMap';
 import HangarSidebar from '../../ui/HangarSidebar';
 import HangarModals from '../../ui/HangarModals';
 import { debugLog } from '../../../utils/debugLogger.js';
-import { validateShipSlot } from '../../../logic/combat/slotDamageUtils.js';
+import { validateShipSlot } from '../../../logic/combat/shipSlotUtils.js';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
@@ -32,7 +32,6 @@ const HangarScreen = () => {
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [selectedMap, setSelectedMap] = useState(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState(null);
-  const [selectedMiaSlot, setSelectedMiaSlot] = useState(null);
   const [newDeckOption, setNewDeckOption] = useState(null); // 'empty', 'copyFromSlot0', or null
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
   const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
@@ -92,12 +91,6 @@ const HangarScreen = () => {
   // Ship slot click - opens deck editor
   const handleSlotClick = (slot) => {
     SoundManager.getInstance().play('ui_click');
-    if (slot.status === 'mia') {
-      // Open MIA recovery modal
-      setSelectedMiaSlot(slot);
-      setActiveModal('miaRecovery');
-      return;
-    }
 
     if (slot.status === 'empty') {
       // Show new deck prompt modal
@@ -111,12 +104,6 @@ const HangarScreen = () => {
         extractionNewDeckOption: null
       });
     }
-  };
-
-  // Close MIA recovery modal
-  const handleCloseMiaModal = () => {
-    setSelectedMiaSlot(null);
-    setActiveModal(null);
   };
 
   // Handle star toggle (set as default ship)
@@ -530,8 +517,6 @@ const HangarScreen = () => {
         onDeploy={handleDeploy}
         lastRunSummary={lastRunSummary}
         onDismissRunSummary={handleDismissRunSummary}
-        selectedMiaSlot={selectedMiaSlot}
-        onCloseMiaModal={handleCloseMiaModal}
         singlePlayerShipSlots={singlePlayerShipSlots}
         onNewDeckOption={handleNewDeckOption}
         deleteConfirmation={deleteConfirmation}

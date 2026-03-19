@@ -12,23 +12,11 @@ export const ECONOMY = {
   // Hull repair cost per HP point
   HULL_REPAIR_COST_PER_HP: 200,
 
-  // Drone repair costs by rarity (legacy - for reference)
-  DRONE_REPAIR_COSTS: {
-    Common: 50,
-    Uncommon: 100,
-    Rare: 200,
-    Mythic: 500
-  },
-
-  // ========================================
-  // SLOT-BASED REPAIR COSTS
-  // ========================================
+  // Cost per 1 point of damage to repair a section slot
+  SECTION_DAMAGE_REPAIR_COST: 200,
 
   // Flat cost to repair a damaged drone slot
   DRONE_SLOT_REPAIR_COST: 500,
-
-  // Cost per 1 point of damage to repair a section slot
-  SECTION_DAMAGE_REPAIR_COST: 200,
 
   // ========================================
   // REPLICATION COSTS
@@ -43,7 +31,7 @@ export const ECONOMY = {
   },
 
   // ========================================
-  // MIA RECOVERY (Scaled by Deck Value)
+  // RUN FAILURE RECOVERY (Scaled by Deck Value)
   // ========================================
 
   // Recovery cost = max(FLOOR, deckValue * MULTIPLIER)
@@ -51,9 +39,6 @@ export const ECONOMY = {
   //            + blueprint costs for non-starter ships/drones/components
   MIA_RECOVERY_MULTIPLIER: 0.5,    // 50% of deck's total value
   MIA_RECOVERY_FLOOR: 500,         // Minimum recovery cost
-
-  // DEPRECATED: Flat salvage cost (kept for reference)
-  MIA_SALVAGE_COST: 500,
 
   // ========================================
   // STARTING VALUES

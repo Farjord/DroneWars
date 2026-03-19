@@ -186,7 +186,6 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
         instanceId,
         droneName: blueprint.name,
         shipSlotId: null,  // Not assigned to a slot yet
-        isDamaged: false
       };
       newDroneInstances = [...newDroneInstances, newInstance];
     }

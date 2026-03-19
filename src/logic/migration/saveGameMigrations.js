@@ -37,7 +37,6 @@ export function migrateDroneSlotsToNewFormat(oldSlots) {
 
   return oldSlots.map((slot, i) => ({
     slotIndex: i,
-    // Support both old field names and new field names (idempotent)
     slotDamaged: slot.slotDamaged ?? slot.isDamaged ?? false,
     assignedDrone: slot.assignedDrone ?? slot.droneName ?? null
   }));

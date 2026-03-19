@@ -82,11 +82,11 @@ class MovementController {
     const currentDetection = DetectionManager.getCurrentDetection();
     const newDetection = currentDetection + cost;
 
-    // Check if move would trigger MIA
+    // Check if move would exceed maximum detection
     if (newDetection > 100) {
       return {
         valid: false,
-        reason: 'Would trigger MIA (100% detection)',
+        reason: 'Would exceed maximum detection (100%)',
         path,
         cost
       };

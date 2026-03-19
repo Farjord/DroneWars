@@ -1015,7 +1015,7 @@ class GameStateManager {
   getTacticalItemCount(itemId) { return this.tacticalItemManager.getTacticalItemCount(itemId); }
 
   // --- SHIP SLOT FACADES ---
-  // External callers (HangarScreen, RepairBayScreen, ExtractionDeckBuilder, DroneDamageProcessor) use these.
+  // External callers (HangarScreen, RepairBayScreen, ExtractionDeckBuilder) use these.
   // Delegation to shipSlotManager.
 
   setDefaultShipSlot(slotId) { this.shipSlotManager.setDefaultShipSlot(slotId); }

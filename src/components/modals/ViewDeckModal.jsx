@@ -331,23 +331,11 @@ const ViewDeckModal = ({
                 <div className="max-w-[1165px] mx-auto">
                   <div className="flex flex-wrap gap-[10px] justify-center">
                     {sortedDrones.map((drone, index) => {
-                      // Check for damage in extraction mode
-                      const droneInstance = mode === 'extraction'
-                        ? droneInstances.find(i => i.droneName === drone.name)
-                        : null;
-                      const isDamaged = droneInstance?.isDamaged;
-
                       return (
                         <div
                           key={`${drone.name}-${index}`}
-                          className={`relative ${isDamaged ? 'ring-2 ring-yellow-500 rounded-lg' : ''}`}
+                          className="relative"
                         >
-                          {/* Damage indicator */}
-                          {isDamaged && (
-                            <div className="absolute -top-2 -right-2 z-10 bg-yellow-500 rounded-full p-1">
-                              <AlertTriangle size={14} className="text-black" />
-                            </div>
-                          )}
                           <DroneCard
                             drone={drone}
                             onClick={() => {}}

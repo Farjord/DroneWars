@@ -4,8 +4,8 @@
  *
  * This replaces instance-based damage tracking with slot-based damage:
  * - Ship sections: Lanes L/M/R store damageDealt (not currentHull)
- * - Drone slots: Positions 1-5 store isDamaged boolean
- * - Damage stays with the slot, not the item
+ * - Drone slots: Positions 1-5 store assignedDrone (no damage tracking)
+ * - Section damage stays with the slot, not the item
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -14,12 +14,11 @@ import tacticalMapStateManager from '../TacticalMapStateManager.js';
 import {
   calculateSectionHull,
   getDroneEffectiveLimit,
-  calculateDroneSlotRepairCost,
   calculateSectionRepairCost,
   validateShipSlot,
   buildActiveDronePool,
   getDroneHandOrder
-} from '../../logic/combat/slotDamageUtils.js';
+} from '../../logic/combat/shipSlotUtils.js';
 import { migrateShipSlotToNewFormat } from '../../logic/migration/saveGameMigrations.js';
 
 // Mock the map generator
@@ -48,19 +47,17 @@ describe('Slot-Based Damage Model', () => {
         expect(shipSlot.droneSlots.length).toBe(5);
       });
 
-      it('each drone slot should have slotIndex, slotDamaged, assignedDrone properties', () => {
+      it('each drone slot should have slotIndex and assignedDrone properties', () => {
         const shipSlot = createTestShipSlot(1);
         shipSlot.droneSlots.forEach((slot, index) => {
           expect(slot).toHaveProperty('slotIndex');
-          expect(slot).toHaveProperty('slotDamaged');
           expect(slot).toHaveProperty('assignedDrone');
-          expect(typeof slot.slotDamaged).toBe('boolean');
         });
       });
 
       it('should support null assignedDrone for empty slots', () => {
         const shipSlot = createTestShipSlot(1);
-        shipSlot.droneSlots[2] = { slotIndex: 2, slotDamaged: false, assignedDrone: null };
+        shipSlot.droneSlots[2] = { slotIndex: 2, assignedDrone: null };
         expect(shipSlot.droneSlots[2].assignedDrone).toBeNull();
       });
 
@@ -164,39 +161,28 @@ describe('Slot-Based Damage Model', () => {
   });
 
   // ===========================================
-  // DRONE SLOT DAMAGE EFFECT TESTS
+  // DRONE SLOT EFFECTIVE LIMIT TESTS
   // ===========================================
-  describe('Drone Slot Damage Effect', () => {
+  describe('Drone Slot Effective Limit', () => {
 
-    it('should reduce drone limit by 1 when in damaged slot', () => {
+    it('should return base limit for occupied slot', () => {
       // Dart normally has limit: 3
       const shipSlot = createTestShipSlotWithDrones(1, ['Dart']);
-      shipSlot.droneSlots[0].slotDamaged = true;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
-      expect(effectiveLimit).toBe(2); // 3 - 1 = 2
+      expect(effectiveLimit).toBe(3); // Base limit, no damage penalty
     });
 
-    it('should not reduce limit below 1', () => {
-      // Mammoth has limit: 2
+    it('should return base limit for any occupied slot', () => {
+      // Mammoth has limit: 1
       const shipSlot = createTestShipSlotWithDrones(1, ['Mammoth']);
-      shipSlot.droneSlots[0].slotDamaged = true;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
-      expect(effectiveLimit).toBe(1); // 2 - 1 = 1, min 1
+      expect(effectiveLimit).toBe(1); // Base limit
     });
 
-    it('should not affect limit for undamaged slots', () => {
-      const shipSlot = createTestShipSlotWithDrones(1, ['Dart']);
-      shipSlot.droneSlots[0].slotDamaged = false;
-
-      const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
-      expect(effectiveLimit).toBe(3); // Original limit
-    });
-
-    it('should not affect empty slots', () => {
+    it('should return 0 for empty slots', () => {
       const shipSlot = createTestShipSlotWithDrones(1, [null]);
-      shipSlot.droneSlots[0].slotDamaged = true;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
       expect(effectiveLimit).toBe(0); // No drone = 0 limit
@@ -207,11 +193,6 @@ describe('Slot-Based Damage Model', () => {
   // REPAIR COST TESTS
   // ===========================================
   describe('Repair Costs', () => {
-
-    it('should calculate drone slot repair as flat cost', () => {
-      const cost = calculateDroneSlotRepairCost();
-      expect(cost).toBe(500); // ECONOMY.DRONE_SLOT_REPAIR_COST
-    });
 
     it('should calculate section repair as cost per damage point', () => {
       const damageDealt = 3;
@@ -237,27 +218,6 @@ describe('Slot-Based Damage Model', () => {
       });
     });
 
-    it('should repair damaged drone slot', () => {
-      const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
-      shipSlot.droneSlots[1].slotDamaged = true;
-
-      gameStateManager.repairDroneSlot(1, 1); // slotId=1, position=1
-
-      const updated = gameStateManager.getState().singlePlayerShipSlots[0];
-      expect(updated.droneSlots[1].slotDamaged).toBe(false);
-    });
-
-    it('should deduct credits for drone slot repair', () => {
-      const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
-      shipSlot.droneSlots[1].slotDamaged = true;
-      const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
-
-      gameStateManager.repairDroneSlot(1, 1);
-
-      const finalCredits = gameStateManager.getState().singlePlayerProfile.credits;
-      expect(finalCredits).toBe(initialCredits - 500); // DRONE_SLOT_REPAIR_COST
-    });
-
     it('should repair damaged section slot', () => {
       const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
       shipSlot.sectionSlots.l.damageDealt = 5;
@@ -277,20 +237,6 @@ describe('Slot-Based Damage Model', () => {
 
       const finalCredits = gameStateManager.getState().singlePlayerProfile.credits;
       expect(finalCredits).toBe(initialCredits - 1000); // 5 * 200 (SECTION_DAMAGE_REPAIR_COST)
-    });
-
-    it('should fail repair if insufficient credits', () => {
-      gameStateManager.setState({
-        singlePlayerProfile: { credits: 10 } // Not enough
-      });
-
-      const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
-      shipSlot.droneSlots[1].slotDamaged = true;
-
-      const result = gameStateManager.repairDroneSlot(1, 1);
-
-      expect(result.success).toBe(false);
-      expect(result.reason.toLowerCase()).toContain('insufficient');
     });
 
     // Partial Section Repair Tests
@@ -522,20 +468,18 @@ describe('Slot-Based Damage Model', () => {
       expect(runState.shipSections['droneControlHub'].hull).toBe(3); // 10 - 7
     });
 
-    it('should apply -1 limit to drones in damaged slots', () => {
+    it('should use base limit for drones in all slots', () => {
       const shipSlot = createTestShipSlotWithDrones(1, ['Dart']); // limit: 3
-      shipSlot.droneSlots[0].slotDamaged = true;
 
       gameStateManager.setState({
         singlePlayerShipSlots: [shipSlot]
       });
 
-      // Build player state should have reduced limit
-      // This tests SinglePlayerCombatInitializer.buildPlayerState
+      // Build player state should use base limit (no damage penalty)
       const activeDronePool = buildActiveDronePool(shipSlot);
 
       expect(activeDronePool[0].name).toBe('Dart');
-      expect(activeDronePool[0].effectiveLimit).toBe(2); // 3 - 1
+      expect(activeDronePool[0].effectiveLimit).toBe(3); // Base limit
     });
 
     it('should preserve drone slot order in activeDronePool', () => {
@@ -656,11 +600,11 @@ function createTestShipSlot(slotId) {
     shipId: 'SHIP_001',
     decklist: [],
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Talon' },
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Mammoth' },
-      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Seraph' },
-      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Devastator' }
+      { slotIndex: 0, assignedDrone: 'Dart' },
+      { slotIndex: 1, assignedDrone: 'Talon' },
+      { slotIndex: 2, assignedDrone: 'Mammoth' },
+      { slotIndex: 3, assignedDrone: 'Seraph' },
+      { slotIndex: 4, assignedDrone: 'Devastator' }
     ],
     sectionSlots: {
       l: { componentId: 'BRIDGE_001', damageDealt: 0 },
@@ -674,13 +618,12 @@ function createTestShipSlotWithDrones(slotId, droneNames) {
   const slot = createTestShipSlot(slotId);
   slot.droneSlots = droneNames.map((name, i) => ({
     slotIndex: i,
-    slotDamaged: false,
     assignedDrone: name
   }));
   // Pad to 5 slots if needed
   while (slot.droneSlots.length < 5) {
     const idx = slot.droneSlots.length;
-    slot.droneSlots.push({ slotIndex: idx, slotDamaged: false, assignedDrone: null });
+    slot.droneSlots.push({ slotIndex: idx, assignedDrone: null });
   }
   return slot;
 }

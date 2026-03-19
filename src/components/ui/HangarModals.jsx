@@ -6,7 +6,6 @@ import BlueprintsModal from '../modals/BlueprintsModal';
 import ReplicatorModal from '../modals/ReplicatorModal';
 import ShopModal from '../modals/ShopModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
-import MIARecoveryModal from '../modals/MIARecoveryModal';
 import BossEncounterModal from '../modals/BossEncounterModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
@@ -54,9 +53,6 @@ const HangarModals = ({
   // Run summary
   lastRunSummary,
   onDismissRunSummary,
-  // MIA
-  selectedMiaSlot,
-  onCloseMiaModal,
   // New deck
   singlePlayerShipSlots,
   onNewDeckOption,
@@ -143,14 +139,6 @@ const HangarModals = ({
         <RunSummaryModal
           summary={lastRunSummary}
           onClose={onDismissRunSummary}
-        />
-      )}
-
-      {/* MIA Recovery Modal */}
-      {activeModal === 'miaRecovery' && selectedMiaSlot && (
-        <MIARecoveryModal
-          shipSlot={selectedMiaSlot}
-          onClose={onCloseMiaModal}
         />
       )}
 

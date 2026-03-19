@@ -6,9 +6,9 @@
  */
 
 export const REPUTATION = {
-  // Multiplier applied when player goes MIA (fails to extract)
+  // Multiplier applied when player fails to extract
   // 0.25 = 25% of calculated rep on failure
-  MIA_MULTIPLIER: 0.25,
+  FAILURE_MULTIPLIER: 0.25,
 
   // NOTE: Reputation caps moved to mapData.js (maxReputationPerCombat property)
   // Each map tier defines its own per-combat reputation cap

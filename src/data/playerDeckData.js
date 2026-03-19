@@ -27,11 +27,11 @@ export const starterDeck = {
     { id: 'SYSTEM_RESTORE', quantity: 2 }
   ],
   droneSlots: [
-    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Behemoth' },
-    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Dart' },
-    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Locust' },
-    { slotIndex: 3, slotDamaged: false, assignedDrone: 'Talon' },
-    { slotIndex: 4, slotDamaged: false, assignedDrone: 'Mammoth' }
+    { slotIndex: 0, assignedDrone: 'Behemoth' },
+    { slotIndex: 1, assignedDrone: 'Dart' },
+    { slotIndex: 2, assignedDrone: 'Locust' },
+    { slotIndex: 3, assignedDrone: 'Talon' },
+    { slotIndex: 4, assignedDrone: 'Mammoth' }
   ],
   shipComponents: {
     'POWERCELL_001': 'l',

@@ -415,19 +415,36 @@ class RunLifecycleManager {
         }
       }
     } else {
-      // MIA: Wipe loot, mark slot
-      // Slot 0 (Starter Deck) never goes MIA - player just loses loot
-      if (runState.shipSlotId !== 0) {
+      // Failed run: Persist section damage, lose all loot
+      // Slot 0 (Starter Deck) is exempt — no damage persisted, just lose loot
+      if (runState.shipSlotId !== 0 && runState.shipSections) {
         const slotIndex = newShipSlots.findIndex(s => s.id === runState.shipSlotId);
-        if (slotIndex >= 0) {
-          newShipSlots[slotIndex] = { ...newShipSlots[slotIndex], status: 'mia' };
+
+        if (slotIndex >= 0 && newShipSlots[slotIndex].sectionSlots) {
+          const shipSlot = { ...newShipSlots[slotIndex] };
+          const newSectionSlots = { ...shipSlot.sectionSlots };
+
+          Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
+            const lane = sectionData.lane;
+            if (lane && newSectionSlots[lane]) {
+              const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
+              newSectionSlots[lane] = {
+                ...newSectionSlots[lane],
+                damageDealt: Math.max(0, damageDealt)
+              };
+            }
+          });
+
+          shipSlot.sectionSlots = newSectionSlots;
+          newShipSlots[slotIndex] = shipSlot;
+          debugLog('EXTRACTION', 'Failed run - section damage persisted to sectionSlots');
         }
       }
 
       // Update statistics
       newProfile.stats.runsLost++;
 
-      debugLog('EXTRACTION', 'Run ended - MIA protocol triggered');
+      debugLog('EXTRACTION', 'Run ended - all loot lost, damage persisted');
     }
 
     // Calculate total combat reputation from run

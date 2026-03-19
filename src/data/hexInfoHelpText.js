@@ -53,9 +53,9 @@ export const HEX_INFO_HELP_TEXT = {
     title: 'Escape Route (After Journey)',
     description: 'Minimum threat cost to escape after completing your planned waypoints. Shows your final detection if you extract immediately after.'
   },
-  miaWarning: {
-    title: 'MIA Warning',
-    description: 'Your planned journey would push detection to 100% or above. At 100% detection, your drones are considered Missing In Action and the run ends in failure.'
+  maxDetectionWarning: {
+    title: 'Maximum Detection Warning',
+    description: 'Your planned journey would push detection to 100% or above. At 100% detection, the run ends in failure.'
   },
   pathfindingMode: {
     title: 'Path Mode',

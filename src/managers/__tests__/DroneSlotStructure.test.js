@@ -1,6 +1,6 @@
 /**
  * Drone Slot Structure Tests - New Format
- * Tests for the slot-first data structure with explicit slotIndex, slotDamaged, assignedDrone fields
+ * Tests for the slot-first data structure with explicit slotIndex, assignedDrone fields
  *
  * TDD: These tests are written FIRST, before implementation
  */
@@ -16,17 +16,16 @@ import {
   removeDroneFromSlots,
   getDroneEffectiveLimit,
   buildActiveDronePool
-} from '../../logic/combat/slotDamageUtils.js';
+} from '../../logic/combat/shipSlotUtils.js';
 
 describe('Drone Slot Structure - New Format', () => {
   describe('Data Structure', () => {
-    it('should have slotIndex, slotDamaged, assignedDrone fields', () => {
+    it('should have slotIndex and assignedDrone fields', () => {
       const slots = createEmptyDroneSlots();
 
       expect(slots).toHaveLength(5);
       slots.forEach((slot, i) => {
         expect(slot).toHaveProperty('slotIndex', i);
-        expect(slot).toHaveProperty('slotDamaged', false);
         expect(slot).toHaveProperty('assignedDrone', null);
       });
     });
@@ -35,8 +34,10 @@ describe('Drone Slot Structure - New Format', () => {
       const slots = createEmptyDroneSlots();
 
       expect(slots).toHaveLength(5);
-      expect(slots[0]).toEqual({ slotIndex: 0, slotDamaged: false, assignedDrone: null });
-      expect(slots[4]).toEqual({ slotIndex: 4, slotDamaged: false, assignedDrone: null });
+      expect(slots[0].slotIndex).toBe(0);
+      expect(slots[0].assignedDrone).toBeNull();
+      expect(slots[4].slotIndex).toBe(4);
+      expect(slots[4].assignedDrone).toBeNull();
     });
   });
 
@@ -143,11 +144,11 @@ describe('Drone Slot Structure - New Format', () => {
 
     it('should return unchanged slots when all slots full', () => {
       const slots = [
-        { slotIndex: 0, slotDamaged: false, assignedDrone: 'Drone 1' },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: 'Drone 2' },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: 'Drone 3' },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: 'Drone 4' },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: 'Drone 5' }
+        { slotIndex: 0, assignedDrone: 'Drone 1' },
+        { slotIndex: 1, assignedDrone: 'Drone 2' },
+        { slotIndex: 2, assignedDrone: 'Drone 3' },
+        { slotIndex: 3, assignedDrone: 'Drone 4' },
+        { slotIndex: 4, assignedDrone: 'Drone 5' }
       ];
 
       const updated = addDroneToSlots(slots, 'New Drone');
@@ -158,11 +159,11 @@ describe('Drone Slot Structure - New Format', () => {
 
     it('should fill gap in middle when slot 0 is occupied', () => {
       const slots = [
-        { slotIndex: 0, slotDamaged: false, assignedDrone: 'Drone 1' },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: 'Drone 3' },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+        { slotIndex: 0, assignedDrone: 'Drone 1' },
+        { slotIndex: 1, assignedDrone: null },
+        { slotIndex: 2, assignedDrone: 'Drone 3' },
+        { slotIndex: 3, assignedDrone: null },
+        { slotIndex: 4, assignedDrone: null }
       ];
 
       const updated = addDroneToSlots(slots, 'New Drone');
@@ -174,32 +175,17 @@ describe('Drone Slot Structure - New Format', () => {
   describe('Remove Drone from Deck', () => {
     it('should set assignedDrone to null', () => {
       const slots = [
-        { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: 'Mammoth' },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+        { slotIndex: 0, assignedDrone: 'Dart' },
+        { slotIndex: 1, assignedDrone: 'Mammoth' },
+        { slotIndex: 2, assignedDrone: null },
+        { slotIndex: 3, assignedDrone: null },
+        { slotIndex: 4, assignedDrone: null }
       ];
 
       const updated = removeDroneFromSlots(slots, 'Dart');
 
       expect(updated[0].assignedDrone).toBeNull();
       expect(updated[1].assignedDrone).toBe('Mammoth');
-    });
-
-    it('should preserve slotDamaged state when removing', () => {
-      const slots = [
-        { slotIndex: 0, slotDamaged: true, assignedDrone: 'Dart' },
-        { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
-      ];
-
-      const updated = removeDroneFromSlots(slots, 'Dart');
-
-      expect(updated[0].slotDamaged).toBe(true);
-      expect(updated[0].assignedDrone).toBeNull();
     });
 
     it('should return unchanged slots when drone not found', () => {
@@ -214,36 +200,29 @@ describe('Drone Slot Structure - New Format', () => {
   describe('Effective Limit Calculation', () => {
     const mockShipSlot = {
       droneSlots: [
-        { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-        { slotIndex: 1, slotDamaged: true, assignedDrone: 'Mammoth' },
-        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+        { slotIndex: 0, assignedDrone: 'Dart' },
+        { slotIndex: 1, assignedDrone: 'Mammoth' },
+        { slotIndex: 2, assignedDrone: null },
+        { slotIndex: 3, assignedDrone: null },
+        { slotIndex: 4, assignedDrone: null }
       ]
     };
 
-    it('should return base limit for healthy slot', () => {
+    it('should return base limit for occupied slot', () => {
       const limit = getDroneEffectiveLimit(mockShipSlot, 0);
-      // Dart has limit 3, slot not damaged = limit 3
-      expect(limit).toBeGreaterThan(0);
+      // Dart has limit 3
+      expect(limit).toBe(3);
     });
 
-    it('should reduce limit by 1 for damaged slot', () => {
-      // Mammoth in slot 1 which is damaged
+    it('should return base limit for all occupied slots', () => {
+      // Mammoth in slot 1
       const limit = getDroneEffectiveLimit(mockShipSlot, 1);
-      // Should be baseLimit - 1, minimum 1
-      expect(limit).toBeGreaterThanOrEqual(1);
+      expect(limit).toBe(1); // Mammoth base limit
     });
 
-    it('should never reduce limit below 1', () => {
-      const shipSlotWithDamagedLowLimitDrone = {
-        droneSlots: [
-          { slotIndex: 0, slotDamaged: true, assignedDrone: 'Some Drone' }
-        ]
-      };
-
-      const limit = getDroneEffectiveLimit(shipSlotWithDamagedLowLimitDrone, 0);
-      expect(limit).toBeGreaterThanOrEqual(1);
+    it('should return 0 for empty slot', () => {
+      const limit = getDroneEffectiveLimit(mockShipSlot, 2);
+      expect(limit).toBe(0);
     });
   });
 
@@ -251,11 +230,11 @@ describe('Drone Slot Structure - New Format', () => {
     it('should read assignedDrone for drone name', () => {
       const shipSlot = {
         droneSlots: [
-          { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-          { slotIndex: 1, slotDamaged: false, assignedDrone: 'Mammoth' },
-          { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+          { slotIndex: 0, assignedDrone: 'Dart' },
+          { slotIndex: 1, assignedDrone: 'Mammoth' },
+          { slotIndex: 2, assignedDrone: null },
+          { slotIndex: 3, assignedDrone: null },
+          { slotIndex: 4, assignedDrone: null }
         ]
       };
 
@@ -266,32 +245,32 @@ describe('Drone Slot Structure - New Format', () => {
       expect(dronePool[1].name).toBe('Mammoth');
     });
 
-    it('should apply -1 limit when slotDamaged is true', () => {
+    it('should use base limit for all drones', () => {
       const shipSlot = {
         droneSlots: [
-          { slotIndex: 0, slotDamaged: true, assignedDrone: 'Dart' },
-          { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 2, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+          { slotIndex: 0, assignedDrone: 'Dart' },
+          { slotIndex: 1, assignedDrone: null },
+          { slotIndex: 2, assignedDrone: null },
+          { slotIndex: 3, assignedDrone: null },
+          { slotIndex: 4, assignedDrone: null }
         ]
       };
 
       const dronePool = buildActiveDronePool(shipSlot);
 
-      // Dart base limit is 3, damaged slot = limit 2
-      expect(dronePool[0].effectiveLimit).toBeLessThan(dronePool[0].limit);
+      // Dart base limit is 3, no damage penalty
+      expect(dronePool[0].effectiveLimit).toBe(dronePool[0].limit);
     });
 
     it('should preserve slot order in drone pool', () => {
       // Use real drone names from the game
       const shipSlot = {
         droneSlots: [
-          { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-          { slotIndex: 1, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 2, slotDamaged: false, assignedDrone: 'Mammoth' },
-          { slotIndex: 3, slotDamaged: false, assignedDrone: null },
-          { slotIndex: 4, slotDamaged: false, assignedDrone: 'Seraph' }
+          { slotIndex: 0, assignedDrone: 'Dart' },
+          { slotIndex: 1, assignedDrone: null },
+          { slotIndex: 2, assignedDrone: 'Mammoth' },
+          { slotIndex: 3, assignedDrone: null },
+          { slotIndex: 4, assignedDrone: 'Seraph' }
         ]
       };
 
@@ -309,21 +288,14 @@ describe('Drone Slot Structure - New Format', () => {
     it('should produce correct JSON structure', () => {
       const slots = createEmptyDroneSlots();
       slots[0] = { ...slots[0], assignedDrone: 'Dart' };
-      slots[2] = { ...slots[2], slotDamaged: true };
 
       const json = JSON.stringify(slots, null, 2);
       const parsed = JSON.parse(json);
 
-      expect(parsed[0]).toEqual({
-        slotIndex: 0,
-        slotDamaged: false,
-        assignedDrone: 'Dart'
-      });
-      expect(parsed[2]).toEqual({
-        slotIndex: 2,
-        slotDamaged: true,
-        assignedDrone: null
-      });
+      expect(parsed[0].slotIndex).toBe(0);
+      expect(parsed[0].assignedDrone).toBe('Dart');
+      expect(parsed[2].slotIndex).toBe(2);
+      expect(parsed[2].assignedDrone).toBeNull();
     });
   });
 });

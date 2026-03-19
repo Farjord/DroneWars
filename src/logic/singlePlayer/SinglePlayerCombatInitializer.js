@@ -19,7 +19,7 @@ import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { personalizeAnnouncements, extractAnnouncements } from '../../utils/announcementUtils.js';
 import SeededRandom from '../../utils/seededRandom.js';
-import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/slotDamageUtils.js';
+import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/shipSlotUtils.js';
 import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
 
 /**
@@ -524,16 +524,10 @@ class SinglePlayerCombatInitializer {
     let activeDronePool = [];
 
     if (shipSlot?.droneSlots) {
-      // New slot-based format: droneSlots array with { assignedDrone, slotDamaged }
+      // New slot-based format: droneSlots array with { slotIndex, assignedDrone }
       // Uses utility that handles both old and new field names
       activeDronePool = buildDronePoolFromSlots(shipSlot);
 
-      // Log damaged drones for debugging
-      activeDronePool.forEach(drone => {
-        if (drone.slotDamaged) {
-          debugLog('SP_COMBAT', `Drone ${drone.name} in damaged slot: limit ${drone.limit} -> ${drone.effectiveLimit}`);
-        }
-      });
     } else if (shipSlot?.activeDronePool) {
       // Legacy format fallback
       const droneNames = shipSlot.activeDronePool;
@@ -546,9 +540,6 @@ class SinglePlayerCombatInitializer {
         const droneData = fullDroneCollection.find(d => d.name === name);
         const drone = droneData ? { ...droneData } : { name };
 
-        if (droneDamageState[name]) {
-          drone.isDamaged = true;
-        }
         drone.effectiveLimit = drone.limit;
 
         return drone;

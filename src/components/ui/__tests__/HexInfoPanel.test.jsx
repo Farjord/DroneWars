@@ -653,8 +653,8 @@ describe('HexInfoPanel', () => {
       expect(screen.getByText(/no escape route/i)).toBeInTheDocument()
     })
 
-    it('displays "MIA" when wouldMIA is true', () => {
-      // EXPLANATION: When escape would cause MIA, show MIA instead of gate coordinate
+    it('displays "BLOCKED" when wouldMIA is true', () => {
+      // EXPLANATION: When escape would exceed max detection, show BLOCKED instead of gate coordinate
 
       const props = createDefaultProps()
       props.escapeRouteData = {
@@ -665,13 +665,12 @@ describe('HexInfoPanel', () => {
 
       render(<HexInfoPanel {...props} />)
 
-      // Should show MIA, not gate coordinate
-      expect(screen.getByText('MIA')).toBeInTheDocument()
+      expect(screen.getByText('BLOCKED')).toBeInTheDocument()
       expect(screen.queryByText('K6')).not.toBeInTheDocument()
     })
 
-    it('displays gate when safe but MIA when afterJourney wouldMIA', () => {
-      // EXPLANATION: Current shows gate, afterJourney shows MIA
+    it('displays gate when safe but BLOCKED when afterJourney wouldMIA', () => {
+      // EXPLANATION: Current shows gate, afterJourney shows BLOCKED (max detection exceeded)
 
       const props = createDefaultProps()
       props.waypoints = [{ hex: { q: 1, r: 0 }, segmentCost: 80, cumulativeDetection: 90, cumulativeEncounterRisk: 5 }]
@@ -684,7 +683,7 @@ describe('HexInfoPanel', () => {
       render(<HexInfoPanel {...props} />)
 
       expect(screen.getByText('K6')).toBeInTheDocument()  // fromCurrent safe
-      expect(screen.getByText('MIA')).toBeInTheDocument() // afterJourney would MIA
+      expect(screen.getByText('BLOCKED')).toBeInTheDocument() // afterJourney would exceed max detection
     })
   })
 

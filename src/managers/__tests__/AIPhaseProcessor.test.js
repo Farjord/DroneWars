@@ -846,11 +846,11 @@ describe('AIPhaseProcessor - Event-driven AI turn activation', () => {
       state: mockGameStateManager.getState(),
     });
 
-    // Timer should be scheduled (300ms cosmetic delay)
+    // Timer should be scheduled (800ms cosmetic delay)
     expect(aiPhaseProcessor.turnTimer).not.toBeNull();
   });
 
-  it('uses 300ms delay (not 1500ms) after RESPONSE_CYCLE_COMPLETE', () => {
+  it('uses 800ms delay (not 1500ms) after RESPONSE_CYCLE_COMPLETE', () => {
     const executeTurnSpy = vi.spyOn(aiPhaseProcessor, 'executeTurn').mockResolvedValue(undefined);
     aiPhaseProcessor.initialize(null, [], null, mockActionProcessor, mockGameStateManager);
 
@@ -860,11 +860,11 @@ describe('AIPhaseProcessor - Event-driven AI turn activation', () => {
       state: mockGameStateManager.getState(),
     });
 
-    // Should NOT fire at 299ms
-    vi.advanceTimersByTime(299);
+    // Should NOT fire at 799ms
+    vi.advanceTimersByTime(799);
     expect(executeTurnSpy).not.toHaveBeenCalled();
 
-    // Should fire at 300ms
+    // Should fire at 800ms
     vi.advanceTimersByTime(1);
     expect(executeTurnSpy).toHaveBeenCalledTimes(1);
   });

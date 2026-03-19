@@ -76,17 +76,12 @@ vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   }
 }));
 
-vi.mock('../../../logic/singlePlayer/MIARecoveryService.js', () => ({
-  default: {
-    calculateRecoveryCost: vi.fn(() => 1000)
-  }
-}));
 
 vi.mock('../../../logic/singlePlayer/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
-vi.mock('../../../logic/combat/slotDamageUtils.js', () => ({
+vi.mock('../../../logic/combat/shipSlotUtils.js', () => ({
   validateShipSlot: vi.fn(() => ({ isUndeployable: false }))
 }));
 
@@ -124,7 +119,6 @@ vi.mock('../../modals/BlueprintsModal', () => ({ default: () => null }));
 vi.mock('../../modals/ReplicatorModal', () => ({ default: () => null }));
 vi.mock('../../modals/ShopModal', () => ({ default: () => null }));
 vi.mock('../../modals/RunSummaryModal', () => ({ default: () => null }));
-vi.mock('../../modals/MIARecoveryModal', () => ({ default: () => null }));
 vi.mock('../../modals/ConfirmationModal', () => ({ default: () => null }));
 vi.mock('../../ui/DeployingScreen', () => ({ default: () => null }));
 vi.mock('../../ui/LoadingEncounterScreen', () => ({

@@ -2,7 +2,7 @@
 // ESCAPE CONFIRM MODAL
 // ========================================
 // Confirmation modal for escaping combat encounters
-// Shows damage preview and MIA warning if ship would be destroyed
+// Shows damage preview and destruction warning if ship would be destroyed
 
 import React from 'react';
 import { AlertTriangle, Skull, Check, X, Zap } from 'lucide-react';
@@ -110,7 +110,7 @@ function EscapeConfirmModal({
               </div>
               <div className="dw-modal-consequence">
                 <span className="dw-modal-consequence-icon"><X size={14} /></span>
-                <span>Your deck will be marked as MIA</span>
+                <span>All loot will be lost</span>
               </div>
               <div className="dw-modal-consequence">
                 <span className="dw-modal-consequence-icon"><X size={14} /></span>

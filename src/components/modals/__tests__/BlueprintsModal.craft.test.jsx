@@ -143,7 +143,6 @@ describe('BlueprintsModal - Crafting Creates Instances', () => {
       expect(droneInstance).toMatchObject({
         droneName: 'Harrier',
         shipSlotId: null,
-        isDamaged: false
       });
       expect(droneInstance.instanceId).toBeDefined();
       expect(droneInstance.instanceId).toMatch(/^DRONE_/);

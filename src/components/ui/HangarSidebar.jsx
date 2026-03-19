@@ -2,9 +2,8 @@ import React from 'react';
 import { Star, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import SoundManager from '../../managers/SoundManager.js';
 import ReputationService from '../../logic/reputation/ReputationService';
-import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
-import { validateShipSlot } from '../../logic/combat/slotDamageUtils.js';
+import { validateShipSlot } from '../../logic/combat/shipSlotUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { getShipById } from '../../data/shipData.js';
 
@@ -130,7 +129,6 @@ const HangarSidebar = ({
               const isSlot0 = slot.id === 0;
               const isActive = slot.status === 'active';
               const isEmpty = slot.status === 'empty';
-              const isMia = slot.status === 'mia';
 
               const isUnlocked = gameStateManager.isSlotUnlocked(slot.id);
               const highestUnlocked = singlePlayerProfile?.highestUnlockedSlot ?? 0;
@@ -165,7 +163,6 @@ const HangarSidebar = ({
 
               const getSlotClass = () => {
                 if (!isUnlocked) return 'dw-deck-slot--locked';
-                if (isMia) return 'dw-deck-slot--mia';
                 if (isEmpty) return 'dw-deck-slot--empty';
                 if (isUndeployable) return 'dw-deck-slot--undeployable';
                 if (isDefault) return 'dw-deck-slot--default';
@@ -208,7 +205,7 @@ const HangarSidebar = ({
                     <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                       {/* Header Row: Slot name/id + Star + Delete */}
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : isUndeployable ? 'text-red-400' : 'text-cyan-400'}`}>
+                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isUndeployable ? 'text-red-400' : 'text-cyan-400'}`}>
                           {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
                           {isActive && isUndeployable && (
                             <AlertTriangle size={14} className="text-red-400" title="Ship undeployable - all sections destroyed" />
@@ -244,7 +241,7 @@ const HangarSidebar = ({
                       </div>
 
                       <div className="font-medium text-white text-sm truncate">
-                        {isActive ? (slot.name || 'Unnamed Deck') : isMia ? 'MIA' : 'Empty Slot'}
+                        {isActive ? (slot.name || 'Unnamed Deck') : 'Empty Slot'}
                       </div>
 
                       {isActive && (
@@ -264,18 +261,6 @@ const HangarSidebar = ({
                           {loadoutValueData?.isStarterDeck
                             ? 'Loadout Value: None (Starter)'
                             : `Loadout Value: ${loadoutValueData?.totalValue?.toLocaleString() || 0}`}
-                        </div>
-                      )}
-
-                      {isActive && !isSlot0 && (
-                        <div style={{ fontSize: '11px', color: '#f97316', marginTop: '2px' }}>
-                          MIA Recovery: {miaRecoveryService.calculateRecoveryCost(slot.id).toLocaleString()}
-                        </div>
-                      )}
-
-                      {isMia && (
-                        <div className="text-xs text-red-400 mt-1">
-                          Click to recover
                         </div>
                       )}
 
