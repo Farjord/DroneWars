@@ -4,6 +4,8 @@
 // Builds filtered damage animations (FRONT_MOST, BACK_MOST, etc.)
 // Used for cards like Sidewinder Missiles, Strafe Run
 
+import { SHIELD_DAMAGE, DRONE_DESTROYED, HULL_DAMAGE } from '../../../../config/animationTypes.js';
+
 /**
  * Build filtered damage animation events
  *
@@ -40,7 +42,7 @@ export function buildFilteredDamageAnimation(context) {
     // Shield damage feedback (if any)
     if (shieldDamage > 0) {
       animations.push({
-        type: 'SHIELD_DAMAGE',
+        type: SHIELD_DAMAGE,
         targetId: drone.id,
         targetPlayer,
         targetLane,
@@ -54,7 +56,7 @@ export function buildFilteredDamageAnimation(context) {
     // Destruction or hull damage feedback
     if (destroyed) {
       animations.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: drone.id,
         targetPlayer,
         targetLane,
@@ -64,7 +66,7 @@ export function buildFilteredDamageAnimation(context) {
       });
     } else if (hullDamage > 0) {
       animations.push({
-        type: 'HULL_DAMAGE',
+        type: HULL_DAMAGE,
         targetId: drone.id,
         targetPlayer,
         targetLane,

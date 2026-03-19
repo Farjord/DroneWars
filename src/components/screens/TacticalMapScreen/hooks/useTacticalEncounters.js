@@ -690,6 +690,12 @@ export function useTacticalEncounters({
       return;
     }
 
+    debugLog('TRANSITION_MANAGER', 'Pre-combat closure state snapshot', {
+      hasCurrentEncounter: !!currentEncounter,
+      hasLoadingData: !!loadingEncounterData,
+      waypointCount: waypoints.length,
+      hasActiveSalvage: !!activeSalvage
+    });
     debugLog('RUN_STATE', 'Loading complete - initializing combat');
 
     // Get AI from the encounter - CRITICAL: must have valid aiId

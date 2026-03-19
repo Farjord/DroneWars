@@ -6,6 +6,7 @@
 
 import React from 'react';
 import ShipAbilityIcon from './ShipAbilityIcon.jsx';
+import { resolveAssetUrl } from '../../services/AssetPreloader.js';
 
 /**
  * SHIP SECTION COMPONENT
@@ -112,7 +113,7 @@ const ShipSection = ({
   const sectionName = section === 'droneControlHub' ? 'Drone Control Hub' : section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 
   const backgroundImageStyle = {
-    backgroundImage: `url(${stats.image})`,
+    backgroundImage: `url(${resolveAssetUrl(stats.image)})`,
     backgroundPosition: 'center center',
     backgroundRepeat: 'no-repeat',
     backgroundSize: 'cover',

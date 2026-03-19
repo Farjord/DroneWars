@@ -4,7 +4,7 @@
 // React hook for integrating GameStateManager with React components
 // Provides reactive access to game state and multiplayer functionality
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import gameStateManager from '../managers/GameStateManager.js';
 import clientStateStore from '../client/clientStateStore.singleton.js';
 import p2pManager from '../network/P2PManager.js';
@@ -78,15 +78,19 @@ export const useGameState = () => {
   }, [isMultiplayer, isMyTurn]);
 
   // Perspective methods — derive from React state (ClientStateStore-controlled), not live GSM.
+  // Use ref to maintain stable callback references (prevents useEffect re-runs in consumers).
+  const gameStateRef = useRef(gameState);
+  gameStateRef.current = gameState;
+
   const getLocalPlayerState = useCallback(() => {
     const localId = gameStateManager.getLocalPlayerId();
-    return gameState[localId];
-  }, [gameState]);
+    return gameStateRef.current[localId];
+  }, [gameStateManager]);
 
   const getOpponentPlayerState = useCallback(() => {
     const opponentId = gameStateManager.getOpponentPlayerId();
-    return gameState[opponentId];
-  }, [gameState]);
+    return gameStateRef.current[opponentId];
+  }, [gameStateManager]);
 
   const isLocalPlayer = useCallback((playerId) => {
     return gameStateManager.isLocalPlayer(playerId);

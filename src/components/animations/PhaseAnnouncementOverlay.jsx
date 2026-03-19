@@ -7,6 +7,7 @@
 // Auto-dismisses after display duration (1.8s standard, dynamic for compounds)
 
 import React, { useState, useEffect, useRef } from 'react';
+import './PhaseAnnouncementOverlay.css';
 import { debugLog, timingLog, getTimestamp } from '../../utils/debugLogger.js';
 import useTextScramble from '../../hooks/useTextScramble.js';
 import {

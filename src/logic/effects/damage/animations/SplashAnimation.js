@@ -4,6 +4,8 @@
 // Builds Barrage-style splash damage animations
 // Primary target + adjacent drones + barrage impact visuals
 
+import { SHIELD_DAMAGE, DRONE_DESTROYED, HULL_DAMAGE, BARRAGE_IMPACT } from '../../../../config/animationTypes.js';
+
 /**
  * Build splash damage animation sequence
  *
@@ -37,7 +39,7 @@ export function buildSplashAnimation(context) {
     // Shield damage animation
     if (shieldDamage > 0) {
       animations.push({
-        type: 'SHIELD_DAMAGE',
+        type: SHIELD_DAMAGE,
         targetId: droneId,
         targetPlayer,
         targetLane,
@@ -50,7 +52,7 @@ export function buildSplashAnimation(context) {
     // Destruction or hull damage animation
     if (destroyed) {
       animations.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: droneId,
         targetPlayer,
         targetLane,
@@ -59,7 +61,7 @@ export function buildSplashAnimation(context) {
       });
     } else if (hullDamage > 0) {
       animations.push({
-        type: 'HULL_DAMAGE',
+        type: HULL_DAMAGE,
         targetId: droneId,
         targetPlayer,
         targetLane,
@@ -76,7 +78,7 @@ export function buildSplashAnimation(context) {
     const totalDamage = shieldDamage + hullDamage;
     if (totalDamage > 0) {
       animations.push({
-        type: 'BARRAGE_IMPACT',
+        type: BARRAGE_IMPACT,
         targetId: droneId,
         targetPlayer,
         targetLane,

@@ -10,6 +10,7 @@
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { STAT_BUFF, STAT_DEBUFF } from '../../config/animationTypes.js';
 
 /**
  * Processor for MODIFY_STAT effect type
@@ -71,7 +72,7 @@ class ModifyStatEffectProcessor extends BaseEffectProcessor {
     const animationEvents = [];
     const isAnimatable = (mod.stat === 'attack' || mod.stat === 'speed') && mod.value !== 0;
     if (isAnimatable) {
-      const animType = mod.value > 0 ? 'STAT_BUFF' : 'STAT_DEBUFF';
+      const animType = mod.value > 0 ? STAT_BUFF : STAT_DEBUFF;
       for (const { droneId, lane } of affectedDrones) {
         animationEvents.push({
           type: animType,

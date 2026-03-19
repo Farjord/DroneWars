@@ -14,6 +14,8 @@
  * in the glossary but won't break functionality.
  */
 
+import { TRIGGER_FIRED } from '../../config/animationTypes.js';
+
 // ========================================
 // EFFECT TYPE DESCRIPTIONS
 // ========================================
@@ -85,7 +87,7 @@ export const effectDescriptions = {
 
   'GO_AGAIN': 'Trigger effect that grants the acting player another action. Control flow signal, not a state mutation.',
 
-  'TRIGGER_FIRED': 'Animation event emitted when any trigger activates. Duration 0 (data-only, no visual pause yet).',
+  [TRIGGER_FIRED]: 'Animation event emitted when any trigger activates. Duration 0 (data-only, no visual pause yet).',
 
   'REPEATING_EFFECT': 'Executes a set of effects multiple times based on a condition. For example, "Draw 1 card and gain 1 energy" repeated once for each damaged ship section.',
 

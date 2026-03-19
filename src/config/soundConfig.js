@@ -4,6 +4,12 @@
 // Data-driven sound manifest and event-to-sound mapping
 // All sound files live in public/audio/sfx/ and are served via Vite's base path
 
+import {
+  TELEPORT_IN, TECH_DEPLOY, TECH_DESTROY,
+  DRONE_ATTACK_START, SHIELD_DAMAGE, HULL_DAMAGE,
+  DRONE_DESTROYED, SECTION_DESTROYED, SECTION_DAMAGED,
+} from './animationTypes.js';
+
 const BASE_PATH = '/DroneWars/audio/sfx/';
 const MUSIC_BASE_PATH = '/DroneWars/audio/music/';
 
@@ -151,15 +157,15 @@ export const SOUND_EVENT_MAP = {
 
   // AnimationManager animation-start events (keyed by animationType)
   animationStarted: {
-    TELEPORT_IN: 'deploy_teleport',
-    TECH_DEPLOY: 'tech_deploy',
-    TECH_DESTROY: 'tech_destroy',
-    DRONE_ATTACK_START: 'laser_fire',
-    SHIELD_DAMAGE: 'shield_hit',
-    HULL_DAMAGE: 'explosion_small',
-    DRONE_DESTROYED: 'explosion_large',
-    SECTION_DESTROYED: 'explosion_large',
-    SECTION_DAMAGED: 'explosion_small',
+    [TELEPORT_IN]: 'deploy_teleport',
+    [TECH_DEPLOY]: 'tech_deploy',
+    [TECH_DESTROY]: 'tech_destroy',
+    [DRONE_ATTACK_START]: 'laser_fire',
+    [SHIELD_DAMAGE]: 'shield_hit',
+    [HULL_DAMAGE]: 'explosion_small',
+    [DRONE_DESTROYED]: 'explosion_large',
+    [SECTION_DESTROYED]: 'explosion_large',
+    [SECTION_DAMAGED]: 'explosion_small',
   },
 
   // Card visual effect sounds (keyed by visualType from CARD_VISUAL animations)

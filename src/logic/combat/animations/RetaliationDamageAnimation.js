@@ -4,6 +4,8 @@
 // Animation event for when a drone with RETALIATE deals damage back to its attacker
 // after surviving an attack.
 
+import { RETALIATE_DAMAGE } from '../../../config/animationTypes.js';
+
 /**
  * Create a retaliation damage animation event
  * @param {Object} retaliator - The drone with RETALIATE that dealt the damage
@@ -30,7 +32,7 @@ export const createRetaliationDamageAnimation = (
   hullDamage,
   sourceCardInstanceId = null
 ) => ({
-  type: 'RETALIATE_DAMAGE',
+  type: RETALIATE_DAMAGE,
   sourceId: retaliator.id,
   sourceName: retaliator.name,
   sourcePlayer: retaliatorPlayerId,

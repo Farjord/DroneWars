@@ -5,6 +5,8 @@
 // - Used when a target is completely destroyed
 // - Handles both drones and ship sections
 
+import { DRONE_DESTROYED, SECTION_DESTROYED } from '../../../config/animationTypes.js';
+
 /**
  * Create a destruction animation event (drone or section)
  *
@@ -22,7 +24,7 @@ export const createDestructionAnimation = (
   finalTargetType,
   sourceCardInstanceId
 ) => ({
-  type: finalTargetType === 'drone' ? 'DRONE_DESTROYED' : 'SECTION_DESTROYED',
+  type: finalTargetType === 'drone' ? DRONE_DESTROYED : SECTION_DESTROYED,
   targetId: finalTarget.id,
   targetPlayer: defendingPlayerId,
   targetLane: targetLane,

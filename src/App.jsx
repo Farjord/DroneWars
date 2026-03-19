@@ -9,7 +9,7 @@
 // SECTION 1: IMPORTS
 // ========================================
 // --- 1.1 REACT CORE IMPORTS ---
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useReducer, useMemo, useEffect, useRef, useCallback } from 'react';
 
 // --- 1.2 UI COMPONENT IMPORTS ---
 import SpaceBackground from './components/ui/SpaceBackground.jsx';
@@ -31,6 +31,7 @@ import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
 import { useExplosions } from './hooks/useExplosions';
 import { useAnimationSetup } from './hooks/useAnimationSetup';
+import { animationReducer, INITIAL_ANIMATION_STATE, createAnimationDispatch } from './hooks/useAnimationState';
 import useShieldAllocation from './hooks/useShieldAllocation.js';
 import useInterception from './hooks/useInterception.js';
 import useWaitingForOpponent from './hooks/useWaitingForOpponent.js';
@@ -132,28 +133,11 @@ const App = ({ phaseAnimationQueue }) => {
   const [showAbandonRunModal, setShowAbandonRunModal] = useState(false);
   const [viewShipSectionModal, setViewShipSectionModal] = useState(null);
   const [viewTechDetailModal, setViewTechDetailModal] = useState(null);
-  const [flyingDrones, setFlyingDrones] = useState([]);
-  const [flashEffects, setFlashEffects] = useState([]);
-  const [healEffects, setHealEffects] = useState([]);
-  const [statChangeEffects, setStatChangeEffects] = useState([]);
-  const [cardVisuals, setCardVisuals] = useState([]);
-  const [cardReveals, setCardReveals] = useState([]);
-  const [shipAbilityReveals, setShipAbilityReveals] = useState([]);
-  const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
+  // Animation state: single reducer replaces 20 individual useState calls
+  const [animationState, animationStateDispatch] = useReducer(animationReducer, INITIAL_ANIMATION_STATE);
+  const animationDispatch = useMemo(() => createAnimationDispatch(animationStateDispatch), []);
   const [currentPhaseAnimation, setCurrentPhaseAnimation] = useState(null); // Current animation from queue
   const [isPhaseAnimationPlaying, setIsPhaseAnimationPlaying] = useState(false); // UI blocking state
-  const [laserEffects, setLaserEffects] = useState([]);
-  const [teleportEffects, setTeleportEffects] = useState([]);
-  const [overflowProjectiles, setOverflowProjectiles] = useState([]);
-  const [splashEffects, setSplashEffects] = useState([]);
-  const [barrageImpacts, setBarrageImpacts] = useState([]);
-  const [railgunTurrets, setRailgunTurrets] = useState([]);
-  const [railgunBeams, setRailgunBeams] = useState([]);
-  const [passNotifications, setPassNotifications] = useState([]);
-  const [goAgainNotifications, setGoAgainNotifications] = useState([]);
-  const [triggerFiredNotifications, setTriggerFiredNotifications] = useState([]);
-  const [movementBlockedNotifications, setMovementBlockedNotifications] = useState([]);
-  const [statusConsumptions, setStatusConsumptions] = useState([]);
   const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
@@ -221,32 +205,13 @@ const App = ({ phaseAnimationQueue }) => {
   gameStateManager,
   droneRefs,
   sectionRefs,
-  getLocalPlayerState,  // Pass the getter function, not the value
-  getOpponentPlayerState,  // Pass the getter function, not the value
+  getLocalPlayerState,
+  getOpponentPlayerState,
   triggerExplosion,
   getElementCenter,
   gameAreaRef,
-  setFlyingDrones,
+  animationDispatch,
   setAnimationBlocking,
-  setFlashEffects,
-  setHealEffects,
-  setCardVisuals,
-  setCardReveals,
-  setShipAbilityReveals,
-  setPhaseAnnouncements,
-  setLaserEffects,
-  setTeleportEffects,
-  setPassNotifications,
-  setGoAgainNotifications,
-  setTriggerFiredNotifications,
-  setMovementBlockedNotifications,
-  setOverflowProjectiles,
-  setSplashEffects,
-  setBarrageImpacts,
-  setRailgunTurrets,
-  setRailgunBeams,
-  setStatusConsumptions,
-  setStatChangeEffects,
   gameServerRef
 );
   // Refs for async operations (defined after gameState destructuring)
@@ -761,7 +726,7 @@ const App = ({ phaseAnimationQueue }) => {
         stageVariants: animation.stages?.map(s => ({ text: s.phaseText, v: s.variant, sv: s.subtitleVariant })),
       });
       setCurrentPhaseAnimation(animation);
-      setPhaseAnnouncements([{
+      animationDispatch.set('phaseAnnouncements', [{
         id: animation.id,
         phaseText: animation.phaseText,
         subtitle: animation.subtitle,
@@ -779,7 +744,7 @@ const App = ({ phaseAnimationQueue }) => {
       debugLog('ANNOUNCE_TRACE', '⏱️ APP: animationEnded — unmounting overlay', {
         phaseName: animation.phaseName,
       });
-      setPhaseAnnouncements([]);
+      animationDispatch.clear('phaseAnnouncements');
       setCurrentPhaseAnimation(null);
     };
 
@@ -843,51 +808,6 @@ const App = ({ phaseAnimationQueue }) => {
     setMandatoryAction(gameState.mandatoryActionPending);
     setFooterView('hand');
   }, [gameState.mandatoryActionPending, getLocalPlayerId]);
-
-  // ========================================
-  // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
-  // ========================================
-  // This defensive check must come AFTER all hooks are declared.
-  // Handles scenarios where player states might be null:
-  // - Hot reload during development
-  // - Abandon run flow (resetGameState sets player1/player2 to null)
-  // - Combat defeat flow (processDefeat calls resetGameState)
-  // - Transitional states during game initialization
-  //
-  // IMPORTANT: Moving this earlier in the component would cause
-  // "Rendered fewer hooks than expected" errors because React
-  // requires the same number of hooks to be called on every render.
-  if (!localPlayerState || !opponentPlayerState) {
-    // If failed run screen should be shown, render it instead of placeholder
-    // This handles the defeat/abandon flows where player states are null
-    // but we need to show the FailedRunLoadingScreen transition
-    if (gameState.showFailedRunScreen) {
-      return (
-        <FailedRunLoadingScreen
-          failureType={gameState.failedRunType}
-          isStarterDeck={gameState.failedRunIsStarterDeck}
-          onComplete={() => ExtractionController.completeFailedRunTransition()}
-        />
-      );
-    }
-
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#1a1a1a',
-        color: '#ffffff',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div>Initializing game board...</div>
-      </div>
-    );
-  }
-
-
-
 
   // --- GAME LIFECYCLE HOOK ---
   // Positioned after resolve* functions (used as deps by lifecycle handlers).
@@ -973,7 +893,6 @@ const App = ({ phaseAnimationQueue }) => {
     droneRefs, gameAreaRef,
   });
 
-
   // --- Modal confirmation callbacks ---
   // Most callbacks extracted to useResolvers. handleConfirmDeployment stays here
   // because it depends on useDragMechanics state (deploymentConfirmation).
@@ -988,7 +907,44 @@ const App = ({ phaseAnimationQueue }) => {
   };
 
   // ========================================
-  // SECTION 9: RENDER
+  // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
+  // ========================================
+  // This defensive check comes AFTER all hooks are declared.
+  // useGameLifecycle and useClickHandlers were moved above this point
+  // to prevent "Rendered fewer hooks than expected" React errors.
+  // Both hooks are safe with null player states because all property
+  // accesses happen inside plain function bodies (called from UI only).
+  if (!localPlayerState || !opponentPlayerState) {
+    // If failed run screen should be shown, render it instead of placeholder
+    // This handles the defeat/abandon flows where player states are null
+    // but we need to show the FailedRunLoadingScreen transition
+    if (gameState.showFailedRunScreen) {
+      return (
+        <FailedRunLoadingScreen
+          failureType={gameState.failedRunType}
+          isStarterDeck={gameState.failedRunIsStarterDeck}
+          onComplete={() => ExtractionController.completeFailedRunTransition()}
+        />
+      );
+    }
+
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#1a1a1a',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div>Initializing game board...</div>
+      </div>
+    );
+  }
+
+  // ========================================
+  // SECTION 10: RENDER
   // ========================================
   // Main component render with clean component composition.
   // Uses extracted sub-components for maintainability and separation of concerns.
@@ -1044,30 +1000,10 @@ const App = ({ phaseAnimationQueue }) => {
        floatingCardRef={floatingCardRef}
      />
       <AnimationLayer
+       animationState={animationState}
        explosions={explosions}
-       flyingDrones={flyingDrones}
-       flashEffects={flashEffects}
-       healEffects={healEffects}
-       cardVisuals={cardVisuals}
-       cardReveals={cardReveals}
-       statusConsumptions={statusConsumptions}
-       shipAbilityReveals={shipAbilityReveals}
-       phaseAnnouncements={phaseAnnouncements}
-       passNotifications={passNotifications}
-       goAgainNotifications={goAgainNotifications}
-       triggerFiredNotifications={triggerFiredNotifications}
-       movementBlockedNotifications={movementBlockedNotifications}
        cardPlayWarning={cardPlayWarning}
-       laserEffects={laserEffects}
-       teleportEffects={teleportEffects}
-       overflowProjectiles={overflowProjectiles}
-       splashEffects={splashEffects}
-       barrageImpacts={barrageImpacts}
-       railgunTurrets={railgunTurrets}
-       railgunBeams={railgunBeams}
-       statChangeEffects={statChangeEffects}
        animationBlocking={animationBlocking}
-       setBarrageImpacts={setBarrageImpacts}
      />
 
       <div style={{ flex: '0 0 15%' }}>

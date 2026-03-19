@@ -1,4 +1,6 @@
 import { debugLog } from '../../utils/debugLogger.js';
+import { getViewportCenter } from '../../utils/gameUtils.js';
+import { isLocalPlayer, parseLaneIndex } from '../../utils/animationPositioning.js';
 
 // Animation sizes and offsets (px)
 const HAND_AREA_OFFSET = 100;
@@ -13,9 +15,7 @@ export function registerCardAnimations(animationManager, {
   droneRefs,
   getElementFromLogicalPosition,
   gameAreaRef,
-  setCardVisuals,
-  setCardReveals,
-  setStatusConsumptions
+  animationDispatch
 }) {
   animationManager.registerVisualHandler('CARD_VISUAL_EFFECT', (payload) => {
     const { visualType, sourcePlayer, targetId, targetPlayer, targetLane, targetType, onComplete } = payload;
@@ -60,11 +60,7 @@ export function registerCardAnimations(animationManager, {
           const firstDrone = dronesInLane[0];
           const droneEl = droneRefs.current[firstDrone.id];
           if (droneEl) {
-            const droneRect = droneEl.getBoundingClientRect();
-            targetCenter = {
-              x: droneRect.left + droneRect.width / 2,
-              y: droneRect.top + droneRect.height / 2
-            };
+            targetCenter = getViewportCenter(droneEl);
           } else {
             // Fallback to game area center
             targetCenter = {
@@ -74,7 +70,7 @@ export function registerCardAnimations(animationManager, {
           }
         } else {
           // Empty lane - use lane center position (approximate)
-          const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
+          const laneIndex = parseLaneIndex(targetLane);
           const laneY = perspectivePlayer === localPlayerId
             ? gameAreaRect.bottom - LANE_AREA_OFFSET  // Local player's lanes at bottom
             : gameAreaRect.top + LANE_AREA_OFFSET;     // Opponent's lanes at top
@@ -99,25 +95,21 @@ export function registerCardAnimations(animationManager, {
         return;
       }
 
-      const targetRect = targetEl.getBoundingClientRect();
-      targetCenter = {
-        x: targetRect.left + targetRect.width / 2,
-        y: targetRect.top + targetRect.height / 2
-      };
+      targetCenter = getViewportCenter(targetEl);
     }
 
     const visualId = `cardvisual-${crypto.randomUUID()}`;
 
-    setCardVisuals(prev => [...prev, {
+    animationDispatch.add('cardVisuals', {
       id: visualId,
       visualType: visualType || 'LASER_BLAST',
       startPos: { x: sourceX, y: sourceY },
       endPos: targetCenter,
       onComplete: () => {
-        setCardVisuals(prev => prev.filter(v => v.id !== visualId));
+        animationDispatch.remove('cardVisuals', visualId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('CARD_REVEAL_EFFECT', (payload) => {
@@ -128,45 +120,42 @@ export function registerCardAnimations(animationManager, {
       targetPlayer
     });
 
-    // Determine if this is the local player or opponent
-    const localPlayerId = gameStateManager.getLocalPlayerId();
-    const isLocalPlayer = targetPlayer === localPlayerId;
+    const isLocal = isLocalPlayer(gameStateManager, targetPlayer);
 
     const revealId = `cardreveal-${crypto.randomUUID()}`;
 
-    setCardReveals(prev => [...prev, {
+    animationDispatch.add('cardReveals', {
       id: revealId,
       card: cardData,
-      label: isLocalPlayer ? 'You Played' : 'Opponent Played',
+      label: isLocal ? 'You Played' : 'Opponent Played',
       onComplete: () => {
-        setCardReveals(prev => prev.filter(r => r.id !== revealId));
+        animationDispatch.remove('cardReveals', revealId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('STATUS_CONSUMPTION_EFFECT', (payload) => {
     const { droneName, laneNumber, statusType, targetPlayer, onComplete } = payload;
 
-    const localPlayerId = gameStateManager.getLocalPlayerId();
-    const isLocalPlayer = targetPlayer === localPlayerId;
+    const isLocal = isLocalPlayer(gameStateManager, targetPlayer);
 
     const statusLabel = statusType === 'snared' ? 'Snare' : 'Suppressed';
-    const label = isLocalPlayer
+    const label = isLocal
       ? `You Removed ${statusLabel} Effect From ${droneName} in Lane ${laneNumber}`
       : `Opponent Removed ${statusLabel} Effect From ${droneName} in Lane ${laneNumber}`;
 
     const consumptionId = `statusconsumption-${crypto.randomUUID()}`;
 
-    setStatusConsumptions(prev => [...prev, {
+    animationDispatch.add('statusConsumptions', {
       id: consumptionId,
       label,
       droneName,
       statusType,
       onComplete: () => {
-        setStatusConsumptions(prev => prev.filter(c => c.id !== consumptionId));
+        animationDispatch.remove('statusConsumptions', consumptionId);
         onComplete?.();
       }
-    }]);
+    });
   });
 }

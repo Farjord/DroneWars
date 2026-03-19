@@ -8,6 +8,7 @@ import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
 import { extractAnnouncements } from '../utils/announcementUtils.js';
+import { TRIGGER_FIRED, TELEPORT_IN } from '../config/animationTypes.js';
 
 class GameClient extends GameServer {
   constructor(transport, { clientStateStore, playerId, phaseAnimationQueue = null, animationManager = null }) {
@@ -117,6 +118,9 @@ class GameClient extends GameServer {
       if (gsm) {
         gsm.emit('INTERCEPTION_OCCURRED', { lastInterception: state.lastInterception });
       }
+      // Consume one-shot notification — prevent it persisting in the React store
+      // and re-triggering the useInterception fallback useEffect on every update
+      state.lastInterception = null;
     }
 
     // No visual animations — apply state immediately.
@@ -138,13 +142,13 @@ class GameClient extends GameServer {
     }
 
     if (visualAnimations.length > 0) {
-      const triggerAnims = visualAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+      const triggerAnims = visualAnimations.filter(a => a.animationName === TRIGGER_FIRED);
       debugLog('ANIM_TRACE', '[6/6] GameClient._onResponse', {
         previousPhase,
         newPhase,
         animCount: visualAnimations.length,
         animNames: visualAnimations.map(a => a.animationName),
-        hasTeleportIn: visualAnimations.some(a => a.animationName === 'TELEPORT_IN'),
+        hasTeleportIn: visualAnimations.some(a => a.animationName === TELEPORT_IN),
         hasAnimationManager: !!this.animationManager,
         playerId: this.playerId,
         ...(triggerAnims.length > 0 && {
@@ -161,7 +165,7 @@ class GameClient extends GameServer {
     }
 
     // TELEPORT_IN handling
-    const hasTeleportIn = visualAnimations.some(anim => anim.animationName === 'TELEPORT_IN');
+    const hasTeleportIn = visualAnimations.some(anim => anim.animationName === TELEPORT_IN);
 
     debugLog('DEPLOY_TRACE', '[9a/10] _onResponse: about to add isTeleporting flags', {
       hasTeleportIn,

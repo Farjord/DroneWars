@@ -6,6 +6,7 @@
 
 import { debugLog } from '../../utils/debugLogger.js';
 import { flowCheckpoint } from '../../utils/flowVerification.js';
+import { STATE_SNAPSHOT, TRIGGER_CHAIN_PAUSE } from '../../config/animationTypes.js';
 
 const TRIGGER_CHAIN_PAUSE_MS = 400;
 
@@ -31,14 +32,14 @@ export function buildAnimationSequence(steps) {
     sequence.push(...actionEvents);
 
     if (intermediateState) {
-      sequence.push({ type: 'STATE_SNAPSHOT', snapshotPlayerStates: intermediateState });
+      sequence.push({ type: STATE_SNAPSHOT, snapshotPlayerStates: intermediateState });
     }
     if (postSnapshotEvents.length > 0) {
       sequence.push(...postSnapshotEvents);
     }
 
     if (triggerEvents.length > 0) {
-      sequence.push({ type: 'TRIGGER_CHAIN_PAUSE', duration: TRIGGER_CHAIN_PAUSE_MS });
+      sequence.push({ type: TRIGGER_CHAIN_PAUSE, duration: TRIGGER_CHAIN_PAUSE_MS });
       sequence.push(...triggerEvents);
     }
   }
@@ -51,8 +52,8 @@ export function buildAnimationSequence(steps) {
   debugLog('ANIM_TRACE', '[seq-built] buildAnimationSequence', {
     stepCount: steps.length,
     totalEvents: sequence.length,
-    snapshots: sequence.filter(e => e.type === 'STATE_SNAPSHOT').length,
-    pauses: sequence.filter(e => e.type === 'TRIGGER_CHAIN_PAUSE').length,
+    snapshots: sequence.filter(e => e.type === STATE_SNAPSHOT).length,
+    pauses: sequence.filter(e => e.type === TRIGGER_CHAIN_PAUSE).length,
     eventTypes: sequence.map(e => e.type),
   });
 

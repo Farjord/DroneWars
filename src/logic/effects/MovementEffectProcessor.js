@@ -13,6 +13,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './movement/animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { MOVEMENT_BLOCKED } from '../../config/animationTypes.js';
 import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
 import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 
@@ -281,7 +282,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         newPlayerStates: newPlayerStates,
         error: `Cannot move to ${toLane} — lane is full (${MAX_DRONES_PER_LANE}/${MAX_DRONES_PER_LANE} drones).`,
         animationEvents: [{
-          type: 'MOVEMENT_BLOCKED',
+          type: MOVEMENT_BLOCKED,
           droneName: droneToMove.name,
           targetId: droneToMove.id,
           timestamp: Date.now()

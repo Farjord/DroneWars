@@ -6,6 +6,7 @@
 // No game logic or state — imported by ShipSectionCompact.
 
 import React from 'react';
+import { resolveAssetUrl } from '../../services/AssetPreloader.js';
 
 // ─── Faction Colour Tokens (imported + re-exported from shared source) ───
 import { FACTION_COLORS } from '../../utils/factionColors.js';
@@ -106,7 +107,7 @@ export const ShipSectionVisualLayers = ({ isOpponent, columnIndex, clipPath, shi
           <>
             <div style={{
               position: 'absolute', inset: 0,
-              backgroundImage: `url(${shipImage})`,
+              backgroundImage: `url(${resolveAssetUrl(shipImage)})`,
               backgroundPosition: 'center center',
               backgroundRepeat: 'no-repeat',
               backgroundSize: '100% auto',

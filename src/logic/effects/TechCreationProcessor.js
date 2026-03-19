@@ -11,6 +11,7 @@ import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import fullTechCollection from '../../data/techData.js';
 import { countDroneTypeInLane, MAX_TECH_PER_LANE } from '../utils/gameEngineUtils.js';
+import { TECH_DEPLOY } from '../../config/animationTypes.js';
 
 /**
  * Processor for CREATE_TECH effect type
@@ -123,7 +124,7 @@ class TechCreationProcessor extends BaseEffectProcessor {
 
       // Tech deploy animation
       animationEvents.push({
-        type: 'TECH_DEPLOY',
+        type: TECH_DEPLOY,
         targetId: techDrone.id,
         targetPlayer: targetPlayerId,
         targetLane: laneId,

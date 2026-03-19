@@ -24,6 +24,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 const allDroneDefinitions = [...fullDroneCollection, ...fullTechCollection];
 import { updateAuras } from '../utils/auraManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { STATE_SNAPSHOT, TRIGGER_FIRED, TRIGGER_CHAIN_PAUSE, DRONE_DESTROYED, TECH_DESTROY } from '../../config/animationTypes.js';
 import { flowCheckpoint } from '../../utils/flowVerification.js';
 import {
   TRIGGER_TYPES,
@@ -177,7 +178,7 @@ class TriggerProcessor {
         // until their own nested snapshot
         const snapshotState = result.preCascadePlayerStates || currentStates;
         const snapshot = {
-          type: 'STATE_SNAPSHOT',
+          type: STATE_SNAPSHOT,
           snapshotPlayerStates: JSON.parse(JSON.stringify(snapshotState)),
           timestamp: Date.now()
         };
@@ -226,7 +227,7 @@ class TriggerProcessor {
 
     // Strip trailing pauses — no pause needed after the last event in a chain
     while (allAnimationEvents.length > 0 &&
-           allAnimationEvents[allAnimationEvents.length - 1].type === 'TRIGGER_CHAIN_PAUSE') {
+           allAnimationEvents[allAnimationEvents.length - 1].type === TRIGGER_CHAIN_PAUSE) {
       allAnimationEvents.pop();
     }
 
@@ -391,7 +392,7 @@ class TriggerProcessor {
 
     // Emit TRIGGER_FIRED animation event (before effects, so it appears first in the queue)
     const triggerFiredEvent = {
-      type: 'TRIGGER_FIRED',
+      type: TRIGGER_FIRED,
       targetId: reactorDrone.id,
       targetPlayer: reactorPlayerId,
       targetLane: reactorLane,
@@ -456,7 +457,7 @@ class TriggerProcessor {
               preCascadePlayerStates = routeResult.preTriggerState;
             }
             animationEvents.push(
-              { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+              { type: TRIGGER_CHAIN_PAUSE, duration: 400, timestamp: Date.now() },
               ...routeResult.triggerAnimationEvents
             );
           }
@@ -555,7 +556,7 @@ class TriggerProcessor {
               preCascadePlayerStates = result.preTriggerState;
             }
             animationEvents.push(
-              { type: 'TRIGGER_CHAIN_PAUSE', duration: 400, timestamp: Date.now() },
+              { type: TRIGGER_CHAIN_PAUSE, duration: 400, timestamp: Date.now() },
               ...result.triggerAnimationEvents
             );
           }
@@ -1130,7 +1131,7 @@ class TriggerProcessor {
       ownerState.dronesOnBoard = updateAuras(ownerState, currentStates[opponentId], placedSections);
 
       animationEvents.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: droneInLane.id,
         targetPlayer: triggeringPlayerId,
         targetLane: lane,
@@ -1183,7 +1184,7 @@ class TriggerProcessor {
         playerStates[playerId].dronesOnBoard = updateAuras(playerStates[playerId], playerStates[opponentId], placedSections);
 
         animationEvents.push({
-          type: 'DRONE_DESTROYED',
+          type: DRONE_DESTROYED,
           targetId: droneId,
           targetPlayer: playerId,
           targetLane: lane,
@@ -1217,7 +1218,7 @@ class TriggerProcessor {
         // Tech does NOT participate in availability/rebuild tracking
 
         animationEvents.push({
-          type: 'TECH_DESTROY',
+          type: TECH_DESTROY,
           targetId: droneId,
           targetPlayer: playerId,
           targetLane: lane,

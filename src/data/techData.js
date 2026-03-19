@@ -186,6 +186,26 @@ const fullTechCollection = [
       }
     ]
   },
+  {
+    name: 'Relay Beacon',
+    hull: 1,
+    image: '/DroneWars/img/RelayBeacon.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    isTech: true,
+    abilities: [
+      {
+        name: 'Signal Relay',
+        description: 'When any drone moves into this lane, draw a card.',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'ANY',
+        triggerTiming: 'ANY_TURN',
+        effects: [{ type: 'DRAW', value: 1, effectTarget: 'TRIGGER_OWNER' }]
+      }
+    ]
+  },
 ];
 
 export default fullTechCollection;

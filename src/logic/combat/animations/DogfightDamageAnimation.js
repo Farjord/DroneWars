@@ -4,6 +4,8 @@
 // Animation event for when a drone with DOGFIGHT deals damage to an attacker
 // during interception.
 
+import { DOGFIGHT_DAMAGE } from '../../../config/animationTypes.js';
+
 /**
  * Create a dogfight damage animation event
  * @param {Object} interceptor - The drone with DOGFIGHT that dealt the damage
@@ -30,7 +32,7 @@ export const createDogfightDamageAnimation = (
   hullDamage,
   sourceCardInstanceId = null
 ) => ({
-  type: 'DOGFIGHT_DAMAGE',
+  type: DOGFIGHT_DAMAGE,
   sourceId: interceptor.id,
   sourceName: interceptor.name,
   sourcePlayer: interceptorPlayerId,

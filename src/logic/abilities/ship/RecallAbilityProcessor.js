@@ -8,6 +8,7 @@ import { updateAuras } from '../../utils/auraManager.js';
 import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
 import { onDroneRecalled } from '../../utils/droneStateUtils.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { TELEPORT_OUT } from '../../../config/animationTypes.js';
 
 /**
  * RecallAbilityProcessor
@@ -102,7 +103,7 @@ class RecallAbilityProcessor {
 
     // Create recall animation event
     const animationEvents = [{
-      type: 'TELEPORT_OUT',
+      type: TELEPORT_OUT,
       targetId: targetId,
       laneId: lane,
       playerId: playerId,

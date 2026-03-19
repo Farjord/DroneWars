@@ -4,6 +4,8 @@
 // Builds standard damage feedback animations (Laser Blast style)
 // Used as the default animation for all DAMAGE effects without specific visualEffect
 
+import { SHIELD_DAMAGE, DRONE_DESTROYED, HULL_DAMAGE } from '../../../../config/animationTypes.js';
+
 /**
  * Build default damage animation events
  *
@@ -40,7 +42,7 @@ export function buildDefaultDamageAnimation(context) {
   // Shield damage feedback (if any)
   if (shieldDamage > 0) {
     animations.push({
-      type: 'SHIELD_DAMAGE',
+      type: SHIELD_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -54,7 +56,7 @@ export function buildDefaultDamageAnimation(context) {
   // Destruction or hull damage feedback
   if (destroyed) {
     animations.push({
-      type: 'DRONE_DESTROYED',
+      type: DRONE_DESTROYED,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -64,7 +66,7 @@ export function buildDefaultDamageAnimation(context) {
     });
   } else if (hullDamage > 0) {
     animations.push({
-      type: 'HULL_DAMAGE',
+      type: HULL_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,

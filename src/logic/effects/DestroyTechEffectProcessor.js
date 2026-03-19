@@ -7,6 +7,7 @@
 
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { TECH_DESTROY } from '../../config/animationTypes.js';
 
 /**
  * Processor for DESTROY_TECH effect type
@@ -61,7 +62,7 @@ class DestroyTechEffectProcessor extends BaseEffectProcessor {
     targetPlayerState.techSlots[lane] = targetPlayerState.techSlots[lane].filter(t => t.id !== target.id);
 
     animationEvents.push({
-      type: 'TECH_DESTROY',
+      type: TECH_DESTROY,
       targetId: target.id,
       targetPlayer: targetPlayerId,
       targetLane: lane,

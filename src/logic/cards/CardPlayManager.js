@@ -7,6 +7,7 @@
 import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { CARD_REVEAL, CARD_VISUAL } from '../../config/animationTypes.js';
 
 /**
  * CardPlayManager
@@ -222,7 +223,7 @@ class CardPlayManager {
     // For cards requiring selection (SINGLE_MOVE, SEARCH_AND_DRAW), animation will be added after selection completes
     if (!result.needsCardSelection) {
       allAnimationEvents.push({
-        type: 'CARD_REVEAL',
+        type: CARD_REVEAL,
         cardId: card.id,
         cardName: card.name,
         cardData: card,  // Full card object for rendering
@@ -259,7 +260,7 @@ class CardPlayManager {
         // Add card visual for lane-targeted effects
         if (targetPlayer && targetType) {
           allAnimationEvents.push({
-            type: 'CARD_VISUAL',
+            type: CARD_VISUAL,
             cardId: card.id,
             cardName: card.name,
             visualType: card.visualEffect.type,
@@ -300,7 +301,7 @@ class CardPlayManager {
         // Only add card visual if we found a valid single target
         if (targetPlayer && targetType) {
           allAnimationEvents.push({
-            type: 'CARD_VISUAL',
+            type: CARD_VISUAL,
             cardId: card.id,
             cardName: card.name,
             visualType: card.visualEffect.type,

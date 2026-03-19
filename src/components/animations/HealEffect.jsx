@@ -5,6 +5,7 @@
 // Green smokey effect with floating + symbols
 
 import React, { useState, useEffect } from 'react';
+import './HealEffect.css';
 
 // Size-dependent configuration lookup
 const SIZE_CONFIG = {

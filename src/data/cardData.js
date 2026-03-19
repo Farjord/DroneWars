@@ -1369,6 +1369,20 @@ const fullCardCollection = [
     ],
   },
   {
+    id: 'DEPLOY_RELAY_BEACON',
+    baseCardId: 'DEPLOY_RELAY_BEACON',
+    name: 'Deploy Relay Beacon',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/RelayBeacon.png',
+    description: 'Create a Relay Beacon in a friendly lane. (Relay Beacon: When any drone moves into this lane, draw a card.)',
+    effects: [
+      { type: 'CREATE_TECH', tokenName: 'Relay Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+    ],
+  },
+  {
     id: 'TACTICAL_ADVANTAGE',
     baseCardId: 'TACTICAL_ADVANTAGE',
     name: 'Tactical Advantage',

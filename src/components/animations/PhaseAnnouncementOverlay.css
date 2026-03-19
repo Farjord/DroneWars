@@ -1,0 +1,10 @@
+/* Phase announcement keyframes — co-located with PhaseAnnouncementOverlay.jsx */
+
+@keyframes phaseAnnouncementScanline {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+
+.phase-announcement-scanline-active {
+  animation: phaseAnnouncementScanline 2s linear infinite;
+}

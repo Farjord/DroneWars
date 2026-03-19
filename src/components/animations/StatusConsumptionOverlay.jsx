@@ -6,6 +6,7 @@
 // Auto-dismisses after 1 second with fade-out animation
 
 import React, { useState, useEffect } from 'react';
+import './revealOverlay.css';
 
 /**
  * StatusConsumptionOverlay - Shows status effect consumption with player-aware label

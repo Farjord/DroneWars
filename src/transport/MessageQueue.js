@@ -1,4 +1,5 @@
 import { debugLog } from '../utils/debugLogger.js';
+import { TRIGGER_FIRED } from '../config/animationTypes.js';
 
 /**
  * Pure message queue with sequence tracking, out-of-order buffering, and resync support.
@@ -75,7 +76,7 @@ export default class MessageQueue {
     while (this.messageQueue.length > 0) {
       const message = this.messageQueue.shift();
       debugLog('MESSAGE_QUEUE', `Processing message: type=${message.type}, seq=${message.data?.sequenceId}`);
-      const triggerAnims = (message.data?.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      const triggerAnims = (message.data?.actionAnimations || []).filter(a => a.animationName === TRIGGER_FIRED);
       if (triggerAnims.length > 0) {
         debugLog('TRIGGER_SYNC_TRACE', '[4/7] CLIENT: Trigger dequeued for processing', {
           utc: new Date().toISOString(),

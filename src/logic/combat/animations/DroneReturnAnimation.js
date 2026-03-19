@@ -5,6 +5,8 @@
 // - Used when attacking drone returns to its position after attack
 // - Only applies when target survives and attack was from a drone
 
+import { DRONE_RETURN } from '../../../config/animationTypes.js';
+
 /**
  * Create a drone return animation event
  *
@@ -20,7 +22,7 @@ export const createDroneReturnAnimation = (
   attackerLane,
   sourceCardInstanceId
 ) => ({
-  type: 'DRONE_RETURN',
+  type: DRONE_RETURN,
   sourceId: attacker.id,
   sourcePlayer: attackingPlayerId,
   sourceLane: attackerLane,

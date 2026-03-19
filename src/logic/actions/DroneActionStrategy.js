@@ -5,6 +5,7 @@
 import { gameEngine } from '../gameLogic.js';
 import DeploymentProcessor from '../deployment/DeploymentProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { SHIP_ABILITY_REVEAL } from '../../config/animationTypes.js';
 
 /**
  * Process drone deployment
@@ -235,7 +236,7 @@ export async function processOptionalDiscard(payload, ctx) {
   if (abilityMetadata) {
     debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Final ability discard - executing SHIP_ABILITY_REVEAL animation`, abilityMetadata);
     const abilityRevealAnimation = [{
-      animationName: 'SHIP_ABILITY_REVEAL',
+      animationName: SHIP_ABILITY_REVEAL,
       payload: {
         abilityName: abilityMetadata.abilityName,
         sectionName: abilityMetadata.sectionName,

@@ -9,11 +9,12 @@ import React, { useState, useEffect } from 'react';
 
 /**
  * RAILGUN TURRET ANIMATION
+ * @param {Object} [position] - Viewport position {x, y}. When provided, renders a fixed-position wrapper.
  * @param {number} rotation - Angle in degrees to rotate turret (-90 = up, 0 = right, 90 = down)
  * @param {number} sizeMultiplier - Scale multiplier (default: 1 = 17x50px)
  * @param {Function} onComplete - Callback when animation completes
  */
-const RailgunTurret = ({ rotation = -90, sizeMultiplier = 1, onComplete }) => {
+const RailgunTurret = ({ position, rotation = -90, sizeMultiplier = 1, onComplete }) => {
   const [stage, setStage] = useState(0);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ const RailgunTurret = ({ rotation = -90, sizeMultiplier = 1, onComplete }) => {
 
   const gunTransform = getGunTransform();
 
-  return (
+  const turretContent = (
     <div
       style={{
         transform: `scale(${finalScale}) rotate(${rotation}deg)`,
@@ -333,6 +334,23 @@ const RailgunTurret = ({ rotation = -90, sizeMultiplier = 1, onComplete }) => {
           )}
         </div>
       </div>
+    </div>
+  );
+
+  if (!position) return turretContent;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: position.x,
+        top: position.y,
+        transform: 'translate(-50%, -50%)',
+        pointerEvents: 'none',
+        zIndex: 9999
+      }}
+    >
+      {turretContent}
     </div>
   );
 };

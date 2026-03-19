@@ -5,12 +5,12 @@ const LANE_TESTID_SUFFIX = { lane1: 'left', lane2: 'middle', lane3: 'right' };
 
 /**
  * Registers the DRONE_MOVEMENT_EFFECT visual handler on the AnimationManager.
- * Uses the FlyingDrone overlay (via setFlyingDrones) to slide a drone between lanes.
+ * Uses the FlyingDrone overlay (via animationDispatch) to slide a drone between lanes.
  */
 export function registerMovementAnimations(animationManager, {
   gameStateManager,
-  droneRefs,
-  setFlyingDrones
+  getElementFromLogicalPosition,
+  animationDispatch
 }) {
   animationManager.registerVisualHandler('DRONE_MOVEMENT_EFFECT', (payload) => {
     const { droneId, sourcePlayer, sourceLane, targetLane, onComplete } = payload;
@@ -20,7 +20,7 @@ export function registerMovementAnimations(animationManager, {
     });
 
     // 1. Get drone element in its current (old) lane
-    const droneEl = droneRefs.current[droneId];
+    const droneEl = getElementFromLogicalPosition(null, null, droneId, 'drone');
     if (!droneEl) {
       debugLog('ANIMATIONS', '[MOVEMENT] Drone element not found, skipping:', droneId);
       onComplete?.();
@@ -75,9 +75,9 @@ export function registerMovementAnimations(animationManager, {
 
     // 5. Hide original drone and push flying drone overlay
     droneEl.style.opacity = '0';
-    const id = `movement-${droneId}-${Date.now()}`;
+    const id = `movement-${droneId}-${crypto.randomUUID()}`;
 
-    setFlyingDrones(prev => [...prev, {
+    animationDispatch.add('flyingDrones', {
       id,
       droneData,
       startPos,
@@ -85,9 +85,9 @@ export function registerMovementAnimations(animationManager, {
       config: { duration: 800, trail: false, isReturn: false },
       onComplete: () => {
         droneEl.style.opacity = '';
-        setFlyingDrones(prev => prev.filter(fd => fd.id !== id));
+        animationDispatch.remove('flyingDrones', id);
         onComplete?.();
       }
-    }]);
+    });
   });
 }

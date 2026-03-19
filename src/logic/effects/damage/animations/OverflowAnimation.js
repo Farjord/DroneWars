@@ -4,6 +4,8 @@
 // Builds standard overflow projectile animation
 // Used for overflow damage cards (non-Railgun)
 
+import { OVERFLOW_PROJECTILE, SHIELD_DAMAGE, DRONE_DESTROYED, HULL_DAMAGE } from '../../../../config/animationTypes.js';
+
 /**
  * Build standard overflow projectile animation
  *
@@ -50,7 +52,7 @@ export function buildOverflowAnimation(context) {
 
   // Animation 1: Overflow projectile (handles both drone and ship damage)
   animations.push({
-    type: 'OVERFLOW_PROJECTILE',
+    type: OVERFLOW_PROJECTILE,
     targetId: target.id,
     targetPlayer,
     targetLane,
@@ -63,7 +65,7 @@ export function buildOverflowAnimation(context) {
   // Animation 2: Shield damage (synchronized with drone impact)
   if (shieldDamage > 0) {
     animations.push({
-      type: 'SHIELD_DAMAGE',
+      type: SHIELD_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -78,7 +80,7 @@ export function buildOverflowAnimation(context) {
   // Animation 3: Destruction or hull damage (synchronized with drone impact)
   if (droneDestroyed) {
     animations.push({
-      type: 'DRONE_DESTROYED',
+      type: DRONE_DESTROYED,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -89,7 +91,7 @@ export function buildOverflowAnimation(context) {
     });
   } else if (hullDamage > 0) {
     animations.push({
-      type: 'HULL_DAMAGE',
+      type: HULL_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,

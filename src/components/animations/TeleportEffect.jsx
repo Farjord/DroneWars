@@ -4,6 +4,7 @@
 // Visual component for rendering drone teleport-in animation
 
 import React, { useState, useEffect } from 'react';
+import './TeleportEffect.css';
 
 /**
  * TELEPORT EFFECT COMPONENT

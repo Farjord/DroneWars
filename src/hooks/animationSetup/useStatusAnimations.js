@@ -2,20 +2,16 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { getViewportCenter } from '../../utils/gameUtils.js';
 
 // Animation durations (ms)
-const SHAKE_DURATION = 500;
-
 /**
  * Registers status-related animation handlers on the AnimationManager.
- * Handlers: FLASH_EFFECT, HEAL_EFFECT, EXPLOSION_EFFECT, SHAKE_EFFECT, STAT_CHANGE_EFFECT
+ * Handlers: FLASH_EFFECT, HEAL_EFFECT, EXPLOSION_EFFECT, STAT_CHANGE_EFFECT
  */
 export function registerStatusAnimations(animationManager, {
   droneRefs,
   sectionRefs,
   getElementFromLogicalPosition,
   triggerExplosion,
-  setFlashEffects,
-  setHealEffects,
-  setStatChangeEffects
+  animationDispatch
 }) {
   animationManager.registerVisualHandler('EXPLOSION_EFFECT', (payload) => {
     const { targetId, targetPlayer, targetLane, targetType, config, onComplete } = payload;
@@ -59,7 +55,7 @@ export function registerStatusAnimations(animationManager, {
     const targetRect = targetEl.getBoundingClientRect();
     const flashId = `flash-${targetId}-${crypto.randomUUID()}`;
 
-    setFlashEffects(prev => [...prev, {
+    animationDispatch.add('flashEffects', {
       id: flashId,
       position: {
         left: targetRect.left,
@@ -70,10 +66,10 @@ export function registerStatusAnimations(animationManager, {
       color: config.color,
       intensity: config.intensity,
       onComplete: () => {
-        setFlashEffects(prev => prev.filter(f => f.id !== flashId));
+        animationDispatch.remove('flashEffects', flashId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('HEAL_EFFECT', (payload) => {
@@ -108,7 +104,7 @@ export function registerStatusAnimations(animationManager, {
     const targetRect = targetEl.getBoundingClientRect();
     const healId = `heal-${targetId}-${crypto.randomUUID()}`;
 
-    setHealEffects(prev => [...prev, {
+    animationDispatch.add('healEffects', {
       id: healId,
       position: {
         left: targetRect.left,
@@ -118,27 +114,12 @@ export function registerStatusAnimations(animationManager, {
       },
       healAmount: healAmount,
       onComplete: () => {
-        setHealEffects(prev => prev.filter(h => h.id !== healId));
+        animationDispatch.remove('healEffects', healId);
         onComplete?.();
       }
-    }]);
+    });
 
     debugLog('ANIMATIONS', '✅ [HEAL DEBUG] Heal effect created:', healId);
-  });
-
-  animationManager.registerVisualHandler('SHAKE_EFFECT', (payload) => {
-    const { targetId, config, onComplete } = payload;
-    const targetEl = droneRefs.current[targetId];
-
-    if (targetEl) {
-      targetEl.classList.add('animate-shake-damage');
-      setTimeout(() => {
-        targetEl.classList.remove('animate-shake-damage');
-        onComplete?.();
-      }, config?.duration || SHAKE_DURATION);
-    } else {
-      onComplete?.();
-    }
   });
 
   animationManager.registerVisualHandler('STAT_CHANGE_EFFECT', (payload) => {
@@ -166,7 +147,7 @@ export function registerStatusAnimations(animationManager, {
     const hexRect = hexEl.getBoundingClientRect();
     const effectId = `stat-change-${targetId}-${stat}-${crypto.randomUUID()}`;
 
-    setStatChangeEffects(prev => [...prev, {
+    animationDispatch.add('statChangeEffects', {
       id: effectId,
       position: {
         left: hexRect.left,
@@ -176,9 +157,9 @@ export function registerStatusAnimations(animationManager, {
       },
       isBuff: config.isBuff,
       onComplete: () => {
-        setStatChangeEffects(prev => prev.filter(e => e.id !== effectId));
+        animationDispatch.remove('statChangeEffects', effectId);
         onComplete?.();
       }
-    }]);
+    });
   });
 }

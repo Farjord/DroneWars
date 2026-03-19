@@ -4,6 +4,7 @@
 // Visual component for rendering laser beam attack animations
 
 import React, { useState, useEffect } from 'react';
+import './LaserEffect.css';
 
 /**
  * LASER EFFECT COMPONENT

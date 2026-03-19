@@ -176,6 +176,14 @@ function TacticalMapScreen() {
     pendingCombatLoadingRef,
   }), []);
 
+  // --- Mount/unmount lifecycle logging ---
+  React.useEffect(() => {
+    debugLog('MODE_TRANSITION', 'TacticalMapScreen MOUNTED');
+    return () => {
+      debugLog('MODE_TRANSITION', 'TacticalMapScreen UNMOUNTED');
+    };
+  }, []);
+
   // --- State subscriptions, music, threat, tutorial, blockade, quick deploy validation ---
   const { validQuickDeployments } = useTacticalSubscriptions({
     showExtractionScreen,

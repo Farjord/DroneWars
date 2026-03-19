@@ -3,6 +3,7 @@
 // Extracted from ActionProcessor.js — handles status effects, debug tools, dev actions.
 
 import { debugLog } from '../../utils/debugLogger.js';
+import { STATUS_CONSUMPTION } from '../../config/animationTypes.js';
 
 /**
  * Process status effect consumption (snared or suppressed)
@@ -35,7 +36,7 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
 
       const laneNumber = lane.replace('lane', '');
       const animation = [{
-        animationName: 'STATUS_CONSUMPTION',
+        animationName: STATUS_CONSUMPTION,
         timing: 'independent',
         payload: {
           droneName: drone.name,

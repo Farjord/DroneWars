@@ -10,7 +10,7 @@ import React, { useState, useEffect } from 'react';
 /**
  * TriggerFiredOverlay - Compact trigger announcement banner
  * @param {string} abilityName - Name of the triggered ability
- * @param {{ left: number, top: number }|null} position - Drone screen position, or null for center fallback
+ * @param {{ x: number, y: number }|null} position - Drone screen position, or null for center fallback
  * @param {Function} onComplete - Callback when animation completes
  */
 const TriggerFiredOverlay = ({ abilityName, position, onComplete }) => {
@@ -41,8 +41,8 @@ const TriggerFiredOverlay = ({ abilityName, position, onComplete }) => {
   const positionStyles = position
     ? {
         position: 'fixed',
-        left: `${position.left}px`,
-        top: `${position.top}px`,
+        left: `${position.x}px`,
+        top: `${position.y}px`,
         transform: 'translate(-50%, -50%)',
       }
     : {

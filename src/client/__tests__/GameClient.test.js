@@ -241,6 +241,43 @@ describe('GameClient', () => {
     });
   });
 
+  // --- lastInterception consumption ---
+
+  describe('lastInterception consumption', () => {
+    it('emits INTERCEPTION_OCCURRED but does not persist lastInterception in applied state', async () => {
+      const interception = { interceptor: { id: 'd1' }, intercepted: { id: 'd2' } };
+      const state = makeState({ lastInterception: interception });
+
+      await client._onResponse({
+        state,
+        animations: { actionAnimations: [], systemAnimations: [] },
+        result: { success: true },
+      });
+
+      // Event was emitted with the interception data
+      expect(mockStore.gameStateManager.emit).toHaveBeenCalledWith(
+        'INTERCEPTION_OCCURRED',
+        { lastInterception: interception }
+      );
+      // State applied to store has lastInterception nulled out
+      const appliedState = mockStore.applyUpdate.mock.calls[0][0];
+      expect(appliedState.lastInterception).toBeNull();
+    });
+
+    it('does not emit INTERCEPTION_OCCURRED when no lastInterception', async () => {
+      await client._onResponse({
+        state: makeState(),
+        animations: { actionAnimations: [], systemAnimations: [] },
+        result: { success: true },
+      });
+
+      expect(mockStore.gameStateManager.emit).not.toHaveBeenCalledWith(
+        'INTERCEPTION_OCCURRED',
+        expect.anything()
+      );
+    });
+  });
+
   // --- TELEPORT_IN handling ---
 
   describe('TELEPORT_IN handling', () => {

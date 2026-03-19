@@ -5,6 +5,8 @@
 // - Used when hull takes damage but target survives
 // - Applies to both drones and ship sections
 
+import { HULL_DAMAGE } from '../../../config/animationTypes.js';
+
 /**
  * Create a hull damage animation event
  *
@@ -24,7 +26,7 @@ export const createHullDamageAnimation = (
   hullDamage,
   sourceCardInstanceId
 ) => ({
-  type: 'HULL_DAMAGE',
+  type: HULL_DAMAGE,
   targetId: finalTarget.id,
   targetPlayer: defendingPlayerId,
   targetLane: targetLane,

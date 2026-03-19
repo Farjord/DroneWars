@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { render, screen, act } from '@testing-library/react';
 
 // ========================================
@@ -501,6 +501,103 @@ describe('FailedRunLoadingScreen with null player state (App.jsx defeat scenario
       );
       expect(screen.getByTestId('failure-type')).toHaveTextContent('detection');
       expect(screen.getByTestId('is-starter-deck')).toHaveTextContent('starter');
+    });
+  });
+});
+
+// ========================================
+// CUSTOM HOOK VARIANT — EXTRACTION EXIT CRASH
+// ========================================
+// Reproduces the bug where useGameLifecycle and useClickHandlers
+// are called AFTER the early return in App.jsx, causing
+// "Rendered fewer hooks than expected" when player states go null
+// during extraction combat exit.
+
+/**
+ * Minimal custom hooks that mirror useGameLifecycle/useClickHandlers.
+ * useLifecycleHook contains useRef + useEffect (2 React hooks).
+ * useClickHook contains no React hooks — just returns plain functions.
+ */
+function useLifecycleHook({ turnPhase }) {
+  const prevPhaseRef = useRef(null);
+  useEffect(() => {
+    prevPhaseRef.current = turnPhase;
+  }, [turnPhase]);
+  const handlePass = () => { /* uses playerState when called */ };
+  return { handlePass };
+}
+
+function useClickHook({ playerState }) {
+  // No React hooks inside — just returns plain functions
+  const handleClick = () => playerState?.name;
+  return { handleClick };
+}
+
+/**
+ * Buggy: custom hooks called AFTER early return.
+ * When playerState transitions valid → null, React sees fewer hooks.
+ */
+const BuggyCustomHookComponent = ({ playerState, turnPhase }) => {
+  const [count, setCount] = useState(0);
+  if (!playerState) return <div>Loading...</div>;
+  // These hooks are skipped when playerState is null
+  const { handlePass } = useLifecycleHook({ turnPhase });
+  const { handleClick } = useClickHook({ playerState });
+  return <div>{count}</div>;
+};
+
+/**
+ * Fixed: custom hooks called BEFORE early return.
+ * Both hooks are safe with null playerState because property
+ * accesses happen inside plain function bodies only.
+ */
+const FixedCustomHookComponent = ({ playerState, turnPhase }) => {
+  const [count, setCount] = useState(0);
+  const { handlePass } = useLifecycleHook({ turnPhase });
+  const { handleClick } = useClickHook({ playerState });
+  if (!playerState) return <div>Loading...</div>;
+  return <div>{count}</div>;
+};
+
+describe('Custom hook variant — extraction exit crash (App.jsx useGameLifecycle/useClickHandlers)', () => {
+  const validPlayerState = { name: 'Player', drones: [{ name: 'Scout' }] };
+
+  describe('BuggyCustomHookComponent (reproduces extraction exit crash)', () => {
+    it('throws hooks error when playerState transitions valid → null', () => {
+      const { rerender } = render(
+        <BuggyCustomHookComponent playerState={validPlayerState} turnPhase="action" />
+      );
+
+      expect(() => {
+        rerender(<BuggyCustomHookComponent playerState={null} turnPhase="action" />);
+      }).toThrow();
+    });
+  });
+
+  describe('FixedCustomHookComponent (hooks before early return)', () => {
+    it('handles valid → null transition without throwing', () => {
+      const { rerender } = render(
+        <FixedCustomHookComponent playerState={validPlayerState} turnPhase="action" />
+      );
+
+      expect(() => {
+        rerender(<FixedCustomHookComponent playerState={null} turnPhase="action" />);
+      }).not.toThrow();
+    });
+
+    it('handles null → valid transition gracefully', () => {
+      const { rerender } = render(
+        <FixedCustomHookComponent playerState={null} turnPhase="action" />
+      );
+
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+      rerender(
+        <FixedCustomHookComponent playerState={validPlayerState} turnPhase="action" />
+      );
+
+      // No throw, component renders normally
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
   });
 });

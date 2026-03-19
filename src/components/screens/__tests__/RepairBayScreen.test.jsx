@@ -63,6 +63,7 @@ vi.mock('../../../data/shipSectionData.js', () => ({
 }));
 
 vi.mock('../../../data/shipData.js', () => ({
+  shipCollection: [{ id: 'SHIP_001', name: 'Corvette', baseHull: 8 }],
   getAllShips: () => [
     { id: 'SHIP_001', name: 'Corvette', baseHull: 8 }
   ],

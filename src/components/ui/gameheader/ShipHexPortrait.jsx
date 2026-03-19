@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { Settings } from 'lucide-react';
+import { resolveAssetUrl } from '../../../services/AssetPreloader.js';
 
 // Flat-bottom hex orientation (flat edges on top and bottom)
 const HEX_POINTS = '88,38 66,76 22,76 0,38 22,0 66,0';
@@ -77,7 +78,7 @@ const ShipHexPortrait = ({ side, shipImageUrl, isClickable = false, onClick, fac
           </clipPath>
         </defs>
         <image
-          href={shipImageUrl}
+          href={resolveAssetUrl(shipImageUrl)}
           x="0"
           y="0"
           width="88"

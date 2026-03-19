@@ -8,6 +8,7 @@ import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 import { calculateDamageByType } from '../utils/damageCalculation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { SECTION_DAMAGED } from '../../config/animationTypes.js';
 
 /**
  * Processor for CONDITIONAL_SECTION_DAMAGE effect type
@@ -88,7 +89,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
       // Generate staggered explosion animations (1 per damage point, like Railgun)
       for (let i = 0; i < effect.damage; i++) {
         animationEvents.push({
-          type: 'SECTION_DAMAGED',
+          type: SECTION_DAMAGED,
           targetId: sectionName,         // Fixed: targetSection → targetId
           targetPlayer: opponentId,
           targetLane: this.mapSectionToLane(sectionName, opponentPlacedSections),  // Derive lane from placement

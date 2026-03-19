@@ -5,6 +5,8 @@
 // - Used when shields absorb damage
 // - Applies to both drones and ship sections
 
+import { SHIELD_DAMAGE } from '../../../config/animationTypes.js';
+
 /**
  * Create a shield damage animation event
  *
@@ -24,7 +26,7 @@ export const createShieldDamageAnimation = (
   shieldDamage,
   sourceCardInstanceId
 ) => ({
-  type: 'SHIELD_DAMAGE',
+  type: SHIELD_DAMAGE,
   targetId: finalTarget.id,
   targetPlayer: defendingPlayerId,
   targetLane: targetLane,

@@ -1094,6 +1094,10 @@ class GameFlowManager {
     // GameClient handles announcement routing. Guard prevents accidental state corruption.
     if (!this.isPhaseAuthority) {
       debugLog('PHASE_TRANSITIONS', `🔒 [NON-AUTHORITY] Blocked transitionToPhase(${newPhase}) — server broadcasts provide state + announcements`);
+      debugLog('MODE_TRANSITION', `Phase authority rejected transition to ${newPhase}`, {
+        isPhaseAuthority: this.isPhaseAuthority,
+        currentPhase: this.currentPhase
+      });
       return;
     }
 

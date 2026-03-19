@@ -432,7 +432,7 @@ const fullDroneCollection = [
     attack: 3,
     hull: 4,
     shields: 4,
-    speed: 4,
+    speed: 2,
     image: '/DroneWars/img/Tempest.png',
     abilities: [
       {
@@ -868,22 +868,6 @@ const fullDroneCollection = [
       }
     }],
     upgradeSlots: 2
-  },
-  {
-    name: 'Relay Beacon',
-    class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon',
-    attack: 1, hull: 1, shields: 0, speed: 1,
-    image: '/DroneWars/img/RelayBeacon.png',
-    abilities: [{
-      name: 'Signal Relay',
-      description: 'When any drone moves into this lane, draw a card.',
-      type: 'TRIGGERED',
-      trigger: 'ON_LANE_MOVEMENT_IN',
-      triggerOwner: 'ANY',
-      triggerTiming: 'ANY_TURN',
-      effects: [{ type: 'DRAW', value: 1, effectTarget: 'TRIGGER_OWNER' }]
-    }],
-    upgradeSlots: 1
   },
   {
     name: 'Disruption Drone',

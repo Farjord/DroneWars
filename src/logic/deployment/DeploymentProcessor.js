@@ -8,6 +8,7 @@ import { calculateEffectiveStats, calculateEffectiveShipStats } from '../statsCa
 import { updateAuras } from '../utils/auraManager.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { TELEPORT_IN } from '../../config/animationTypes.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
@@ -410,7 +411,7 @@ class DeploymentProcessor {
 
     // TELEPORT_IN event
     const teleportInEvent = {
-      type: 'TELEPORT_IN',
+      type: TELEPORT_IN,
       targetId: newDrone.id,
       targetLane: lane,
       targetPlayer: playerId,

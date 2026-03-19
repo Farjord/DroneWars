@@ -4,6 +4,7 @@
 import Transport from './Transport.js';
 import MessageQueue from './MessageQueue.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { TRIGGER_FIRED } from '../config/animationTypes.js';
 
 class P2PTransport extends Transport {
   constructor(p2pManager) {
@@ -63,7 +64,7 @@ class P2PTransport extends Transport {
   async _processMessage(message) {
     if (message.type === 'state_update_received' && this._responseCallback) {
       const { state, actionAnimations, systemAnimations } = message.data;
-      const triggerAnims = (actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      const triggerAnims = (actionAnimations || []).filter(a => a.animationName === TRIGGER_FIRED);
       if (triggerAnims.length > 0) {
         debugLog('TRIGGER_SYNC_TRACE', '[5/7] CLIENT: Trigger dispatching to GameClient', {
           utc: new Date().toISOString(),

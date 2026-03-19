@@ -16,6 +16,7 @@ describe('GameEngine', () => {
   beforeEach(() => {
     mockGSM = {
       getState: vi.fn().mockReturnValue(mockState),
+      setState: vi.fn(),
       processAction: vi.fn().mockResolvedValue({ success: true, animations: { actionAnimations: [], systemAnimations: [] } }),
       subscribe: vi.fn().mockReturnValue(vi.fn()),
       beginProcessing: vi.fn(),
@@ -70,6 +71,35 @@ describe('GameEngine', () => {
       const response = await engine.processAction('attack', { droneId: 'd1' });
 
       expect(response.animations).toEqual(mockAnims);
+    });
+
+    it('clears lastInterception from server state after broadcasting', async () => {
+      const stateWithInterception = {
+        ...mockState,
+        lastInterception: { interceptor: { id: 'd1' }, intercepted: { id: 'd2' } },
+      };
+      mockGSM.getState.mockReturnValue(stateWithInterception);
+      mockGSM.processAction.mockResolvedValue({ success: true });
+
+      const cb = vi.fn();
+      engine.registerClient('player1', cb);
+
+      await engine.processAction('attack', {});
+
+      // Client received state with lastInterception before it was cleared
+      expect(cb.mock.calls[0][0].state.lastInterception).toBeTruthy();
+      // Server cleared lastInterception after broadcasting
+      expect(mockGSM.setState).toHaveBeenCalledWith({ lastInterception: null });
+    });
+
+    it('does not call setState when no lastInterception', async () => {
+      mockGSM.processAction.mockResolvedValue({ success: true });
+
+      const cb = vi.fn();
+      engine.registerClient('player1', cb);
+      await engine.processAction('move', {});
+
+      expect(mockGSM.setState).not.toHaveBeenCalled();
     });
 
     it('returns empty animation arrays when accumulator has no animations', async () => {

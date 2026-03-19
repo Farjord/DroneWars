@@ -1,0 +1,28 @@
+/* Teleport effect keyframes — co-located with TeleportEffect.jsx */
+
+@keyframes teleportExpand {
+  0% { width: 20px; height: 20px; opacity: 1; }
+  100% { width: 120px; height: 180px; opacity: 0; }
+}
+
+@keyframes teleportRing {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes teleportParticle {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(80px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes teleportGlow {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}

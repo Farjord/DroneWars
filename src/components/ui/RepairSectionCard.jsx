@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { Wrench, AlertTriangle } from 'lucide-react';
+import { resolveAssetUrl } from '../../services/AssetPreloader.js';
 
 /**
  * Get lane label from lane code
@@ -90,7 +91,7 @@ const RepairSectionCard = ({
       {imageUrl && (
         <div
           className="repair-section-card__bg"
-          style={{ backgroundImage: `url(${imageUrl})` }}
+          style={{ backgroundImage: `url(${resolveAssetUrl(imageUrl)})` }}
         />
       )}
 

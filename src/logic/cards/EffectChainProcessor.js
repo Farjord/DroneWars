@@ -8,6 +8,7 @@ import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { CARD_REVEAL, CARD_VISUAL, STATE_SNAPSHOT, TELEPORT_IN } from '../../config/animationTypes.js';
 import { stripChainFields } from './chainConstants.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
@@ -209,7 +210,7 @@ class EffectChainProcessor {
 
     // CARD_REVEAL animation
     cardPreambleEvents.push({
-      type: 'CARD_REVEAL',
+      type: CARD_REVEAL,
       cardId: card.id,
       cardName: card.name,
       cardData: card,
@@ -261,7 +262,7 @@ class EffectChainProcessor {
 
       if (targetPlayer && targetType) {
         cardPreambleEvents.push({
-          type: 'CARD_VISUAL',
+          type: CARD_VISUAL,
           cardId: card.id,
           cardName: card.name,
           visualType: card.visualEffect.type,
@@ -435,8 +436,8 @@ class EffectChainProcessor {
 
       // Collect per-effect animation step
       const allEffectActionEvents = [...preEffectEvents, ...effectActionEvents];
-      const teleportEvents = allEffectActionEvents.filter(e => e.type === 'TELEPORT_IN');
-      const nonTeleportEvents = allEffectActionEvents.filter(e => e.type !== 'TELEPORT_IN');
+      const teleportEvents = allEffectActionEvents.filter(e => e.type === TELEPORT_IN);
+      const nonTeleportEvents = allEffectActionEvents.filter(e => e.type !== TELEPORT_IN);
 
       // Capture intermediate state for this effect's STATE_SNAPSHOT
       const intermediateState = (isMultiEffectChain || effectTriggerEvents.length > 0)
@@ -505,7 +506,7 @@ class EffectChainProcessor {
     // discarded during trigger animations (card is still in hand in intermediate states
     // because finishCardPlay hasn't run yet)
     for (const event of allAnimationEvents) {
-      if (event.type === 'STATE_SNAPSHOT' && event.snapshotPlayerStates) {
+      if (event.type === STATE_SNAPSHOT && event.snapshotPlayerStates) {
         this._removeCardFromSnapshot(event.snapshotPlayerStates, playerId, card);
       }
     }

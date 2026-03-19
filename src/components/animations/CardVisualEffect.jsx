@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './CardVisualEffect.css';
 
 const CardVisualEffect = ({ visualType, startPos, endPos, onComplete }) => {
   const [isActive, setIsActive] = useState(false);

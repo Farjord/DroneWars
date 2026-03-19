@@ -5,6 +5,8 @@
 // - Used when a drone initiates an attack
 // - Includes attacker info, target info, and attack value
 
+import { DRONE_ATTACK_START } from '../../../config/animationTypes.js';
+
 /**
  * Create a drone attack start animation event
  *
@@ -30,7 +32,7 @@ export const createDroneAttackAnimation = (
   attackValue,
   sourceCardInstanceId
 ) => ({
-  type: 'DRONE_ATTACK_START',
+  type: DRONE_ATTACK_START,
   sourceId: attacker.id,
   sourcePlayer: attackingPlayerId,
   sourceLane: attackerLane,

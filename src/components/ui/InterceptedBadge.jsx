@@ -13,7 +13,7 @@ import { Shield } from 'lucide-react';
  * @param {number} timestamp - Timestamp of the interception event
  * @param {number} duration - How long to show the badge (default: 2000ms)
  */
-const InterceptedBadge = ({ droneId, timestamp, duration = 3000 }) => {
+const InterceptedBadge = ({ droneId, timestamp, duration = 2000 }) => {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {

@@ -4,6 +4,18 @@
 
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
+import {
+  ANIMATION_SEQUENCE, STATE_SNAPSHOT, TRIGGER_CHAIN_PAUSE,
+  DRONE_ATTACK_START, DRONE_RETURN,
+  CARD_REVEAL, SHIP_ABILITY_REVEAL, CARD_VISUAL,
+  DRONE_MOVEMENT, STATUS_CONSUMPTION,
+  PASS_NOTIFICATION, GO_AGAIN_NOTIFICATION, TRIGGER_FIRED, MOVEMENT_BLOCKED,
+  TELEPORT_IN, TELEPORT_OUT,
+  SHIELD_DAMAGE, HULL_DAMAGE, DRONE_DESTROYED, SECTION_DESTROYED, SECTION_DAMAGED, HEAL_EFFECT,
+  OVERFLOW_PROJECTILE, SPLASH_EFFECT, BARRAGE_IMPACT, RAILGUN_TURRET, RAILGUN_BEAM,
+  TECH_DEPLOY, TECH_DESTROY, TECH_TRIGGER_FIRE,
+  STAT_BUFF, STAT_DEBUFF,
+} from '../config/animationTypes.js';
 
 class AnimationManager {
   constructor(gameStateManager) {
@@ -13,20 +25,20 @@ class AnimationManager {
 
     this.animations = {
       // Animation sequence meta-type
-      ANIMATION_SEQUENCE: {
+      [ANIMATION_SEQUENCE]: {
         duration: 0,  // Duration determined by child animations
         type: 'ANIMATION_SEQUENCE',
         config: {}
       },
 
       // Attack animations
-      DRONE_ATTACK_START: {
+      [DRONE_ATTACK_START]: {
         duration: 500,  // Laser effect duration
         type: 'DRONE_FLY',
         timing: 'pre-state',  // Needs source drone to exist
         config: { trail: true, easing: 'easeInOut', isReturn: false }
       },
-      DRONE_RETURN: {
+      [DRONE_RETURN]: {
         duration: 0,  // No visual, instant
         type: 'DRONE_FLY',
         timing: 'pre-state',  // Needs source drone to exist
@@ -34,19 +46,19 @@ class AnimationManager {
       },
 
       // Card visuals
-      CARD_REVEAL: {
+      [CARD_REVEAL]: {
         duration: 1000,  // 1 second card reveal
         type: 'CARD_REVEAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
-      SHIP_ABILITY_REVEAL: {
+      [SHIP_ABILITY_REVEAL]: {
         duration: 1000,  // 1 second reveal
         type: 'SHIP_ABILITY_REVEAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
-      CARD_VISUAL: {
+      [CARD_VISUAL]: {
         duration: 2000,  // 2 second card visual effect
         type: 'CARD_VISUAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
@@ -54,7 +66,7 @@ class AnimationManager {
       },
 
       // Movement animations
-      DRONE_MOVEMENT: {
+      [DRONE_MOVEMENT]: {
         duration: 800,
         type: 'DRONE_MOVEMENT_EFFECT',
         timing: 'pre-state',
@@ -62,7 +74,7 @@ class AnimationManager {
       },
 
       // Status consumption
-      STATUS_CONSUMPTION: {
+      [STATUS_CONSUMPTION]: {
         duration: 1000,
         type: 'STATUS_CONSUMPTION_EFFECT',
         timing: 'independent',
@@ -70,35 +82,35 @@ class AnimationManager {
       },
 
       // Player notifications
-      PASS_NOTIFICATION: {
+      [PASS_NOTIFICATION]: {
         duration: 1000,  // 1 second notification
         type: 'PASS_NOTIFICATION_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
 
-      GO_AGAIN_NOTIFICATION: {
+      [GO_AGAIN_NOTIFICATION]: {
         duration: 800,
         type: 'GO_AGAIN_NOTIFICATION_EFFECT',
         timing: 'independent',
         config: { }
       },
 
-      STATE_SNAPSHOT: {
+      [STATE_SNAPSHOT]: {
         duration: 0,
         type: 'STATE_SNAPSHOT',
         timing: 'pre-state',
         config: {}
       },
 
-      TRIGGER_FIRED: {
+      [TRIGGER_FIRED]: {
         duration: 1200,
         type: 'TRIGGER_FIRED_EFFECT',
         timing: 'pre-state',
         config: {}
       },
 
-      MOVEMENT_BLOCKED: {
+      [MOVEMENT_BLOCKED]: {
         duration: 1200,
         type: 'MOVEMENT_BLOCKED_EFFECT',
         timing: 'pre-state',
@@ -108,13 +120,13 @@ class AnimationManager {
       // PHASE_ANNOUNCEMENT removed — announcements route through AnnouncementQueue, not AnimationManager
 
       // Deployment animations
-      TELEPORT_IN: {
+      [TELEPORT_IN]: {
         duration: 600,
         type: 'TELEPORT_EFFECT',
         timing: 'post-state',  // Needs NEW drone to exist in DOM (created by state update)
         config: { revealAt: 0.7 } // Reveal drone at 70% of animation for smooth overlap
       },
-      TELEPORT_OUT: {
+      [TELEPORT_OUT]: {
         duration: 600,
         type: 'TELEPORT_EFFECT',
         timing: 'pre-state',  // Needs existing drone to teleport away
@@ -122,56 +134,56 @@ class AnimationManager {
       },
 
       // Damage feedback
-      SHIELD_DAMAGE: {
+      [SHIELD_DAMAGE]: {
         duration: 2000,
         type: 'FLASH_EFFECT',
         timing: 'pre-state',  // Needs existing target to flash
         config: { color: '#00bcd4', intensity: 0.6 }
       },
-      HULL_DAMAGE: {
+      [HULL_DAMAGE]: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
         timing: 'pre-state',  // Needs existing target to explode
         config: { size: 'small' }
       },
-      DRONE_DESTROYED: {
+      [DRONE_DESTROYED]: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
         timing: 'pre-state',  // Needs existing drone to explode
         config: { size: 'large' }
       },
-      SECTION_DESTROYED: {
+      [SECTION_DESTROYED]: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
         timing: 'pre-state',  // Needs existing section to explode
         config: { size: 'large' }
       },
-      SECTION_DAMAGED: {
+      [SECTION_DAMAGED]: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
         timing: 'pre-state',  // Needs existing section to show damage
         config: { size: 'small' }
       },
-      HEAL_EFFECT: {
+      [HEAL_EFFECT]: {
         duration: 1400,
         type: 'HEAL_EFFECT',
         timing: 'pre-state',  // Needs existing target to heal
         config: {}
       },
       // Ordnance effect animations
-      OVERFLOW_PROJECTILE: {
+      [OVERFLOW_PROJECTILE]: {
         duration: 1200,
         type: 'OVERFLOW_PROJECTILE',
         timing: 'independent',  // Visual effect, doesn't need specific entities
         config: {}
       },
-      SPLASH_EFFECT: {
+      [SPLASH_EFFECT]: {
         duration: 1000,
         type: 'SPLASH_EFFECT',
         timing: 'independent',  // Visual effect, doesn't need specific entities
         config: {}
       },
-      BARRAGE_IMPACT: {
+      [BARRAGE_IMPACT]: {
         duration: 600,  // Total duration for all impacts to complete
         type: 'BARRAGE_IMPACT',
         timing: 'independent',  // Visual effect, doesn't need specific entities
@@ -181,13 +193,13 @@ class AnimationManager {
         }
       },
       // Railgun animations
-      RAILGUN_TURRET: {
+      [RAILGUN_TURRET]: {
         duration: 2700,  // Full turret cycle (deploy → build → charge → shoot → retract)
         timing: 'pre-state',  // Needs existing ship section
         type: 'RAILGUN_TURRET',
         config: {}
       },
-      RAILGUN_BEAM: {
+      [RAILGUN_BEAM]: {
         duration: 1000,  // Beam fade duration
         type: 'RAILGUN_BEAM',
         timing: 'pre-state',  // Needs existing elements for beam endpoints
@@ -195,19 +207,19 @@ class AnimationManager {
       },
 
       // Tech Slot animations
-      TECH_DEPLOY: {
+      [TECH_DEPLOY]: {
         duration: 600,
         type: 'TELEPORT_EFFECT',  // Reuse teleport glow for Tech deploy
         timing: 'post-state',  // Needs new Tech to exist in DOM
         config: { revealAt: 0.7 }
       },
-      TECH_DESTROY: {
+      [TECH_DESTROY]: {
         duration: 800,
         type: 'EXPLOSION_EFFECT',  // Small flash/pop at slot position
         timing: 'pre-state',  // Needs existing Tech before removal
         config: { size: 'small' }
       },
-      TECH_TRIGGER_FIRE: {
+      [TECH_TRIGGER_FIRE]: {
         duration: 600,
         type: 'FLASH_EFFECT',  // Brief bright flash when trigger activates
         timing: 'pre-state',  // Needs existing Tech to flash
@@ -215,13 +227,13 @@ class AnimationManager {
       },
 
       // Stat buff/debuff animations
-      STAT_BUFF: {
+      [STAT_BUFF]: {
         duration: 1200,
         type: 'STAT_CHANGE_EFFECT',
         timing: 'pre-state',
         config: { isBuff: true }
       },
-      STAT_DEBUFF: {
+      [STAT_DEBUFF]: {
         duration: 1200,
         type: 'STAT_CHANGE_EFFECT',
         timing: 'pre-state',
@@ -247,7 +259,7 @@ class AnimationManager {
       source: executor.getAnimationSource?.() || 'unknown'
     });
 
-    const triggerAnims = (animations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+    const triggerAnims = (animations || []).filter(a => a.animationName === TRIGGER_FIRED);
     if (triggerAnims.length > 0) {
       const source = executor.getAnimationSource?.() || 'unknown';
       const role = source;
@@ -342,8 +354,8 @@ class AnimationManager {
     }
 
     // 4. Separate TELEPORT_IN from other post-state animations (needs special handling)
-    const teleportAnimations = postState.filter(a => a.animationName === 'TELEPORT_IN');
-    const otherPostState = postState.filter(a => a.animationName !== 'TELEPORT_IN');
+    const teleportAnimations = postState.filter(a => a.animationName === TELEPORT_IN);
+    const otherPostState = postState.filter(a => a.animationName !== TELEPORT_IN);
 
     debugLog('ANIMATIONS', '🔍 [ORCHESTRATE] Post-state animation split:', {
       teleportCount: teleportAnimations.length,
@@ -419,13 +431,13 @@ class AnimationManager {
     });
 
     // Emit sound cue at animation start (before executeAnimations)
-    this.gameStateManager.emit('ANIMATION_STARTED', { animationType: 'TELEPORT_IN' });
+    this.gameStateManager.emit('ANIMATION_STARTED', { animationType: TELEPORT_IN });
 
     // Start animations (non-blocking)
     const animationPromise = this.executeAnimations(animations, executor.getAnimationSource());
 
     // Schedule mid-animation reveal at configured percentage (default 70%)
-    const config = this.animations.TELEPORT_IN;
+    const config = this.animations[TELEPORT_IN];
     const revealDelay = config.duration * (config.config?.revealAt || 0.7);
 
     debugLog('ANIMATIONS', `✨ [TELEPORT] Scheduling drone reveal at ${revealDelay}ms (${(config.config?.revealAt || 0.7) * 100}% of ${config.duration}ms)`);
@@ -515,15 +527,15 @@ class AnimationManager {
 
     try {
       // Group animations by type for proper sequencing
-      const damageEffects = ['SHIELD_DAMAGE', 'HULL_DAMAGE', 'DRONE_DESTROYED', 'SECTION_DESTROYED', 'SECTION_DAMAGED', 'HEAL_EFFECT'];
-      const buffEffects = ['STAT_BUFF', 'STAT_DEBUFF'];
+      const damageEffects = [SHIELD_DAMAGE, HULL_DAMAGE, DRONE_DESTROYED, SECTION_DESTROYED, SECTION_DAMAGED, HEAL_EFFECT];
+      const buffEffects = [STAT_BUFF, STAT_DEBUFF];
 
       let i = 0;
       while (i < effects.length) {
         const effect = effects[i];
 
         // Handle STATE_SNAPSHOT: apply intermediate state and continue
-        if (effect.animationName === 'STATE_SNAPSHOT') {
+        if (effect.animationName === STATE_SNAPSHOT) {
           if (executor?.applyIntermediateState) {
             debugLog('ANIM_TRACE', '[3b/6] STATE_SNAPSHOT applied mid-animation', {
               hasApplyMethod: true,
@@ -537,7 +549,7 @@ class AnimationManager {
         }
 
         // Handle TRIGGER_CHAIN_PAUSE: wait for specified duration between trigger chain steps
-        if (effect.animationName === 'TRIGGER_CHAIN_PAUSE') {
+        if (effect.animationName === TRIGGER_CHAIN_PAUSE) {
           debugLog('ANIM_TRACE', '[3c/6] TRIGGER_CHAIN_PAUSE waiting', {
             durationMs: effect.payload?.duration || effect.duration,
           });
@@ -547,7 +559,7 @@ class AnimationManager {
         }
 
         // Check if this is an animation sequence with precise timing
-        if (effect.animationName === 'ANIMATION_SEQUENCE') {
+        if (effect.animationName === ANIMATION_SEQUENCE) {
           // DEBUG: Log what we received
           debugLog('ANIMATIONS', '⏱️ [SEQUENCE DEBUG] Received effect object:', {
             hasPayload: !!effect.payload,

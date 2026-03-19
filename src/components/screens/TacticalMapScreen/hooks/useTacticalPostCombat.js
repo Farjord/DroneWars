@@ -49,7 +49,7 @@ export function useTacticalPostCombat({
       debugLog('COMBAT_FLOW', 'Mount effect - processing pendingPOICombat', {
         packType,
         poiName,
-        waypointsToRestoreCount: waypointsToRestore?.length || 0,
+        waypointsToRestoreCount: restoredWaypoints?.length || 0,
         fromSalvage
       });
 

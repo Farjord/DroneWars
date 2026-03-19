@@ -6,6 +6,7 @@
 // Auto-dismisses after 1 second with phase-out animation
 
 import React, { useState, useEffect } from 'react';
+import './revealOverlay.css';
 import ActionCard from '../ui/ActionCard.jsx';
 
 /**

@@ -4,6 +4,7 @@
  */
 
 import { debugLog } from './debugLogger.js';
+import { TELEPORT_IN } from '../config/animationTypes.js';
 
 /**
  * Add isTeleporting flags to drones that are being teleported.
@@ -14,7 +15,7 @@ import { debugLog } from './debugLogger.js';
  * @returns {{ player1: Object, player2: Object }} New player states with isTeleporting flags
  */
 export function addTeleportingFlags(playerStates, animations) {
-  const teleportAnimations = animations.filter(anim => anim.animationName === 'TELEPORT_IN');
+  const teleportAnimations = animations.filter(anim => anim.animationName === TELEPORT_IN);
 
   if (teleportAnimations.length === 0) {
     return playerStates;

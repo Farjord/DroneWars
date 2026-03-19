@@ -5,6 +5,8 @@
 // - Used for ship section shake/damage visual feedback
 // - Only applies to ship sections that survive damage
 
+import { SECTION_DAMAGED } from '../../../config/animationTypes.js';
+
 /**
  * Create a section damaged animation event (shake effect)
  *
@@ -18,7 +20,7 @@ export const createSectionDamagedAnimation = (
   defendingPlayerId,
   sourceCardInstanceId
 ) => ({
-  type: 'SECTION_DAMAGED',
+  type: SECTION_DAMAGED,
   targetId: finalTarget.id,
   targetPlayer: defendingPlayerId,
   targetType: 'section',

@@ -7,12 +7,11 @@ import { registerCardAnimations } from './animationSetup/useCardAnimations.js';
 import { registerNotificationAnimations } from './animationSetup/useNotificationAnimations.js';
 import { registerMovementAnimations } from './animationSetup/useMovementAnimations.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setTriggerFiredNotifications, setMovementBlockedNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, setStatusConsumptions, setStatChangeEffects, gameServerRef) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, animationDispatch, setAnimationBlocking, gameServerRef) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
     const animationManager = new AnimationManager(gameStateManager);
-    const droneOriginalPositions = new Map();
 
     /**
      * Maps logical game position (player, lane, entity) to DOM element
@@ -20,7 +19,8 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
      * @param {string} playerId - 'player1' or 'player2'
      * @param {string} laneOrSection - 'lane1', 'lane2', 'lane3', or section name
      * @param {string} entityId - Drone ID or section name
-     * @param {string} entityType - 'drone' or 'section'
+     * @param {string} entityType - 'drone', 'section', 'tech', or 'entity'
+     *   Use 'entity' when the caller has an ID but doesn't know whether it's a drone or tech slot.
      * @returns {HTMLElement|null} - DOM element or null if not found
      */
     const getElementFromLogicalPosition = (playerId, laneOrSection, entityId, entityType) => {
@@ -41,6 +41,13 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         return document.querySelector(`[data-drone-id="${entityId}"]`) || null;
       }
 
+      // Generic entity lookup: try droneRefs first, then data-drone-id for tech slots
+      if (entityType === 'entity') {
+        return droneRefs.current[entityId]
+          || document.querySelector(`[data-drone-id="${entityId}"]`)
+          || null;
+      }
+
       return null;
     };
 
@@ -57,43 +64,28 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     // Register all animation handler groups
     registerProjectileAnimations(animationManager, {
       ...sharedDeps,
-      setLaserEffects,
-      setOverflowProjectiles,
-      setSplashEffects,
-      setBarrageImpacts,
-      setRailgunTurrets,
-      setRailgunBeams
+      animationDispatch
     });
 
     registerStatusAnimations(animationManager, {
       ...sharedDeps,
       triggerExplosion,
-      setFlashEffects,
-      setHealEffects,
-      setStatChangeEffects
+      animationDispatch
     });
 
     registerCardAnimations(animationManager, {
       ...sharedDeps,
-      setCardVisuals,
-      setCardReveals,
-      setStatusConsumptions
+      animationDispatch
     });
 
     registerNotificationAnimations(animationManager, {
       ...sharedDeps,
-      setShipAbilityReveals,
-      setPhaseAnnouncements,
-      setTeleportEffects,
-      setPassNotifications,
-      setGoAgainNotifications,
-      setTriggerFiredNotifications,
-      setMovementBlockedNotifications
+      animationDispatch
     });
 
     registerMovementAnimations(animationManager, {
       ...sharedDeps,
-      setFlyingDrones
+      animationDispatch
     });
 
     const unsubscribe = gameStateManager.subscribe((event) => {
@@ -119,6 +111,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       if (gameServerRef?.current) {
         gameServerRef.current.animationManager = null;
       }
+      gameStateManager.actionProcessor.setAnimationManager(null);
     };
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams, gameServerRef]);
+  }, [gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, animationDispatch, setAnimationBlocking, gameServerRef]);
 }

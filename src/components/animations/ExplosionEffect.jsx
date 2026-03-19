@@ -4,6 +4,7 @@
 // Visual component for rendering explosion animations
 
 import React, { useState, useEffect } from 'react';
+import './ExplosionEffect.css';
 
 /**
  * EXPLOSION EFFECT COMPONENT

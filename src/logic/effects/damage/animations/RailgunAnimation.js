@@ -4,6 +4,8 @@
 // Builds Railgun Strike special animation sequence
 // Turret deployment → charge → beam → overflow damage
 
+import { RAILGUN_TURRET, RAILGUN_BEAM, SHIELD_DAMAGE, DRONE_DESTROYED, HULL_DAMAGE } from '../../../../config/animationTypes.js';
+
 /**
  * Build Railgun Strike animation sequence
  *
@@ -45,7 +47,7 @@ export function buildRailgunAnimation(context) {
 
   // Animation 1: Railgun turret (deploy → charge → shoot → retract)
   animations.push({
-    type: 'RAILGUN_TURRET',
+    type: RAILGUN_TURRET,
     targetId: target.id,
     sourcePlayer,
     sourceLane,
@@ -57,7 +59,7 @@ export function buildRailgunAnimation(context) {
 
   // Animation 2: Railgun beam (appears at turret shoot time, hits drone)
   animations.push({
-    type: 'RAILGUN_BEAM',
+    type: RAILGUN_BEAM,
     targetId: target.id,
     sourcePlayer,
     sourceLane,
@@ -72,7 +74,7 @@ export function buildRailgunAnimation(context) {
   // Animation 3: Drone shield damage (if any)
   if (shieldDamage > 0) {
     animations.push({
-      type: 'SHIELD_DAMAGE',
+      type: SHIELD_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -87,7 +89,7 @@ export function buildRailgunAnimation(context) {
   // Animation 4: Drone destruction or hull damage
   if (droneDestroyed) {
     animations.push({
-      type: 'DRONE_DESTROYED',
+      type: DRONE_DESTROYED,
       targetId: target.id,
       targetPlayer,
       targetLane,
@@ -98,7 +100,7 @@ export function buildRailgunAnimation(context) {
     });
   } else if (hullDamage > 0) {
     animations.push({
-      type: 'HULL_DAMAGE',
+      type: HULL_DAMAGE,
       targetId: target.id,
       targetPlayer,
       targetLane,

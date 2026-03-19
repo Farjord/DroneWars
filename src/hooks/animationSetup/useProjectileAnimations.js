@@ -1,5 +1,6 @@
 import { debugLog } from '../../utils/debugLogger.js';
 import { getViewportCenter } from '../../utils/gameUtils.js';
+import { parseLaneIndex, getTopCenterPosition } from '../../utils/animationPositioning.js';
 
 // Animation durations (ms)
 const LASER_DURATION = 500;
@@ -30,12 +31,7 @@ export function registerProjectileAnimations(animationManager, {
   getElementFromLogicalPosition,
   getElementCenter,
   gameAreaRef,
-  setLaserEffects,
-  setOverflowProjectiles,
-  setSplashEffects,
-  setBarrageImpacts,
-  setRailgunTurrets,
-  setRailgunBeams
+  animationDispatch
 }) {
   animationManager.registerVisualHandler('DRONE_FLY', (payload) => {
     const { droneId, sourcePlayer, sourceLane, targetId, targetPlayer, targetLane, targetType, config, attackValue, onComplete } = payload;
@@ -82,17 +78,17 @@ export function registerProjectileAnimations(animationManager, {
 
     const laserId = `laser-${droneId}-${crypto.randomUUID()}`;
 
-    setLaserEffects(prev => [...prev, {
+    animationDispatch.add('laserEffects', {
       id: laserId,
       startPos,
       endPos,
       attackValue: attackValue || 1,
       duration: LASER_DURATION,
       onComplete: () => {
-        setLaserEffects(prev => prev.filter(l => l.id !== laserId));
+        animationDispatch.remove('laserEffects', laserId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('OVERFLOW_PROJECTILE', (payload) => {
@@ -145,8 +141,7 @@ export function registerProjectileAnimations(animationManager, {
         ? gameState.placedSections
         : gameState.opponentPlacedSections;
 
-      // Convert lane name to array index (lane1 = 0, lane2 = 1, lane3 = 2)
-      const laneIndex = parseInt(targetLane.replace('lane', '')) - 1;
+      const laneIndex = parseLaneIndex(targetLane);
       const sectionKey = placedSections?.[laneIndex];
 
       if (sectionKey) {
@@ -169,7 +164,7 @@ export function registerProjectileAnimations(animationManager, {
       expectedImpactTime: calculatedPhaseDuration
     });
 
-    setOverflowProjectiles(prev => [...prev, {
+    animationDispatch.add('overflowProjectiles', {
       id: projectileId,
       startPos: sourcePos,
       dronePos: dronePos,
@@ -178,10 +173,10 @@ export function registerProjectileAnimations(animationManager, {
       isPiercing: isPiercing,
       duration: OVERFLOW_PROJECTILE_DURATION,
       onComplete: () => {
-        setOverflowProjectiles(prev => prev.filter(p => p.id !== projectileId));
+        animationDispatch.remove('overflowProjectiles', projectileId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('SPLASH_EFFECT', (payload) => {
@@ -204,15 +199,15 @@ export function registerProjectileAnimations(animationManager, {
     const centerPos = getElementCenter(droneEl, gameAreaRef.current);
     const splashId = `splash-${primaryTargetId}-${crypto.randomUUID()}`;
 
-    setSplashEffects(prev => [...prev, {
+    animationDispatch.add('splashEffects', {
       id: splashId,
       centerPos: centerPos,
       duration: SPLASH_DURATION,
       onComplete: () => {
-        setSplashEffects(prev => prev.filter(s => s.id !== splashId));
+        animationDispatch.remove('splashEffects', splashId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('BARRAGE_IMPACT', (payload) => {
@@ -251,26 +246,28 @@ export function registerProjectileAnimations(animationManager, {
       const randomX = Math.random() * (droneRect.width - impactSize);
       const randomY = Math.random() * (droneRect.height - impactSize);
 
+      const impactId = `barrage-${targetId}-${crypto.randomUUID()}`;
       impacts.push({
-        id: `barrage-${targetId}-${crypto.randomUUID()}`,
+        id: impactId,
         position: {
           left: droneRect.left - gameAreaRect.left + randomX,
           top: droneRect.top - gameAreaRect.top + randomY
         },
         size: impactSize,
-        delay: i * impactDelay
+        delay: i * impactDelay,
+        onComplete: () => {
+          animationDispatch.remove('barrageImpacts', impactId);
+        }
       });
     }
 
     // Add impacts to state
-    setBarrageImpacts(prev => [...prev, ...impacts]);
+    animationDispatch.addBatch('barrageImpacts', impacts);
 
     // Complete after all impacts finish
     const totalDuration = impactCount * impactDelay + BARRAGE_FLASH_DURATION;
     setTimeout(() => {
-      setBarrageImpacts(prev => prev.filter(impact =>
-        !impacts.find(i => i.id === impact.id)
-      ));
+      animationDispatch.remove('barrageImpacts', impacts.map(i => i.id));
       onComplete?.();
     }, totalDuration);
   });
@@ -292,7 +289,7 @@ export function registerProjectileAnimations(animationManager, {
       ? gameState.placedSections
       : gameState.opponentPlacedSections;
 
-    const laneIndex = parseInt(sourceLane.replace('lane', '')) - 1;
+    const laneIndex = parseLaneIndex(sourceLane);
     const sectionKey = placedSections?.[laneIndex];
 
     if (!sectionKey) {
@@ -306,11 +303,7 @@ export function registerProjectileAnimations(animationManager, {
       return;
     }
 
-    const sectionRect = sectionEl.getBoundingClientRect();
-    const turretPos = {
-      x: sectionRect.left + sectionRect.width / 2,
-      y: sectionRect.top
-    };
+    const turretPos = getTopCenterPosition(sectionEl);
 
     // Calculate rotation angle towards target drone
     let rotation = -90; // Default: pointing up
@@ -333,15 +326,15 @@ export function registerProjectileAnimations(animationManager, {
 
     const turretId = `railgun-turret-${crypto.randomUUID()}`;
 
-    setRailgunTurrets(prev => [...prev, {
+    animationDispatch.add('railgunTurrets', {
       id: turretId,
       position: turretPos,
       rotation: rotation,
       onComplete: () => {
-        setRailgunTurrets(prev => prev.filter(t => t.id !== turretId));
+        animationDispatch.remove('railgunTurrets', turretId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('RAILGUN_BEAM', (payload) => {
@@ -363,7 +356,7 @@ export function registerProjectileAnimations(animationManager, {
       ? gameState.placedSections
       : gameState.opponentPlacedSections;
 
-    const sourceLaneIndex = parseInt(sourceLane.replace('lane', '')) - 1;
+    const sourceLaneIndex = parseLaneIndex(sourceLane);
     const sourceSectionKey = sourcePlacedSections?.[sourceLaneIndex];
 
     let turretPos = null;
@@ -426,16 +419,16 @@ export function registerProjectileAnimations(animationManager, {
 
     const beamId = `railgun-beam-${crypto.randomUUID()}`;
 
-    setRailgunBeams(prev => [...prev, {
+    animationDispatch.add('railgunBeams', {
       id: beamId,
       startPos: gunTipPos,
       endPos: endPos,
       attackValue: attackValue || DEFAULT_RAILGUN_ATTACK,
       duration: RAILGUN_BEAM_DURATION,
       onComplete: () => {
-        setRailgunBeams(prev => prev.filter(b => b.id !== beamId));
+        animationDispatch.remove('railgunBeams', beamId);
         onComplete?.();
       }
-    }]);
+    });
   });
 }

@@ -6,6 +6,7 @@
 
 import { joinRoom } from 'trystero/firebase';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { TRIGGER_FIRED } from '../config/animationTypes.js';
 
 class P2PManager {
   constructor() {
@@ -95,7 +96,7 @@ class P2PManager {
         isFullSync: data.isFullSync || false
       });
 
-      const triggerAnims = (data.actionAnimations || []).filter(a => a.animationName === 'TRIGGER_FIRED');
+      const triggerAnims = (data.actionAnimations || []).filter(a => a.animationName === TRIGGER_FIRED);
       if (triggerAnims.length > 0) {
         debugLog('TRIGGER_SYNC_TRACE', '[3/7] CLIENT: Trigger received from network', {
           utc: new Date().toISOString(),
@@ -389,7 +390,7 @@ class P2PManager {
         animCount: actionAnimations.length + systemAnimations.length
       });
 
-      const triggerAnims = actionAnimations.filter(a => a.animationName === 'TRIGGER_FIRED');
+      const triggerAnims = actionAnimations.filter(a => a.animationName === TRIGGER_FIRED);
       if (triggerAnims.length > 0) {
         debugLog('TRIGGER_SYNC_TRACE', '[2/7] SERVER: Trigger sent over network', {
           utc: new Date().toISOString(),

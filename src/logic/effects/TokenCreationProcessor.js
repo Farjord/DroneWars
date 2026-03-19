@@ -12,6 +12,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { countDroneTypeInLane, MAX_DRONES_PER_LANE } from '../utils/gameEngineUtils.js';
 import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
+import { TELEPORT_IN } from '../../config/animationTypes.js';
 
 /**
  * Processor for CREATE_TOKENS effect type
@@ -146,7 +147,7 @@ class TokenCreationProcessor extends BaseEffectProcessor {
 
       // Add teleport-in animation for the token appearing (on the target player's board)
       animationEvents.push({
-        type: 'TELEPORT_IN',  // Token spawn animation
+        type: TELEPORT_IN,  // Token spawn animation
         targetId: tokenDrone.id,
         targetPlayer: targetPlayerId,
         targetLane: laneId,

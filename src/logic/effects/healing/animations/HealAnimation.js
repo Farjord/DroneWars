@@ -4,6 +4,8 @@
 // Builds heal effect animations for both hull and shield healing
 // Used by HullHealProcessor and ShieldHealProcessor
 
+import { HEAL_EFFECT } from '../../../../config/animationTypes.js';
+
 /**
  * Build heal animation event
  *
@@ -33,7 +35,7 @@ export function buildHealAnimation(context) {
   // Always emit heal animation based on effect value (not actual heal amount)
   // This provides visual feedback even if target is at full health
   return [{
-    type: 'HEAL_EFFECT',
+    type: HEAL_EFFECT,
     targetId: targetType === 'drone' ? target.id : target.name,
     targetPlayer,
     targetLane,

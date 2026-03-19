@@ -5,6 +5,8 @@
 //
 // Used for basic destroy effects without custom visuals
 
+import { DRONE_DESTROYED } from '../../../../config/animationTypes.js';
+
 /**
  * Build default destroy animation events
  *
@@ -24,7 +26,7 @@ export function buildDefaultDestroyAnimation(config) {
   // Generate DRONE_DESTROYED event for each destroyed drone
   destroyedDrones.forEach(drone => {
     animations.push({
-      type: 'DRONE_DESTROYED',
+      type: DRONE_DESTROYED,
       targetId: drone.id,
       targetPlayer: targetPlayer,
       targetLane: targetLane,

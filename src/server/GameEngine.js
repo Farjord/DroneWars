@@ -7,6 +7,7 @@ import StateRedactor from './StateRedactor.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { flowCheckpoint, resetFlowSeq } from '../utils/flowVerification.js';
 import { personalizeAnnouncements } from '../utils/announcementUtils.js';
+import { STATE_SNAPSHOT } from '../config/animationTypes.js';
 
 class GameEngine {
   constructor(gameStateManager, actionProcessor, gameFlowManager) {
@@ -74,6 +75,11 @@ class GameEngine {
 
       await this._emitToClients(state, animations);
 
+      // Consume one-shot UI notifications — already delivered to clients above
+      if (state.lastInterception) {
+        this.gameStateManager.setState({ lastInterception: null });
+      }
+
       // Process deferred continuations in separate response cycles
       // (e.g., startNewRound after roundEnd trigger animations)
       const MAX_DEFERRED_ITERATIONS = 10;
@@ -113,7 +119,7 @@ class GameEngine {
       // so opponent hand/deck data isn't exposed.
       // snapshotPlayerStates is partial ({ player1, player2 } only) — intentional.
       const redactAnim = (anim) => {
-        if (anim.animationName === 'STATE_SNAPSHOT' && anim.payload?.snapshotPlayerStates) {
+        if (anim.animationName === STATE_SNAPSHOT && anim.payload?.snapshotPlayerStates) {
           return {
             ...anim,
             payload: {

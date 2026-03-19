@@ -5,6 +5,7 @@ import { gameEngine } from '../gameLogic.js';
 import EffectChainProcessor from '../cards/EffectChainProcessor.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { CARD_REVEAL, STATE_SNAPSHOT } from '../../config/animationTypes.js';
 
 // --- Chain Engine Card Processing ---
 // All cards route through EffectChainProcessor.processEffectChain.
@@ -125,7 +126,7 @@ async function _processChainCardPlay(card, target, playerId, playerStates, place
   debugLog('CARD_PLAY_TRACE', '[5b] Animation path: flat', {
     card: card.name,
     animCount: result.animationEvents?.length || 0,
-    hasStateSnapshot: result.animationEvents?.some(e => e.type === 'STATE_SNAPSHOT') || false,
+    hasStateSnapshot: result.animationEvents?.some(e => e.type === STATE_SNAPSHOT) || false,
   });
   const animations = ctx.mapAnimationEvents(result.animationEvents);
   ctx.captureAnimations(animations);
@@ -301,9 +302,9 @@ export async function processSearchAndDrawCompletion(payload, ctx) {
   });
 
   const animMgr = ctx.getAnimationManager();
-  const animDef = animMgr?.animations['CARD_REVEAL'];
+  const animDef = animMgr?.animations[CARD_REVEAL];
   const cardRevealAnimation = [{
-    animationName: 'CARD_REVEAL',
+    animationName: CARD_REVEAL,
     timing: animDef?.timing || 'independent',
     payload: {
       cardId: card.id,

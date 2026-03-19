@@ -5,6 +5,7 @@
 // Shows energy ball traveling from source → drone → ship section (if overflow)
 
 import React, { useState, useEffect } from 'react';
+import '../../styles/animations.css';
 
 /**
  * OVERFLOW PROJECTILE COMPONENT

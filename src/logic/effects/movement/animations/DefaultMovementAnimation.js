@@ -4,6 +4,8 @@
 // Creates animation events for movement effects
 // Extracted from gameLogic.js Phase 7B
 
+import { DRONE_MOVEMENT } from '../../../../config/animationTypes.js';
+
 /**
  * Build default movement animation
  * Optional visual enhancement showing drone sliding between lanes
@@ -19,7 +21,7 @@ export function buildDefaultMovementAnimation(context) {
   const { drone, fromLane, toLane, actingPlayerId } = context;
 
   return [{
-    type: 'DRONE_MOVEMENT',
+    type: DRONE_MOVEMENT,
     droneId: drone.id,
     sourcePlayer: actingPlayerId,
     sourceLane: fromLane,

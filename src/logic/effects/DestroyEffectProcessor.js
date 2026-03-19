@@ -14,6 +14,7 @@ import { calculateEffectiveStats } from '../statsCalculator.js';
 import { buildDefaultDestroyAnimation } from './destroy/animations/DefaultDestroyAnimation.js';
 import { buildNukeAnimation } from './destroy/animations/NukeAnimation.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { DRONE_DESTROYED } from '../../config/animationTypes.js';
 import { applyTargetSelection, hashString } from '../targeting/TargetSelector.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 
@@ -211,7 +212,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
       debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} marked for destruction`);
 
       animationEvents.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: droneInLane.id,
         targetPlayer: targetPlayer,
         targetLane: laneId,
@@ -257,7 +258,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
       destroyedDrones.push(drone);
 
       animationEvents.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: drone.id,
         targetPlayer,
         targetLane: laneId,
@@ -291,7 +292,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
       // Add destruction animation event
       animationEvents.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: drone.id,
         targetPlayer: opponentId,
         targetLane: laneId,
@@ -311,7 +312,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
       // Add destruction animation event
       animationEvents.push({
-        type: 'DRONE_DESTROYED',
+        type: DRONE_DESTROYED,
         targetId: drone.id,
         targetPlayer: actingPlayerId,
         targetLane: laneId,
@@ -349,7 +350,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         debugLog('EFFECT_PROCESSING', `[DESTROY] Single drone destroy: ${droneToDestroy.name} in ${laneId}`);
 
         animationEvents.push({
-          type: 'DRONE_DESTROYED',
+          type: DRONE_DESTROYED,
           targetId: droneToDestroy.id,
           targetPlayer: opponentId,
           targetLane: laneId,
@@ -397,7 +398,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
           // Add destruction animation event
           animationEvents.push({
-            type: 'DRONE_DESTROYED',
+            type: DRONE_DESTROYED,
             targetId: drone.id,
             targetPlayer: targetPlayerId,
             targetLane: laneId,

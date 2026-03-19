@@ -246,6 +246,8 @@ class SinglePlayerCombatInitializer {
           debugLog('SP_COMBAT', 'Transitioning to phase:', nextPhase);
           await gameFlowManager.transitionToPhase(nextPhase);
           debugLog('SP_COMBAT', 'Phase transition complete');
+        } else {
+          debugLog('SP_COMBAT', '⚠️ WARNING: processRoundInitialization returned null nextPhase — game may be stuck at roundInitialization');
         }
       } else {
         debugLog('SP_COMBAT', '[SP Combat] GameFlowManager not available - round initialization skipped');

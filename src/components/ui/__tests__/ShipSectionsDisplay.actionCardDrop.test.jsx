@@ -35,7 +35,11 @@ vi.mock('../../../utils/debugLogger.js', () => ({
 }));
 
 vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
-  resolveShipSectionStats: (stats) => stats
+  resolveShipSectionStats: (stats) => stats,
+  SHIP_FOLDER_NAMES: [],
+  SECTION_FILE_NAMES: [],
+  PERSPECTIVE_FOLDERS: [],
+  FALLBACK_PATHS: {}
 }));
 
 // Helper to get player section wrappers (bottom of column)

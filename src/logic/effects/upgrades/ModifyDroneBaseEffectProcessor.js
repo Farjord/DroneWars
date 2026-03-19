@@ -10,6 +10,7 @@
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { STAT_BUFF } from '../../../config/animationTypes.js';
 
 /**
  * Processor for MODIFY_DRONE_BASE effect type
@@ -110,7 +111,7 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
         actingPlayerState.dronesOnBoard[lane].forEach(drone => {
           if (drone.name === droneName) {
             animationEvents.push({
-              type: 'STAT_BUFF',
+              type: STAT_BUFF,
               targetId: drone.id,
               targetPlayer: actingPlayerId,
               targetLane: lane,

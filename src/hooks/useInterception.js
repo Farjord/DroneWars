@@ -20,6 +20,8 @@ import { calculatePotentialInterceptors } from '../logic/combat/InterceptionProc
  * @param {Function} deps.getPlacedSectionsForEngine - Returns placed sections for engine
  * @param {Function} deps.resolveAttack - Resolves an attack with given details
  */
+const BADGE_DURATION_MS = 2000;
+
 const useInterception = ({
   gameState,
   gameStateManager,
@@ -133,6 +135,15 @@ const useInterception = ({
       });
     }
   }, [gameState.lastInterception]);
+
+  // Clear interceptedBadge after display duration to prevent ghost reappearance on remount
+  useEffect(() => {
+    if (!interceptedBadge) return;
+    const timer = setTimeout(() => {
+      setInterceptedBadge(null);
+    }, BADGE_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [interceptedBadge]);
 
   // --- Guardian Highlighting ---
   // Calculate potential guardian blockers when drone is selected

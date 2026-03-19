@@ -10,6 +10,8 @@
 // 1. CARD_VISUAL_EFFECT event for the large nuke blast visual
 // 2. DRONE_DESTROYED events for individual explosion feedback
 
+import { DRONE_DESTROYED } from '../../../../config/animationTypes.js';
+
 /**
  * Build Nuke animation events
  *
@@ -45,7 +47,7 @@ export function buildNukeAnimation(config) {
   // These provide feedback for each destroyed drone
   destroyedDrones.forEach(drone => {
     animations.push({
-      type: 'DRONE_DESTROYED',
+      type: DRONE_DESTROYED,
       targetId: drone.id,
       targetPlayer: targetPlayer,
       targetLane: targetLane,

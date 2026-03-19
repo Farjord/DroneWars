@@ -522,6 +522,11 @@ class CombatOutcomeProcessor {
         }
       }
 
+      debugLog('TRANSITION_MANAGER', 'Pre-transition state check (regular victory)', {
+        hasRunState: !!tacticalMapStateManager.getState(),
+        hasMapData: !!tacticalMapStateManager.getState()?.mapData,
+        waypointCount: tacticalMapStateManager.getState()?.waypoints?.length || 0
+      });
       debugLog('MODE_TRANSITION', '=== MODE: inGame -> tacticalMap (combat victory) ===', {
         trigger: 'auto_trigger',
         source: 'CombatOutcomeProcessor.processVictory',

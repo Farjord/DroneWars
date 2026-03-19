@@ -1,5 +1,6 @@
 import { debugLog, timingLog } from '../../utils/debugLogger.js';
 import { getViewportCenter } from '../../utils/gameUtils.js';
+import { isLocalPlayer, getTopCenterPosition } from '../../utils/animationPositioning.js';
 
 // Animation durations (ms)
 const TELEPORT_DURATION = 600;
@@ -14,13 +15,8 @@ const TELEPORT_DURATION = 600;
  */
 export function registerNotificationAnimations(animationManager, {
   gameStateManager,
-  droneRefs,
-  setShipAbilityReveals,
-  setTeleportEffects,
-  setPassNotifications,
-  setGoAgainNotifications,
-  setTriggerFiredNotifications,
-  setMovementBlockedNotifications
+  getElementFromLogicalPosition,
+  animationDispatch
 }) {
   animationManager.registerVisualHandler('PASS_NOTIFICATION_EFFECT', (payload) => {
     const { passingPlayerId, onComplete } = payload;
@@ -29,97 +25,76 @@ export function registerNotificationAnimations(animationManager, {
       passingPlayerId
     });
 
-    // Determine if this is the local player or opponent
-    const localPlayerId = gameStateManager.getLocalPlayerId();
-    const isLocalPlayer = passingPlayerId === localPlayerId;
+    const isLocal = isLocalPlayer(gameStateManager, passingPlayerId);
 
     const notificationId = `passnotif-${crypto.randomUUID()}`;
 
-    setPassNotifications(prev => [...prev, {
+    animationDispatch.add('passNotifications', {
       id: notificationId,
-      label: isLocalPlayer ? 'You Passed' : 'Opponent Passed',
+      label: isLocal ? 'You Passed' : 'Opponent Passed',
       onComplete: () => {
-        setPassNotifications(prev => prev.filter(n => n.id !== notificationId));
+        animationDispatch.remove('passNotifications', notificationId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('GO_AGAIN_NOTIFICATION_EFFECT', (payload) => {
     const { actingPlayerId, onComplete } = payload;
 
-    const localPlayerId = gameStateManager.getLocalPlayerId();
-    const isLocalPlayer = actingPlayerId === localPlayerId;
+    const isLocal = isLocalPlayer(gameStateManager, actingPlayerId);
 
     const notificationId = `goagain-${crypto.randomUUID()}`;
 
-    setGoAgainNotifications(prev => [...prev, {
+    animationDispatch.add('goAgainNotifications', {
       id: notificationId,
-      label: isLocalPlayer ? 'Go Again' : 'Opponent Goes Again',
-      isLocalPlayer,
+      label: isLocal ? 'Go Again' : 'Opponent Goes Again',
+      isLocalPlayer: isLocal,
       onComplete: () => {
-        setGoAgainNotifications(prev => prev.filter(n => n.id !== notificationId));
+        animationDispatch.remove('goAgainNotifications', notificationId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('TRIGGER_FIRED_EFFECT', (payload) => {
     const { abilityName, targetId, onComplete } = payload;
 
-    // Find drone element for positioning centered on the triggering drone
-    // Fall back to data-drone-id query for Tech slots (not in droneRefs)
-    const droneEl = droneRefs.current[targetId]
-      || document.querySelector(`[data-drone-id="${targetId}"]`);
-    let position = null;
-    if (droneEl) {
-      const rect = droneEl.getBoundingClientRect();
-      position = {
-        left: rect.left + rect.width / 2,
-        top: rect.top + rect.height / 2
-      };
-    }
+    // Find drone/tech element for positioning centered on the triggering entity
+    const droneEl = getElementFromLogicalPosition(null, null, targetId, 'entity');
+    const position = getViewportCenter(droneEl);
 
     const notificationId = `triggerfired-${crypto.randomUUID()}`;
 
-    setTriggerFiredNotifications(prev => [...prev, {
+    animationDispatch.add('triggerFiredNotifications', {
       id: notificationId,
       abilityName: abilityName || 'Triggered',
       position,
       onComplete: () => {
-        setTriggerFiredNotifications(prev => prev.filter(n => n.id !== notificationId));
+        animationDispatch.remove('triggerFiredNotifications', notificationId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('MOVEMENT_BLOCKED_EFFECT', (payload) => {
     const { droneName, targetId, onComplete } = payload;
 
-    // Fall back to data-drone-id query for Tech slots (not in droneRefs)
-    const droneEl = droneRefs.current[targetId]
-      || document.querySelector(`[data-drone-id="${targetId}"]`);
-    let position = null;
-    if (droneEl) {
-      const rect = droneEl.getBoundingClientRect();
-      position = {
-        left: rect.left + rect.width / 2,
-        top: rect.top
-      };
-    }
+    const droneEl = getElementFromLogicalPosition(null, null, targetId, 'entity');
+    const position = getTopCenterPosition(droneEl);
 
     const notificationId = `moveblocked-${crypto.randomUUID()}`;
 
-    setMovementBlockedNotifications(prev => [...prev, {
+    animationDispatch.add('movementBlockedNotifications', {
       id: notificationId,
       droneName: droneName || 'Unknown',
       message: 'Movement Blocked',
       position,
       onComplete: () => {
-        setMovementBlockedNotifications(prev => prev.filter(n => n.id !== notificationId));
+        animationDispatch.remove('movementBlockedNotifications', notificationId);
         onComplete?.();
       }
-    }]);
+    });
   });
 
   animationManager.registerVisualHandler('SHIP_ABILITY_REVEAL_EFFECT', (payload) => {
@@ -130,23 +105,19 @@ export function registerNotificationAnimations(animationManager, {
       actingPlayerId
     });
 
-    // Determine if this is the local player or opponent
-    const localPlayerId = gameStateManager.getLocalPlayerId();
-    const isLocalPlayer = actingPlayerId === localPlayerId;
-
     // Only show to opponent
-    if (!isLocalPlayer) {
+    if (!isLocalPlayer(gameStateManager, actingPlayerId)) {
       const revealId = `shipability-${crypto.randomUUID()}`;
 
-      setShipAbilityReveals(prev => [...prev, {
+      animationDispatch.add('shipAbilityReveals', {
         id: revealId,
         abilityName: abilityName,
         label: 'Opponent Used',
         onComplete: () => {
-          setShipAbilityReveals(prev => prev.filter(r => r.id !== revealId));
+          animationDispatch.remove('shipAbilityReveals', revealId);
           onComplete?.();
         }
-      }]);
+      });
     } else {
       // Local player doesn't see overlay, just complete immediately
       onComplete?.();
@@ -158,41 +129,40 @@ export function registerNotificationAnimations(animationManager, {
 
     debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, targetLane, targetPlayer });
 
-    // Use requestAnimationFrame to ensure React has finished rendering the drone element
+    // Double rAF ensures React commit is complete (matches waitForReactRender pattern)
     requestAnimationFrame(() => {
-      // The drone should now exist as an invisible placeholder - get its exact position
-      // Fall back to data-drone-id query for Tech slots (not in droneRefs)
-      const droneEl = droneRefs.current[targetId]
-        || document.querySelector(`[data-drone-id="${targetId}"]`);
+      requestAnimationFrame(() => {
+        // The drone should now exist as an invisible placeholder - get its exact position
+        const droneEl = getElementFromLogicalPosition(null, null, targetId, 'entity');
 
-      if (!droneEl) {
-        debugLog('ANIMATIONS', '⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
-        onComplete?.();
-        return;
-      }
-
-      // Get the exact center position of the invisible placeholder drone
-      const referencePos = getViewportCenter(droneEl);
-      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
-
-      // Determine color based on local player perspective
-      const localPlayerId = gameStateManager.getLocalPlayerId();
-      const isLocalPlayer = targetPlayer === localPlayerId;
-      const teleportColor = isLocalPlayer ? '#00ffff' : '#ef4444'; // Cyan for player, red for opponent
-
-      const teleportId = `teleport-${targetId}-${crypto.randomUUID()}`;
-
-      setTeleportEffects(prev => [...prev, {
-        id: teleportId,
-        top: referencePos.y,
-        left: referencePos.x,
-        color: teleportColor,
-        duration: TELEPORT_DURATION,
-        onComplete: () => {
-          setTeleportEffects(prev => prev.filter(t => t.id !== teleportId));
+        if (!droneEl) {
+          debugLog('ANIMATIONS', '⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
           onComplete?.();
+          return;
         }
-      }]);
+
+        // Get the exact center position of the invisible placeholder drone
+        const referencePos = getViewportCenter(droneEl);
+        debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
+
+        // Determine color based on local player perspective
+        const isLocal = isLocalPlayer(gameStateManager, targetPlayer);
+        const teleportColor = isLocal ? '#00ffff' : '#ef4444'; // Cyan for player, red for opponent
+
+        const teleportId = `teleport-${targetId}-${crypto.randomUUID()}`;
+
+        animationDispatch.add('teleportEffects', {
+          id: teleportId,
+          top: referencePos.y,
+          left: referencePos.x,
+          color: teleportColor,
+          duration: TELEPORT_DURATION,
+          onComplete: () => {
+            animationDispatch.remove('teleportEffects', teleportId);
+            onComplete?.();
+          }
+        });
+      });
     });
   });
 }

@@ -11,7 +11,7 @@ import React, { useState, useEffect } from 'react';
  * MovementBlockedOverlay - Compact movement blocked banner
  * @param {string} droneName - Name of the drone that couldn't move
  * @param {string} message - Reason text (e.g. "Movement Blocked")
- * @param {{ left: number, top: number }|null} position - Drone screen position, or null for center fallback
+ * @param {{ x: number, y: number }|null} position - Drone screen position, or null for center fallback
  * @param {Function} onComplete - Callback when animation completes
  */
 const MovementBlockedOverlay = ({ droneName, message, position, onComplete }) => {
@@ -38,8 +38,8 @@ const MovementBlockedOverlay = ({ droneName, message, position, onComplete }) =>
   const positionStyles = position
     ? {
         position: 'fixed',
-        left: `${position.left}px`,
-        top: `${position.top}px`,
+        left: `${position.x}px`,
+        top: `${position.y}px`,
         transform: 'translate(-50%, -110%)',
       }
     : {

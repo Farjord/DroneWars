@@ -7,6 +7,7 @@ import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 import { flowCheckpoint } from '../utils/flowVerification.js';
 import { countDrones as _countDrones } from '../utils/stateHelpers.js';
+import { STATE_SNAPSHOT, TRIGGER_CHAIN_PAUSE, GO_AGAIN_NOTIFICATION, TRIGGER_FIRED } from '../config/animationTypes.js';
 
 import {
   processAttack as _processAttack,
@@ -220,16 +221,16 @@ class ActionProcessor {
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => {
         const mapped = (events || []).map((event, idx) => {
-          if (event.type === 'STATE_SNAPSHOT') {
+          if (event.type === STATE_SNAPSHOT) {
             return {
-              animationName: 'STATE_SNAPSHOT',
+              animationName: STATE_SNAPSHOT,
               timing: 'pre-state',
               payload: event
             };
           }
-          if (event.type === 'TRIGGER_CHAIN_PAUSE') {
+          if (event.type === TRIGGER_CHAIN_PAUSE) {
             return {
-              animationName: 'TRIGGER_CHAIN_PAUSE',
+              animationName: TRIGGER_CHAIN_PAUSE,
               timing: 'pre-state',
               payload: event
             };
@@ -536,7 +537,7 @@ setAnimationManager(animationManager) {
 
       // Stamp triggerSyncId on any TRIGGER_FIRED that weren't stamped by executeAndCaptureAnimations
       const allAnims = [...this._actionAnimationLog.actionAnimations, ...this._actionAnimationLog.systemAnimations];
-      const unstampedTriggers = allAnims.filter(a => a.animationName === 'TRIGGER_FIRED' && !a.payload?.triggerSyncId);
+      const unstampedTriggers = allAnims.filter(a => a.animationName === TRIGGER_FIRED && !a.payload?.triggerSyncId);
       if (unstampedTriggers.length > 0) {
         const triggerSyncId = Date.now();
         unstampedTriggers.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });
@@ -671,9 +672,9 @@ setAnimationManager(animationManager) {
    * @param {boolean} waitForCompletion - If true, awaits animation completion (blocking). Default: true for proper animation sequencing.
    */
   async executeGoAgainAnimation(actingPlayerId) {
-    const animDef = this.animationManager?.animations['GO_AGAIN_NOTIFICATION'];
+    const animDef = this.animationManager?.animations[GO_AGAIN_NOTIFICATION];
     const goAgainAnim = [{
-      animationName: 'GO_AGAIN_NOTIFICATION',
+      animationName: GO_AGAIN_NOTIFICATION,
       timing: animDef?.timing || 'independent',
       payload: { actingPlayerId }
     }];
@@ -709,7 +710,7 @@ setAnimationManager(animationManager) {
     });
 
     // Stamp triggerSyncId for TRIGGER_SYNC_TRACE correlation
-    const triggerAnims = animations.filter(a => a.animationName === 'TRIGGER_FIRED');
+    const triggerAnims = animations.filter(a => a.animationName === TRIGGER_FIRED);
     if (triggerAnims.length > 0) {
       const triggerSyncId = Date.now();
       triggerAnims.forEach(a => { a.payload = { ...a.payload, triggerSyncId }; });

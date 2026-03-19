@@ -6,6 +6,7 @@
 // Debuff: Red jagged zap particles radiating from center
 
 import React, { useState, useEffect } from 'react';
+import './StatBuffEffect.css';
 
 const DURATION = 1200;
 const BUFF_COLOR = '#22c55e';
