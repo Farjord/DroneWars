@@ -58,8 +58,6 @@ function GameFooter({
   handleActionCardDragStart,
   draggedActionCard,
   actionsTakenThisTurn = 0,
-  onCardPlayWarning,
-  onCardPlayWarningClear
 }) {
   const isTargetingFromFooter = selectedCard || draggedActionCard || draggedCard;
 
@@ -101,8 +99,6 @@ function GameFooter({
                 handleActionCardDragStart={handleActionCardDragStart}
                 draggedActionCard={draggedActionCard}
                 actionsTakenThisTurn={actionsTakenThisTurn}
-                onCardPlayWarning={onCardPlayWarning}
-                onCardPlayWarningClear={onCardPlayWarningClear}
                 onToggleView={onToggleFooterView}
               />
             </div>
@@ -130,8 +126,6 @@ function GameFooter({
                 setIsViewDeckModalOpen={setIsViewDeckModalOpen}
                 handleCardDragStart={handleCardDragStart}
                 draggedCard={draggedCard}
-                onCardPlayWarning={onCardPlayWarning}
-                onCardPlayWarningClear={onCardPlayWarningClear}
                 onToggleView={onToggleFooterView}
               />
             </div>

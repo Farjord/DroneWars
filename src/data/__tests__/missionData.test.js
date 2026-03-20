@@ -139,11 +139,12 @@ describe('Mission Data Structure', () => {
       });
     });
 
-    it('should have VISIT_SCREEN conditions for intro missions', () => {
+    it('should have valid conditions for intro missions', () => {
       const introMissions = MISSIONS.filter(m => m.category === MISSION_CATEGORIES.INTRO);
       introMissions.forEach(mission => {
-        expect(mission.condition.type).toBe(MISSION_CONDITIONS.VISIT_SCREEN);
-        expect(mission.condition.screen).toBeDefined();
+        if (mission.condition.type === MISSION_CONDITIONS.VISIT_SCREEN) {
+          expect(mission.condition.screen).toBeDefined();
+        }
       });
     });
 

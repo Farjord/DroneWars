@@ -124,18 +124,33 @@ export const MISSIONS = [
     sortOrder: 5,
   },
   {
+    id: 'intro_craftShip',
+    category: MISSION_CATEGORIES.INTRO,
+    title: 'Craft Your First Ship',
+    description: 'Use the Blueprints workshop to craft a ship card. Custom ships unlock new tactical options and are essential for building specialised loadouts.',
+    condition: {
+      type: MISSION_CONDITIONS.CRAFT_ITEM,
+      count: 1,
+      itemType: 'ship',
+    },
+    reward: { credits: 150 },
+    prerequisites: [],
+    isIntroMission: true,
+    sortOrder: 7,
+  },
+  {
     id: 'intro_deckBuilder',
     category: MISSION_CATEGORIES.INTRO,
     title: 'Configure Your Loadout',
-    description: 'Buy your first Ship Slot and then enter the Deck Builder to customise your ship\'s deck and drone lineup. The more valuable your ship, the more reputation you earn.',
+    description: 'Enter the Deck Builder to customise your ship\'s deck and drone lineup.',
     condition: {
       type: MISSION_CONDITIONS.VISIT_SCREEN,
       screen: 'deckBuilder',
     },
     reward: { credits: 100 },
-    prerequisites: [],
+    prerequisites: ['intro_craftShip'],
     isIntroMission: true,
-    sortOrder: 6,
+    sortOrder: 8,
   },
 
   // ========================================

@@ -116,6 +116,7 @@ class MissionConditionEvaluator {
 
   evaluateCraftItem(condition, eventType, eventData) {
     if (eventType !== 'ITEM_CRAFTED') return 0;
+    if (condition.itemType && eventData.itemType !== condition.itemType) return 0;
     return 1;
   }
 }

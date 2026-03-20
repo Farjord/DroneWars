@@ -4,9 +4,9 @@
  */
 
 export const FACTIONS = {
-  NEUTRAL_1: { id: 'NEUTRAL_1', name: 'Frontier', type: 'neutral', color: '#808080' },
-  MOVEMENT: { id: 'MOVEMENT', name: 'Drift Syndicate', type: 'faction', color: '#f97316' },
-  MARK: { id: 'MARK', name: 'Targeting Array', type: 'faction', color: '#ec4899' },
+  NEUTRAL_1: { id: 'NEUTRAL_1', name: 'Frontier', type: 'neutral', color: '#808080', logo: '/DroneWars/Factions/Neutral_1.png' },
+  MOVEMENT: { id: 'MOVEMENT', name: 'Drift Syndicate', type: 'faction', color: '#f97316', logo: '/DroneWars/Factions/Movement.png' },
+  MARK: { id: 'MARK', name: 'Targeting Array', type: 'faction', color: '#ec4899', logo: '/DroneWars/Factions/Marked.png' },
 };
 
 // Region boundaries — organic zones defined by center + radius + harmonic distortion.

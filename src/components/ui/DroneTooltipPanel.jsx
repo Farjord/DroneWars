@@ -15,6 +15,9 @@ import { NoEntryIcon } from './RightSideIcons.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
 import droneTooltipDescriptions from '../../data/descriptions/droneTooltipDescriptions.js';
 
+/** Effective width of the tooltip panel: max-w-[220px] + mr-2 (8px) */
+export const DRONE_TOOLTIP_EFFECTIVE_WIDTH = 220 + 8;
+
 // ========================================
 // TOOLTIP ITEM BUILDER (pure function)
 // ========================================

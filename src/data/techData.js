@@ -6,6 +6,12 @@
 // Tech is deployed via CREATE_TECH card effects, never during deployment phase.
 // Removable only by dedicated DESTROY_TECH effects (e.g., "System Purge" card).
 
+// Description Formatting (rendered by formatCardText):
+//   *text*       → italic
+//   **text**     → bold
+//   ***text***   → keyword (bold + purple)
+//   \n           → line break
+
 const fullTechCollection = [
   {
     name: 'Proximity Mine',

@@ -159,6 +159,7 @@
 .cardWrapper {
   margin: 0;
   position: relative;
+  overflow: visible;
 }
 
 /* ===== DRONE VIEW STYLES ===== */

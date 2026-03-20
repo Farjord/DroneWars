@@ -84,8 +84,14 @@ vi.mock('../../../data/aiCoresData.js', () => ({
   }
 }));
 
+// Mock MissionService
+vi.mock('../../../logic/missions/MissionService.js', () => ({
+  default: { recordProgress: vi.fn() }
+}));
+
 // Import after mocks
 import { useGameState } from '../../../hooks/useGameState.js';
+import MissionService from '../../../logic/missions/MissionService.js';
 import BlueprintsModal from '../BlueprintsModal.jsx';
 
 describe('BlueprintsModal - Crafting Updates Inventory', () => {
@@ -187,6 +193,33 @@ describe('BlueprintsModal - Crafting Updates Inventory', () => {
       const setStateCall = mockGameStateManager.setState.mock.calls[0][0];
       // Starter ship should be added to inventory
       expect(setStateCall.singlePlayerInventory['SHIP_001']).toBe(1);
+    });
+  });
+
+  describe('Mission progress events', () => {
+    it('should fire ITEM_CRAFTED with itemType ship when crafting a ship card', async () => {
+      useGameState.mockReturnValue({
+        gameState: {
+          singlePlayerProfile: {
+            credits: 1000,
+            aiCores: 10,
+            unlockedBlueprints: []
+          },
+          singlePlayerInventory: {}
+        },
+        gameStateManager: mockGameStateManager
+      });
+
+      render(<BlueprintsModal onClose={() => {}} />);
+
+      fireEvent.click(screen.getByText('Ship Cards'));
+
+      const craftButtons = screen.getAllByText('Craft');
+      fireEvent.click(craftButtons[0]);
+
+      await waitFor(() => {
+        expect(MissionService.recordProgress).toHaveBeenCalledWith('ITEM_CRAFTED', { itemType: 'ship' });
+      });
     });
   });
 });

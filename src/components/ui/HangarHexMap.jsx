@@ -118,6 +118,35 @@ const HangarHexMap = ({
               );
             })}
 
+            {/* Layer 1.5: Faction territory logos */}
+            {HANGAR_REGIONS.map((region) => {
+              const factionDef = FACTIONS[region.faction];
+              if (!factionDef?.logo || factionDef.type !== 'faction') return null;
+
+              const cell = hexGridData.allCells.find(
+                c => c.col === region.center[0] && c.row === region.center[1]
+              );
+              if (!cell) return null;
+
+              const { hexWidth, hexHeight } = hexGridData;
+              const cx = cell.x + hexWidth / 2;
+              const cy = cell.y + hexHeight / 2;
+              const logoSize = region.radius * 2 * hexWidth;
+
+              return (
+                <image
+                  key={`logo-${region.faction}`}
+                  href={factionDef.logo}
+                  x={cx - logoSize / 2}
+                  y={cy - logoSize / 2}
+                  width={logoSize}
+                  height={logoSize}
+                  opacity={0.06}
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            })}
+
             {/* Layer 2: Boundary edges (on top of all fills) — only faction cells draw borders to avoid double-rendering */}
             {hexGridData.allCells.filter(c => !c.isActive).map((cell, i) => {
               if (cell.regionFaction === 'NEUTRAL_1') return null;

@@ -1,3 +1,9 @@
+// Description Formatting (rendered by formatCardText):
+//   *text*       → italic
+//   **text**     → bold
+//   ***text***   → keyword (bold + purple)
+//   \n           → line break
+
 // --- DATA ---
 // rebuildRate: Units rebuilt per round (see drone_availability_rebuild_system_prd.md)
 // - Core Defense/Interceptor (limit 3): 2.0 (fast recovery)

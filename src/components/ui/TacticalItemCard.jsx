@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { CARD_CLIP_PATH } from '../../styles/cardClipPaths.js';
 
 // Tactical item color theme (cyan/teal)
 const TACTICAL_THEME = {
@@ -47,7 +48,7 @@ const TacticalItemCard = ({
     <div
       onClick={handleCardClick}
       className={`
-        rounded-lg p-[4px] relative group
+        p-[4px] relative group
         transition-all duration-200
         ${onClick ? 'cursor-pointer hover:scale-105' : ''}
         ${isSelected ? 'bg-green-400 ring-2 ring-green-300 selected' : config.bgColor}
@@ -55,13 +56,13 @@ const TacticalItemCard = ({
       style={{
         width: '225px',
         height: '275px',
-        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
+        clipPath: CARD_CLIP_PATH,
         ...scaleStyle
       }}
     >
       <div
         className={`w-full h-full relative flex flex-col font-orbitron overflow-hidden border ${config.borderColor}`}
-        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
+        style={{ clipPath: CARD_CLIP_PATH }}
       >
         {/* Background - custom image or placeholder gradient */}
         {item.image ? (

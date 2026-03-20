@@ -4,15 +4,35 @@
 // Cards display at natural size - no scaling wrappers
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import DroneCard from '../DroneCard.jsx';
 import ActionCard from '../ActionCard.jsx';
+import ActionCardTooltipPanel, { TOOLTIP_EFFECTIVE_WIDTH } from '../ActionCardTooltipPanel.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import SoundManager from '../../../managers/SoundManager.js';
 import fullDroneCollection from '../../../data/droneData.js';
+import droneCardTooltipDescriptions from '../../../data/descriptions/droneCardTooltipDescriptions.js';
+
+const DEFAULT_WARNING_ICON = <AlertTriangle size={18} className="text-amber-400" />;
+
+/** Maps reason keys to tooltip items using droneCardTooltipDescriptions. */
+function buildDroneCardWarningItems(reasonKeys) {
+  if (!reasonKeys || reasonKeys.length === 0) return [];
+  return reasonKeys.map(key => {
+    const desc = droneCardTooltipDescriptions[key];
+    if (!desc) return null;
+    return {
+      key,
+      icon: DEFAULT_WARNING_ICON,
+      label: desc.label,
+      description: desc.description,
+      accentColor: desc.accentColor,
+    };
+  }).filter(Boolean);
+}
 
 function DronesView({
   localPlayerState,
@@ -34,12 +54,11 @@ function DronesView({
   setIsViewDeckModalOpen,
   handleCardDragStart,
   draggedCard,
-  onCardPlayWarning,
-  onCardPlayWarningClear,
   onToggleView
 }) {
   const [hoveredDroneId, setHoveredDroneId] = useState(null);
   const [discardHovered, setDiscardHovered] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState('right');
 
   // Dynamic overlap calculation (same as HandView)
   const droneGridRef = useRef(null);
@@ -173,18 +192,18 @@ function DronesView({
                    hasAvailableCopies)        // Individual availability check (rebuilding state)
                 : isUpgradeTarget;            // Upgrade targeting remains separate (allow targeting unavailable drones)
 
-              // Compute specific reasons why drone can't be deployed (for warning overlay)
-              const getUndeployableReasons = () => {
-                const reasons = [];
-                if (turnPhase !== 'deployment') return reasons;
-                if (!isMyTurn()) { reasons.push("Not your turn"); return reasons; }
-                if (passInfo[`${getLocalPlayerId()}Passed`]) { reasons.push("You have passed"); return reasons; }
-                if (mandatoryAction) { reasons.push("Mandatory action required"); return reasons; }
-                if (!canAfford) reasons.push(`Not enough resources (need ${drone.class}, have ${totalResource})`);
-                if (isAtCPULimit) reasons.push(`CPU limit reached (${totalDronesOnBoard}/${localPlayerEffectiveStats.totals.cpuLimit})`);
-                if (atDeploymentLimit) reasons.push(`Deployment limit reached for ${drone.name} (${deployedCount}/${effectiveLimit})`);
-                if (!hasAvailableCopies) reasons.push("Drone unavailable (rebuilding)");
-                return reasons;
+              // Compute specific reason keys for why drone can't be deployed (for inline tooltip)
+              const getUndeployableReasonKeys = () => {
+                if (turnPhase !== 'deployment') return ['wrong-phase'];
+                const keys = [];
+                if (!isMyTurn()) { keys.push('not-your-turn'); return keys; }
+                if (passInfo[`${getLocalPlayerId()}Passed`]) { keys.push('player-passed'); return keys; }
+                if (mandatoryAction) { keys.push('mandatory-action'); return keys; }
+                if (!canAfford) keys.push('not-enough-resources');
+                if (isAtCPULimit) keys.push('cpu-limit-reached');
+                if (atDeploymentLimit) keys.push('deployment-limit-reached');
+                if (!hasAvailableCopies) keys.push('drone-unavailable');
+                return keys;
               };
 
               // Calculate fan rotation and spacing using centralized utilities
@@ -207,22 +226,15 @@ function DronesView({
                   key={drone.name}
                   className={styles.droneCardWrapper}
                   style={wrapperStyle}
-                  onMouseEnter={() => {
+                  onMouseEnter={(e) => {
                     setHoveredDroneId(drone.name);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTooltipPosition(
+                      rect.right + TOOLTIP_EFFECTIVE_WIDTH > window.innerWidth ? 'left' : 'right'
+                    );
                     SoundManager.getInstance().play('card_hover_over');
-                    // Wrong phase warning (action phase)
-                    if (turnPhase === 'action' && onCardPlayWarning) {
-                      onCardPlayWarning(["Not in the Deployment Phase"]);
-                    }
-                    // Existing deployment phase warnings
-                    else if (!isSelectable && turnPhase === 'deployment' && !isUpgradeTarget && onCardPlayWarning) {
-                      const reasons = getUndeployableReasons();
-                      if (reasons.length > 0) {
-                        onCardPlayWarning(reasons);
-                      }
-                    }
                   }}
-                  onMouseLeave={() => { setHoveredDroneId(null); onCardPlayWarningClear?.(); }}
+                  onMouseLeave={() => { setHoveredDroneId(null); }}
                   onMouseDown={(e) => {
                     // Only initiate drag for selectable drones during deployment
                     debugLog('DRAG_DROP_DEPLOY', '🖱️ Drag started from DronesView', { droneName: drone.name, isSelectable, hasHandler: !!handleCardDragStart });
@@ -244,6 +256,13 @@ function DronesView({
                     onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
                     hasDeploymentBudget={hasDeploymentBudget}
                     isDragging={isDragging}
+                  />
+                  <ActionCardTooltipPanel
+                    items={buildDroneCardWarningItems(
+                      isHovered && !isSelectable && !isUpgradeTarget ? getUndeployableReasonKeys() : []
+                    )}
+                    visible={isHovered && !isSelectable && !isUpgradeTarget}
+                    position={tooltipPosition}
                   />
                 </div>
               );

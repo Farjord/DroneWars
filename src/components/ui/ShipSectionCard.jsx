@@ -10,6 +10,7 @@ import { HardDrive, Cpu, Zap, Command } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { getCardBorderClasses } from '../../logic/cards/cardBorderUtils.js';
+import { CARD_CLIP_PATH } from '../../styles/cardClipPaths.js';
 
 /**
  * SHIP SECTION CARD COMPONENT
@@ -84,7 +85,7 @@ const ShipSectionCard = ({
     <div
       onClick={isInteractive ? () => onClick(section) : undefined}
       className={`
-        rounded-lg p-[4px] relative group
+        p-[4px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer hover:scale-105' : ''}
         ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
@@ -93,13 +94,13 @@ const ShipSectionCard = ({
       style={{
         width: '225px',
         height: '275px',
-        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
+        clipPath: CARD_CLIP_PATH,
         ...scaleStyle
       }}
     >
       <div
         className="w-full h-full relative flex flex-col font-orbitron text-cyan-300 overflow-hidden"
-        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
+        style={{ clipPath: CARD_CLIP_PATH }}
       >
         {/* Background gradient based on type */}
         <div className={`absolute inset-0 bg-gradient-to-b ${config.bgGradient}`} />

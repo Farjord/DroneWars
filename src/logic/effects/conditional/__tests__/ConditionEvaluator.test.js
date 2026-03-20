@@ -883,6 +883,119 @@ describe('ConditionEvaluator', () => {
   });
 
   // ========================================
+  // LANE_HAS_ENEMY_WITH_STATUS CONDITION
+  // ========================================
+  // Checks if the opponent has a drone with a specified status in the target's lane
+  // Parameterized by status (isMarked, isExhausted, isSnared, etc.)
+  describe('LANE_HAS_ENEMY_WITH_STATUS', () => {
+    let friendlyTarget;
+
+    beforeEach(() => {
+      // Target is a friendly drone owned by the acting player, in lane1
+      friendlyTarget = {
+        id: 'friendly_drone_1',
+        name: 'TestDrone',
+        hull: 3,
+        attack: 2,
+        speed: 4,
+        lane: 'lane1',
+        owner: 'player1'
+      };
+      mockContext.target = friendlyTarget;
+      mockContext.actingPlayerId = 'player1';
+    });
+
+    it('returns true when opponent has a drone with the specified status in the target lane', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isMarked: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when opponent has drones in the lane but none have the status', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isMarked: false },
+        { id: 'enemy_drone_2', isMarked: false }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when opponent has no drones in the target lane', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when target has no lane property', () => {
+      delete friendlyTarget.lane;
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isMarked: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when opponent has drones with the status but in a different lane', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [];
+      mockContext.playerStates.player2.dronesOnBoard.lane2 = [
+        { id: 'enemy_drone_1', isMarked: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('works with different statuses (isExhausted)', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isExhausted: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isExhausted' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('works with different statuses (isSnared)', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isSnared: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isSnared' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when condition has no status param', () => {
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [
+        { id: 'enemy_drone_1', isMarked: true }
+      ];
+      const condition = { type: 'LANE_HAS_ENEMY_WITH_STATUS' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  // ========================================
   // ON_SHIP_SECTION_HULL_DAMAGE CONDITION (POST timing)
   // ========================================
   // Triggers only when hull damage is dealt to a ship section (not a drone)

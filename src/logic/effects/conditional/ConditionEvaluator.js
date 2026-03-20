@@ -7,6 +7,7 @@
 // Supports:
 // - State conditions: TARGET_IS_MARKED, TARGET_IS_EXHAUSTED, TARGET_IS_READY
 // - Stat conditions: TARGET_STAT_GTE, TARGET_STAT_LTE, TARGET_STAT_GT, TARGET_STAT_LT
+// - Lane status conditions: LANE_HAS_ENEMY_WITH_STATUS (parameterized by status)
 // - Outcome conditions: ON_DESTROY, ON_HULL_DAMAGE, ON_MOVE (require effectResult from POST timing)
 //
 // Extensible via registerHandler() for custom conditions
@@ -44,6 +45,9 @@ class ConditionEvaluator {
 
       // Ship section conditions
       SECTION_EXPOSED: this.evaluateSectionExposed.bind(this),
+
+      // Lane-based status conditions
+      LANE_HAS_ENEMY_WITH_STATUS: this.evaluateLaneHasEnemyWithStatus.bind(this),
 
       // Turn-based conditions
       NOT_FIRST_ACTION: this.evaluateNotFirstAction.bind(this)
@@ -383,6 +387,24 @@ class ConditionEvaluator {
     if (!section) return false;
 
     return section.allocatedShields === 0;
+  }
+
+  // ========================================
+  // LANE-BASED STATUS CONDITION HANDLERS
+  // ========================================
+
+  /**
+   * Check if opponent has a drone with the specified status in the target's lane
+   * @param {Object} condition - { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' }
+   */
+  evaluateLaneHasEnemyWithStatus(condition, context) {
+    const { target, actingPlayerId, playerStates } = context;
+    if (!target || !target.lane || !condition.status) return false;
+
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const opponentDronesInLane = playerStates[opponentId]?.dronesOnBoard?.[target.lane] || [];
+
+    return opponentDronesInLane.some(drone => drone[condition.status] === true);
   }
 
   // ========================================

@@ -109,7 +109,7 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
       return;
     }
 
-    MissionService.recordProgress('CRAFT_ITEM', {});
+    MissionService.recordProgress('ITEM_CRAFTED', { itemType: 'enhancement' });
 
     let message = `Enhanced ${item.card.name} for ${result.cost.toLocaleString()} credits`;
     if (result.deckWarnings && result.deckWarnings.length > 0) {

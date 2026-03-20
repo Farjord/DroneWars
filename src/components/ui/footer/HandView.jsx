@@ -7,6 +7,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ActionCard from '../ActionCard.jsx';
+import ActionCardTooltipPanel, { buildActionCardTooltipItems, TOOLTIP_EFFECTIVE_WIDTH } from '../ActionCardTooltipPanel.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -58,9 +59,6 @@ function HandView({
   draggedActionCard,
   // Momentum tracking for glow effects
   actionsTakenThisTurn = 0,
-  // Warning callback for unplayable card attempts
-  onCardPlayWarning,
-  onCardPlayWarningClear,
   // View toggle callback
   onToggleView
 }) {
@@ -85,6 +83,9 @@ function HandView({
   // Dynamic overlap calculation
   const handSectionRef = useRef(null);
   const [dynamicOverlap, setDynamicOverlap] = useState(CARD_FAN_CONFIG.cardOverlapPx);
+
+  // Tooltip position: flips to 'left' when card is near right viewport edge
+  const [tooltipPosition, setTooltipPosition] = useState('right');
 
   // Hover state for discard pile (applies to both CardBackPlaceholder and ActionCard)
   const [discardHovered, setDiscardHovered] = useState(false);
@@ -362,10 +363,13 @@ function HandView({
                   key={card.instanceId || `${card.id}-${index}`}
                   className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''}`}
                   style={style}
-                  onMouseEnter={() => {
+                  onMouseEnter={(e) => {
                     setHoveredCardId(card.instanceId);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTooltipPosition(
+                      rect.right + TOOLTIP_EFFECTIVE_WIDTH > window.innerWidth ? 'left' : 'right'
+                    );
                     SoundManager.getInstance().play('card_hover_over');
-                    // Debug logging on hover - shows this specific card's state
                     debugLog('HAND_VIEW', `🎯 Card hover - ${card.name}:`, {
                       cardName: card.name,
                       mandatoryAction: mandatoryAction ? {
@@ -376,20 +380,8 @@ function HandView({
                       excessCards,
                       isPlayable: cardIsPlayable
                     });
-
-                    // Wrong phase warning (deployment phase)
-                    if (turnPhase === 'deployment' && onCardPlayWarning) {
-                      onCardPlayWarning(["Not in the Action Phase"]);
-                    }
-                    // Show warning overlay on hover for unplayable cards during action phase
-                    else if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && onCardPlayWarning) {
-                      const reasons = getUnplayableReasons();
-                      if (reasons.length > 0) {
-                        onCardPlayWarning(reasons);
-                      }
-                    }
                   }}
-                  onMouseLeave={() => { setHoveredCardId(null); onCardPlayWarningClear?.(); }}
+                  onMouseLeave={() => { setHoveredCardId(null); }}
                   onMouseDown={(e) => {
                     // Initiate drag for playable cards during action phase (not during mandatory action)
                     // Uses threshold detection to distinguish click from drag
@@ -472,6 +464,15 @@ function HandView({
                             })
                           : null  // All cards use drag-only during action phase
                     }
+                  />
+                  <ActionCardTooltipPanel
+                    items={buildActionCardTooltipItems(
+                      card,
+                      isHovered && !cardIsPlayable ? getUnplayableReasons() : [],
+                      { actionsTakenThisTurn }
+                    )}
+                    visible={isHovered}
+                    position={tooltipPosition}
                   />
                 </div>
               );

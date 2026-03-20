@@ -6,13 +6,14 @@ import { useRef, useEffect, useCallback } from 'react';
  * Uses direct DOM manipulation via refs + rAF for performance (no React re-renders).
  * @param {boolean} isDragging - Whether the card is currently being dragged
  * @param {Object} [options]
+ * @param {string} [options.hoverMode='3d'] - Hover effect: '3d' for rotation, 'flat' for sheen+glow only (no movement)
  * @param {number} [options.maxTiltDrag=15] - Max tilt degrees during drag
  * @param {number} [options.maxTiltHover=8] - Max tilt degrees during hover
  * @param {string|null} [options.glowFilter=null] - CSS filter value (drop-shadow) for hover glow (applied on wrapper, traces alpha boundary of clipped children)
  * @param {Function|null} [options.externalRef=null] - Callback ref to also receive the DOM element
  * @returns {Function} callback ref to attach to the card's outer div
  */
-export default function useCardTilt(isDragging, { maxTiltDrag = 15, maxTiltHover = 8, glowFilter = null, externalRef = null } = {}) {
+export default function useCardTilt(isDragging, { hoverMode = '3d', maxTiltDrag = 15, maxTiltHover = 8, glowFilter = null, externalRef = null } = {}) {
   const cardRef = useRef(null);
   const rafId = useRef(null);
   const isFirstFrame = useRef(true);
@@ -72,7 +73,49 @@ export default function useCardTilt(isDragging, { maxTiltDrag = 15, maxTiltHover
       };
     }
 
-    // Hover mode — card-level mousemove with gentle tilt
+    // Flat mode — sheen + glow only, no movement
+    if (hoverMode === 'flat') {
+      el.style.transition = 'filter 200ms ease';
+      el.style.transform = baseScale ? baseScale.trim() : '';
+      el.style.setProperty('--sheen', '-100%');
+      el.style.filter = '';
+
+      const handleHoverEnter = () => {
+        if (!cardRef.current || !glowFilter) return;
+        cardRef.current.style.filter = glowFilter;
+      };
+
+      const handleHoverMove = (e) => {
+        if (rafId.current) cancelAnimationFrame(rafId.current);
+        rafId.current = requestAnimationFrame(() => {
+          if (!cardRef.current) return;
+          const rect = cardRef.current.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const normX = Math.max(-1, Math.min(1, (e.clientX - centerX) / (rect.width / 2)));
+          cardRef.current.style.setProperty('--sheen', `${normX * 50}%`);
+        });
+      };
+
+      const handleHoverLeave = () => {
+        if (rafId.current) cancelAnimationFrame(rafId.current);
+        if (!cardRef.current) return;
+        cardRef.current.style.setProperty('--sheen', '-100%');
+        cardRef.current.style.filter = '';
+      };
+
+      el.addEventListener('mouseenter', handleHoverEnter);
+      el.addEventListener('mousemove', handleHoverMove);
+      el.addEventListener('mouseleave', handleHoverLeave);
+
+      return () => {
+        el.removeEventListener('mouseenter', handleHoverEnter);
+        el.removeEventListener('mousemove', handleHoverMove);
+        el.removeEventListener('mouseleave', handleHoverLeave);
+        if (rafId.current) cancelAnimationFrame(rafId.current);
+      };
+    }
+
+    // 3D hover mode — card-level mousemove with gentle tilt
     el.style.transition = 'transform 300ms ease-out, filter 200ms ease';
     el.style.transform = `${baseScale}rotateX(0deg) rotateY(0deg)`;
     el.style.setProperty('--sheen', '-100%');
@@ -125,7 +168,7 @@ export default function useCardTilt(isDragging, { maxTiltDrag = 15, maxTiltHover
       el.removeEventListener('mouseleave', handleHoverLeave);
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [isDragging, maxTiltDrag, maxTiltHover, glowFilter]);
+  }, [isDragging, hoverMode, maxTiltDrag, maxTiltHover, glowFilter]);
 
   const setRef = useCallback((el) => {
     cardRef.current = el;

@@ -138,7 +138,6 @@ const App = ({ phaseAnimationQueue }) => {
   const animationDispatch = useMemo(() => createAnimationDispatch(animationStateDispatch), []);
   const [currentPhaseAnimation, setCurrentPhaseAnimation] = useState(null); // Current animation from queue
   const [isPhaseAnimationPlaying, setIsPhaseAnimationPlaying] = useState(false); // UI blocking state
-  const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
@@ -536,11 +535,6 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- 6.2 UI EVENT HANDLERS ---
 
-  const showCardPlayWarning = useCallback((reasons) => {
-    setCardPlayWarning({ id: Date.now(), reasons });
-  }, []);
-
-  const clearCardPlayWarning = useCallback(() => setCardPlayWarning(null), []);
 
   // ========================================
   // SECTION 7: RESOLVERS HOOK + CANCEL ALL ACTIONS
@@ -1002,7 +996,6 @@ const App = ({ phaseAnimationQueue }) => {
       <AnimationLayer
        animationState={animationState}
        explosions={explosions}
-       cardPlayWarning={cardPlayWarning}
        animationBlocking={animationBlocking}
      />
 
@@ -1191,8 +1184,6 @@ const App = ({ phaseAnimationQueue }) => {
         handleActionCardDragStart={handleActionCardDragStart}
         draggedActionCard={draggedActionCard}
         actionsTakenThisTurn={gameState.actionsTakenThisTurn || 0}
-        onCardPlayWarning={showCardPlayWarning}
-        onCardPlayWarningClear={clearCardPlayWarning}
       />
       </div>
 

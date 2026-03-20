@@ -6,12 +6,9 @@
 import React from 'react';
 import { ANIMATION_REGISTRY } from '../../config/animationRegistry.js';
 import ExplosionEffect from '../animations/ExplosionEffect.jsx';
-import CardWarningOverlay from '../animations/CardWarningOverlay.jsx';
-
 const AnimationLayer = ({
   animationState,
   explosions,
-  cardPlayWarning,
   animationBlocking,
 }) => (
   <>
@@ -24,14 +21,6 @@ const AnimationLayer = ({
       if (!items?.length) return null;
       return items.map(item => <Component key={item.id} {...item} />);
     })}
-
-    {/* Card play warning: not from AnimationManager, set by card play validation UI */}
-    {cardPlayWarning && (
-      <CardWarningOverlay
-        key={cardPlayWarning.id}
-        reasons={cardPlayWarning.reasons}
-      />
-    )}
 
     {/* Animation blocking overlay: UI interaction gate, not an animation type */}
     {animationBlocking && (

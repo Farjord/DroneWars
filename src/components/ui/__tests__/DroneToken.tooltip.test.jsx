@@ -4,8 +4,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import DroneToken from '../DroneToken.jsx';
+import { DRONE_TOOLTIP_EFFECTIVE_WIDTH } from '../DroneTooltipPanel.jsx';
 
 // Mock useGameData with keywords support
 vi.mock('../../../hooks/useGameData.js', async () => {
@@ -113,28 +114,35 @@ describe('DroneToken - Tooltip Integration', () => {
     expect(tooltipContainer.textContent).toContain('Guardian');
   });
 
-  it('passes position=left when lane is lane3', async () => {
+  it('defaults to right positioning before any hover', async () => {
     const setKeywords = await getKeywordSetter();
     setKeywords(new Set());
 
     const drone = { ...baseDrone, cannotAttack: true };
-    const { container } = render(
-      <DroneToken {...defaultProps} drone={drone} lane="lane3" />
-    );
-    const tooltipContainer = container.querySelector('.drone-tooltip-container');
-    expect(tooltipContainer.className).toContain('right-full');
-  });
-
-  it('passes position=right when lane is lane1', async () => {
-    const setKeywords = await getKeywordSetter();
-    setKeywords(new Set());
-
-    const drone = { ...baseDrone, cannotAttack: true };
-    const { container } = render(
-      <DroneToken {...defaultProps} drone={drone} lane="lane1" />
-    );
+    const { container } = render(<DroneToken {...defaultProps} drone={drone} />);
     const tooltipContainer = container.querySelector('.drone-tooltip-container');
     expect(tooltipContainer.className).toContain('left-full');
+  });
+
+  it('flips to left when near right viewport edge', async () => {
+    const setKeywords = await getKeywordSetter();
+    setKeywords(new Set());
+
+    const drone = { ...baseDrone, cannotAttack: true };
+    const { container } = render(<DroneToken {...defaultProps} drone={drone} />);
+    const outerDiv = container.firstChild;
+
+    // Mock getBoundingClientRect so right edge + tooltip width exceeds viewport
+    outerDiv.getBoundingClientRect = () => ({
+      top: 100, left: 1700, bottom: 200, right: 1800, width: 100, height: 100,
+    });
+    Object.defineProperty(window, 'innerWidth', { value: 1920, writable: true });
+
+    fireEvent.mouseEnter(outerDiv);
+
+    const tooltipContainer = container.querySelector('.drone-tooltip-container');
+    // 1800 + 228 > 1920 → should flip to left (right-full)
+    expect(tooltipContainer.className).toContain('right-full');
   });
 
   it('outer div has data-drone-token attribute', async () => {

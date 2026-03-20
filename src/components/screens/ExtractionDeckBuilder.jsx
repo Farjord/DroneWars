@@ -24,6 +24,7 @@ import {
 } from '../../logic/combat/shipSlotUtils.js';
 import { parseJSObjectLiteral, convertFromAIFormat } from '../../logic/cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import MissionService from '../../logic/missions/MissionService.js';
 
 /**
  * ExtractionDeckBuilder
@@ -70,6 +71,11 @@ const ExtractionDeckBuilder = () => {
     });
     return dronesObj;
   }, [droneSlots]);
+
+  // Record screen visit for mission progress
+  useEffect(() => {
+    MissionService.recordProgress('SCREEN_VISIT', { screen: 'deckBuilder' });
+  }, []);
 
   // Initialize state based on slot data or newDeckOption
   useEffect(() => {

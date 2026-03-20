@@ -199,6 +199,49 @@ describe('MissionConditionEvaluator', () => {
       const result = evaluator.evaluateProgress(condition, 'COMBAT_WIN', {});
       expect(result).toBe(0);
     });
+
+    it('should return 1 when no itemType on condition (backward compat)', () => {
+      const condition = {
+        type: MISSION_CONDITIONS.CRAFT_ITEM,
+        count: 5,
+      };
+
+      const result = evaluator.evaluateProgress(condition, 'ITEM_CRAFTED', { itemType: 'ship' });
+      expect(result).toBe(1);
+    });
+
+    it('should return 1 when condition.itemType matches eventData.itemType', () => {
+      const condition = {
+        type: MISSION_CONDITIONS.CRAFT_ITEM,
+        count: 1,
+        itemType: 'ship',
+      };
+
+      const result = evaluator.evaluateProgress(condition, 'ITEM_CRAFTED', { itemType: 'ship' });
+      expect(result).toBe(1);
+    });
+
+    it('should return 0 when condition.itemType does not match eventData.itemType', () => {
+      const condition = {
+        type: MISSION_CONDITIONS.CRAFT_ITEM,
+        count: 1,
+        itemType: 'ship',
+      };
+
+      const result = evaluator.evaluateProgress(condition, 'ITEM_CRAFTED', { itemType: 'drone' });
+      expect(result).toBe(0);
+    });
+
+    it('should return 0 when condition has itemType but event has none', () => {
+      const condition = {
+        type: MISSION_CONDITIONS.CRAFT_ITEM,
+        count: 1,
+        itemType: 'ship',
+      };
+
+      const result = evaluator.evaluateProgress(condition, 'ITEM_CRAFTED', {});
+      expect(result).toBe(0);
+    });
   });
 
   describe('Unknown condition type', () => {

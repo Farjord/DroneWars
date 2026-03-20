@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ANIMATION_REGISTRY } from '../animationRegistry';
 import { INITIAL_ANIMATION_STATE } from '../../hooks/useAnimationState';
 
-// Note: explosions, cardPlayWarning, animationBlocking are NOT in INITIAL_ANIMATION_STATE
+// Note: explosions and animationBlocking are NOT in INITIAL_ANIMATION_STATE
 // (they use separate useState/useExplosions), so no special-case set is needed here.
 
 describe('animationRegistry', () => {

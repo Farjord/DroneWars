@@ -6,6 +6,7 @@
 import React from 'react';
 import ActionCard from '../../ui/ActionCard';
 import { getRarityColor } from './inventoryUtils';
+import { formatCardText } from '../../../utils/formatCardText';
 
 /**
  * CardDetailPopup Component
@@ -74,7 +75,7 @@ const CardDetailPopup = ({ selectedCard, onClose }) => {
               {/* Description */}
               <div className="dw-modal-info-box">
                 <p style={{ fontSize: '13px', color: 'var(--modal-text-primary)', margin: 0, lineHeight: 1.5 }}>
-                  {selectedCard.description}
+                  {formatCardText(selectedCard.description)}
                 </p>
               </div>
             </div>

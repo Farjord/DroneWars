@@ -16,6 +16,7 @@ import { ECONOMY } from '../../data/economyData';
 import { getAICoresCost } from '../../data/aiCoresData';
 import DroneCard from '../ui/DroneCard';
 import BlueprintDropInfo from '../ui/BlueprintDropInfo';
+import MissionService from '../../logic/missions/MissionService.js';
 
 /**
  * Starter deck items - EXCLUDED from blueprints (they're infinitely available)
@@ -184,6 +185,11 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
       singlePlayerProfile: newProfile,
       singlePlayerInventory: newInventory,
     });
+
+    const craftedItemType = selectedTab === 'Ship Cards' ? 'ship'
+      : selectedTab === 'Drones' ? 'drone'
+      : 'component';
+    MissionService.recordProgress('ITEM_CRAFTED', { itemType: craftedItemType });
 
     // Update card discovery state to 'owned' if not already (for drones/components)
     if (!isShipCard(blueprint)) {

@@ -281,7 +281,26 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--xl dw-modal--action" style={{ maxWidth: '760px', ...factionThemeStyle }} onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" style={{ maxWidth: '760px', position: 'relative', overflow: 'hidden', ...factionThemeStyle }} onClick={e => e.stopPropagation()}>
+        {/* Faction logo watermark */}
+        {factionDef?.logo && (
+          <img
+            src={factionDef.logo}
+            alt=""
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '60%',
+              height: '80%',
+              objectFit: 'contain',
+              opacity: 0.04,
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        )}
         {/* Header with Navigation */}
         <div className="dw-modal-header">
           <button

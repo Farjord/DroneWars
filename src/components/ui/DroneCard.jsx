@@ -12,6 +12,7 @@ import RaritySymbol from './RaritySymbol.jsx';
 import AvailabilityDots from './AvailabilityDots.jsx';
 import { getCardBorderClasses } from '../../logic/cards/cardBorderUtils.js';
 import useCardTilt from '../../hooks/useCardTilt.js';
+import { CARD_CLIP_PATH } from '../../styles/cardClipPaths.js';
 
 /**
  * DRONE CARD COMPONENT
@@ -78,21 +79,25 @@ const DroneCard = ({
 
   const deploymentCost = effectiveCardStats.cost;
 
+  // Determine if card is disabled (not interactive and not view-only)
+  const isDisabled = !isInteractive && !isViewOnly;
+  const disabledTextClass = isDisabled ? 'text-slate-400' : 'text-white';
+
   // Color calculations
   const isAttackBuffed = effectiveCardStats.attack > drone.attack;
   const isAttackDebuffed = effectiveCardStats.attack < drone.attack;
-  const attackTextColor = isAttackBuffed ? 'text-green-400' : isAttackDebuffed ? 'text-red-400' : 'text-white';
+  const attackTextColor = isAttackBuffed ? 'text-green-400' : isAttackDebuffed ? 'text-red-400' : disabledTextClass;
 
   const isSpeedBuffed = effectiveCardStats.speed > drone.speed;
   const isSpeedDebuffed = effectiveCardStats.speed < drone.speed;
-  const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
+  const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : disabledTextClass;
 
   const isCostReduced = effectiveCardStats.cost < drone.class;
   const isCostIncreased = effectiveCardStats.cost > drone.class;
-  const costTextColor = isCostReduced ? 'text-green-400' : isCostIncreased ? 'text-red-400' : 'text-white';
+  const costTextColor = isCostReduced ? 'text-green-400' : isCostIncreased ? 'text-red-400' : disabledTextClass;
 
   const isLimitBuffed = effectiveLimit > drone.limit;
-  const limitTextColor = isLimitBuffed ? 'text-green-400' : 'text-white';
+  const limitTextColor = isLimitBuffed ? 'text-green-400' : disabledTextClass;
 
   const { name, image, hull, shields, abilities } = drone;
 
@@ -121,20 +126,19 @@ const DroneCard = ({
   } : {};
 
   // Get rarity-based border classes (Drones use Tactic/cyan color)
-  const isDisabled = !isInteractive && !isViewOnly;
   const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
 
   // 3D tilt parallax during drag + hover
   const glowFilter = isDisabled ? null
     : `drop-shadow(0 0 6px var(--card-tactic-glow-dim)) drop-shadow(0 0 12px var(--card-tactic-glow-dim))`;
-  const tiltRef = useCardTilt(isDragging, { glowFilter });
+  const tiltRef = useCardTilt(isDragging, { hoverMode: 'flat', glowFilter });
 
   return (
     <div ref={tiltRef} style={{ width: '225px', height: '275px', flexShrink: 0, ...scaleStyle }}>
     <div
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
-        rounded-lg p-[2px] relative group
+        p-[2px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
@@ -145,12 +149,12 @@ const DroneCard = ({
       style={{
         width: '100%',
         height: '100%',
-        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
+        clipPath: CARD_CLIP_PATH,
       }}
     >
       <div
         className="w-full h-full relative flex flex-col font-orbitron text-cyan-300 overflow-hidden"
-        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
+        style={{ clipPath: CARD_CLIP_PATH }}
       >
         {/* Background Image */}
         <img
@@ -162,7 +166,9 @@ const DroneCard = ({
             ${isDisabled ? 'grayscale' : ''}
           `}
         />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
+        <div className="absolute inset-0" style={{
+          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)',
+        }} />
 
         {/* Content Wrapper */}
         <div className="relative z-10 flex flex-col h-full">
@@ -173,7 +179,7 @@ const DroneCard = ({
 
             {/* Center: Title */}
             <div className="text-center min-w-0">
-              <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
+              <ScalingText text={name} className={`font-orbitron text-sm uppercase tracking-widest whitespace-nowrap ${disabledTextClass}`} />
             </div>
 
             {/* Right: Cost pill */}
@@ -251,7 +257,7 @@ const DroneCard = ({
               abilities.map((ability, index) => (
                 <div key={index}>
                   <h4 className="text-xs text-purple-400 tracking-wider font-bold">{ability.name}</h4>
-                  <p className="text-white text-xs leading-tight font-exo">{ability.description}</p>
+                  <p className={`${disabledTextClass} text-xs leading-tight font-exo`}>{ability.description}</p>
                 </div>
               ))
             ) : (

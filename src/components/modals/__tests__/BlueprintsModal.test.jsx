@@ -94,6 +94,11 @@ vi.mock('../../../data/economyData.js', () => ({
   }
 }));
 
+// Mock MissionService
+vi.mock('../../../logic/missions/MissionService.js', () => ({
+  default: { recordProgress: vi.fn() }
+}));
+
 // Mock AI cores data
 vi.mock('../../../data/aiCoresData.js', () => ({
   getAICoresCost: (rarity) => {

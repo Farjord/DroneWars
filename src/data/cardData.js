@@ -1,5 +1,11 @@
 import { enrichCardsWithEffects } from '../logic/cards/effectsAdapter';
 
+// Description Formatting (rendered by formatCardText):
+//   *text*       → italic
+//   **text**     → bold
+//   ***text***   → keyword (bold + purple)
+//   \n           → line break
+
 const fullCardCollection = [
 
   // --- Ordnance Cards ---
@@ -7,6 +13,7 @@ const fullCardCollection = [
   {
     id: 'ISOLATION_STRIKE',
     baseCardId: 'ISOLATION_STRIKE',
+    faction: 'NEUTRAL_1',
     name: 'Isolation Strike',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -22,6 +29,7 @@ const fullCardCollection = [
   {
     id: 'ION_PULSE',
     baseCardId: 'ION_PULSE',
+    faction: 'NEUTRAL_1',
     name: 'Ion Pulse',
     maxInDeck: 2,
     rarity: 'Common',
@@ -39,6 +47,7 @@ const fullCardCollection = [
   {
     id: 'KINETIC_SLUG',
     baseCardId: 'KINETIC_SLUG',
+    faction: 'NEUTRAL_1',
     name: 'Kinetic Slug',
     maxInDeck: 2,
     rarity: 'Common',
@@ -56,6 +65,7 @@ const fullCardCollection = [
   {
     id: 'NULLWAVE_CANNON',
     baseCardId: 'NULLWAVE_CANNON',
+    faction: 'NEUTRAL_1',
     name: 'Nullwave Cannon',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -73,6 +83,7 @@ const fullCardCollection = [
   {
     id: 'CONVERGENCE_BEAM',
     baseCardId: 'CONVERGENCE_BEAM',
+    faction: 'MARK',
     name: 'Convergence Beam',
     maxInDeck: 2,
     rarity: 'Common',
@@ -90,6 +101,7 @@ const fullCardCollection = [
   {
     id: 'CONVERGENCE_BEAM_ENHANCED',
     baseCardId: 'CONVERGENCE_BEAM',
+    faction: 'MARK',
     name: 'Convergence Beam+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -107,6 +119,7 @@ const fullCardCollection = [
   {
     id: 'TARGET_LOCK',
     baseCardId: 'TARGET_LOCK',
+    faction: 'MARK',
     name: 'Target Lock',
     maxInDeck: 2,
     rarity: 'Common',
@@ -123,6 +136,7 @@ const fullCardCollection = [
   {
     id: 'SHRIEKER_MISSILES',
     baseCardId: 'SHRIEKER_MISSILES',
+    faction: 'NEUTRAL_1',
     name: 'Shrieker Missiles',
     maxInDeck: 2,
     rarity: 'Common',
@@ -139,6 +153,7 @@ const fullCardCollection = [
   {
     id: 'SHRIEKER_MISSILES_ENHANCED',
     baseCardId: 'SHRIEKER_MISSILES',
+    faction: 'NEUTRAL_1',
     name: 'Shrieker Missiles+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -155,6 +170,7 @@ const fullCardCollection = [
   {
     id: 'NUKE',
     baseCardId: 'NUKE',
+    faction: 'NEUTRAL_1',
     name: 'Nuke',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -172,6 +188,7 @@ const fullCardCollection = [
   {
     id: 'PIERCING_SHOT',
     baseCardId: 'PIERCING_SHOT',
+    faction: 'MARK',
     name: 'Piercing Shot',
     maxInDeck: 2,
     rarity: 'Common',
@@ -189,6 +206,7 @@ const fullCardCollection = [
   {
     id: 'PIERCING_SHOT_ENHANCED',
     baseCardId: 'PIERCING_SHOT',
+    faction: 'MARK',
     name: 'Piercing Shot+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -206,6 +224,7 @@ const fullCardCollection = [
   {
     id: 'SIDEWINDER_MISSILES',
     baseCardId: 'SIDEWINDER_MISSILES',
+    faction: 'NEUTRAL_1',
     name: 'Sidewinder Missiles',
     maxInDeck: 2,
     rarity: 'Common',
@@ -228,6 +247,7 @@ const fullCardCollection = [
   {
     id: 'RAILGUN_STRIKE',
     baseCardId: 'RAILGUN_STRIKE',
+    faction: 'MARK',
     name: 'Railgun Strike',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -251,6 +271,7 @@ const fullCardCollection = [
   {
     id: 'BARRAGE',
     baseCardId: 'BARRAGE',
+    faction: 'NEUTRAL_1',
     name: 'Barrage',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -268,6 +289,7 @@ const fullCardCollection = [
   {
     id: 'BARRAGE_ENHANCED',
     baseCardId: 'BARRAGE',
+    faction: 'NEUTRAL_1',
     name: 'Barrage+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -291,6 +313,7 @@ const fullCardCollection = [
   {
     id: 'FINISHING_VOLLEY',
     baseCardId: 'FINISHING_VOLLEY',
+    faction: 'NEUTRAL_1',
     name: 'Finishing Volley',
     maxInDeck: 2,
     rarity: 'Common',
@@ -308,6 +331,7 @@ const fullCardCollection = [
   {
     id: 'FINISHING_VOLLEY_ENHANCED',
     baseCardId: 'FINISHING_VOLLEY',
+    faction: 'NEUTRAL_1',
     name: 'Finishing Volley+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -325,6 +349,7 @@ const fullCardCollection = [
   {
     id: 'STRAFING_RUN',
     baseCardId: 'STRAFING_RUN',
+    faction: 'NEUTRAL_1',
     name: 'Strafing Run',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -350,6 +375,7 @@ const fullCardCollection = [
   {
     id: 'OVERWHELMING_FORCE',
     baseCardId: 'OVERWHELMING_FORCE',
+    faction: 'NEUTRAL_1',
     name: 'Overwhelming Force',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -367,6 +393,7 @@ const fullCardCollection = [
   {
     id: 'PURGE_PROTOCOL',
     baseCardId: 'PURGE_PROTOCOL',
+    faction: 'MARK',
     name: 'Purge Protocol',
     maxInDeck: 1,
     rarity: 'Mythic',
@@ -384,6 +411,7 @@ const fullCardCollection = [
   {
     id: 'PARTICLE_WHIP',
     baseCardId: 'PARTICLE_WHIP',
+    faction: 'NEUTRAL_1',
     name: 'Particle Whip',
     maxInDeck: 2,
     rarity: 'Common',
@@ -401,6 +429,7 @@ const fullCardCollection = [
   {
     id: 'THERMAL_LANCE',
     baseCardId: 'THERMAL_LANCE',
+    faction: 'NEUTRAL_1',
     name: 'Thermal Lance',
     maxInDeck: 2,
     rarity: 'Common',
@@ -418,6 +447,7 @@ const fullCardCollection = [
   {
     id: 'THERMAL_LANCE_ENHANCED',
     baseCardId: 'THERMAL_LANCE',
+    faction: 'NEUTRAL_1',
     name: 'Thermal Lance+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -435,6 +465,7 @@ const fullCardCollection = [
   {
     id: 'SCAVENGER_SHOT',
     baseCardId: 'SCAVENGER_SHOT',
+    faction: 'NEUTRAL_1',
     name: 'Scavenger Shot',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -463,6 +494,7 @@ const fullCardCollection = [
   {
     id: 'SUNDERING_BEAM',
     baseCardId: 'SUNDERING_BEAM',
+    faction: 'NEUTRAL_1',
     name: 'Sundering Beam',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -491,6 +523,7 @@ const fullCardCollection = [
   {
     id: 'CONDEMNATION_RAY',
     baseCardId: 'CONDEMNATION_RAY',
+    faction: 'MARK',
     name: 'Condemnation Ray',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -525,6 +558,7 @@ const fullCardCollection = [
   {
     id: 'PREY_ON_THE_WEAK',
     baseCardId: 'PREY_ON_THE_WEAK',
+    faction: 'NEUTRAL_1',
     name: 'Prey on the Weak',
     maxInDeck: 2,
     rarity: 'Common',
@@ -560,6 +594,7 @@ const fullCardCollection = [
   {
     id: 'PREY_ON_THE_WEAK_ENHANCED',
     baseCardId: 'PREY_ON_THE_WEAK',
+    faction: 'NEUTRAL_1',
     name: 'Prey on the Weak+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -595,6 +630,7 @@ const fullCardCollection = [
   {
     id: 'ENERGY_LEECH',
     baseCardId: 'ENERGY_LEECH',
+    faction: 'NEUTRAL_1',
     name: 'Energy Leech',
     maxInDeck: 2,
     rarity: 'Common',
@@ -623,6 +659,7 @@ const fullCardCollection = [
   {
     id: 'PHASE_CHARGED_LASER',
     baseCardId: 'PHASE_CHARGED_LASER',
+    faction: 'NEUTRAL_1',
     name: 'Phase-Charged Laser',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -650,6 +687,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_INHIBITOR_MINE',
     baseCardId: 'DEPLOY_INHIBITOR_MINE',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Inhibitor Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -657,7 +695,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/InhibitorMine.png',
-    description: 'Create an Inhibitor Mine in a friendly lane. (Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
+    description: 'Create an Inhibitor Mine in a friendly lane. \n \n *(Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -671,6 +709,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_JITTER_MINE',
     baseCardId: 'DEPLOY_JITTER_MINE',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Jitter Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -678,7 +717,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/JitterMine.png',
-    description: 'Create a Jitter Mine in a friendly lane. (Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
+    description: 'Create a Jitter Mine in a friendly lane. \n \n *(Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -692,6 +731,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_PROXIMITY_MINE',
     baseCardId: 'DEPLOY_PROXIMITY_MINE',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Proximity Mine',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -699,7 +739,7 @@ const fullCardCollection = [
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/ProximityMine.png',
-    description: 'Create a Proximity Mine in a friendly lane. (Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
+    description: 'Create a Proximity Mine in a friendly lane. \n \n *(Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -713,6 +753,7 @@ const fullCardCollection = [
   {
     id: 'CROSSFIRE_PATTERN',
     baseCardId: 'CROSSFIRE_PATTERN',
+    faction: 'NEUTRAL_1',
     name: 'Crossfire Pattern',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -741,6 +782,7 @@ const fullCardCollection = [
   {
     id: 'BREACH_THE_LINE',
     baseCardId: 'BREACH_THE_LINE',
+    faction: 'NEUTRAL_1',
     name: 'Breach the Line',
     maxInDeck: 1,
     rarity: 'Common',
@@ -774,6 +816,7 @@ const fullCardCollection = [
   {
     id: 'OVERRUN',
     baseCardId: 'OVERRUN',
+    faction: 'NEUTRAL_1',
     name: 'Overrun',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -798,6 +841,7 @@ const fullCardCollection = [
   {
     id: 'ENCIRCLEMENT',
     baseCardId: 'ENCIRCLEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Encirclement',
     maxInDeck: 1,
     rarity: 'Mythic',
@@ -826,6 +870,7 @@ const fullCardCollection = [
   {
     id: 'SUPPRESSION_FIRE',
     baseCardId: 'SUPPRESSION_FIRE',
+    faction: 'NEUTRAL_1',
     name: 'Suppression Fire',
     maxInDeck: 2,
     rarity: 'Common',
@@ -855,6 +900,7 @@ const fullCardCollection = [
   {
     id: 'SYSTEM_RESTORE',
     baseCardId: 'SYSTEM_RESTORE',
+    faction: 'NEUTRAL_1',
     name: 'System Restore',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -871,6 +917,7 @@ const fullCardCollection = [
   {
     id: 'SYSTEM_REBOOT',
     baseCardId: 'SYSTEM_REBOOT',
+    faction: 'NEUTRAL_1',
     name: 'System Reboot',
     maxInDeck: 2,
     rarity: 'Common',
@@ -886,6 +933,7 @@ const fullCardCollection = [
   {
     id: 'SYSTEM_REBOOT_ENHANCED',
     baseCardId: 'SYSTEM_REBOOT',
+    faction: 'NEUTRAL_1',
     name: 'System Reboot+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -901,6 +949,7 @@ const fullCardCollection = [
   {
     id: 'OUT_THINK',
     baseCardId: 'OUT_THINK',
+    faction: 'NEUTRAL_1',
     name: 'Out Think',
     maxInDeck: 2,
     rarity: 'Common',
@@ -917,6 +966,7 @@ const fullCardCollection = [
   {
     id: 'ENERGY_SURGE',
     baseCardId: 'ENERGY_SURGE',
+    faction: 'NEUTRAL_1',
     name: 'Energy Surge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -932,6 +982,7 @@ const fullCardCollection = [
   {
     id: 'ENERGY_SURGE_ENHANCED',
     baseCardId: 'ENERGY_SURGE',
+    faction: 'NEUTRAL_1',
     name: 'Energy Surge+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -947,6 +998,7 @@ const fullCardCollection = [
   {
     id: 'REACTIVATION_PROTOCOL',
     baseCardId: 'REACTIVATION_PROTOCOL',
+    faction: 'NEUTRAL_1',
     name: 'Reactivation Protocol',
     maxInDeck: 2,
     rarity: 'Common',
@@ -973,6 +1025,7 @@ const fullCardCollection = [
   {
     id: 'REACTIVATION_PROTOCOL_ENHANCED',
     baseCardId: 'REACTIVATION_PROTOCOL',
+    faction: 'NEUTRAL_1',
     name: 'Reactivation Protocol+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -989,6 +1042,7 @@ const fullCardCollection = [
   {
     id: 'NANOBOT_REPAIR',
     baseCardId: 'NANOBOT_REPAIR',
+    faction: 'NEUTRAL_1',
     name: 'Nanobot Repair',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1005,6 +1059,7 @@ const fullCardCollection = [
   {
     id: 'EMERGENCY_PATCH',
     baseCardId: 'EMERGENCY_PATCH',
+    faction: 'NEUTRAL_1',
     name: 'Emergency Patch',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1021,6 +1076,7 @@ const fullCardCollection = [
   {
     id: 'EMERGENCY_PATCH_ENHANCED',
     baseCardId: 'EMERGENCY_PATCH',
+    faction: 'NEUTRAL_1',
     name: 'Emergency Patch+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1037,6 +1093,7 @@ const fullCardCollection = [
   {
     id: 'SHIELD_RECHARGE',
     baseCardId: 'SHIELD_RECHARGE',
+    faction: 'NEUTRAL_1',
     name: 'Shield Recharge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1053,6 +1110,7 @@ const fullCardCollection = [
   {
     id: 'OVERCHARGE',
     baseCardId: 'OVERCHARGE',
+    faction: 'NEUTRAL_1',
     name: 'Overcharge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1073,6 +1131,7 @@ const fullCardCollection = [
   {
     id: 'STREAMLINE',
     baseCardId: 'STREAMLINE',
+    faction: 'NEUTRAL_1',
     name: 'Streamline',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1093,6 +1152,7 @@ const fullCardCollection = [
   {
     id: 'BOOSTERS',
     baseCardId: 'BOOSTERS',
+    faction: 'MOVEMENT',
     name: 'Boosters',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1113,6 +1173,7 @@ const fullCardCollection = [
   {
     id: 'DESPERATE_MEASURES',
     baseCardId: 'DESPERATE_MEASURES',
+    faction: 'NEUTRAL_1',
     name: 'Desperate Measures',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1137,6 +1198,7 @@ const fullCardCollection = [
   {
     id: 'REPOSITION',
     baseCardId: 'REPOSITION',
+    faction: 'MOVEMENT',
     name: 'Reposition',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1174,6 +1236,7 @@ const fullCardCollection = [
   {
     id: 'MANEUVER',
     baseCardId: 'MANEUVER',
+    faction: 'MOVEMENT',
     name: 'Maneuver',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1188,6 +1251,7 @@ const fullCardCollection = [
   {
     id: 'MANEUVER_ENHANCED',
     baseCardId: 'MANEUVER',
+    faction: 'MOVEMENT',
     name: 'Maneuver+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1202,6 +1266,7 @@ const fullCardCollection = [
   {
     id: 'STRATEGIC_PLANNING',
     baseCardId: 'STRATEGIC_PLANNING',
+    faction: 'NEUTRAL_1',
     name: 'Strategic Planning',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1214,6 +1279,7 @@ const fullCardCollection = [
   {
     id: 'EQUIPMENT_CACHE',
     baseCardId: 'EQUIPMENT_CACHE',
+    faction: 'NEUTRAL_1',
     name: 'Equipment Cache',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1226,6 +1292,7 @@ const fullCardCollection = [
   {
     id: 'SHIELD_BOOST',
     baseCardId: 'SHIELD_BOOST',
+    faction: 'NEUTRAL_1',
     name: 'Shield Boost',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1242,6 +1309,7 @@ const fullCardCollection = [
   {
     id: 'SHIELD_BOOST_ENHANCED',
     baseCardId: 'SHIELD_BOOST',
+    faction: 'NEUTRAL_1',
     name: 'Shield Boost+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1258,6 +1326,7 @@ const fullCardCollection = [
   {
     id: 'SWIFT_MANEUVER',
     baseCardId: 'SWIFT_MANEUVER',
+    faction: 'MOVEMENT',
     name: 'Swift Maneuver',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1277,6 +1346,7 @@ const fullCardCollection = [
   {
     id: 'TACTICAL_SHIFT',
     baseCardId: 'TACTICAL_SHIFT',
+    faction: 'MOVEMENT',
     name: 'Tactical Shift',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1296,6 +1366,7 @@ const fullCardCollection = [
   {
     id: 'ASSAULT_REPOSITION',
     baseCardId: 'ASSAULT_REPOSITION',
+    faction: 'MOVEMENT',
     name: 'Assault Reposition',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1315,6 +1386,7 @@ const fullCardCollection = [
   {
     id: 'SCRAMBLE_DART',
     baseCardId: 'SCRAMBLE_DART',
+    faction: 'NEUTRAL_1',
     name: 'Scramble Dart',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1329,6 +1401,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_RALLY_BEACON',
     baseCardId: 'DEPLOY_RALLY_BEACON',
+    faction: 'MOVEMENT',
     name: 'Deploy Rally Beacon',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1343,6 +1416,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_REPAIR_RELAY',
     baseCardId: 'DEPLOY_REPAIR_RELAY',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Repair Relay',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1357,6 +1431,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_SHIELD_ARRAY',
     baseCardId: 'DEPLOY_SHIELD_ARRAY',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Shield Array',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1371,6 +1446,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_RELAY_BEACON',
     baseCardId: 'DEPLOY_RELAY_BEACON',
+    faction: 'MOVEMENT',
     name: 'Deploy Relay Beacon',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1385,6 +1461,7 @@ const fullCardCollection = [
   {
     id: 'TACTICAL_ADVANTAGE',
     baseCardId: 'TACTICAL_ADVANTAGE',
+    faction: 'NEUTRAL_1',
     name: 'Tactical Advantage',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1400,6 +1477,7 @@ const fullCardCollection = [
   {
     id: 'STRATEGIC_DOMINANCE',
     baseCardId: 'STRATEGIC_DOMINANCE',
+    faction: 'NEUTRAL_1',
     name: 'Strategic Dominance',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1415,6 +1493,7 @@ const fullCardCollection = [
   {
     id: 'RALLYING_CRY',
     baseCardId: 'RALLYING_CRY',
+    faction: 'NEUTRAL_1',
     name: 'Rallying Cry',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1441,6 +1520,7 @@ const fullCardCollection = [
   {
     id: 'RALLY',
     baseCardId: 'RALLY',
+    faction: 'NEUTRAL_1',
     name: 'RALLY',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1458,6 +1538,7 @@ const fullCardCollection = [
   {
     id: 'SUPERIOR_INTEL',
     baseCardId: 'SUPERIOR_INTEL',
+    faction: 'NEUTRAL_1',
     name: 'Superior Intel',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1472,11 +1553,40 @@ const fullCardCollection = [
 
   },
 
+  {
+    id: 'MARK_EXPLOIT',
+    baseCardId: 'MARK_EXPLOIT',
+    faction: 'MARK',
+    name: 'Mark Exploit',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/MarkExploit.png',
+    description: 'Give a friendly drone +2 attack this turn. +1 if there is a marked enemy drone in the same lane.',
+    effects: [
+      {
+        type: 'MODIFY_STAT',
+        mod: { stat: 'attack', value: 2, type: 'temporary' },
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+        conditionals: [
+          {
+            id: 'marked-enemy-lane-bonus',
+            timing: 'PRE',
+            condition: { type: 'LANE_HAS_ENEMY_WITH_STATUS', status: 'isMarked' },
+            grantedEffect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'temporary' } },
+          },
+        ],
+      },
+    ],
+  },
+
   // --- Tactic Cards ---
 
   {
     id: 'THRUSTER_MALFUNCTION',
     baseCardId: 'THRUSTER_MALFUNCTION',
+    faction: 'NEUTRAL_1',
     name: 'Thruster Malfunction',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1493,6 +1603,7 @@ const fullCardCollection = [
   {
     id: 'THRUSTER_MALFUNCTION_ENHANCED',
     baseCardId: 'THRUSTER_MALFUNCTION',
+    faction: 'NEUTRAL_1',
     name: 'Thruster Malfunction+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -1510,6 +1621,7 @@ const fullCardCollection = [
   {
     id: 'WEAPON_MALFUNCTION',
     baseCardId: 'WEAPON_MALFUNCTION',
+    faction: 'NEUTRAL_1',
     name: 'Weapon Malfunction',
     maxInDeck: 4,
     rarity: 'Common',
@@ -1526,6 +1638,7 @@ const fullCardCollection = [
   {
     id: 'WEAPON_MALFUNCTION_ENHANCED',
     baseCardId: 'WEAPON_MALFUNCTION',
+    faction: 'NEUTRAL_1',
     name: 'Weapon Malfunction+',
     maxInDeck: 2,
     rarity: 'Rare',
@@ -1543,6 +1656,7 @@ const fullCardCollection = [
   {
     id: 'SENSOR_MALFUNCTION',
     baseCardId: 'SENSOR_MALFUNCTION',
+    faction: 'NEUTRAL_1',
     name: 'Sensor Malfunction',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1559,6 +1673,7 @@ const fullCardCollection = [
   {
     id: 'STASIS_FIELD',
     baseCardId: 'STASIS_FIELD',
+    faction: 'NEUTRAL_1',
     name: 'Stasis Field',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1575,6 +1690,7 @@ const fullCardCollection = [
   {
     id: 'TACTICAL_REPOSITIONING',
     baseCardId: 'TACTICAL_REPOSITIONING',
+    faction: 'NEUTRAL_1',
     name: 'Tactical Repositioning',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1589,6 +1705,7 @@ const fullCardCollection = [
   {
     id: 'MEMORY_LEAK',
     baseCardId: 'MEMORY_LEAK',
+    faction: 'NEUTRAL_1',
     name: 'Memory Leak',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1604,6 +1721,7 @@ const fullCardCollection = [
   {
     id: 'POWER_DRAIN',
     baseCardId: 'POWER_DRAIN',
+    faction: 'NEUTRAL_1',
     name: 'Power Drain',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1619,6 +1737,7 @@ const fullCardCollection = [
   {
     id: 'EMP_BURST',
     baseCardId: 'EMP_BURST',
+    faction: 'NEUTRAL_1',
     name: 'EMP Burst',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1644,6 +1763,7 @@ const fullCardCollection = [
   {
     id: 'TEMPORAL_DAMPENER',
     baseCardId: 'TEMPORAL_DAMPENER',
+    faction: 'NEUTRAL_1',
     name: 'Temporal Dampener',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1664,6 +1784,7 @@ const fullCardCollection = [
   {
     id: 'WEAPON_OVERLOAD',
     baseCardId: 'WEAPON_OVERLOAD',
+    faction: 'NEUTRAL_1',
     name: 'Weapon Overload',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1684,6 +1805,7 @@ const fullCardCollection = [
   {
     id: 'SYSTEM_SABOTAGE',
     baseCardId: 'SYSTEM_SABOTAGE',
+    faction: 'NEUTRAL_1',
     name: 'System Sabotage',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1696,6 +1818,7 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_JAMMERS',
     baseCardId: 'DEPLOY_JAMMERS',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Jammer',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1711,13 +1834,14 @@ const fullCardCollection = [
   {
     id: 'DEPLOY_THRUSTER_INHIBITOR',
     baseCardId: 'DEPLOY_THRUSTER_INHIBITOR',
+    faction: 'NEUTRAL_1',
     name: 'Deploy Thruster Inhibitor',
     maxInDeck: 2,
     rarity: 'Uncommon',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor in a friendly lane. (Enemy drones cannot move out of this lane. Removed at the start of the next round.)',
+    description: 'Create a Thruster Inhibitor in a friendly lane. \n \n *(Enemy drones cannot move out of this lane. Removed at the start of the next round.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1731,6 +1855,7 @@ const fullCardCollection = [
   {
     id: 'EXHAUST',
     baseCardId: 'EXHAUST',
+    faction: 'NEUTRAL_1',
     name: 'EXHAUST',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1748,6 +1873,7 @@ const fullCardCollection = [
   {
     id: 'FEINT',
     baseCardId: 'FEINT',
+    faction: 'NEUTRAL_1',
     name: 'Feint',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1764,6 +1890,7 @@ const fullCardCollection = [
   {
     id: 'FORCED_REPOSITIONING',
     baseCardId: 'FORCED_REPOSITIONING',
+    faction: 'NEUTRAL_1',
     name: 'Forced Repositioning',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1780,6 +1907,7 @@ const fullCardCollection = [
   {
     id: 'MAINFRAME_BREACH',
     baseCardId: 'MAINFRAME_BREACH',
+    faction: 'NEUTRAL_1',
     name: 'Mainframe Breach',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1796,6 +1924,7 @@ const fullCardCollection = [
   {
     id: 'RAISE_THE_ALARM',
     baseCardId: 'RAISE_THE_ALARM',
+    faction: 'NEUTRAL_1',
     name: 'Raise the Alarm',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1813,6 +1942,7 @@ const fullCardCollection = [
   {
     id: 'SACRIFICE_FOR_POWER',
     baseCardId: 'SACRIFICE_FOR_POWER',
+    faction: 'NEUTRAL_1',
     name: 'Sacrifice for Power',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1829,6 +1959,7 @@ const fullCardCollection = [
   {
     id: 'TRANSMIT_THREAT',
     baseCardId: 'TRANSMIT_THREAT',
+    faction: 'NEUTRAL_1',
     name: 'Transmit Threat',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1845,6 +1976,7 @@ const fullCardCollection = [
     {
     id: 'MARK_ENEMY',
     baseCardId: 'MARK_ENEMY',
+    faction: 'MARK',
     name: 'Mark Enemy',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1861,6 +1993,7 @@ const fullCardCollection = [
   {
     id: 'TARGET_ACQUISITION',
     baseCardId: 'TARGET_ACQUISITION',
+    faction: 'MARK',
     name: 'Target Acquisition',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1883,6 +2016,7 @@ const fullCardCollection = [
   {
     id: 'SLIMLINE_BODYWORK',
     baseCardId: 'SLIMLINE_BODYWORK',
+    faction: 'NEUTRAL_1',
     name: 'Slimline Bodywork',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1897,6 +2031,7 @@ const fullCardCollection = [
   {
     id: 'SLIMLINE_BODYWORK_ENHANCED',
     baseCardId: 'SLIMLINE_BODYWORK',
+    faction: 'NEUTRAL_1',
     name: 'Slimline Bodywork+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1911,6 +2046,7 @@ const fullCardCollection = [
   {
     id: 'OVERCLOCKED_THRUSTERS',
     baseCardId: 'OVERCLOCKED_THRUSTERS',
+    faction: 'NEUTRAL_1',
     name: 'Overclocked Thrusters',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1925,6 +2061,7 @@ const fullCardCollection = [
   {
     id: 'OVERCLOCKED_THRUSTERS_ENHANCED',
     baseCardId: 'OVERCLOCKED_THRUSTERS',
+    faction: 'NEUTRAL_1',
     name: 'Overclocked Thrusters+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1939,6 +2076,7 @@ const fullCardCollection = [
   {
     id: 'PIERCING_ROUNDS',
     baseCardId: 'PIERCING_ROUNDS',
+    faction: 'NEUTRAL_1',
     name: 'Piercing Rounds',
     maxInDeck: 1,
     rarity: 'Rare',
@@ -1953,6 +2091,7 @@ const fullCardCollection = [
   {
     id: 'EFFICIENCY_MODULE',
     baseCardId: 'EFFICIENCY_MODULE',
+    faction: 'NEUTRAL_1',
     name: 'Efficiency Module',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1967,6 +2106,7 @@ const fullCardCollection = [
   {
     id: 'COMBAT_ENHANCEMENT',
     baseCardId: 'COMBAT_ENHANCEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Combat Enhancement',
     maxInDeck: 2,
     rarity: 'Common',
@@ -1981,6 +2121,7 @@ const fullCardCollection = [
   {
     id: 'COMBAT_ENHANCEMENT_ENHANCED',
     baseCardId: 'COMBAT_ENHANCEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Combat Enhancement+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -1995,6 +2136,7 @@ const fullCardCollection = [
   {
     id: 'SHIELD_AMPLIFIER',
     baseCardId: 'SHIELD_AMPLIFIER',
+    faction: 'NEUTRAL_1',
     name: 'Shield Amplifier',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2009,6 +2151,7 @@ const fullCardCollection = [
   {
     id: 'SHIELD_AMPLIFIER_ENHANCED',
     baseCardId: 'SHIELD_AMPLIFIER',
+    faction: 'NEUTRAL_1',
     name: 'Shield Amplifier+',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -2026,6 +2169,7 @@ const fullCardCollection = [
   {
     id: 'COMMAND_OVERRIDE',
     baseCardId: 'COMMAND_OVERRIDE',
+    faction: 'NEUTRAL_1',
     name: 'Command Override',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2046,6 +2190,7 @@ const fullCardCollection = [
   {
     id: 'SIGNAL_HIJACK',
     baseCardId: 'SIGNAL_HIJACK',
+    faction: 'NEUTRAL_1',
     name: 'Signal Hijack',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2069,6 +2214,7 @@ const fullCardCollection = [
   {
     id: 'ENERGY_SIPHON',
     baseCardId: 'ENERGY_SIPHON',
+    faction: 'NEUTRAL_1',
     name: 'Energy Siphon',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2092,6 +2238,7 @@ const fullCardCollection = [
   {
     id: 'SYSTEM_PURGE',
     baseCardId: 'SYSTEM_PURGE',
+    faction: 'NEUTRAL_1',
     name: 'System Purge',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2109,6 +2256,7 @@ const fullCardCollection = [
   {
     id: 'SCATTER_SHOT',
     baseCardId: 'SCATTER_SHOT',
+    faction: 'NEUTRAL_1',
     name: 'Scatter Shot',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2128,6 +2276,7 @@ const fullCardCollection = [
   {
     id: 'HEADHUNTER_VOLLEY',
     baseCardId: 'HEADHUNTER_VOLLEY',
+    faction: 'NEUTRAL_1',
     name: 'Headhunter Volley',
     maxInDeck: 2,
     rarity: 'Uncommon',
@@ -2147,6 +2296,7 @@ const fullCardCollection = [
   {
     id: 'CULL_THE_WEAK',
     baseCardId: 'CULL_THE_WEAK',
+    faction: 'NEUTRAL_1',
     name: 'Cull the Weak',
     maxInDeck: 2,
     rarity: 'Common',
@@ -2165,25 +2315,4 @@ const fullCardCollection = [
   },
 ];
 
-// Apply default faction to all cards, then override specific assignments
-const FACTION_ASSIGNMENTS = {
-  // MOVEMENT faction — movement/positioning themed cards
-  REPOSITION: 'MOVEMENT',
-  MANEUVER: 'MOVEMENT',
-  MANEUVER_ENHANCED: 'MOVEMENT',
-  SWIFT_MANEUVER: 'MOVEMENT',
-  BOOSTERS: 'MOVEMENT',
-  // MARK faction — targeting/marking themed cards
-  TARGET_LOCK: 'MARK',
-  MARK_ENEMY: 'MARK',
-  TARGET_ACQUISITION: 'MARK',
-  PIERCING_SHOT: 'MARK',
-  PIERCING_SHOT_ENHANCED: 'MARK',
-};
-
-const cardsWithFactions = fullCardCollection.map(card => ({
-  ...card,
-  faction: FACTION_ASSIGNMENTS[card.id] || 'NEUTRAL_1',
-}));
-
-export default enrichCardsWithEffects(cardsWithFactions);
+export default enrichCardsWithEffects(fullCardCollection);

@@ -9,8 +9,11 @@ import { Power, RefreshCw, Cpu, ChevronsUp } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import { formatCardText } from '../../utils/formatCardText';
 import { getCardBorderClasses, getTypeInnerColors } from '../../logic/cards/cardBorderUtils.js';
+import { FACTIONS } from '../../data/factionData.js';
 import useCardTilt from '../../hooks/useCardTilt.js';
+import { CARD_CLIP_PATH } from '../../styles/cardClipPaths.js';
 
 // Helper function to get type-based colors with rarity-based border
 const getTypeColors = (type, rarity, isDisabled) => {
@@ -62,9 +65,11 @@ const ActionCard = ({
 
   // Determine if card is disabled (not playable and not a mandatory target)
   const isDisabled = !isPlayable && !isMandatoryTarget;
+  const disabledTextClass = isDisabled ? 'text-slate-400' : 'text-white';
 
   // Get type-based colors with rarity-based border effects
   const colors = getTypeColors(type, rarity, isDisabled);
+  const factionLogo = FACTIONS[card.faction]?.logo;
 
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
@@ -77,7 +82,7 @@ const ActionCard = ({
   const typeKey = type?.toLowerCase() || 'upgrade';
   const glowFilter = isDisabled ? null
     : `drop-shadow(0 0 6px var(--card-${typeKey}-glow-dim)) drop-shadow(0 0 12px var(--card-${typeKey}-glow-dim))`;
-  const tiltRef = useCardTilt(isDragging, { glowFilter });
+  const tiltRef = useCardTilt(isDragging, { hoverMode: 'flat', glowFilter });
 
   // Debug logging for ALL renders to diagnose re-rendering issue
   debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
@@ -118,7 +123,7 @@ const ActionCard = ({
         }
       }}
       className={`
-        rounded-lg p-[2px] relative group
+        p-[2px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${colors.border}
@@ -129,12 +134,12 @@ const ActionCard = ({
       style={{
         width: '100%',
         height: '100%',
-        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
+        clipPath: CARD_CLIP_PATH,
       }}
     >
       <div
         className="w-full h-full relative flex flex-col font-orbitron text-purple-300 overflow-hidden"
-        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
+        style={{ clipPath: CARD_CLIP_PATH }}
       >
         {/* Background */}
         <div className="absolute inset-0 bg-slate-900" />
@@ -146,7 +151,7 @@ const ActionCard = ({
             <div className="text-center min-w-0">
               <ScalingText
                 text={name}
-                className={`font-orbitron text-sm uppercase tracking-widest whitespace-nowrap ${hasMomentumGlow ? 'momentum-title-glow' : 'text-white'}`}
+                className={`font-orbitron text-sm uppercase tracking-widest whitespace-nowrap ${hasMomentumGlow ? 'momentum-title-glow' : disabledTextClass}`}
               />
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -154,13 +159,13 @@ const ActionCard = ({
               {card.momentumCost && (
                 <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
                   <ChevronsUp size={14} className="text-blue-400" />
-                  <span className="text-white font-bold text-sm ml-1">{card.momentumCost}</span>
+                  <span className={`${disabledTextClass} font-bold text-sm ml-1`}>{card.momentumCost}</span>
                 </div>
               )}
               {/* Energy Cost Chip */}
               <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
                 <Power size={14} className="text-yellow-300" />
-                <span className={`font-bold text-sm ml-1 ${diffHighlights?.cost ? 'text-orange-400' : 'text-white'}`}>{cost}</span>
+                <span className={`font-bold text-sm ml-1 ${diffHighlights?.cost ? 'text-orange-400' : disabledTextClass}`}>{cost}</span>
               </div>
             </div>
           </div>
@@ -179,13 +184,23 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className={`mx-1 mb-1 flex-grow bg-black/80 border p-2 rounded-md flex flex-col ${colors.descBorder}`}>
-            <div className="flex-grow">
+          <div className={`mx-1 mb-1 flex-grow bg-black/80 border p-2 rounded-md flex flex-col relative overflow-hidden ${colors.descBorder}`}>
+            {factionLogo && (
+              <img
+                src={factionLogo}
+                alt=""
+                className="absolute object-contain pointer-events-none"
+                style={{ opacity: 0.045, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '110%', height: '110%' }}
+              />
+            )}
+            <div className="flex-grow relative z-[1]">
               <ScalingText
                 text={diffHighlights?.descriptionNode ?? description}
                 textKey={diffHighlights?.descriptionNode ? description : undefined}
-                className="text-sm text-white leading-tight text-center font-exo font-normal"
-              />
+                className={`text-sm ${disabledTextClass} leading-tight text-center font-exo font-normal`}
+              >
+                {!diffHighlights?.descriptionNode ? formatCardText(description) : undefined}
+              </ScalingText>
             </div>
             {/* Slot Cost - moved from footer */}
             {type === 'Upgrade' && card.slots && (

@@ -4,7 +4,7 @@
 // Renders interactive drone cards on the battlefield with all visual states
 // Handles animations, stats display, shield visualization, and ability access
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
@@ -12,7 +12,7 @@ import useCardTilt from '../../hooks/useCardTilt.js';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import LeftSideIcons from './LeftSideIcons.jsx';
 import RightSideIcons from './RightSideIcons.jsx';
-import DroneTooltipPanel, { buildTooltipItems } from './DroneTooltipPanel.jsx';
+import DroneTooltipPanel, { buildTooltipItems, DRONE_TOOLTIP_EFFECTIVE_WIDTH } from './DroneTooltipPanel.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { FACTION_COLORS } from '../../utils/factionColors.js';
 
@@ -123,6 +123,8 @@ const DroneToken = ({
   // Intercepted badge state — { droneId, timestamp } or null
   interceptedBadge = null,
 }) => {
+  const [tooltipPosition, setTooltipPosition] = useState('right');
+
   // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
   const isVisuallyOwned = drone.deployedBy
     ? drone.deployedBy === getLocalPlayerId()
@@ -135,8 +137,8 @@ const DroneToken = ({
   const glowFilter = drone.isExhausted ? null
     : `drop-shadow(0 0 6px ${glowColor}) drop-shadow(0 0 12px ${glowColor})`;
   const tiltRef = useCardTilt(isDragging, {
+    hoverMode: 'flat',
     maxTiltDrag: 10,
-    maxTiltHover: 5,
     glowFilter
   });
 
@@ -295,9 +297,15 @@ const DroneToken = ({
           debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2C: No onDragDrop callback, propagating to lane');
         }
       }}
-      onMouseEnter={onMouseEnter}
+      onMouseEnter={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setTooltipPosition(
+          rect.right + DRONE_TOOLTIP_EFFECTIVE_WIDTH > window.innerWidth ? 'left' : 'right'
+        );
+        onMouseEnter?.(e);
+      }}
       onMouseLeave={onMouseLeave}
-      className={`relative ${isDragging || isSelected ? 'z-[150]' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''} ${ghostEffect}`}
+      className={`relative ${isDragging || isSelected ? 'z-[150]' : isElevated ? 'z-20' : 'z-10'} ${ghostEffect}`}
       data-drone-token=""
       data-dragging={isDragging || undefined}
       data-drone-index={droneIndex}
@@ -309,6 +317,8 @@ const DroneToken = ({
         ...dimmingStyle,
       }}
     >
+      {/* Float Animation Wrapper — keeps drone-float sway off the tooltip */}
+      <div className={`w-full h-full ${enableFloatAnimation ? 'drone-float' : ''}`}>
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
       <div className={`w-full h-full rounded-lg ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`} style={selectedGlowStyle}>
         {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
@@ -425,12 +435,14 @@ const DroneToken = ({
           timestamp={interceptedBadge.timestamp}
         />
       )}
+      </div>
+      {/* End Float Animation Wrapper */}
 
       {/* Tooltip toasts — CSS-only hover visibility */}
       {tooltipItems.length > 0 && (
         <DroneTooltipPanel
           items={tooltipItems}
-          position={lane === 'lane3' ? 'left' : 'right'}
+          position={tooltipPosition}
         />
       )}
 

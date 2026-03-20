@@ -112,6 +112,15 @@ function evaluateCondition(condition, target, context) {
       return section ? section.allocatedShields === 0 : false;
     }
 
+    case 'LANE_HAS_ENEMY_WITH_STATUS': {
+      // Check if opponent has a drone with the specified status in the target's lane
+      if (!context?.player1 || !context?.getLaneOfDrone || !condition.status) return false;
+      const lane = context.getLaneOfDrone(target.id, context.player2);
+      if (!lane) return false;
+      const opponentDrones = context.player1.dronesOnBoard[lane] || [];
+      return opponentDrones.some(d => d[condition.status] === true);
+    }
+
     default:
       // Unknown condition type - don't trigger
       debugLog('AI_DECISIONS', `[AI] Unknown condition type: ${type}`);
