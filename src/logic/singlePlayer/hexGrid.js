@@ -1,6 +1,7 @@
 import { mapTiers } from '../../data/mapData';
 import { RARITY_COLORS } from '../../data/rarityColors';
 import { SeededRandom } from '../../utils/seededRandom.js';
+import { getRegionFaction } from '../faction/factionHelpers.js';
 
 export const GRID_COLS = 26;  // A-Z
 export const GRID_ROWS = 18;  // 1-18
@@ -52,7 +53,8 @@ export const generateHexGrid = (containerWidth, containerHeight, gameSeed, activ
         y: offsetY + row * verticalSpacing,
         isActive: false,
         mapIndex: null,
-        distanceFromCenter
+        distanceFromCenter,
+        regionFaction: getRegionFaction(col, row)
       });
     }
   }

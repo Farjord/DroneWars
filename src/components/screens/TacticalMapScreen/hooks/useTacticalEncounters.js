@@ -18,6 +18,7 @@ import aiPersonalities from '../../../../data/aiData.js';
 import { generateSalvageItemFromValue } from '../../../../data/salvageItemData.js';
 import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
+import { getAccessibleFactions } from '../../../../logic/faction/factionHelpers.js';
 import SeededRandom from '../../../../utils/seededRandom.js';
 
 /**
@@ -249,12 +250,14 @@ export function useTacticalEncounters({
         debugLog('LOOT', 'Generated token reward', loot);
       } else {
         // Generate loot using RewardManager with zone-based weighting
+        const mapFaction = currentRunState?.mapData?.faction || 'NEUTRAL_1';
         loot = rewardManager.generatePOIRewards({
           poiData: { rewardType: packType },
           outcome: 'loot',
           tier: tier,
           zone: zone,
-          tierConfig: tierConfig
+          tierConfig: tierConfig,
+          accessibleFactions: getAccessibleFactions(mapFaction)
         });
         debugLog('LOOT', 'Generated loot', { zone, loot });
       }

@@ -159,7 +159,7 @@ class RewardManager {
    * @see generateSalvageSlots for slot-based POI salvage with reveal mechanics
    */
   generatePOIRewards(poiContext) {
-    const { poiData, tier = 1, zone = null, tierConfig = null } = poiContext;
+    const { poiData, tier = 1, zone = null, tierConfig = null, accessibleFactions = null } = poiContext;
     const packType = poiData.rewardType;
 
     const seed = this.getNextSeed();
@@ -203,7 +203,7 @@ class RewardManager {
       // First card uses guaranteed type, others use weighted roll
       const cardType = rollCardType(config, i === 0, rng);
       const rolledRarity = rollRarity(rarityWeights, rng);
-      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng, accessibleFactions);
 
       if (card) {
         cards.push(card);  // Already transformed by selectCard()
@@ -325,7 +325,7 @@ class RewardManager {
    *
    * @see generateCombatRewards for post-combat card drops (different system)
    */
-  generateBlueprintReward(packType, tier = 1) {
+  generateBlueprintReward(packType, tier = 1, accessibleFactions = null) {
     const seed = this.getNextSeed();
 
     const classBandWeights = CLASS_BAND_WEIGHTS[packType];
@@ -353,7 +353,7 @@ class RewardManager {
       // Roll rarity based on tier weights
       rolledRarity = rollRarity(weights, rng);
 
-      // Filter drones by class, rarity, and exclusions
+      // Filter drones by class, rarity, faction, and exclusions
       const availableDrones = fullDroneCollection.filter(d => {
         // Exclude starters
         if (starterPoolDroneNames.includes(d.name)) return false;
@@ -363,6 +363,9 @@ class RewardManager {
 
         // Exclude non-selectable
         if (d.selectable === false) return false;
+
+        // Faction filtering
+        if (accessibleFactions && !accessibleFactions.includes(d.faction)) return false;
 
         // Match rolled class
         if (d.class !== rolledClass) return false;
@@ -480,7 +483,7 @@ class RewardManager {
    * @see generateShopPack for fixed-count card-only purchases
    * @see generateCombatRewards for enemy deck-based loot (not card pool)
    */
-  generateSalvageSlots(packType, tier = 1, zone = null, tierConfig = null) {
+  generateSalvageSlots(packType, tier = 1, zone = null, tierConfig = null, accessibleFactions = null) {
     const seed = this.getNextSeed();
     const rng = createRNG(seed);
     const actualZone = zone || 'mid';
@@ -510,7 +513,7 @@ class RewardManager {
       if (rng.random() < cardChance) {
         const rarityWeights = config?.cardRarityWeights || { Common: 70, Uncommon: 25, Rare: 5 };
         const rolledRarity = rollRarity(rarityWeights, rng);
-        const card = selectCard(null, rolledRarity, Object.keys(rarityWeights), rng);
+        const card = selectCard(null, rolledRarity, Object.keys(rarityWeights), rng, accessibleFactions);
         if (card) {
           slots.push({ type: 'card', content: card, revealed: false });
         }
@@ -609,7 +612,7 @@ class RewardManager {
       // First card uses guaranteed type, others use additionalCardWeights
       const cardType = config ? rollCardType(config, i === 0, rng) : null;
       const rolledRarity = rollRarity(rarityWeights, rng);
-      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng, accessibleFactions);
 
       if (card) {
         slots.push({

@@ -33,7 +33,7 @@ export class SalvageController {
    * @param {string} threatLevel - Current threat level ('low', 'medium', 'high'), defaults to 'low'
    * @returns {Object} Initial salvage state
    */
-  initializeSalvage(poi, tierConfig, zone, tier = 1, threatLevel = 'low') {
+  initializeSalvage(poi, tierConfig, zone, tier = 1, threatLevel = 'low', accessibleFactions = null) {
     // Handle both hex objects (with nested poiData) and direct POI objects
     const poiData = poi.poiData || poi
 
@@ -48,7 +48,8 @@ export class SalvageController {
       poiData.rewardType,
       tier,
       zone,
-      tierConfig
+      tierConfig,
+      accessibleFactions
     )
 
     // Calculate base encounter chance plus threat bonus

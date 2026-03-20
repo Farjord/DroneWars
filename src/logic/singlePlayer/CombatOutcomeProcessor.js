@@ -15,6 +15,7 @@ import DetectionManager from '../detection/DetectionManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import MissionService from '../missions/MissionService.js';
 import { REPUTATION_EVENTS } from '../../data/reputationData.js';
+import { getAccessibleFactions } from '../faction/factionHelpers.js';
 
 /**
  * CombatOutcomeProcessor
@@ -182,7 +183,10 @@ class CombatOutcomeProcessor {
     if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
       debugLog('SP_COMBAT', 'Drone blueprint POI - generating blueprint:', rewardType);
 
-      const blueprintResult = rewardManager.generateBlueprintReward(rewardType, enemyTier);
+      const mapFaction = currentRunState?.mapData?.faction || 'NEUTRAL_1';
+      const blueprintResult = rewardManager.generateBlueprintReward(
+        rewardType, enemyTier, getAccessibleFactions(mapFaction)
+      );
 
       // Check if all blueprints in this category are exhausted
       if (blueprintResult?.type === 'blueprint_exhausted') {

@@ -17,6 +17,9 @@ import rewardManager from '../RewardManager.js';
 import gameStateManager from '../GameStateManager.js';
 import metaGameStateManager from '../MetaGameStateManager.js';
 import { createRNG } from '../../logic/loot/SeededRNG.js';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import * as CardSelectionPipeline from '../../logic/loot/CardSelectionPipeline.js';
 
 // Mock managers
 vi.mock('../GameStateManager.js', () => ({
@@ -1228,6 +1231,79 @@ describe('RewardManager', () => {
       salvageSlots.filter(s => s.type === 'salvageItem').forEach(slot => {
         expect(slot.content.creditValue).toBeDefined();
       });
+    });
+  });
+
+  describe('Faction Filtering', () => {
+    it('generatePOIRewards should pass accessibleFactions to selectCard', () => {
+      const selectCardSpy = vi.spyOn(CardSelectionPipeline, 'selectCard');
+
+      rewardManager.generatePOIRewards({
+        poiData: { rewardType: 'ORDNANCE_PACK' },
+        tier: 1,
+        accessibleFactions: ['MARK', 'NEUTRAL_1']
+      });
+
+      // Verify selectCard was called with accessibleFactions as the 5th argument
+      expect(selectCardSpy).toHaveBeenCalled();
+      const lastCall = selectCardSpy.mock.calls[0];
+      expect(lastCall[4]).toEqual(['MARK', 'NEUTRAL_1']);
+
+      selectCardSpy.mockRestore();
+    });
+
+    it('generatePOIRewards without accessibleFactions returns cards from any faction (backwards compat)', () => {
+      const result = rewardManager.generatePOIRewards({
+        poiData: { rewardType: 'ORDNANCE_PACK' },
+        tier: 1
+      });
+
+      expect(result.cards.length).toBeGreaterThan(0);
+    });
+
+    it('generateSalvageSlots should pass accessibleFactions to selectCard', () => {
+      const selectCardSpy = vi.spyOn(CardSelectionPipeline, 'selectCard');
+
+      rewardManager.generateSalvageSlots(
+        'ORDNANCE_PACK', 1, 'core', null, ['MARK', 'NEUTRAL_1']
+      );
+
+      // Verify selectCard was called with accessibleFactions
+      expect(selectCardSpy).toHaveBeenCalled();
+      selectCardSpy.mock.calls.forEach(call => {
+        expect(call[4]).toEqual(['MARK', 'NEUTRAL_1']);
+      });
+
+      selectCardSpy.mockRestore();
+    });
+
+    it('generateBlueprintReward should filter drones by accessibleFactions when provided', () => {
+      const result = rewardManager.generateBlueprintReward(
+        'DRONE_BLUEPRINT_LIGHT', 1, ['NEUTRAL_1']
+      );
+
+      if (result && result.type === 'blueprint') {
+        const drone = fullDroneCollection.find(d => d.name === result.blueprintId);
+        if (drone) {
+          expect(drone.faction).toBe('NEUTRAL_1');
+        }
+      }
+    });
+
+    it('generateCombatRewards should NOT filter by faction (thematic)', () => {
+      const enemyDeck = [
+        { id: 'REPOSITION', name: 'Reposition', rarity: 'Common', type: 'Tactic', faction: 'MOVEMENT' },
+        { id: 'TARGET_LOCK', name: 'Target Lock', rarity: 'Common', type: 'Ordnance', faction: 'MARK' },
+      ];
+
+      const result = rewardManager.generateCombatRewards({
+        enemyDeck,
+        tier: 1,
+        aiDifficulty: 'Normal'
+      });
+
+      // Should return cards without faction filtering
+      expect(result.cards.length).toBeGreaterThan(0);
     });
   });
 });

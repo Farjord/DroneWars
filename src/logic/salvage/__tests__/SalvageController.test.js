@@ -121,7 +121,8 @@ describe('SalvageController', () => {
         'TACTICAL_PACK',
         expect.any(Number), // tier
         'core',
-        mockTierConfig
+        mockTierConfig,
+        null // accessibleFactions (not provided)
       )
     })
 
@@ -160,7 +161,8 @@ describe('SalvageController', () => {
         'ORDNANCE_PACK',
         expect.any(Number),
         'mid',
-        mockTierConfig
+        mockTierConfig,
+        null // accessibleFactions (not provided)
       )
     })
 

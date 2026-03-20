@@ -15,6 +15,7 @@ import transitionManager from '../../../../managers/TransitionManager.js';
 import gameStateManager from '../../../../managers/GameStateManager.js';
 import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
+import { getAccessibleFactions } from '../../../../logic/faction/factionHelpers.js';
 
 // --- Movement Constants ---
 export const SCAN_DELAY = 500;   // Time to show scan animation
@@ -275,12 +276,14 @@ export function useTacticalMovement({
             const detection = DetectionManager.getCurrentDetection();
             const threatLevel = DetectionManager.getThreshold();
 
+            const mapFaction = runState?.mapData?.faction || 'NEUTRAL_1';
             const salvageState = SalvageController.initializeSalvage(
               arrivedHex,
               tierConfig,
               zone,
               tier,
-              threatLevel
+              threatLevel,
+              getAccessibleFactions(mapFaction)
             );
 
             // Store remaining waypoints in manager for journey resumption after salvage

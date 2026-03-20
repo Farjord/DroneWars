@@ -6,6 +6,7 @@ import { SeededRandom } from '../../../../utils/seededRandom.js';
 import MusicManager from '../../../../managers/MusicManager.js';
 import MissionService from '../../../../logic/missions/MissionService';
 import { debugLog } from '../../../../utils/debugLogger.js';
+import { getRegionFaction } from '../../../../logic/faction/factionHelpers.js';
 
 // Number of procedural maps generated for deployment selection
 const MAP_COUNT = 6;
@@ -108,13 +109,16 @@ const useHangarData = (singlePlayerProfile, mapContainerRef, showDeployingScreen
     }
   }, [hexGridData, singlePlayerProfile?.gameSeed]);
 
-  // Inject grid coordinates into map names
+  // Inject grid coordinates and faction into maps
   const mapsWithCoordinates = useMemo(() => {
     if (!hexGridData || generatedMaps.length === 0) return generatedMaps;
 
     return generatedMaps.map((map, index) => {
       const cell = hexGridData.allCells.find(c => c.mapIndex === index);
-      if (cell) return { ...map, name: `Sector ${cell.coordinate}` };
+      if (cell) {
+        const faction = getRegionFaction(cell.col, cell.row);
+        return { ...map, name: `Sector ${cell.coordinate}`, faction };
+      }
       return map;
     });
   }, [hexGridData, generatedMaps]);

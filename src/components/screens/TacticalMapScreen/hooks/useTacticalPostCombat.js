@@ -12,6 +12,7 @@ import SalvageController from '../../../../logic/salvage/SalvageController.js';
 import { mapTiers } from '../../../../data/mapData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
 import { isBlueprintRewardType } from './useTacticalSubscriptions.js';
+import { getAccessibleFactions } from '../../../../logic/faction/factionHelpers.js';
 
 // Default threat increase applied when collecting POI loot
 const DEFAULT_POI_THREAT_INCREASE = 10;
@@ -157,12 +158,14 @@ export function useTacticalPostCombat({
         };
       } else {
         // Regular pack reward - use RewardManager
+        const mapFaction = runState?.mapData?.faction || 'NEUTRAL_1';
         poiLoot = rewardManager.generatePOIRewards({
           poiData: { rewardType: packType },
           outcome: 'loot',
           tier: tier,
           zone: zone,
-          tierConfig: tierConfig
+          tierConfig: tierConfig,
+          accessibleFactions: getAccessibleFactions(mapFaction)
         });
       }
 
