@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import SoundManager from '../../managers/SoundManager.js';
+import { useGameState } from '../../hooks/useGameState';
 
 // Import card components
 import ActionCard from '../ui/ActionCard.jsx';
@@ -33,6 +34,8 @@ import { shipComponentCollection } from '../../data/shipSectionData.js';
  */
 const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, onConfirm, onCancel }) => {
   const [selectedItems, setSelectedItems] = useState([]);
+  const { gameState } = useGameState();
+  const inventory = gameState?.singlePlayerInventory || {};
 
   if (!isOpen) {
     return null;
@@ -123,6 +126,7 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
           </CardWrapper>
         );
       }
+      const ownedCount = inventory[cardData.id] || 0;
       return (
         <CardWrapper key={index}>
           <ActionCard
@@ -132,6 +136,12 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
             isDimmed={false}
             onClick={() => {}}
           />
+          <div
+            className="text-xs font-orbitron text-center mt-1"
+            style={{ color: '#67e8f9' }}
+          >
+            Owned: {ownedCount}
+          </div>
         </CardWrapper>
       );
     }
