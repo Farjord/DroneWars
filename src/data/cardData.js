@@ -2165,4 +2165,25 @@ const fullCardCollection = [
   },
 ];
 
-export default enrichCardsWithEffects(fullCardCollection);
+// Apply default faction to all cards, then override specific assignments
+const FACTION_ASSIGNMENTS = {
+  // MOVEMENT faction — movement/positioning themed cards
+  REPOSITION: 'MOVEMENT',
+  MANEUVER: 'MOVEMENT',
+  MANEUVER_ENHANCED: 'MOVEMENT',
+  SWIFT_MANEUVER: 'MOVEMENT',
+  BOOSTERS: 'MOVEMENT',
+  // MARK faction — targeting/marking themed cards
+  TARGET_LOCK: 'MARK',
+  MARK_ENEMY: 'MARK',
+  TARGET_ACQUISITION: 'MARK',
+  PIERCING_SHOT: 'MARK',
+  PIERCING_SHOT_ENHANCED: 'MARK',
+};
+
+const cardsWithFactions = fullCardCollection.map(card => ({
+  ...card,
+  faction: FACTION_ASSIGNMENTS[card.id] || 'NEUTRAL_1',
+}));
+
+export default enrichCardsWithEffects(cardsWithFactions);

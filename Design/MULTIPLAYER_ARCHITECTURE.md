@@ -71,7 +71,7 @@ PhaseManager.checkReadyToTransition():
 | GameFlowManager | Phase loop logic, all broadcastStateToGuest() call sites, round management, phase cascade logic |
 | ActionProcessor | Action dispatch via queue, `broadcastStateToGuest()` implementation, `processGuestAction()` handler |
 | useActionRouting | Routes guest actions: optimistic local processing + send to host. Deployment and action routing |
-| useMultiplayerSync | React layer: waiting overlays, phase transition detection from prop changes, render completion signaling |
+| useWaitingForOpponent | React layer: waiting overlays, phase transition detection from prop changes, commitment monitoring |
 
 ---
 
@@ -186,7 +186,7 @@ When adding any feature that affects game state visible to both players:
 - [ ] **Phase transitions**: If adding a new phase, is it categorized in PhaseManager (simultaneous/sequential/automatic)?
 - [ ] **Guest phase announcements**: If the new phase creates a transition the guest needs to announce, is there a pattern match in GMQS `processStateUpdate`?
 - [ ] **State comparison**: If adding new state fields that should be validated, are they included in `compareGameStates()`?
-- [ ] **Waiting overlays**: If the phase requires waiting for the opponent, is it handled in `useMultiplayerSync` commitment monitoring?
+- [ ] **Waiting overlays**: If the phase requires waiting for the opponent, is it handled in `useWaitingForOpponent` commitment monitoring?
 - [ ] **Pass handling**: If the phase involves passing, does `passInfo.firstPasser` get set correctly for both host and guest?
 
 ---
@@ -221,7 +221,7 @@ When adding any feature that affects game state visible to both players:
 `GuestSyncManager.js:66-74` — Sends `GAME_STATE_SYNC` via `sendData()`, but P2PManager only routes `PING`, `PONG`, and `PHASE_COMPLETED` types. `GAME_STATE_SYNC` hits the `Unknown data type` warning. Sync now goes through `requestFullSync()`/`sendFullSyncResponse()`.
 
 **D4. `render_complete` event emitted but never consumed**
-`useMultiplayerSync.js:180` and screen components emit this event. `useGameState.js:33-35` filters it out. No manager subscribes. Remnant of a previous animation-timing approach.
+Screen components emit this event. `useGameState.js:33-35` filters it out. No manager subscribes. Remnant of a previous animation-timing approach. (Note: `useMultiplayerSync` was renamed to `useWaitingForOpponent` and this event was already removed.)
 
 ### 11.3 Missing Safety Nets
 

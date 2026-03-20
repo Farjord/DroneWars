@@ -849,7 +849,7 @@
 **useResolvers.js (608 lines, 8 issues):**
 - **[CLOSED: SIZE-TRACKED] [SIZE]** — 608 lines, above 400-line threshold. Modal callbacks (lines 401-560) could extract to `useModalCallbacks`.
 - **[FIXED] [EDGE] :489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
-- **[DEFERRED] [EDGE] :148** — `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting`. If call fails, `result.mandatoryAction` throws.
+- **[FIXED] [EDGE] :148** — `resolveShipAbility` dead code removed — all ship abilities route through specific action types via `handleConfirmShipAbility`.
 - **[FIXED] [SMELL] :436** — Magic 400ms delay extracted to `MOVE_RESOLUTION_DELAY`.
 - **[CLOSED: ACCEPTABLE] [SMELL] :522-560** — `handleConfirmShipAbility` routes by `abilityType` string with 4 if/else-if branches.
 - **[CLOSED: ACCEPTABLE] [LOGIC] :79** — Defensive cleanup `useEffect` deps include `turnPhase`/`currentPlayer` but body only checks `winner`. Fires unnecessarily.

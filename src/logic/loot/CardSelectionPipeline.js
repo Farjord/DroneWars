@@ -96,16 +96,26 @@ export function rollCardType(config, isGuaranteed, rng) {
  * @param {string} rarity - Desired rarity
  * @param {string[]} allowedRarities - List of allowed rarities for fallback
  * @param {{ random: () => number }} rng - Seeded RNG
+ * @param {string[]|null} accessibleFactions - Faction IDs to filter by, or null for no filtering
  * @returns {Object|null} Card in collectedLoot format, or null if pool empty
  */
-export function selectCard(cardType, rarity, allowedRarities, rng) {
+export function selectCard(cardType, rarity, allowedRarities, rng, accessibleFactions = null) {
   const notStarter = (c) => !STARTER_CARD_IDS.has(c.id);
   const notAIOnly = (c) => !c.aiOnly;
   const notEnhanced = (c) => !c.id.endsWith('_ENHANCED');
   const isAllowedRarity = (c) => allowedRarities.includes(c.rarity || 'Common');
 
   // Base pool: exclude starters, AI-only, and enhanced cards from all drop levels
-  const basePool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c) && notEnhanced(c));
+  let basePool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c) && notEnhanced(c));
+
+  // Faction filtering: narrow base pool to accessible factions
+  if (accessibleFactions) {
+    const factionPool = basePool.filter(c => accessibleFactions.includes(c.faction));
+    if (factionPool.length > 0) {
+      basePool = factionPool;
+    }
+    // else: fall through to full pool (empty faction pool fallback)
+  }
 
   // Primary: exact type + rarity
   let pool = basePool.filter(c =>

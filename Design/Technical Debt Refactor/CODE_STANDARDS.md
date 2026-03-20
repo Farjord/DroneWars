@@ -214,7 +214,7 @@ When adding a new phase to the game:
 
 1. **Categorize in PhaseManager**: Add to `SIMULTANEOUS_PHASES`, `SEQUENTIAL_PHASES`, or `AUTOMATIC_PHASES`
 2. **Add guest phase announcement**: Add a pattern match in `GuestMessageQueueService.processStateUpdate()` for the new transition
-3. **Add waiting overlay**: If simultaneous, add to `useMultiplayerSync` commitment monitoring
+3. **Add waiting overlay**: If simultaneous, add to `useWaitingForOpponent` commitment monitoring
 4. **Add to phase flow**: Update `GameFlowManager.getNextPhase()` / `getNextRoundPhase()` / `getNextPreGamePhase()`
 5. **Verify broadcast**: Ensure `broadcastStateToGuest()` is called after the phase transition
 6. **Test both roles**: Verify both host and guest see correct announcements and transitions

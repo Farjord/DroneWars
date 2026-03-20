@@ -181,10 +181,10 @@ The `actingPlayerId` (whoever initiated the original action) maintains priority 
 - Test: existing `RoundManager.roundStart.test.js` must still pass
 
 ### Phase 2: Migrate ON_DEPLOY
-- Scanner (Target Scanner → MARK_RANDOM_ENEMY)
+- Scanner (Target Scanner → MARK_DRONE)
 - Replace inline ON_DEPLOY code in `DeploymentProcessor.js` (lines 331-382) with `TriggerProcessor.fireTrigger('ON_DEPLOY', ...)`
 - Normalize Scanner ability: `effect{}` → `effects[]` in droneData.js
-- **Cleanup:** Remove inline MARK_RANDOM_ENEMY logic from DeploymentProcessor
+- **Cleanup:** Remove inline MARK_DRONE logic from DeploymentProcessor
 - Test: existing deployment tests must pass
 
 ### Phase 3: Migrate ON_MOVE + Consolidate MovementEffectProcessor

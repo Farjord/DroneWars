@@ -25,7 +25,7 @@
 ## Phase 2: Migrate ON_DEPLOY ✅
 - [x] Replace inline ON_DEPLOY code in DeploymentProcessor → `TriggerProcessor.fireTrigger('ON_DEPLOY', ...)`
 - [x] Normalize Scanner ability: `effect{}` → `effects[]`
-- [x] Cleanup: remove inline MARK_RANDOM_ENEMY logic
+- [x] Cleanup: remove inline MARK_DRONE logic
 - [x] Tests: deployment tests pass, Scanner marks random enemy
 - [x] Checkpoint commit
 

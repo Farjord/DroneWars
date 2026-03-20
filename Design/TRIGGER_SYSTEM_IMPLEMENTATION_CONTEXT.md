@@ -96,7 +96,7 @@ There are **6 distinct patterns** for handling triggers:
     name: 'Target Scanner',
     type: 'TRIGGERED',
     trigger: 'ON_DEPLOY',
-    effect: { type: 'MARK_RANDOM_ENEMY', scope: 'SAME_LANE', filter: 'NOT_MARKED' }
+    effect: { type: 'MARK_DRONE', scope: 'SAME_LANE', filter: 'NOT_MARKED' }
 }
 // NOTE: Uses singular `effect` not `effects` array
 ```
@@ -352,7 +352,7 @@ The EffectRouter (`src/logic/EffectRouter.js`) maps effect types to processor in
 | CREATE_TOKENS | TokenCreationProcessor |
 | SEARCH_AND_DRAW | SearchAndDrawProcessor |
 | DRAW_THEN_DISCARD | DrawThenDiscardProcessor |
-| MARK_DRONE, MARK_RANDOM_ENEMY | MarkingEffectProcessor |
+| MARK_DRONE, MARK_DRONE | MarkingEffectProcessor |
 | INCREASE_THREAT | IncreaseThreatEffectProcessor |
 | DISCARD | DiscardEffectProcessor |
 | DRAIN_ENERGY | DrainEnergyEffectProcessor |

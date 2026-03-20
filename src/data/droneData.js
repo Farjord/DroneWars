@@ -887,4 +887,21 @@ const fullDroneCollection = [
   },
 ];
 
-export default fullDroneCollection;
+// Apply default faction to all drones, then override specific assignments
+const DRONE_FACTION_ASSIGNMENTS = {
+  // MOVEMENT faction — speed/mobility themed drones
+  'Harrier': 'MOVEMENT',
+  'Blitz': 'MOVEMENT',
+  'Specter': 'MOVEMENT',
+  // MARK faction — targeting/detection themed drones
+  'Scanner': 'MARK',
+  'Hunter': 'MARK',
+  'Shrike': 'MARK',
+};
+
+const dronesWithFactions = fullDroneCollection.map(drone => ({
+  ...drone,
+  faction: DRONE_FACTION_ASSIGNMENTS[drone.name] || 'NEUTRAL_1',
+}));
+
+export default dronesWithFactions;
