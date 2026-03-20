@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { axialToPixel } from '../../utils/hexGrid.js';
+import { FACTIONS } from '../../data/factionData.js';
 
 /**
  * MapPreviewRenderer - Compact hex grid preview for sector selection
@@ -25,10 +26,15 @@ import { axialToPixel } from '../../utils/hexGrid.js';
  * @param {Function} onGateSelect - Callback when gate is clicked
  * @param {number} size - Container size in pixels (default 400)
  */
-function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGateSelect, size = 400 }) {
+function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGateSelect, size = 400, faction }) {
   // Calculate hex size based on container size and map radius
   const containerSize = size;
   const hexSize = containerSize / (radius * 3.5);
+
+  // Faction accent color — replaces hardcoded cyan
+  const factionDef = faction ? FACTIONS[faction] : null;
+  const isFactionMap = factionDef?.type === 'faction';
+  const accentColor = isFactionMap ? factionDef.color : '#06b6d4';
 
   /**
    * Calculate hex polygon points for flat-top orientation
@@ -98,7 +104,7 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
       }
       return '#f59e0b'; // Amber for regular POIs
     }
-    return 'rgba(6, 182, 212, 0.4)'; // Dim cyan for empty
+    return `${accentColor}66`; // Dim accent for empty
   };
 
   /**
@@ -261,7 +267,7 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
       height: `${containerSize}px`,
       backgroundColor: 'rgba(0, 0, 0, 0.3)',
       borderRadius: '8px',
-      border: '1px solid rgba(6, 182, 212, 0.3)',
+      border: `1px solid ${accentColor}4d`,
       overflow: 'hidden'
     }}>
       <svg
@@ -273,14 +279,14 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
         {/* Background pattern */}
         <defs>
           <pattern
-            id="preview-grid-pattern"
+            id={`preview-grid-pattern-${faction || 'neutral'}`}
             width="20"
             height="20"
             patternUnits="userSpaceOnUse"
           >
             <path
               d="M 20 0 L 0 20 M 0 0 L 20 20"
-              stroke="rgba(6, 182, 212, 0.05)"
+              stroke={`${accentColor}0d`}
               strokeWidth="0.5"
               fill="none"
             />
@@ -306,7 +312,7 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
           y={-viewBoxSize}
           width={viewBoxSize * 2}
           height={viewBoxSize * 2}
-          fill="url(#preview-grid-pattern)"
+          fill={`url(#preview-grid-pattern-${faction || 'neutral'})`}
         />
 
         {/* Render all hexes */}

@@ -265,9 +265,23 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
   const gateCount = selectedMap.gates?.length || selectedMap.gateCount || 3;
   const entryCost = selectedMap.entryCost || 0;
 
+  // Faction-based theme overrides — cascades through all modal CSS variables
+  const factionDef = selectedMap.faction ? FACTIONS[selectedMap.faction] : null;
+  const isFactionMap = factionDef?.type === 'faction';
+  const accentColor = isFactionMap ? factionDef.color : null;
+
+  const factionThemeStyle = accentColor ? {
+    '--modal-theme': accentColor,
+    '--modal-theme-light': `${accentColor}b3`,
+    '--modal-theme-border': `${accentColor}66`,
+    '--modal-theme-glow': `${accentColor}26`,
+    '--modal-theme-bg': `${accentColor}14`,
+    '--modal-theme-tint': `${accentColor}0D`,
+  } : {};
+
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--xl dw-modal--action" style={{ maxWidth: '760px' }} onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" style={{ maxWidth: '760px', ...factionThemeStyle }} onClick={e => e.stopPropagation()}>
         {/* Header with Navigation */}
         <div className="dw-modal-header">
           <button
@@ -293,7 +307,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                     cursor: 'pointer',
                     padding: '4px',
                     borderRadius: '4px',
-                    color: '#06b6d4',
+                    color: accentColor || '#06b6d4',
                     opacity: 0.7,
                     transition: 'opacity 0.2s ease',
                     display: 'flex',
@@ -308,6 +322,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             </div>
             <p className="dw-modal-header-subtitle">
               {currentSlot ? (currentSlot.id === 0 ? 'Starter Deck' : (currentSlot.name || `Slot ${currentSlotId}`)) : 'No Ship'} | Tier {selectedMap.tier}
+              {selectedMap.faction && FACTIONS[selectedMap.faction] && (
+                <> | <span style={{ color: FACTIONS[selectedMap.faction].color }}>{FACTIONS[selectedMap.faction].name}</span></>
+              )}
             </p>
           </div>
 
@@ -339,6 +356,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   selectedGateId={selectedGateId}
                   onGateSelect={setSelectedGateId}
                   size={340}
+                  faction={selectedMap.faction}
                 />
               ) : (
                 <div style={{
@@ -363,7 +381,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Section Header */}
               <div style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--modal-action)', margin: 0 }}>SECTOR INTEL</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--modal-theme, var(--modal-action))', margin: 0 }}>SECTOR INTEL</h3>
               </div>
 
               {/* Basic Stats */}
@@ -385,27 +403,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 </div>
               </div>
-
-              {/* Faction Info */}
-              {selectedMap.faction && FACTIONS[selectedMap.faction] && (
-                <div className="dw-modal-info-box" style={{ marginTop: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%',
-                      backgroundColor: FACTIONS[selectedMap.faction].color,
-                      boxShadow: `0 0 6px ${FACTIONS[selectedMap.faction].color}`
-                    }} />
-                    <span style={{ color: FACTIONS[selectedMap.faction].color, fontWeight: 600, fontSize: '13px' }}>
-                      {FACTIONS[selectedMap.faction].name}
-                    </span>
-                    <span style={{ color: 'var(--modal-text-secondary)', fontSize: '12px' }}>
-                      {FACTIONS[selectedMap.faction].type === 'faction'
-                        ? `${FACTIONS[selectedMap.faction].name} + Neutral loot pool`
-                        : 'Neutral loot pool only'}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {/* POI Breakdown - Single Column */}
               <div className="dw-modal-info-box" style={{ flex: 1 }}>
@@ -453,7 +450,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                 </svg>
                 on the map to select entry point
               </p>
-              <p style={{ color: 'var(--modal-action)', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <p style={{ color: 'var(--modal-theme, var(--modal-action))', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
                   <polygon
                     points="0,-6 6,0 0,6 -6,0"
@@ -543,7 +540,8 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                 <select
                   value={currentSlotId}
                   onChange={(e) => setCurrentSlotId(Number(e.target.value))}
-                  className="w-full bg-slate-700 border border-cyan-500/50 rounded px-3 py-2 text-white font-orbitron focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-700 border rounded px-3 py-2 text-white font-orbitron focus:outline-none"
+                  style={{ borderColor: 'var(--modal-theme-border, rgba(6, 182, 212, 0.4))' }}
                 >
                   {allActiveSlots.map(slot => (
                     <option key={slot.id} value={slot.id}>

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Plus, Minus, RotateCcw, ChevronRight } from 'lucide-react';
 import { getOffScreenPOIs, getArrowEdgePosition } from '../../logic/singlePlayer/hexGrid.js';
-import { FACTIONS } from '../../data/factionData.js';
-import { isRegionBoundary } from '../../logic/faction/factionHelpers.js';
+import { FACTIONS, HANGAR_REGIONS } from '../../data/factionData.js';
+import { getRegionFaction } from '../../logic/faction/factionHelpers.js';
 import NewsTicker from './NewsTicker';
 
 const HangarHexMap = ({
@@ -72,7 +72,9 @@ const HangarHexMap = ({
             objectFit: 'cover',
             objectPosition: 'center',
             pointerEvents: 'none',
-            zIndex: 0
+            zIndex: 0,
+            filter: 'brightness(0.55) blur(0.8px)',
+            opacity: 0.8
           }}
         />
 
@@ -93,113 +95,222 @@ const HangarHexMap = ({
               </filter>
             </defs>
 
-            {hexGridData.allCells.map((cell, i) => {
+            {/* Layer 1: Inactive hex fills (bottom) */}
+            {hexGridData.allCells.filter(c => !c.isActive).map((cell, i) => {
               const { hexWidth, hexHeight } = hexGridData;
               const hexPath = `M${hexWidth/2},0 L${hexWidth},${hexHeight*0.25} L${hexWidth},${hexHeight*0.75} L${hexWidth/2},${hexHeight} L0,${hexHeight*0.75} L0,${hexHeight*0.25} Z`;
+              const factionDef = FACTIONS[cell.regionFaction];
+              const factionColor = factionDef?.color || '#808080';
+              const isFactionZone = factionDef?.type === 'faction';
+              const strokeColor = isFactionZone
+                ? `${factionColor}55`
+                : 'rgba(6,182,212,0.3)';
 
-              if (cell.isActive) {
-                const map = generatedMaps[cell.mapIndex];
-                const isGenerated = !!map;
-                const centerX = hexWidth / 2;
-                const centerY = hexHeight / 2;
+              return (
+                <path
+                  key={`fill-${i}`}
+                  transform={`translate(${cell.x}, ${cell.y})`}
+                  d={hexPath}
+                  fill={isFactionZone ? `${factionColor}18` : 'rgba(128, 128, 128, 0.08)'}
+                  stroke={strokeColor}
+                  strokeWidth="1"
+                />
+              );
+            })}
 
-                const requiresToken = map?.requiresToken;
-                const sectorColor = requiresToken ? '#f97316' : '#06b6d4';
-                const sectorColorRgba = requiresToken ? 'rgba(249,115,22,0.15)' : 'rgba(6,182,212,0.15)';
-                const sectorColorFaint = requiresToken ? 'rgba(249,115,22,0.5)' : 'rgba(6,182,212,0.5)';
-                const pulseAnimation = requiresToken
-                  ? 'hexRestrictedPulse 1.5s ease-in-out infinite'
-                  : 'hexPulse 2s ease-in-out infinite';
+            {/* Layer 2: Boundary edges (on top of all fills) — only faction cells draw borders to avoid double-rendering */}
+            {hexGridData.allCells.filter(c => !c.isActive).map((cell, i) => {
+              if (cell.regionFaction === 'NEUTRAL_1') return null;
+              const { hexWidth, hexHeight } = hexGridData;
+              const vertices = [
+                [hexWidth / 2, 0],
+                [hexWidth, hexHeight * 0.25],
+                [hexWidth, hexHeight * 0.75],
+                [hexWidth / 2, hexHeight],
+                [0, hexHeight * 0.75],
+                [0, hexHeight * 0.25],
+              ];
 
-                return (
-                  <g
-                    key={i}
-                    transform={`translate(${cell.x}, ${cell.y})`}
-                    onClick={() => isGenerated && handleMapIconClick(cell.mapIndex, cell.coordinate)}
-                    style={{ cursor: isGenerated ? 'pointer' : 'default' }}
-                  >
-                    {/* Pulsing glow layer behind hex */}
-                    <path
-                      d={hexPath}
-                      fill="none"
-                      stroke={sectorColor}
-                      strokeWidth="10"
-                      style={{
-                        filter: 'blur(6px)',
-                        animation: pulseAnimation,
-                        animationDelay: `${cell.mapIndex * 0.3}s`
-                      }}
-                    />
+              const isOddRow = cell.row % 2 === 1;
+              const neighborOffsets = isOddRow
+                ? [[1, -1], [1, 0], [1, 1], [0, 1], [-1, 0], [0, -1]]
+                : [[0, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 
-                    {/* Radar ping circle */}
-                    <circle
-                      cx={centerX}
-                      cy={centerY}
-                      r="20"
-                      fill="none"
-                      stroke={sectorColor}
-                      strokeWidth="2"
-                      style={{
-                        animation: 'hexRadarPing 4s ease-out infinite',
-                        animationDelay: `${cell.mapIndex * 0.7}s`
-                      }}
-                    />
+              const boundaryEdges = [];
+              for (let e = 0; e < 6; e++) {
+                const [dc, dr] = neighborOffsets[e];
+                const nc = cell.col + dc;
+                const nr = cell.row + dr;
+                const neighborFaction = getRegionFaction(nc, nr);
+                if (neighborFaction !== cell.regionFaction) {
+                  const v1 = vertices[e];
+                  const v2 = vertices[(e + 1) % 6];
+                  // Use the faction color (not neutral grey) for border visibility
+                  const factionSide = cell.regionFaction !== 'NEUTRAL_1' ? cell.regionFaction : neighborFaction;
+                  const borderColor = FACTIONS[factionSide]?.color || '#808080';
+                  boundaryEdges.push({ v1, v2, color: borderColor });
+                }
+              }
 
-                    {/* Outer hex - vibrant border */}
-                    <path
-                      d={hexPath}
-                      fill={sectorColorRgba}
-                      stroke={sectorColor}
+              if (boundaryEdges.length === 0) return null;
+
+              return (
+                <g key={`border-${i}`} transform={`translate(${cell.x}, ${cell.y})`}>
+                  {boundaryEdges.map((edge, ei) => (
+                    <line
+                      key={ei}
+                      x1={edge.v1[0]} y1={edge.v1[1]}
+                      x2={edge.v2[0]} y2={edge.v2[1]}
+                      stroke={`${edge.color}dd`}
                       strokeWidth="3"
-                      filter="url(#hexGlow)"
+                      strokeLinecap="round"
                     />
+                  ))}
+                </g>
+              );
+            })}
 
-                    {/* Inner hex - darker content area */}
-                    <path
-                      d={`M${hexWidth/2},4 L${hexWidth-4},${hexHeight*0.25+2} L${hexWidth-4},${hexHeight*0.75-2} L${hexWidth/2},${hexHeight-4} L4,${hexHeight*0.75-2} L4,${hexHeight*0.25+2} Z`}
-                      fill="rgba(17,24,39,0.9)"
-                      stroke={sectorColorFaint}
-                      strokeWidth="1"
-                    />
+            {/* Layer 2.5: Faction territory labels — faint star-chart text */}
+            {HANGAR_REGIONS.map((region) => {
+              const cell = hexGridData.allCells.find(c => c.col === region.center[0] && c.row === region.center[1]);
+              if (!cell) return null;
+              const { hexWidth, hexHeight } = hexGridData;
+              const cx = cell.x + hexWidth / 2;
+              const cy = cell.y + hexHeight / 2;
+              const factionName = FACTIONS[region.faction]?.name?.toUpperCase() || region.faction;
+              const labelAngle = region.faction === 'MARK' ? -30 : 30;
+              return (
+                <text
+                  key={`label-${region.faction}`}
+                  x={cx}
+                  y={cy}
+                  fill="#ffffff"
+                  opacity={0.18}
+                  fontSize={hexWidth * 0.65}
+                  fontWeight="bold"
+                  letterSpacing="6"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  transform={`rotate(${labelAngle}, ${cx}, ${cy})`}
+                  pointerEvents="none"
+                >
+                  {factionName}
+                </text>
+              );
+            })}
 
-                    {/* Sector coordinate as main label */}
+            {/* Layer 3: Active map hexes (top) */}
+            {hexGridData.allCells.filter(c => c.isActive).map((cell, i) => {
+              const { hexWidth, hexHeight } = hexGridData;
+              const hexPath = `M${hexWidth/2},0 L${hexWidth},${hexHeight*0.25} L${hexWidth},${hexHeight*0.75} L${hexWidth/2},${hexHeight} L0,${hexHeight*0.75} L0,${hexHeight*0.25} Z`;
+              const map = generatedMaps[cell.mapIndex];
+              const isGenerated = !!map;
+              const centerX = hexWidth / 2;
+              const centerY = hexHeight / 2;
+
+              const requiresToken = map?.requiresToken;
+              const factionDef = FACTIONS[cell.regionFaction];
+              const isFactionZone = factionDef?.type === 'faction';
+              const sectorColor = isFactionZone ? factionDef.color : '#06b6d4';
+              const sectorColorRgba = isFactionZone
+                ? `${factionDef.color}26`
+                : 'rgba(6,182,212,0.15)';
+              const sectorColorFaint = isFactionZone
+                ? `${factionDef.color}80`
+                : 'rgba(6,182,212,0.5)';
+              const pulseAnimation = requiresToken
+                ? 'hexRestrictedPulse 1.5s ease-in-out infinite'
+                : 'hexPulse 2s ease-in-out infinite';
+
+              return (
+                <g
+                  key={`active-${i}`}
+                  transform={`translate(${cell.x}, ${cell.y})`}
+                  onClick={() => isGenerated && handleMapIconClick(cell.mapIndex, cell.coordinate)}
+                  style={{ cursor: isGenerated ? 'pointer' : 'default' }}
+                >
+                  {/* Pulsing glow layer behind hex */}
+                  <path
+                    d={hexPath}
+                    fill="none"
+                    stroke={sectorColor}
+                    strokeWidth="10"
+                    style={{
+                      filter: 'blur(6px)',
+                      animation: pulseAnimation,
+                      animationDelay: `${cell.mapIndex * 0.3}s`
+                    }}
+                  />
+
+                  {/* Radar ping circle */}
+                  <circle
+                    cx={centerX}
+                    cy={centerY}
+                    r="20"
+                    fill="none"
+                    stroke={sectorColor}
+                    strokeWidth="2"
+                    style={{
+                      animation: 'hexRadarPing 4s ease-out infinite',
+                      animationDelay: `${cell.mapIndex * 0.7}s`
+                    }}
+                  />
+
+                  {/* Outer hex - vibrant border */}
+                  <path
+                    d={hexPath}
+                    fill={sectorColorRgba}
+                    stroke={sectorColor}
+                    strokeWidth="3"
+                    filter="url(#hexGlow)"
+                  />
+
+                  {/* Inner hex - darker content area */}
+                  <path
+                    d={`M${hexWidth/2},4 L${hexWidth-4},${hexHeight*0.25+2} L${hexWidth-4},${hexHeight*0.75-2} L${hexWidth/2},${hexHeight-4} L4,${hexHeight*0.75-2} L4,${hexHeight*0.25+2} Z`}
+                    fill="rgba(17,24,39,0.9)"
+                    stroke={sectorColorFaint}
+                    strokeWidth="1"
+                  />
+
+                  {/* Sector coordinate as main label */}
+                  <text
+                    x={centerX}
+                    y={requiresToken ? centerY - 6 : centerY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#ffffff"
+                    fontSize={Math.max(10, hexWidth * 0.16)}
+                    fontWeight="bold"
+                    style={{
+                      pointerEvents: 'none',
+                      textShadow: '0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)'
+                    }}
+                  >
+                    SECTOR {cell.coordinate}
+                  </text>
+
+                  {/* Lock indicator for token-restricted sectors */}
+                  {requiresToken && (
                     <text
                       x={centerX}
-                      y={centerY}
+                      y={centerY + 10}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#ffffff"
-                      fontSize={Math.max(10, hexWidth * 0.16)}
+                      fontSize={Math.max(8, hexWidth * 0.1)}
                       fontWeight="bold"
+                      letterSpacing="2"
                       style={{
                         pointerEvents: 'none',
-                        textShadow: '0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)'
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)'
                       }}
                     >
-                      SECTOR {cell.coordinate}
+                      LOCKED
                     </text>
-                  </g>
-                );
-              } else {
-                const factionDef = FACTIONS[cell.regionFaction];
-                const factionColor = factionDef?.color || '#808080';
-                const isFactionZone = factionDef?.type === 'faction';
-                const fillOpacity = isFactionZone ? 0.06 : 0;
-                const strokeColor = isFactionZone
-                  ? `${factionColor}44`
-                  : 'rgba(6,182,212,0.3)';
-
-                return (
-                  <path
-                    key={i}
-                    d={hexPath}
-                    transform={`translate(${cell.x}, ${cell.y})`}
-                    fill={isFactionZone ? `${factionColor}10` : 'none'}
-                    stroke={strokeColor}
-                    strokeWidth="1"
-                  />
-                );
-              }
+                  )}
+                </g>
+              );
             })}
 
             {/* Boss Hex - rendered separately for distinct styling */}

@@ -293,7 +293,7 @@ const HangarScreen = () => {
   // Map icon click handler
   const handleMapIconClick = (mapIndex, coordinate) => {
     SoundManager.getInstance().play('hex_click');
-    const map = generatedMaps[mapIndex];
+    const map = mapsWithCoordinates[mapIndex];
     if (!map) {
       debugLog('EXTRACTION', 'Map data not generated yet', { mapIndex });
       return;
@@ -443,7 +443,7 @@ const HangarScreen = () => {
     const sector = activeSectors.find(s => s.coordinate === coordinate);
     if (sector) {
       setSelectedCoordinate(coordinate);
-      setSelectedMap(generatedMaps[sector.mapIndex]);
+      setSelectedMap(mapsWithCoordinates[sector.mapIndex]);
       zoomToSector(coordinate); // Also zoom/pan the hangar map
     }
   };

@@ -22,15 +22,26 @@ export function getAccessibleFactions(mapFaction) {
 
 /**
  * Look up which faction a hex cell belongs to.
- * Checks HANGAR_REGIONS; defaults to 'NEUTRAL_1' if no region matches.
+ * Checks HANGAR_REGIONS using angle-based distorted radius for organic shapes.
  * @param {number} col - Hex column
- * @param {number} row - Hex row (unused currently, reserved for future 2D regions)
+ * @param {number} row - Hex row
  * @returns {string} Faction ID
  */
 export function getRegionFaction(col, row) {
   for (const region of HANGAR_REGIONS) {
-    const [minCol, maxCol] = region.colRange;
-    if (col >= minCol && col <= maxCol) {
+    const [cx, cy] = region.center;
+    const dx = col - cx;
+    const dy = row - cy;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance === 0) return region.faction;
+
+    const angle = Math.atan2(dy, dx);
+    let effectiveRadius = region.radius;
+    for (const [amp, freq, phase] of region.distortion) {
+      effectiveRadius += amp * Math.sin(freq * angle + phase);
+    }
+
+    if (distance <= effectiveRadius) {
       return region.faction;
     }
   }
