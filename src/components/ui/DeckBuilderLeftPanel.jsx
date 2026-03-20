@@ -3,7 +3,7 @@ import { Eye, Upload, Download, Grid, LayoutGrid, List, Rocket, Filter } from 'l
 import ShipCard from './ShipCard.jsx';
 import ActionCard from './ActionCard.jsx';
 import DroneCard from './DroneCard.jsx';
-import FilterChip from './FilterChip.jsx';
+import FilterTagInput from './FilterTagInput.jsx';
 import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../logic/cards/cardTypeStyles.js';
 import { calculateEffectiveMaxForCard } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import {
@@ -23,6 +23,7 @@ const DeckBuilderLeftPanel = ({
   setShowCardFilterModal, setShowDroneFilterModal,
   allShips, activeShip, onShipChange,
   filteredAndSortedCards, filterOptions, filters, sortConfig,
+  onFiltersChange, onDroneFiltersChange,
   deck, baseCardCounts,
   filteredAndSortedDrones, droneFilters, droneSortConfig,
   selectedDrones,
@@ -189,7 +190,7 @@ const DeckBuilderLeftPanel = ({
       {/* CARDS VIEW */}
       {leftPanelView === 'cards' && (
       <>
-      {/* --- Filter Button + Chips (shown in both table and grid view) --- */}
+      {/* --- Filter Button + Tag Input + Chips (shown in both table and grid view) --- */}
       <div className="dw-filter-header">
         <button
           className="dw-filter-btn"
@@ -203,17 +204,13 @@ const DeckBuilderLeftPanel = ({
             </span>
           )}
         </button>
-        <div className="dw-filter-chips">
-          {generateFilterChips(filters, filterOptions).map((chip, index) => (
-            <FilterChip
-              key={`${chip.filterType}-${chip.filterValue || index}`}
-              label={chip.label}
-              filterType={chip.filterType}
-              filterValue={chip.filterValue}
-              onRemove={handleRemoveCardFilterChip}
-            />
-          ))}
-        </div>
+        <FilterTagInput
+          keywords={filters.searchKeywords}
+          onKeywordsChange={(keywords) => onFiltersChange(prev => ({ ...prev, searchKeywords: keywords }))}
+          chips={generateFilterChips(filters, filterOptions).filter(c => c.filterType !== 'searchKeywords')}
+          onRemoveChip={handleRemoveCardFilterChip}
+          placeholder="Search cards..."
+        />
       </div>
 
       {/* TABLE VIEW */}
@@ -347,7 +344,7 @@ const DeckBuilderLeftPanel = ({
       {/* DRONES VIEW */}
       {leftPanelView === 'drones' && (
       <>
-      {/* --- Drone Filter Button + Chips (shown in both table and grid view) --- */}
+      {/* --- Drone Filter Button + Tag Input + Chips (shown in both table and grid view) --- */}
       <div className="dw-filter-header">
         <button
           className="dw-filter-btn"
@@ -361,17 +358,13 @@ const DeckBuilderLeftPanel = ({
             </span>
           )}
         </button>
-        <div className="dw-filter-chips">
-          {generateDroneFilterChips(droneFilters).map((chip, index) => (
-            <FilterChip
-              key={`${chip.filterType}-${chip.filterValue || index}`}
-              label={chip.label}
-              filterType={chip.filterType}
-              filterValue={chip.filterValue}
-              onRemove={handleRemoveDroneFilterChip}
-            />
-          ))}
-        </div>
+        <FilterTagInput
+          keywords={droneFilters.searchKeywords}
+          onKeywordsChange={(keywords) => onDroneFiltersChange(prev => ({ ...prev, searchKeywords: keywords }))}
+          chips={generateDroneFilterChips(droneFilters).filter(c => c.filterType !== 'searchKeywords')}
+          onRemoveChip={handleRemoveDroneFilterChip}
+          placeholder="Search drones..."
+        />
       </div>
 
       {/* TABLE VIEW */}

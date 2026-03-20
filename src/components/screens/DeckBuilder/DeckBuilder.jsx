@@ -72,13 +72,15 @@ const DeckBuilder = ({
 
   // Card filters - new popup-based filter system
   const [filters, setFilters] = useState({
-    searchText: '',
+    searchKeywords: [],
     cost: { min: 0, max: 99 }, // Temporary values, updated by effect
     rarity: [],
     type: [],
     target: [],
     damageType: [],
     abilities: [],
+    faction: [],
+    inDeck: null,
     hideEnhanced: false,
     includeAIOnly: false,
   });
@@ -88,11 +90,13 @@ const DeckBuilder = ({
 
   // Drone filters - new popup-based filter system
   const [droneFilters, setDroneFilters] = useState({
-    searchText: '',
+    searchKeywords: [],
     rarity: [],
     class: [],
     abilities: [],
     damageType: [],
+    faction: [],
+    inSquad: null,
     includeAIOnly: false,
   });
   const [showDroneFilterModal, setShowDroneFilterModal] = useState(false);
@@ -161,11 +165,14 @@ const DeckBuilder = ({
   // Handler for removing filter chips
   const handleRemoveCardFilterChip = (filterType, filterValue) => {
     setFilters(prev => {
-      if (filterType === 'searchText') {
-        return { ...prev, searchText: '' };
+      if (filterType === 'searchKeywords') {
+        return { ...prev, searchKeywords: prev.searchKeywords.filter(kw => kw !== filterValue) };
       }
       if (filterType === 'cost') {
         return { ...prev, cost: { min: filterOptions.minCost, max: filterOptions.maxCost } };
+      }
+      if (filterType === 'inDeck') {
+        return { ...prev, inDeck: null };
       }
       if (filterType === 'hideEnhanced') {
         return { ...prev, hideEnhanced: false };
@@ -181,8 +188,11 @@ const DeckBuilder = ({
 
   const handleRemoveDroneFilterChip = (filterType, filterValue) => {
     setDroneFilters(prev => {
-      if (filterType === 'searchText') {
-        return { ...prev, searchText: '' };
+      if (filterType === 'searchKeywords') {
+        return { ...prev, searchKeywords: prev.searchKeywords.filter(kw => kw !== filterValue) };
+      }
+      if (filterType === 'inSquad') {
+        return { ...prev, inSquad: null };
       }
       if (filterType === 'includeAIOnly') {
         return { ...prev, includeAIOnly: false };
@@ -195,13 +205,15 @@ const DeckBuilder = ({
 
   const resetFilters = () => {
     setFilters({
-      searchText: '',
+      searchKeywords: [],
       cost: { min: filterOptions.minCost, max: filterOptions.maxCost },
       rarity: [],
       type: [],
       target: [],
       damageType: [],
       abilities: [],
+      faction: [],
+      inDeck: null,
       hideEnhanced: false,
       includeAIOnly: false,
     });
@@ -209,11 +221,13 @@ const DeckBuilder = ({
 
   const resetDroneFilters = () => {
     setDroneFilters({
-      searchText: '',
+      searchKeywords: [],
       rarity: [],
       class: [],
       abilities: [],
       damageType: [],
+      faction: [],
+      inSquad: null,
       includeAIOnly: false,
     });
   };
@@ -244,6 +258,7 @@ const DeckBuilder = ({
     setShowCardFilterModal, setShowDroneFilterModal,
     allShips, activeShip, onShipChange,
     filteredAndSortedCards, filterOptions, filters, sortConfig,
+    onFiltersChange: setFilters, onDroneFiltersChange: setDroneFilters,
     deck, baseCardCounts,
     filteredAndSortedDrones, droneFilters, droneSortConfig, selectedDrones,
     activeComponentCollection, selectedShipComponents,

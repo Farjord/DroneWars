@@ -884,7 +884,6 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-  flex-wrap: wrap;
 }
 
 .dw-filter-btn {
@@ -929,6 +928,47 @@
   gap: 8px;
   flex-wrap: wrap;
   flex: 1;
+}
+
+/* ========================================
+   FILTER TAG INPUT
+   Inline tag-style search input with chips
+   ======================================== */
+.dw-filter-tag-input {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 7px 8px;
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  min-width: 200px;
+  flex: 1;
+  cursor: text;
+}
+
+.dw-filter-tag-input:focus-within {
+  border-color: var(--modal-action-light);
+}
+
+.dw-filter-tag-input input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--modal-text-primary);
+  font-size: 13px;
+  min-width: 80px;
+  flex: 1;
+}
+
+.dw-filter-tag-input input::placeholder {
+  color: var(--modal-text-muted);
+}
+
+.dw-filter-tag-input .dw-filter-chip {
+  padding: 2px 4px 2px 8px;
+  font-size: 11px;
 }
 
 /* ========================================

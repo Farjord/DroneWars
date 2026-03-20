@@ -2,11 +2,32 @@
  * deckFilterUtils.js
  * Utility functions for deck builder filtering
  *
- * Provides filter logic for cards and drones with:
- * - OR logic for mutually exclusive properties (rarity, type, target, damage type)
- * - AND logic for abilities
+ * Provides filter logic for cards, drones, and enhancer items with:
+ * - OR logic for mutually exclusive properties (rarity, type, target, damage type, faction)
+ * - AND logic for abilities and search keywords
  * - Support for Starter rarity in extraction mode
+ * - In Deck / In Squad membership filters
  */
+
+import { FACTIONS } from '../../data/factionData.js';
+
+// ========================================
+// HELPERS
+// ========================================
+
+function getFactionDisplayName(factionId) {
+  return FACTIONS[factionId]?.name || factionId;
+}
+
+function matchesKeywords(keywords, name, description) {
+  if (!keywords || keywords.length === 0) return true;
+  const nameLower = name?.toLowerCase() || '';
+  const descLower = description?.toLowerCase() || '';
+  return keywords.every(kw => {
+    const kwLower = kw.toLowerCase();
+    return nameLower.includes(kwLower) || descLower.includes(kwLower);
+  });
+}
 
 // ========================================
 // CONSTANTS
@@ -24,9 +45,10 @@ export const RARITY_ORDER_EXTRACTION = ['Starter', 'Common', 'Uncommon', 'Rare',
  *
  * @param {Array} cards - Array of card objects to filter
  * @param {Object} filters - Filter criteria object
+ * @param {Object} [deck] - Optional deck object { cardId: quantity } for inDeck filter
  * @returns {Array} Filtered cards
  */
-export function filterCards(cards, filters) {
+export function filterCards(cards, filters, deck) {
   return cards.filter(card => {
     // AI Only filter (hide by default)
     if (!filters.includeAIOnly && card.aiOnly) {
@@ -43,14 +65,23 @@ export function filterCards(cards, filters) {
       return false;
     }
 
-    // Text search filter (name or description, case-insensitive)
-    if (filters.searchText) {
-      const searchLower = filters.searchText.toLowerCase();
-      const nameMatch = card.name?.toLowerCase().includes(searchLower);
-      const descMatch = card.description?.toLowerCase().includes(searchLower);
-      if (!nameMatch && !descMatch) {
+    // Search keywords filter (AND logic - must match ALL keywords in name or description)
+    if (!matchesKeywords(filters.searchKeywords, card.name, card.description)) {
+      return false;
+    }
+
+    // Faction filter (OR logic)
+    if (filters.faction?.length > 0) {
+      if (!filters.faction.includes(card.faction)) {
         return false;
       }
+    }
+
+    // In Deck filter
+    if (filters.inDeck && deck) {
+      const isInDeck = (deck[card.id] > 0) || (deck[card.baseCardId + '_ENHANCED'] > 0);
+      if (filters.inDeck === 'yes' && !isInDeck) return false;
+      if (filters.inDeck === 'no' && isInDeck) return false;
     }
 
     // Rarity filter (OR logic) - supports Starter via isStarterPool
@@ -111,23 +142,33 @@ export function filterCards(cards, filters) {
  *
  * @param {Array} drones - Array of drone objects to filter
  * @param {Object} filters - Filter criteria object
+ * @param {Object} [selectedDrones] - Optional selected drones { name: quantity } for inSquad filter
  * @returns {Array} Filtered drones
  */
-export function filterDrones(drones, filters) {
+export function filterDrones(drones, filters, selectedDrones) {
   return drones.filter(drone => {
     // AI Only filter (hide by default)
     if (!filters.includeAIOnly && drone.aiOnly) {
       return false;
     }
 
-    // Text search filter (name or description, case-insensitive)
-    if (filters.searchText) {
-      const searchLower = filters.searchText.toLowerCase();
-      const nameMatch = drone.name?.toLowerCase().includes(searchLower);
-      const descMatch = drone.description?.toLowerCase().includes(searchLower);
-      if (!nameMatch && !descMatch) {
+    // Search keywords filter (AND logic)
+    if (!matchesKeywords(filters.searchKeywords, drone.name, drone.description)) {
+      return false;
+    }
+
+    // Faction filter (OR logic)
+    if (filters.faction?.length > 0) {
+      if (!filters.faction.includes(drone.faction)) {
         return false;
       }
+    }
+
+    // In Squad filter
+    if (filters.inSquad && selectedDrones) {
+      const isInSquad = selectedDrones[drone.name] > 0;
+      if (filters.inSquad === 'yes' && !isInSquad) return false;
+      if (filters.inSquad === 'no' && isInSquad) return false;
     }
 
     // Rarity filter (OR logic) - supports Starter via isStarterPool
@@ -208,7 +249,7 @@ export function sortByRarity(items, extractionMode = false) {
 // ========================================
 
 /**
- * Count the number of active filters
+ * Count the number of active card filters
  *
  * @param {Object} filters - Filter criteria object
  * @param {Object} filterOptions - Available filter options (for determining defaults)
@@ -217,10 +258,8 @@ export function sortByRarity(items, extractionMode = false) {
 export function countActiveFilters(filters, filterOptions) {
   let count = 0;
 
-  // Search text
-  if (filters.searchText) {
-    count += 1;
-  }
+  // Search keywords
+  count += filters.searchKeywords?.length || 0;
 
   // Cost range (count as 1 if different from default)
   if (
@@ -236,6 +275,12 @@ export function countActiveFilters(filters, filterOptions) {
   count += filters.target?.length || 0;
   count += filters.damageType?.length || 0;
   count += filters.abilities?.length || 0;
+  count += filters.faction?.length || 0;
+
+  // In Deck
+  if (filters.inDeck) {
+    count += 1;
+  }
 
   // Boolean filters
   if (filters.hideEnhanced) {
@@ -262,14 +307,14 @@ export function countActiveFilters(filters, filterOptions) {
 export function generateFilterChips(filters, filterOptions) {
   const chips = [];
 
-  // Search text chip
-  if (filters.searchText) {
+  // Search keyword chips
+  filters.searchKeywords?.forEach(keyword => {
     chips.push({
-      label: `"${filters.searchText}"`,
-      filterType: 'searchText',
-      filterValue: null,
+      label: `"${keyword}"`,
+      filterType: 'searchKeywords',
+      filterValue: keyword,
     });
-  }
+  });
 
   // Cost range chip
   if (
@@ -328,6 +373,22 @@ export function generateFilterChips(filters, filterOptions) {
     });
   });
 
+  // Faction chips
+  filters.faction?.forEach(factionId => {
+    chips.push({
+      label: getFactionDisplayName(factionId),
+      filterType: 'faction',
+      filterValue: factionId,
+    });
+  });
+
+  // In Deck chip
+  if (filters.inDeck === 'yes') {
+    chips.push({ label: 'In Deck', filterType: 'inDeck', filterValue: null });
+  } else if (filters.inDeck === 'no') {
+    chips.push({ label: 'Not In Deck', filterType: 'inDeck', filterValue: null });
+  }
+
   // Hide Enhanced chip
   if (filters.hideEnhanced) {
     chips.push({
@@ -358,14 +419,14 @@ export function generateFilterChips(filters, filterOptions) {
 export function generateDroneFilterChips(filters) {
   const chips = [];
 
-  // Search text chip
-  if (filters.searchText) {
+  // Search keyword chips
+  filters.searchKeywords?.forEach(keyword => {
     chips.push({
-      label: `"${filters.searchText}"`,
-      filterType: 'searchText',
-      filterValue: null,
+      label: `"${keyword}"`,
+      filterType: 'searchKeywords',
+      filterValue: keyword,
     });
-  }
+  });
 
   // Rarity chips
   filters.rarity?.forEach(rarity => {
@@ -403,6 +464,22 @@ export function generateDroneFilterChips(filters) {
     });
   });
 
+  // Faction chips
+  filters.faction?.forEach(factionId => {
+    chips.push({
+      label: getFactionDisplayName(factionId),
+      filterType: 'faction',
+      filterValue: factionId,
+    });
+  });
+
+  // In Squad chip
+  if (filters.inSquad === 'yes') {
+    chips.push({ label: 'In Squad', filterType: 'inSquad', filterValue: null });
+  } else if (filters.inSquad === 'no') {
+    chips.push({ label: 'Not In Squad', filterType: 'inSquad', filterValue: null });
+  }
+
   // Include AI Only chip
   if (filters.includeAIOnly) {
     chips.push({
@@ -424,16 +501,20 @@ export function generateDroneFilterChips(filters) {
 export function countActiveDroneFilters(filters) {
   let count = 0;
 
-  // Search text
-  if (filters.searchText) {
-    count += 1;
-  }
+  // Search keywords
+  count += filters.searchKeywords?.length || 0;
 
   // Array filters - count each selection
   count += filters.rarity?.length || 0;
   count += filters.class?.length || 0;
   count += filters.damageType?.length || 0;
   count += filters.abilities?.length || 0;
+  count += filters.faction?.length || 0;
+
+  // In Squad
+  if (filters.inSquad) {
+    count += 1;
+  }
 
   // Boolean filters
   if (filters.includeAIOnly) {
@@ -455,7 +536,7 @@ export function countActiveDroneFilters(filters) {
  */
 export function createDefaultCardFilters(filterOptions) {
   return {
-    searchText: '',
+    searchKeywords: [],
     cost: {
       min: filterOptions?.minCost || 0,
       max: filterOptions?.maxCost || 99,
@@ -465,6 +546,8 @@ export function createDefaultCardFilters(filterOptions) {
     target: [],
     damageType: [],
     abilities: [],
+    faction: [],
+    inDeck: null,
     hideEnhanced: false,
     includeAIOnly: false,
   };
@@ -477,11 +560,132 @@ export function createDefaultCardFilters(filterOptions) {
  */
 export function createDefaultDroneFilters() {
   return {
-    searchText: '',
+    searchKeywords: [],
     rarity: [],
     class: [],
     abilities: [],
     damageType: [],
+    faction: [],
+    inSquad: null,
     includeAIOnly: false,
   };
+}
+
+// ========================================
+// ENHANCER FILTER UTILS
+// ========================================
+
+/**
+ * Create default enhancer filter state
+ *
+ * @returns {Object} Default enhancer filters
+ */
+export function createDefaultEnhancerFilters() {
+  return {
+    searchKeywords: [],
+    rarity: [],
+    faction: [],
+    copiesLessThan: null,
+  };
+}
+
+/**
+ * Filter enhancer items based on filter criteria
+ *
+ * @param {Array} items - Array of enhancer item objects { card, quantity, ... }
+ * @param {Object} filters - Filter criteria object
+ * @returns {Array} Filtered items
+ */
+export function filterEnhancerItems(items, filters) {
+  return items.filter(item => {
+    // Search keywords (match card name or description)
+    if (!matchesKeywords(filters.searchKeywords, item.card.name, item.card.description)) {
+      return false;
+    }
+
+    // Rarity filter (OR logic)
+    if (filters.rarity?.length > 0 && !filters.rarity.includes(item.card.rarity)) {
+      return false;
+    }
+
+    // Faction filter (OR logic)
+    if (filters.faction?.length > 0 && !filters.faction.includes(item.card.faction)) {
+      return false;
+    }
+
+    // Copies less than filter
+    if (filters.copiesLessThan !== null && item.quantity >= filters.copiesLessThan) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Generate filter chip data from enhancer filters
+ *
+ * @param {Object} filters - Current enhancer filter state
+ * @returns {Array} Array of chip objects { label, filterType, filterValue }
+ */
+export function generateEnhancerFilterChips(filters) {
+  const chips = [];
+
+  // Search keyword chips
+  filters.searchKeywords?.forEach(keyword => {
+    chips.push({
+      label: `"${keyword}"`,
+      filterType: 'searchKeywords',
+      filterValue: keyword,
+    });
+  });
+
+  // Rarity chips
+  filters.rarity?.forEach(rarity => {
+    chips.push({
+      label: rarity,
+      filterType: 'rarity',
+      filterValue: rarity,
+    });
+  });
+
+  // Faction chips
+  filters.faction?.forEach(factionId => {
+    chips.push({
+      label: getFactionDisplayName(factionId),
+      filterType: 'faction',
+      filterValue: factionId,
+    });
+  });
+
+  // Copies less than chip
+  if (filters.copiesLessThan !== null) {
+    chips.push({
+      label: `< ${filters.copiesLessThan} copies`,
+      filterType: 'copiesLessThan',
+      filterValue: filters.copiesLessThan,
+    });
+  }
+
+  return chips;
+}
+
+/**
+ * Count the number of active enhancer filters
+ *
+ * @param {Object} filters - Enhancer filter criteria object
+ * @returns {number} Number of active filters
+ */
+export function countActiveEnhancerFilters(filters) {
+  let count = 0;
+
+  count += filters.searchKeywords?.length || 0;
+  count += filters.rarity?.length || 0;
+  count += filters.faction?.length || 0;
+
+  if (filters.copiesLessThan !== null) {
+    count += 1;
+  }
+
+  return count;
 }

@@ -28,13 +28,15 @@ const mockExtractionFilterOptions = {
 };
 
 const defaultFilters = {
-  searchText: '',
+  searchKeywords: [],
   cost: { min: 0, max: 10 },
   rarity: [],
   type: [],
   target: [],
   damageType: [],
   abilities: [],
+  faction: [],
+  inDeck: null,
   hideEnhanced: false,
   includeAIOnly: false,
 };
@@ -110,7 +112,6 @@ describe('CardFilterModal', () => {
       );
 
       // Check for each filter section label
-      expect(screen.getByText('Search')).toBeInTheDocument();
       expect(screen.getByText(/Cost Range/i)).toBeInTheDocument();
       expect(screen.getByText('Rarity')).toBeInTheDocument();
       expect(screen.getByText('Type')).toBeInTheDocument();
@@ -342,64 +343,6 @@ describe('CardFilterModal', () => {
   });
 
   // ========================================
-  // SEARCH TEXT FILTER TESTS
-  // ========================================
-  describe('Search Text Filter', () => {
-    it('should render search input', () => {
-      render(
-        <CardFilterModal
-          isOpen={true}
-          onClose={() => {}}
-          filters={defaultFilters}
-          onFiltersChange={() => {}}
-          filterOptions={mockFilterOptions}
-        />
-      );
-
-      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
-    });
-
-    it('should update search text on input', () => {
-      const onFiltersChange = vi.fn();
-      render(
-        <CardFilterModal
-          isOpen={true}
-          onClose={() => {}}
-          filters={defaultFilters}
-          onFiltersChange={onFiltersChange}
-          filterOptions={mockFilterOptions}
-        />
-      );
-
-      fireEvent.change(screen.getByPlaceholderText(/search/i), {
-        target: { value: 'laser' },
-      });
-
-      expect(onFiltersChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          searchText: 'laser',
-        })
-      );
-    });
-
-    it('should display current search text', () => {
-      const filtersWithSearch = { ...defaultFilters, searchText: 'blast' };
-
-      render(
-        <CardFilterModal
-          isOpen={true}
-          onClose={() => {}}
-          filters={filtersWithSearch}
-          onFiltersChange={() => {}}
-          filterOptions={mockFilterOptions}
-        />
-      );
-
-      expect(screen.getByPlaceholderText(/search/i)).toHaveValue('blast');
-    });
-  });
-
-  // ========================================
   // ABILITIES FILTER TESTS
   // ========================================
   describe('Abilities Filter', () => {
@@ -574,7 +517,7 @@ describe('CardFilterModal', () => {
         ...defaultFilters,
         rarity: ['Common'],
         type: ['Ordnance'],
-        searchText: 'test',
+        searchKeywords: ['test'],
         hideEnhanced: true,
       };
 
@@ -592,7 +535,7 @@ describe('CardFilterModal', () => {
 
       expect(onFiltersChange).toHaveBeenCalledWith(
         expect.objectContaining({
-          searchText: '',
+          searchKeywords: [],
           rarity: [],
           type: [],
           hideEnhanced: false,

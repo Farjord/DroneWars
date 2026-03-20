@@ -15,7 +15,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Search, ChevronDown } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
+import { FACTIONS } from '../../data/factionData.js';
 
 /**
  * CardFilterModal - Card filter popup
@@ -75,13 +76,15 @@ function CardFilterModal({
   // Reset all filters to defaults
   const handleResetAll = () => {
     onFiltersChange({
-      searchText: '',
+      searchKeywords: [],
       cost: { min: filterOptions.minCost, max: filterOptions.maxCost },
       rarity: [],
       type: [],
       target: [],
       damageType: [],
       abilities: [],
+      faction: [],
+      inDeck: null,
       hideEnhanced: false,
       includeAIOnly: false,
     });
@@ -104,21 +107,6 @@ function CardFilterModal({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 dw-modal-scroll">
-          {/* Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Search</label>
-            <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={filters.searchText}
-                onChange={(e) => updateFilter('searchText', e.target.value)}
-                placeholder="Search cards by name or description..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-          </div>
-
           {/* Cost Range */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -261,6 +249,47 @@ function CardFilterModal({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Faction */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Faction</label>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(FACTIONS).map(([id, faction]) => (
+                <label key={id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.faction?.includes(id) || false}
+                    onChange={() => toggleArrayFilter('faction', id)}
+                    className="w-4 h-4 accent-cyan-500"
+                  />
+                  <span className="text-sm text-gray-200">{faction.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* In Deck */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">In Deck</label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { value: null, label: 'All' },
+                { value: 'yes', label: 'In Deck' },
+                { value: 'no', label: 'Not In Deck' },
+              ].map(option => (
+                <label key={option.label} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="inDeck"
+                    checked={filters.inDeck === option.value}
+                    onChange={() => updateFilter('inDeck', option.value)}
+                    className="w-4 h-4 accent-cyan-500"
+                  />
+                  <span className="text-sm text-gray-200">{option.label}</span>
+                </label>
+              ))}
             </div>
           </div>
 

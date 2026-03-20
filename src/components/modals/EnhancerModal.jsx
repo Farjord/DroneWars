@@ -10,19 +10,21 @@ import { useGameState } from '../../hooks/useGameState';
 import enhancerService from '../../logic/economy/EnhancerService.js';
 import MissionService from '../../logic/missions/MissionService.js';
 import ActionCard from '../ui/ActionCard.jsx';
-import FilterChip from '../ui/FilterChip.jsx';
+import FilterTagInput from '../ui/FilterTagInput.jsx';
 import EnhancerFilterModal from './ReplicatorFilterModal.jsx';
+import {
+  createDefaultEnhancerFilters,
+  filterEnhancerItems,
+  generateEnhancerFilterChips,
+  countActiveEnhancerFilters,
+} from '../../logic/cards/deckFilterUtils.js';
 
 const EnhancerModal = ({ onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [feedback, setFeedback] = useState(null);
   const [selectedTab, setSelectedTab] = useState('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filters, setFilters] = useState({
-    searchText: '',
-    rarity: [],
-    copiesLessThan: null
-  });
+  const [filters, setFilters] = useState(createDefaultEnhancerFilters);
 
   const { singlePlayerProfile } = gameState;
   const credits = singlePlayerProfile?.credits || 0;
@@ -36,31 +38,12 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
     }
   }, [gameState?.singlePlayerInventory, gameState?.singlePlayerShipSlots]);
 
-  const applyFilters = (cards) => {
-    return cards.filter(item => {
-      if (filters.searchText) {
-        const searchLower = filters.searchText.toLowerCase();
-        if (!item.card.name?.toLowerCase().includes(searchLower)) {
-          return false;
-        }
-      }
-      if (filters.rarity.length > 0 && !filters.rarity.includes(item.card.rarity)) {
-        return false;
-      }
-      if (filters.copiesLessThan !== null && item.quantity >= filters.copiesLessThan) {
-        return false;
-      }
-      return true;
-    });
-  };
-
   const filteredCards = useMemo(() => {
     let result = enhanceableCards;
     if (selectedTab !== 'All') {
       result = result.filter(item => item.card.type === selectedTab);
     }
-    result = applyFilters(result);
-    return result;
+    return filterEnhancerItems(result, filters);
   }, [enhanceableCards, selectedTab, filters]);
 
   const filteredCardsWithDiffs = useMemo(() => {
@@ -70,34 +53,17 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
     }));
   }, [filteredCards]);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.searchText) count++;
-    count += filters.rarity.length;
-    if (filters.copiesLessThan !== null) count++;
-    return count;
-  }, [filters]);
-
-  const generateFilterChips = () => {
-    const chips = [];
-    if (filters.searchText) {
-      chips.push({ label: `"${filters.searchText}"`, filterType: 'searchText', filterValue: filters.searchText });
-    }
-    filters.rarity.forEach(r => {
-      chips.push({ label: r, filterType: 'rarity', filterValue: r });
-    });
-    if (filters.copiesLessThan !== null) {
-      chips.push({ label: `< ${filters.copiesLessThan} copies`, filterType: 'copiesLessThan', filterValue: filters.copiesLessThan });
-    }
-    return chips;
-  };
+  const activeFilterCount = useMemo(() => countActiveEnhancerFilters(filters), [filters]);
 
   const handleRemoveFilterChip = (filterType, filterValue) => {
     setFilters(prev => {
-      if (filterType === 'searchText') return { ...prev, searchText: '' };
-      if (filterType === 'rarity') return { ...prev, rarity: prev.rarity.filter(r => r !== filterValue) };
+      if (filterType === 'searchKeywords') {
+        return { ...prev, searchKeywords: prev.searchKeywords.filter(kw => kw !== filterValue) };
+      }
       if (filterType === 'copiesLessThan') return { ...prev, copiesLessThan: null };
-      return prev;
+      // Array filters (rarity, faction)
+      const current = prev[filterType] || [];
+      return { ...prev, [filterType]: current.filter(v => v !== filterValue) };
     });
   };
 
@@ -170,7 +136,7 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
 
           {/* Filter Header */}
           {enhanceableCards.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mb-3">
+            <div className="dw-filter-header">
               <button
                 onClick={() => setShowFilterModal(true)}
                 className="dw-filter-btn"
@@ -182,15 +148,13 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
                   <span className="dw-filter-btn__count">{activeFilterCount}</span>
                 )}
               </button>
-              {generateFilterChips().map((chip, index) => (
-                <FilterChip
-                  key={`${chip.filterType}-${chip.filterValue || index}`}
-                  label={chip.label}
-                  filterType={chip.filterType}
-                  filterValue={chip.filterValue}
-                  onRemove={handleRemoveFilterChip}
-                />
-              ))}
+              <FilterTagInput
+                keywords={filters.searchKeywords}
+                onKeywordsChange={(keywords) => setFilters(prev => ({ ...prev, searchKeywords: keywords }))}
+                chips={generateEnhancerFilterChips(filters).filter(c => c.filterType !== 'searchKeywords')}
+                onRemoveChip={handleRemoveFilterChip}
+                placeholder="Search cards..."
+              />
             </div>
           )}
 

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Filter, X } from 'lucide-react';
+import { FACTIONS } from '../../data/factionData.js';
 
 const ReplicatorFilterModal = ({ isOpen, onClose, filters, onFiltersChange }) => {
   if (!isOpen) return null;
@@ -20,9 +21,10 @@ const ReplicatorFilterModal = ({ isOpen, onClose, filters, onFiltersChange }) =>
 
   const handleReset = () => {
     onFiltersChange({
-      searchText: '',
+      searchKeywords: [],
       rarity: [],
-      copiesLessThan: null
+      faction: [],
+      copiesLessThan: null,
     });
   };
 
@@ -67,28 +69,6 @@ const ReplicatorFilterModal = ({ isOpen, onClose, filters, onFiltersChange }) =>
 
         {/* Body */}
         <div className="dw-modal-body">
-          {/* Search */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '6px' }}>
-              Search by Name
-            </label>
-            <input
-              type="text"
-              value={filters.searchText}
-              onChange={e => onFiltersChange({ ...filters, searchText: e.target.value })}
-              placeholder="Search cards..."
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                background: 'rgba(0, 0, 0, 0.3)',
-                border: '1px solid var(--modal-border)',
-                borderRadius: '4px',
-                color: 'white',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
           {/* Rarity Checkboxes */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '8px' }}>
@@ -118,6 +98,47 @@ const ReplicatorFilterModal = ({ isOpen, onClose, filters, onFiltersChange }) =>
                   />
                   <span style={{ fontSize: '13px', color: filters.rarity.includes(rarity) ? '#a855f7' : 'var(--modal-text-primary)' }}>
                     {rarity}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Faction */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '8px' }}>
+              Faction
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {Object.entries(FACTIONS).map(([id, faction]) => (
+                <label
+                  key={id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    background: (filters.faction || []).includes(id) ? 'rgba(147, 51, 234, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+                    border: `1px solid ${(filters.faction || []).includes(id) ? '#9333ea' : 'var(--modal-border)'}`,
+                    borderRadius: '4px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={(filters.faction || []).includes(id)}
+                    onChange={() => {
+                      const current = filters.faction || [];
+                      const newFaction = current.includes(id)
+                        ? current.filter(f => f !== id)
+                        : [...current, id];
+                      onFiltersChange({ ...filters, faction: newFaction });
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  <span style={{ fontSize: '13px', color: (filters.faction || []).includes(id) ? '#a855f7' : 'var(--modal-text-primary)' }}>
+                    {faction.name}
                   </span>
                 </label>
               ))}

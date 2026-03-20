@@ -78,6 +78,7 @@ const useDeckBuilderData = ({
     const targets = new Set();
     const abilities = new Set();
     const damageTypes = new Set();
+    const factions = new Set();
     processedCardCollection.forEach(card => {
       costs.add(card.cost);
       if (card.targetingText && card.targetingText !== 'N/A') {
@@ -86,6 +87,9 @@ const useDeckBuilderData = ({
       card.keywords.forEach(k => abilities.add(k));
       if (card.effects?.[0]?.damageType) {
         damageTypes.add(card.effects[0].damageType);
+      }
+      if (card.faction) {
+        factions.add(card.faction);
       }
     });
 
@@ -102,16 +106,21 @@ const useDeckBuilderData = ({
       targets: Array.from(targets).sort(),
       damageTypes: Array.from(damageTypes).sort(),
       abilities: Array.from(abilities).sort(),
+      factions: Array.from(factions).sort(),
     };
   }, [processedCardCollection, mode]);
 
   const droneFilterOptions = useMemo(() => {
     const abilities = new Set();
     const damageTypes = new Set();
+    const factions = new Set();
     processedDroneCollection.forEach(drone => {
       drone.keywords.forEach(k => abilities.add(k));
       if (drone.damageType) {
         damageTypes.add(drone.damageType);
+      }
+      if (drone.faction) {
+        factions.add(drone.faction);
       }
     });
 
@@ -123,7 +132,8 @@ const useDeckBuilderData = ({
       rarities,
       classes: [1, 2, 3, 4, 5],
       damageTypes: Array.from(damageTypes).sort(),
-      abilities: Array.from(abilities).sort()
+      abilities: Array.from(abilities).sort(),
+      factions: Array.from(factions).sort(),
     };
   }, [processedDroneCollection, mode]);
 
@@ -270,7 +280,7 @@ const useDeckBuilderData = ({
   // --- Filtered & Sorted Lists ---
 
   const filteredAndSortedCards = useMemo(() => {
-    let items = filterCards(processedCardCollection, filters);
+    let items = filterCards(processedCardCollection, filters, deck);
 
     if (sortConfig.key !== null) {
       if (sortConfig.key === 'rarity') {
@@ -282,10 +292,10 @@ const useDeckBuilderData = ({
     }
 
     return items;
-  }, [processedCardCollection, filters, sortConfig, mode]);
+  }, [processedCardCollection, filters, sortConfig, mode, deck]);
 
   const filteredAndSortedDrones = useMemo(() => {
-    let items = filterDrones(processedDroneCollection, droneFilters);
+    let items = filterDrones(processedDroneCollection, droneFilters, selectedDrones);
 
     if (droneSortConfig.key !== null) {
       if (droneSortConfig.key === 'rarity') {
@@ -297,7 +307,7 @@ const useDeckBuilderData = ({
     }
 
     return items;
-  }, [processedDroneCollection, droneFilters, droneSortConfig, mode]);
+  }, [processedDroneCollection, droneFilters, droneSortConfig, mode, selectedDrones]);
 
   return {
     processedCardCollection,
