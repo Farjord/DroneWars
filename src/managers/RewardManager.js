@@ -687,7 +687,8 @@ class RewardManager {
       // First card uses guaranteed type, others use weighted roll
       const cardType = rollCardType(config, i === 0, rng);
       const rolledRarity = rollRarity(rarityWeights, rng);
-      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
+      // Shop packs draw from neutral pool only
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng, ['NEUTRAL_1']);
 
       if (card) {
         cards.push(card);  // Already transformed by selectCard()

@@ -77,6 +77,7 @@ const CardPackShopCard = ({ packType, tier, config, cost, canAfford, onBuy }) =>
             <p className="text-sm text-white font-bold mt-2">
               Contains {cardCount} card{cardCount > 1 ? 's' : ''}
             </p>
+            <p className="text-xs text-gray-400 mt-1">Neutral cards only</p>
           </div>
         </div>
       </div>

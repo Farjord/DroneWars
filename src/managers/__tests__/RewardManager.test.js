@@ -1290,6 +1290,20 @@ describe('RewardManager', () => {
       }
     });
 
+    it('generateShopPack should restrict to neutral cards only', () => {
+      const selectCardSpy = vi.spyOn(CardSelectionPipeline, 'selectCard');
+
+      rewardManager.generateShopPack('ORDNANCE_PACK', 1);
+
+      // All selectCard calls should pass ['NEUTRAL_1'] as accessibleFactions
+      expect(selectCardSpy).toHaveBeenCalled();
+      selectCardSpy.mock.calls.forEach(call => {
+        expect(call[4]).toEqual(['NEUTRAL_1']);
+      });
+
+      selectCardSpy.mockRestore();
+    });
+
     it('generateCombatRewards should NOT filter by faction (thematic)', () => {
       const enemyDeck = [
         { id: 'REPOSITION', name: 'Reposition', rarity: 'Common', type: 'Tactic', faction: 'MOVEMENT' },

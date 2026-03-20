@@ -9,6 +9,7 @@ import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-re
 import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
 import { getShipById } from '../../data/shipData.js';
 import { getComponentById } from '../../logic/singlePlayer/repairHelpers.js';
+import { FACTIONS } from '../../data/factionData.js';
 
 /**
  * MapOverviewModal Component
@@ -384,6 +385,30 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 </div>
               </div>
+
+              {/* Faction Info */}
+              {selectedMap.faction && (() => {
+                const factionDef = FACTIONS[selectedMap.faction];
+                return factionDef ? (
+                  <div className="dw-modal-info-box" style={{ marginTop: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        backgroundColor: factionDef.color,
+                        boxShadow: `0 0 6px ${factionDef.color}`
+                      }} />
+                      <span style={{ color: factionDef.color, fontWeight: 600, fontSize: '13px' }}>
+                        {factionDef.name}
+                      </span>
+                      <span style={{ color: 'var(--modal-text-secondary)', fontSize: '12px' }}>
+                        {factionDef.type === 'faction'
+                          ? `${factionDef.name} + Neutral loot pool`
+                          : 'Neutral loot pool only'}
+                      </span>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
 
               {/* POI Breakdown - Single Column */}
               <div className="dw-modal-info-box" style={{ flex: 1 }}>

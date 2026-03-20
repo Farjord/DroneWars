@@ -1,6 +1,8 @@
 import React from 'react';
 import { Plus, Minus, RotateCcw, ChevronRight } from 'lucide-react';
 import { getOffScreenPOIs, getArrowEdgePosition } from '../../logic/singlePlayer/hexGrid.js';
+import { FACTIONS } from '../../data/factionData.js';
+import { isRegionBoundary } from '../../logic/faction/factionHelpers.js';
 import NewsTicker from './NewsTicker';
 
 const HangarHexMap = ({
@@ -179,13 +181,21 @@ const HangarHexMap = ({
                   </g>
                 );
               } else {
+                const factionDef = FACTIONS[cell.regionFaction];
+                const factionColor = factionDef?.color || '#808080';
+                const isFactionZone = factionDef?.type === 'faction';
+                const fillOpacity = isFactionZone ? 0.06 : 0;
+                const strokeColor = isFactionZone
+                  ? `${factionColor}44`
+                  : 'rgba(6,182,212,0.3)';
+
                 return (
                   <path
                     key={i}
                     d={hexPath}
                     transform={`translate(${cell.x}, ${cell.y})`}
-                    fill="none"
-                    stroke="rgba(6,182,212,0.3)"
+                    fill={isFactionZone ? `${factionColor}10` : 'none'}
+                    stroke={strokeColor}
                     strokeWidth="1"
                   />
                 );
