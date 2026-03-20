@@ -88,6 +88,11 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 89 | DeploymentProcessor.js:385-388 | `minePlayerStates` passes references (not deep clones) to `fireTrigger` for ON_LANE_DEPLOYMENT. CombatActionStrategy:298-299 deep-clones before the equivalent mine trigger call. If TriggerProcessor ever mutates input context, deployment path could corrupt `finalPlayerState`/`finalOpponentState`. Low risk since TriggerProcessor currently clones internally. | Inhibitor mine trigger sequence fix code review | 2026-03-17 | Low |
 | 90 | TriggerProcessor.js:344 | `executeTriggerEffects` has 19 positional parameters — fragile, easy to misorder. Refactor to an options object pattern, similar to how `fireTrigger` uses `context`. Related: #39 (useAnimationSetup 33 params). | triggerTiming/effectTarget code review | 2026-03-17 | Medium |
 | 91 | src/index.css | Pre-existing duplicate `guardian-pulse` (L224) and `shake` (L267) keyframes — both already defined in `animations.css`. Harmless but masks issues. Remove the `index.css` copies. | Keyframe decoupling review | 2026-03-19 | Low |
+| 92 | shipData.js | `faction: null` and `factionCardAllowances: {}` fields exist but are unused. Align with new faction system (FACTIONS in factionData.js). | Faction system implementation | 2026-03-20 | Low |
+| 93 | blueprintDropCalculator.js | UI display functions (`calculatePoolSize`, `getDroneDropInfo`) are not faction-aware — pool size display should account for faction filtering. | Faction system implementation | 2026-03-20 | Low |
+| 94 | factionData.js | NEUTRAL_2+ pool expansion and unlock triggers not yet implemented. Only NEUTRAL_1 exists. Design additional neutral pools and unlock conditions. | Faction system implementation | 2026-03-20 | Low |
+| 95 | pointsOfInterestData.js | Faction-themed PoI names and descriptions not yet implemented. PoIs should reflect faction flavor text when spawned in faction regions. | Faction system implementation | 2026-03-20 | Low |
+| 96 | LootGenerator.js | Dead code — not imported by any production module. RewardManager has fully replaced it. Can be deleted along with its test mocks. | Faction system implementation | 2026-03-20 | Low |
 
 ## Audit Findings (2026-02-23)
 
