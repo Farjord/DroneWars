@@ -353,7 +353,7 @@ class MissionService {
         tutorialDismissals: {
           intro: false,
           inventory: false,
-          replicator: false,
+          enhancer: false,
           blueprints: false,
           shop: false,
           repairBay: false,

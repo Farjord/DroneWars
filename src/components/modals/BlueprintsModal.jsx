@@ -43,13 +43,16 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
 
   const credits = singlePlayerProfile?.credits || 0;
   const aiCores = singlePlayerProfile?.aiCores || 0;
-  const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+  const unlockedBlueprints = useMemo(
+    () => new Set(singlePlayerProfile?.unlockedBlueprints || []),
+    [singlePlayerProfile?.unlockedBlueprints]
+  );
 
   /**
    * Craft cost by rarity
    * Uses centralized values from economyData.js
    */
-  const CRAFT_COSTS = ECONOMY.REPLICATION_COSTS;
+  const CRAFT_COSTS = ECONOMY.ENHANCEMENT_COSTS;
 
   /**
    * Get drone blueprints (excluding starter drones - they're infinitely available)
@@ -62,7 +65,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
         return {
           ...drone,
           id: drone.name, // Drones use name as ID
-          isUnlocked: unlockedBlueprints.includes(drone.name),
+          isUnlocked: unlockedBlueprints.has(drone.name),
           craftCost: CRAFT_COSTS[drone.rarity] || 100,
           aiCoresCost: getAICoresCost(drone.rarity),
           owned: singlePlayerInventory[drone.name] || 0,
@@ -79,7 +82,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
       .map(component => {
         return {
           ...component,
-          isUnlocked: unlockedBlueprints.includes(component.id),
+          isUnlocked: unlockedBlueprints.has(component.id),
           craftCost: CRAFT_COSTS[component.rarity] || 100,
           aiCoresCost: getAICoresCost(component.rarity),
           owned: singlePlayerInventory[component.id] || 0,
@@ -97,7 +100,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
       const owned = singlePlayerInventory[ship.id] || 0;
       return {
         ...ship,
-        isUnlocked: unlockedBlueprints.includes(ship.id) || STARTER_SHIP_IDS.has(ship.id),
+        isUnlocked: unlockedBlueprints.has(ship.id) || STARTER_SHIP_IDS.has(ship.id),
         craftCost: CRAFT_COSTS[ship.rarity] || 600,
         aiCoresCost: getAICoresCost(ship.rarity || 'Rare'),
         owned,

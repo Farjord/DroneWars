@@ -83,7 +83,7 @@ const staticAssets = {
   ],
   hangar: [
     '/DroneWars/Hanger/Inventory.png',
-    '/DroneWars/Hanger/Replicator.png',
+    '/DroneWars/Hanger/Enhancer.png',
     '/DroneWars/Hanger/Blueprints.png',
     '/DroneWars/Hanger/RepairBay.png',
     '/DroneWars/Hanger/Shop.png'

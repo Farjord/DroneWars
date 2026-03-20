@@ -89,7 +89,7 @@ vi.mock('../../../data/saveGameSchema.js', () => ({
 // Mock economy data
 vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
-    REPLICATION_COSTS: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 },
+    ENHANCEMENT_COSTS: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 },
     STARTER_BLUEPRINT_COSTS: { Common: 75, Uncommon: 175, Rare: 450, Mythic: 1100 }
   }
 }));

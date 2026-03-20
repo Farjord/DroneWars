@@ -238,7 +238,7 @@ const HangarScreen = () => {
   // Action button clicks
   const handleActionClick = (action) => {
     // Screens that have tutorials (modals)
-    const tutorialModalScreens = ['inventory', 'replicator', 'blueprints', 'shop'];
+    const tutorialModalScreens = ['inventory', 'enhancer', 'blueprints', 'shop'];
 
     // Show tutorial if not dismissed (tutorial will overlay on top of modal)
     if (tutorialModalScreens.includes(action) && !MissionService.isTutorialDismissed(action)) {
@@ -265,8 +265,8 @@ const HangarScreen = () => {
       case 'inventory':
         setActiveModal('inventory');
         break;
-      case 'replicator':
-        setActiveModal('replicator');
+      case 'enhancer':
+        setActiveModal('enhancer');
         break;
       case 'blueprints':
         setActiveModal('blueprints');

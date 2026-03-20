@@ -10,7 +10,7 @@ import { getShipById } from '../../data/shipData.js';
 // Hangar button images
 const hangarImages = {
   inventory: new URL('/Hanger/Inventory.png', import.meta.url).href,
-  replicator: new URL('/Hanger/Replicator.png', import.meta.url).href,
+  enhancer: new URL('/Hanger/Replicator.png', import.meta.url).href,
   blueprints: new URL('/Hanger/Blueprints.png', import.meta.url).href,
   shop: new URL('/Hanger/Shop.png', import.meta.url).href,
   repairBay: new URL('/Hanger/RepairBay.png', import.meta.url).href
@@ -63,7 +63,7 @@ const HangarSidebar = ({
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '8px' }}>
               {[
                 { key: 'inventory', label: 'INVENTORY', image: hangarImages.inventory },
-                { key: 'replicator', label: 'REPLICATOR', image: hangarImages.replicator },
+                { key: 'enhancer', label: 'ENHANCER', image: hangarImages.enhancer },
                 { key: 'blueprints', label: 'BLUEPRINTS', image: hangarImages.blueprints },
                 { key: 'shop', label: 'SHOP', image: hangarImages.shop },
                 { key: 'repairBay', label: 'REPAIR BAY', image: hangarImages.repairBay }

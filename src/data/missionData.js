@@ -82,13 +82,13 @@ export const MISSIONS = [
     sortOrder: 2,
   },
   {
-    id: 'intro_replicator',
+    id: 'intro_enhancer',
     category: MISSION_CATEGORIES.INTRO,
-    title: 'Initialize the Replicator',
-    description: 'Visit the Replicator to duplicate exiting cards. The Replicator converts raw materials into valuable equipment - a key part of your progression.',
+    title: 'Initialize the Enhancer',
+    description: 'Visit the Enhancer to upgrade your cards. The Enhancer lets you consume copies of base cards to produce enhanced versions — a key part of your progression.',
     condition: {
       type: MISSION_CONDITIONS.VISIT_SCREEN,
-      screen: 'replicator',
+      screen: 'enhancer',
     },
     reward: { credits: 50 },
     prerequisites: [],
@@ -293,7 +293,7 @@ export const MISSIONS = [
     id: 'collection_crafter',
     category: MISSION_CATEGORIES.COLLECTION,
     title: 'First Craft',
-    description: 'Craft your first item using the Replicator. Self-sufficiency is key to long-term survival.',
+    description: 'Craft your first item using the Enhancer or Blueprints. Self-sufficiency is key to long-term survival.',
     condition: {
       type: MISSION_CONDITIONS.CRAFT_ITEM,
       count: 1,

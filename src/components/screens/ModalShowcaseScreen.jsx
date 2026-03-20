@@ -61,7 +61,7 @@ import SaveLoadModal from '../modals/SaveLoadModal.jsx';
 import InventoryModal from '../modals/InventoryModal.jsx';
 import BlueprintsModal from '../modals/BlueprintsModal.jsx';
 import RepairBayModal from '../modals/RepairBayModal.jsx';
-import ReplicatorModal from '../modals/ReplicatorModal.jsx';
+import EnhancerModal from '../modals/EnhancerModal.jsx';
 
 /**
  * Modal Showcase Screen Component
@@ -199,7 +199,7 @@ function ModalShowcaseScreen() {
       InventoryModal,
       BlueprintsModal,
       RepairBayModal,
-      ReplicatorModal
+      EnhancerModal
     };
 
     const ModalComponent = modalComponents[selectedModal];

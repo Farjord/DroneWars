@@ -3,7 +3,7 @@ import SaveLoadModal from '../modals/SaveLoadModal';
 import InventoryModal from '../modals/InventoryModal';
 import MapOverviewModal from '../modals/MapOverviewModal';
 import BlueprintsModal from '../modals/BlueprintsModal';
-import ReplicatorModal from '../modals/ReplicatorModal';
+import EnhancerModal from '../modals/EnhancerModal';
 import ShopModal from '../modals/ShopModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import BossEncounterModal from '../modals/BossEncounterModal';
@@ -17,7 +17,7 @@ import LoadingEncounterScreen from './LoadingEncounterScreen';
 import {
   IntroTutorialModal,
   InventoryTutorialModal,
-  ReplicatorTutorialModal,
+  EnhancerTutorialModal,
   BlueprintsTutorialModal,
   ShopTutorialModal,
   RepairBayTutorialModal,
@@ -33,7 +33,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 // Maps tutorial key to component + optional extra dismiss actions
 const TUTORIAL_COMPONENTS = {
   inventory: InventoryTutorialModal,
-  replicator: ReplicatorTutorialModal,
+  enhancer: EnhancerTutorialModal,
   blueprints: BlueprintsTutorialModal,
   shop: ShopTutorialModal,
   tacticalMapOverview: TacticalMapOverviewTutorialModal,
@@ -103,7 +103,7 @@ const HangarModals = ({
       {activeModal === 'saveLoad' && <SaveLoadModal onClose={closeAllModals} />}
       {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('inventory')} />}
       {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('blueprints')} />}
-      {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('replicator')} />}
+      {activeModal === 'enhancer' && <EnhancerModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('enhancer')} />}
       {activeModal === 'shop' && <ShopModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('shop')} />}
       {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
 
@@ -164,7 +164,7 @@ const HangarModals = ({
               <div className="dw-modal-body">
                 {availableShips.length === 0 ? (
                   <p className="dw-modal-text" style={{ textAlign: 'center', color: 'var(--modal-text-secondary)' }}>
-                    No ships available. Craft one in the Replicator.
+                    No ships available. Craft one in Blueprints.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -217,8 +217,8 @@ const HangarModals = ({
 
       {/* New Deck Prompt Modal */}
       {activeModal === 'newDeckPrompt' && (
-        <div className="dw-modal-overlay" onClick={closeAllModals}>
-          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+        <div className="dw-modal-overlay">
+          <div className="dw-modal-content dw-modal--sm dw-modal--action">
             <div className="dw-modal-header">
               <div className="dw-modal-header-info">
                 <h2 className="dw-modal-header-title">Create New Deck</h2>
@@ -242,12 +242,6 @@ const HangarModals = ({
                   Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'}
                 </button>
               )}
-              <button
-                onClick={closeAllModals}
-                className="dw-btn-hud dw-btn-hud-ghost dw-btn--full"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </div>
@@ -370,7 +364,7 @@ const HangarModals = ({
             MissionService.skipIntroMissions();
             MissionService.dismissTutorial('intro');
             MissionService.dismissTutorial('inventory');
-            MissionService.dismissTutorial('replicator');
+            MissionService.dismissTutorial('enhancer');
             MissionService.dismissTutorial('blueprints');
             MissionService.dismissTutorial('shop');
             MissionService.dismissTutorial('repairBay');

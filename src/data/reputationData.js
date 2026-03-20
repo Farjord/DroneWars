@@ -14,7 +14,7 @@ export const REPUTATION = {
   // Each map tier defines its own per-combat reputation cap
 
   // Blueprint costs by rarity (used for loadout value calculation)
-  // These match the existing REPLICATION_COSTS in economyData.js
+  // These match the existing ENHANCEMENT_COSTS in economyData.js
   BLUEPRINT_COSTS: {
     Common: 100,
     Uncommon: 250,

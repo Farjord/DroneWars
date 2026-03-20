@@ -72,7 +72,7 @@ vi.mock('../../../data/saveGameSchema.js', () => ({
 // Mock economy data
 vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
-    REPLICATION_COSTS: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 }
+    ENHANCEMENT_COSTS: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 }
   }
 }));
 

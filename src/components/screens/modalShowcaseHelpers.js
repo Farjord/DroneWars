@@ -1010,10 +1010,10 @@ export const getMockPropsForModal = (modalName) => {
         onClose: () => console.log('Repair Bay closed')
       }
     },
-    'ReplicatorModal': {
+    'EnhancerModal': {
       category: 'hangar',
       props: {
-        onClose: () => console.log('Replicator closed')
+        onClose: () => console.log('Enhancer closed')
       }
     }
   };
@@ -1055,7 +1055,7 @@ export const getModalsByCategory = () => {
       // Debug modals
       'GameDebugModal', 'DetailedDroneModal', 'LogModal',
       // Hangar modals
-      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'ReplicatorModal'
+      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'EnhancerModal'
     ],
     extraction: [
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
@@ -1094,7 +1094,7 @@ export const getModalsByCategory = () => {
       'GameDebugModal', 'DetailedDroneModal', 'LogModal'
     ],
     hangar: [
-      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'ReplicatorModal'
+      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'EnhancerModal'
     ]
   };
 };

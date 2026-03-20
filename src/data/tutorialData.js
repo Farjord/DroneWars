@@ -14,7 +14,7 @@
 export const TUTORIAL_SCREENS = {
   INTRO: 'intro',
   INVENTORY: 'inventory',
-  REPLICATOR: 'replicator',
+  ENHANCER: 'enhancer',
   BLUEPRINTS: 'blueprints',
   SHOP: 'shop',
   REPAIR_BAY: 'repairBay',
@@ -72,27 +72,27 @@ export const TUTORIALS = {
       },
       {
         heading: 'Using Your Items',
-        content: 'Items in your inventory can be equipped through the Deck Builder. Some items may also be used as crafting materials in the Replicator or sold for credits.',
+        content: 'Items in your inventory can be equipped through the Deck Builder. Some items may also be used as crafting materials in the Enhancer or sold for credits.',
       },
     ],
   },
 
-  [TUTORIAL_SCREENS.REPLICATOR]: {
-    id: TUTORIAL_SCREENS.REPLICATOR,
-    title: 'Replicator',
-    subtitle: 'Craft New Equipment',
+  [TUTORIAL_SCREENS.ENHANCER]: {
+    id: TUTORIAL_SCREENS.ENHANCER,
+    title: 'Enhancer',
+    subtitle: 'Upgrade Your Cards',
     sections: [
       {
-        heading: 'Crafting System',
-        content: 'The Replicator allows you to clone any cards that you currently own. This is useful for creating multiple copies of powerful cards to include in your deck. NOTE: Starter Cards are not shown here, as you can equip unlimited copies of these in your deck without needing to replicate them.',
+        heading: 'Enhancement System',
+        content: 'The Enhancer allows you to upgrade base cards into enhanced versions by consuming multiple copies. Enhanced cards have improved stats and effects. Starter cards can be enhanced for credits only.',
       },
       {
         heading: 'Requirements',
-        content: 'To replicate a card you must currently own at least one copy of it. You also need sufficient credits to cover the replication cost.',
+        content: 'To enhance a card you need the required number of copies (shown per card) plus sufficient credits. Starter cards only require credits — no copies needed.',
       },
       {
-        heading: 'Replicated Cards',
-        content: 'Successfully replicated cards are immediately added to your inventory and can be used in your next loadout.',
+        heading: 'Enhanced Cards',
+        content: 'Successfully enhanced cards are added to your inventory. Note: enhancing consumes the base copies, and your decks will be automatically adjusted if needed.',
       },
     ],
   },

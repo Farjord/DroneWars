@@ -151,7 +151,7 @@ describe('Mission Data Structure', () => {
       const introMissions = MISSIONS.filter(m => m.category === MISSION_CATEGORIES.INTRO);
       const screens = introMissions.map(m => m.condition.screen);
 
-      const requiredScreens = ['inventory', 'blueprints', 'replicator', 'shop', 'repairBay', 'deckBuilder'];
+      const requiredScreens = ['inventory', 'blueprints', 'enhancer', 'shop', 'repairBay', 'deckBuilder'];
       requiredScreens.forEach(screen => {
         expect(screens).toContain(screen);
       });

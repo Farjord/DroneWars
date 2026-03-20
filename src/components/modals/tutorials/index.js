@@ -6,7 +6,7 @@
 export { default as TutorialModalBase } from './TutorialModalBase.jsx';
 export { default as IntroTutorialModal } from './IntroTutorialModal.jsx';
 export { default as InventoryTutorialModal } from './InventoryTutorialModal.jsx';
-export { default as ReplicatorTutorialModal } from './ReplicatorTutorialModal.jsx';
+export { default as EnhancerTutorialModal } from './EnhancerTutorialModal.jsx';
 export { default as BlueprintsTutorialModal } from './BlueprintsTutorialModal.jsx';
 export { default as ShopTutorialModal } from './ShopTutorialModal.jsx';
 export { default as RepairBayTutorialModal } from './RepairBayTutorialModal.jsx';

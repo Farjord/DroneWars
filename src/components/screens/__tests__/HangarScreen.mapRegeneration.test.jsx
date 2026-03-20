@@ -125,7 +125,7 @@ vi.mock('../../modals/SaveLoadModal', () => ({ default: () => null }));
 vi.mock('../../modals/InventoryModal', () => ({ default: () => null }));
 vi.mock('../../modals/MapOverviewModal', () => ({ default: () => null }));
 vi.mock('../../modals/BlueprintsModal', () => ({ default: () => null }));
-vi.mock('../../modals/ReplicatorModal', () => ({ default: () => null }));
+vi.mock('../../modals/EnhancerModal', () => ({ default: () => null }));
 vi.mock('../../modals/ShopModal', () => ({ default: () => null }));
 vi.mock('../../modals/RunSummaryModal', () => ({ default: () => null }));
 vi.mock('../../modals/ConfirmationModal', () => ({ default: () => null }));
