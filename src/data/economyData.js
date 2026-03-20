@@ -16,15 +16,31 @@ export const ECONOMY = {
   SECTION_DAMAGE_REPAIR_COST: 200,
 
   // ========================================
-  // REPLICATION COSTS
+  // REPLICATION / ENHANCEMENT COSTS
   // ========================================
 
-  // Card replication costs by rarity
+  // Card replication costs by rarity (legacy key — used by BlueprintsModal crafting)
   REPLICATION_COSTS: {
     Common: 1000,
     Uncommon: 2500,
     Rare: 3000,
     Mythic: 5000
+  },
+
+  // Card enhancement costs by rarity (credits)
+  ENHANCEMENT_COSTS: {
+    Common: 1000,
+    Uncommon: 2500,
+    Rare: 3000,
+    Mythic: 5000
+  },
+
+  // Number of base card copies consumed per enhancement
+  ENHANCEMENT_COPIES_REQUIRED: {
+    Common: 3,
+    Uncommon: 3,
+    Rare: 3,
+    Mythic: 3
   },
 
   // ========================================

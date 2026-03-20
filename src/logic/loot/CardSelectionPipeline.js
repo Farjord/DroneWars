@@ -101,47 +101,39 @@ export function rollCardType(config, isGuaranteed, rng) {
 export function selectCard(cardType, rarity, allowedRarities, rng) {
   const notStarter = (c) => !STARTER_CARD_IDS.has(c.id);
   const notAIOnly = (c) => !c.aiOnly;
+  const notEnhanced = (c) => !c.id.endsWith('_ENHANCED');
   const isAllowedRarity = (c) => allowedRarities.includes(c.rarity || 'Common');
 
+  // Base pool: exclude starters, AI-only, and enhanced cards from all drop levels
+  const basePool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c) && notEnhanced(c));
+
   // Primary: exact type + rarity
-  let pool = fullCardCollection.filter(c =>
+  let pool = basePool.filter(c =>
     c.type === cardType &&
-    (c.rarity || 'Common') === rarity &&
-    notStarter(c) &&
-    notAIOnly(c)
+    (c.rarity || 'Common') === rarity
   );
 
   // Fallback 1: same type, any allowed rarity
   if (pool.length === 0) {
-    pool = fullCardCollection.filter(c =>
+    pool = basePool.filter(c =>
       c.type === cardType &&
-      isAllowedRarity(c) &&
-      notStarter(c) &&
-      notAIOnly(c)
+      isAllowedRarity(c)
     );
   }
 
   // Fallback 2: same type, any rarity
   if (pool.length === 0) {
-    pool = fullCardCollection.filter(c =>
-      c.type === cardType &&
-      notStarter(c) &&
-      notAIOnly(c)
-    );
+    pool = basePool.filter(c => c.type === cardType);
   }
 
   // Fallback 3: any type with requested rarity (when cardType is null or no match)
   if (pool.length === 0) {
-    pool = fullCardCollection.filter(c =>
-      (c.rarity || 'Common') === rarity &&
-      notStarter(c) &&
-      notAIOnly(c)
-    );
+    pool = basePool.filter(c => (c.rarity || 'Common') === rarity);
   }
 
-  // Fallback 4: any non-starter, non-AI-only card
+  // Fallback 4: any non-starter, non-AI-only, non-enhanced card
   if (pool.length === 0) {
-    pool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c));
+    pool = basePool;
   }
 
   if (pool.length === 0) return null;
