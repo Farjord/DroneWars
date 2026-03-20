@@ -383,6 +383,28 @@ class RewardManager {
       }
     }
 
+    // Empty faction pool fallback: retry without faction filter
+    if (!selectedDrone && accessibleFactions) {
+      for (let attempt = 0; attempt < MAX_REROLL_ATTEMPTS; attempt++) {
+        const rolledClass = parseInt(weightedRoll(classBandWeights, rng));
+        rolledRarity = rollRarity(weights, rng);
+
+        const availableDrones = fullDroneCollection.filter(d => {
+          if (starterPoolDroneNames.includes(d.name)) return false;
+          if (unlockedBlueprints.includes(d.name)) return false;
+          if (d.selectable === false) return false;
+          if (d.class !== rolledClass) return false;
+          if ((d.rarity || 'Common') !== rolledRarity) return false;
+          return true;
+        });
+
+        if (availableDrones.length > 0) {
+          selectedDrone = availableDrones[Math.floor(rng.random() * availableDrones.length)];
+          break;
+        }
+      }
+    }
+
     // Check if all classes exhausted
     if (!selectedDrone) {
       // Generate fallback salvage (higher tier)
@@ -705,6 +727,7 @@ class RewardManager {
 
   /**
    * Generate reputation level reward
+   * No faction filtering — reputation is earned globally, not from a specific map.
    *
    * @param {Object} rewardConfig - {packType, tier, level}
    * @returns {Object} - {cards, salvageItem}
