@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import fullCardCollection from '../cardData';
+import fullCardCollection, { RARITY_DECK_LIMITS } from '../cardData';
 
 const VALID_RARITIES = ['Common', 'Uncommon', 'Rare', 'Mythic'];
 const VALID_TYPES = ['Ordnance', 'Support', 'Tactic', 'Upgrade'];
@@ -60,10 +60,43 @@ describe('fullCardCollection', () => {
     expect(failures).toEqual([]);
   });
 
+  it('every enhanced card has the same rarity as its base card', () => {
+    const baseCards = new Map(
+      fullCardCollection
+        .filter((c) => !c.id.endsWith('_ENHANCED'))
+        .map((c) => [c.id, c])
+    );
+    const failures = fullCardCollection
+      .filter((c) => c.id.endsWith('_ENHANCED'))
+      .filter((c) => baseCards.get(c.baseCardId)?.rarity !== c.rarity)
+      .map((c) => `${c.id}: ${c.rarity} !== base ${baseCards.get(c.baseCardId)?.rarity}`);
+    expect(failures).toEqual([]);
+  });
+
+  it('every card maxInDeck matches RARITY_DECK_LIMITS', () => {
+    const failures = fullCardCollection
+      .filter((c) => c.maxInDeck !== RARITY_DECK_LIMITS[c.rarity])
+      .map((c) => `${c.id}: maxInDeck=${c.maxInDeck}, expected=${RARITY_DECK_LIMITS[c.rarity]}`);
+    expect(failures).toEqual([]);
+  });
+
   it('every card image follows /DroneWars/cards/ pattern', () => {
     const failures = fullCardCollection
       .filter((c) => !/^\/DroneWars\/cards\/.+\.png$/.test(c.image))
       .map((c) => `${c.id}: ${c.image}`);
     expect(failures).toEqual([]);
+  });
+
+  it('every base card has a corresponding enhanced card', () => {
+    const enhancedIds = new Set(
+      fullCardCollection
+        .filter((c) => c.id.endsWith('_ENHANCED'))
+        .map((c) => c.baseCardId)
+    );
+    const baseCards = fullCardCollection.filter((c) => !c.id.endsWith('_ENHANCED'));
+    const missing = baseCards
+      .filter((c) => !enhancedIds.has(c.id))
+      .map((c) => c.id);
+    expect(missing).toEqual([]);
   });
 });

@@ -103,7 +103,7 @@ function DeckBuildingModal({
     if (!card) return;
 
     const currentCount = deckComposition[cardId] || 0;
-    const maxInDeck = card.maxInDeck || 4;
+    const maxInDeck = card.maxInDeck;
 
     if (currentCount < maxInDeck) {
       setDeckComposition(prev => ({
@@ -275,7 +275,7 @@ function DeckBuildingModal({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredAndSortedCards.map((card) => {
               const currentCount = deckComposition[card.id] || 0;
-              const maxInDeck = card.maxInDeck || 4;
+              const maxInDeck = card.maxInDeck;
               const isAtMax = currentCount >= maxInDeck;
 
               return (
