@@ -23,15 +23,7 @@ class SinglePlayerInventoryManager {
   }
 
   loadSinglePlayerSave(saveData) {
-    // Migration: Calculate highestUnlockedSlot for saves without it
     const profile = { ...saveData.playerProfile };
-    if (profile.highestUnlockedSlot === undefined) {
-      const activeSlotIds = (saveData.shipSlots || [])
-        .filter(s => s.id > 0 && s.status !== 'empty')
-        .map(s => s.id);
-      profile.highestUnlockedSlot = activeSlotIds.length > 0 ? Math.max(...activeSlotIds) : 0;
-      debugLog('SP_SAVE', `Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
-    }
 
     // Migration: Generate shop pack if not present (new saves and old saves)
     if (!profile.shopPack) {

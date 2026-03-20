@@ -434,30 +434,30 @@ class RunLifecycleManager {
       debugLog('EXTRACTION', 'Run ended - all loot lost, damage persisted');
     }
 
-    // Calculate total combat reputation from run
-    const combatReputationArray = runState.combatReputationEarned || [];
-    const totalCombatRep = combatReputationArray.reduce((sum, entry) => sum + entry.repEarned, 0);
+    // Collect reputation events (with migration fallback for old saves)
+    const reputationEvents = runState.reputationEvents
+      || (runState.combatReputationEarned || []).map(e => ({
+        type: 'COMBAT_WIN', key: e.aiDifficulty || 'Medium', rep: e.repEarned || 0
+      }));
 
-    debugLog('REPUTATION', 'Combat reputation summary:', {
-      combatCount: combatReputationArray.length,
-      totalCombatRep,
-      breakdown: combatReputationArray
+    debugLog('REPUTATION', 'Reputation events summary:', {
+      eventCount: reputationEvents.length,
+      events: reputationEvents
     });
 
-    // Award reputation based on loadout value + combat reputation
-    const shipSlot = newShipSlots.find(s => s.id === runState.shipSlotId);
+    // Award reputation from accumulated events
     const reputationResult = ReputationService.awardReputation(
-      shipSlot,
-      runState.mapTier || 1,
+      reputationEvents,
       success,
-      totalCombatRep
+      runState.mapTier || 1
     );
 
     // Add reputation info to run summary
     lastRunSummary.reputation = {
-      repGained: reputationResult.repGained || 0,
-      loadoutRepGained: reputationResult.loadoutRepGained || 0,
-      combatRepGained: reputationResult.combatRepGained || 0,
+      repGained: reputationResult.totalRep || 0,
+      combatRep: reputationResult.combatRep || 0,
+      explorationRep: reputationResult.explorationRep || 0,
+      extractionBonus: reputationResult.extractionBonus || 0,
       previousRep: reputationResult.previousRep || 0,
       newRep: reputationResult.newRep || 0,
       previousLevel: reputationResult.previousLevel || 1,
@@ -465,10 +465,6 @@ class RunLifecycleManager {
       leveledUp: reputationResult.leveledUp || false,
       levelsGained: reputationResult.levelsGained || 0,
       newRewards: reputationResult.newRewards || [],
-      loadoutValue: reputationResult.loadout?.totalValue || 0,
-      isStarterDeck: reputationResult.loadout?.isStarterDeck || false,
-      wasCapped: reputationResult.wasCapped || false,
-      tierCap: reputationResult.tierCap || 0,
     };
 
     debugLog('EXTRACTION', 'Reputation awarded', { reputation: lastRunSummary.reputation });

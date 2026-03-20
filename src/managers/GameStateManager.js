@@ -990,7 +990,7 @@ class GameStateManager {
   }
 
   // --- SINGLE-PLAYER INVENTORY FACADES ---
-  // External callers (EremosEntryScreen, SaveLoadModal, BlueprintsModal, RepairService) use these.
+  // External callers (EremosEntryScreen, SaveLoadModal, BlueprintsModal) use these.
   // Delegation to singlePlayerInventoryManager.
 
   createNewSinglePlayerProfile() { this.singlePlayerInventoryManager.createNewSinglePlayerProfile(); }
@@ -1015,9 +1015,6 @@ class GameStateManager {
 
   assignShipToSlot(slotId, shipId) { return this.shipSlotManager.assignShipToSlot(slotId, shipId); }
   setDefaultShipSlot(slotId) { this.shipSlotManager.setDefaultShipSlot(slotId); }
-  isSlotUnlocked(slotId) { return this.shipSlotManager.isSlotUnlocked(slotId); }
-  getNextUnlockableSlot() { return this.shipSlotManager.getNextUnlockableSlot(); }
-  unlockNextDeckSlot() { return this.shipSlotManager.unlockNextDeckSlot(); }
   saveShipSlotDeck(slotId, deckData) { this.shipSlotManager.saveShipSlotDeck(slotId, deckData); }
   deleteShipSlotDeck(slotId) { this.shipSlotManager.deleteShipSlotDeck(slotId); }
   updateShipSlotDroneOrder(slotId, newDroneSlots) { this.shipSlotManager.updateShipSlotDroneOrder(slotId, newDroneSlots); }

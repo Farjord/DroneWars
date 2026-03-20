@@ -14,6 +14,7 @@ import { calculateInsertionIndex } from '../components/ui/insertionIndexCalculat
 import { computeGhostIsPlayer } from '../components/ui/ghostSideHelpers.js';
 import { isRepositionNoOp } from './isRepositionNoOp.js';
 import fullDroneCollection from '../data/droneData.js';
+import { roundToDevicePixel } from '../utils/pixelUtils.js';
 
 /** Returns the base drone for a CREATE_TOKENS card (for ghost preview), or null. */
 function _getTokenBaseDrone(card) {
@@ -1039,8 +1040,8 @@ const useDragMechanics = ({
     if (!draggedActionCard || draggedActionCard.mode !== 'card-drag') return;
     const handleMouseMove = (e) => {
       if (floatingCardRef.current) {
-        floatingCardRef.current.style.left = `${e.clientX}px`;
-        floatingCardRef.current.style.top = `${e.clientY}px`;
+        floatingCardRef.current.style.left = `${roundToDevicePixel(e.clientX)}px`;
+        floatingCardRef.current.style.top = `${roundToDevicePixel(e.clientY)}px`;
       }
     };
     document.addEventListener('mousemove', handleMouseMove);

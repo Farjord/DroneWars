@@ -36,7 +36,7 @@ export const CARD_FAN_CONFIG = {
   // Hover/selection effect
   hoverEffect: {
     translateY: -105,  // Pixels to raise card upward
-    scale: 1.2        // Scale multiplier for zoom effect
+    scale: 1.25       // Scale multiplier — DPR-friendly value (divides evenly into 1, 1.25, 1.5, 2)
   },
 
   // Arc effect for fan (inverted - center high, edges low)
@@ -61,7 +61,7 @@ export const calculateCardFanRotation = (index, totalCards) => {
  */
 export const getHoverTransform = () => {
   const { translateY } = CARD_FAN_CONFIG.hoverEffect;
-  return `translateY(${translateY}px) scale(1.2)`;
+  return `translateY(${translateY}px) scale(${CARD_FAN_CONFIG.hoverEffect.scale})`;
 };
 
 /**

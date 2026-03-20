@@ -62,7 +62,7 @@ function createMockTacticalMapState(overrides = {}) {
     poisVisited: [],
     combatsWon: 1,
     combatsLost: 0,
-    combatReputationEarned: [],
+    reputationEvents: [],
     pendingPOICombat: null,
     pendingPath: null,
     pendingWaypointIndexes: null,

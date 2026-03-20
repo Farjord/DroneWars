@@ -144,7 +144,8 @@
 
 .drone-float {
   animation: subtleSway 5s ease-in-out infinite;
-  will-change: transform;
+  /* will-change: transform removed — permanent GPU promotion blurred text by rasterizing
+     it into a bitmap that gets stretched. The browser auto-promotes during animation. */
   backface-visibility: hidden;
 }
 
@@ -447,6 +448,9 @@
   opacity: 0;
   transition: opacity 150ms ease;
   transition-delay: 0ms;
+  /* Promote to own compositor layer so parent drone transforms don't distort tooltip text */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 [data-drone-token]:hover > .drone-tooltip-container {
   opacity: 1;

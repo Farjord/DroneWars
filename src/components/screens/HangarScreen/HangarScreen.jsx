@@ -135,15 +135,6 @@ const HangarScreen = () => {
     setDeleteConfirmation(null);
   };
 
-  // Handle slot unlock - unlocks the next deck slot (sequential)
-  const handleUnlockSlot = (e) => {
-    e.stopPropagation(); // Prevent slot click
-    const result = gameStateManager.unlockNextDeckSlot();
-    if (!result.success) {
-      debugLog('HANGAR', 'Failed to unlock slot:', result.error);
-    }
-  };
-
   // Handle ship selected from ship selection modal — show confirmation
   const handleShipChosen = (shipId, shipName) => {
     setActiveModal(null);
@@ -517,7 +508,6 @@ const HangarScreen = () => {
           onSlotClick={handleSlotClick}
           onStarToggle={handleStarToggle}
           onDeleteClick={handleDeleteClick}
-          onUnlockSlot={handleUnlockSlot}
           onQuickDeploy={() => setActiveModal('quickDeploy')}
         />
       </div>

@@ -10,13 +10,11 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Wrench, AlertTriangle, CheckCircle, GripVertical, Star, Trash2, Lock, Cpu, HelpCircle } from 'lucide-react';
+import { Wrench, AlertTriangle, CheckCircle, Star, Trash2, Cpu, HelpCircle } from 'lucide-react';
 import { RepairBayTutorialModal } from '../modals/tutorials';
 import { useGameState } from '../../hooks/useGameState';
-import DroneCard from '../ui/DroneCard';
 import RepairSectionCard from '../ui/RepairSectionCard';
 import { getShipById } from '../../data/shipData';
-import repairService from '../../logic/economy/RepairService';
 import { resolveShipSectionImage } from '../../logic/cards/shipSectionImageResolver';
 import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { validateShipSlot } from '../../logic/combat/shipSlotUtils.js';
@@ -24,7 +22,6 @@ import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService';
 import ReputationTrack from '../ui/ReputationTrack';
 import {
-  getDroneByName,
   getComponentById,
   resolveComponentIdForLane,
   calculateSectionHull,
@@ -33,60 +30,6 @@ import {
 
 // Re-export resolveComponentIdForLane for consumers that imported it from here
 export { resolveComponentIdForLane } from '../../logic/singlePlayer/repairHelpers.js';
-
-/**
- * Drone Slot Display Component
- * Wraps DroneCard with slot number, damage indicator, and drag functionality
- */
-const DroneSlotDisplay = ({
-  index,
-  droneSlot,
-  isDragging,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  onDrop
-}) => {
-  const droneName = droneSlot?.assignedDrone;
-  const droneData = droneName ? getDroneByName(droneName) : null;
-
-  if (!droneName || !droneData) {
-    return (
-      <div className="repair-bay-drone-slot repair-bay-drone-slot--empty">
-        <div className="text-center py-8">
-          <div className="text-xs text-gray-500 mb-1">Slot {index + 1}</div>
-          <div className="text-gray-500">Empty</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`repair-bay-drone-slot ${isDragging ? 'repair-bay-drone-slot--dragging' : ''} ${isDragOver ? 'repair-bay-drone-slot--drag-over' : ''}`}
-      draggable={true}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      onDrop={onDrop}
-    >
-      {/* Slot Number Badge */}
-      <div className="absolute top-2 left-2 z-10 bg-black/70 px-2 py-1 rounded text-xs text-cyan-400 flex items-center gap-1">
-        <GripVertical size={10} />
-        Slot {index + 1}
-      </div>
-
-      {/* Drone Card */}
-      <DroneCard
-        drone={droneData}
-        isViewOnly={true}
-        isSelectable={false}
-        deployedCount={0}
-      />
-    </div>
-  );
-};
 
 /**
  * RepairBayScreen Component
@@ -102,8 +45,6 @@ const RepairBayScreen = () => {
 
   // Local state
   const [selectedSlotId, setSelectedSlotId] = useState(initialSlotId);
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [showReputationProgress, setShowReputationProgress] = useState(false);
   const [showTutorial, setShowTutorial] = useState(null);
@@ -121,12 +62,6 @@ const RepairBayScreen = () => {
     gameStateManager.setState({ appState: 'hangar' });
   };
 
-  // Handle unlock slot (matching Hangar)
-  const handleUnlockSlot = (e) => {
-    e.stopPropagation();
-    gameStateManager.unlockNextDeckSlot();
-  };
-
   // Handle star toggle (matching Hangar)
   const handleStarToggle = (e, slotId) => {
     e.stopPropagation();
@@ -140,42 +75,15 @@ const RepairBayScreen = () => {
     setFeedback(null);
   };
 
-  // Handle drone reordering
-  const handleSwapDrones = (fromIndex, toIndex) => {
-    if (fromIndex === toIndex || !selectedSlot) return;
-
-    const newSlots = [...selectedSlot.droneSlots];
-    // Swap only the assignedDrone values, slot damage stays in place
-    const tempDrone = newSlots[fromIndex].assignedDrone;
-    newSlots[fromIndex] = { ...newSlots[fromIndex], assignedDrone: newSlots[toIndex].assignedDrone };
-    newSlots[toIndex] = { ...newSlots[toIndex], assignedDrone: tempDrone };
-
-    // Update game state
-    if (gameStateManager.updateShipSlotDroneOrder) {
-      gameStateManager.updateShipSlotDroneOrder(selectedSlotId, newSlots);
-    } else {
-      // Fallback: update via setState
-      const updatedSlots = singlePlayerShipSlots.map(slot =>
-        slot.id === selectedSlotId ? { ...slot, droneSlots: newSlots } : slot
-      );
-      gameStateManager.setState({ singlePlayerShipSlots: updatedSlots });
-    }
-
-    setFeedback({ type: 'success', message: 'Drones reordered' });
-    setTimeout(() => setFeedback(null), 2000);
-  };
-
   // Handle section repair (full)
-  const handleRepairSection = async (lane) => {
+  const handleRepairSection = (lane) => {
     try {
-      const result = repairService.repairSectionSlot
-        ? await repairService.repairSectionSlot(selectedSlotId, lane)
-        : { success: false, error: 'Repair service not available' };
+      const result = gameStateManager.repairSectionSlot(selectedSlotId, lane);
 
       if (result.success) {
         setFeedback({ type: 'success', message: `Section repaired for ${result.cost} credits` });
       } else {
-        setFeedback({ type: 'error', message: result.error || 'Repair failed' });
+        setFeedback({ type: 'error', message: result.reason || 'Repair failed' });
       }
     } catch (error) {
       setFeedback({ type: 'error', message: 'Repair failed' });
@@ -200,23 +108,6 @@ const RepairBayScreen = () => {
       setFeedback({ type: 'error', message: 'Repair failed' });
     }
     setTimeout(() => setFeedback(null), 3000);
-  };
-
-  // Drag handlers
-  const handleDragStart = (index) => () => setDraggedIndex(index);
-  const handleDragOver = (index) => (e) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-  };
-  const handleDrop = (toIndex) => () => {
-    if (draggedIndex !== null && draggedIndex !== toIndex) {
-      handleSwapDrones(draggedIndex, toIndex);
-    }
-    handleDragEnd();
   };
 
   return (
@@ -327,7 +218,7 @@ const RepairBayScreen = () => {
                     const component = componentId ? getComponentById(componentId) : null;
                     const hull = calculateSectionHull(selectedSlot, lane);
                     const damageDealt = sectionSlot?.damageDealt || 0;
-                    const repairCost = repairService.getSectionRepairCost ? repairService.getSectionRepairCost(damageDealt) : damageDealt * 200;
+                    const repairCost = damageDealt * (ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200);
                     const canAfford = credits >= repairCost;
                     const isDestroyed = hull.current <= 0;
                     const isDamaged = damageDealt > 0;
@@ -361,28 +252,6 @@ const RepairBayScreen = () => {
                 </div>
               </section>
 
-              {/* Drone Slots */}
-              <section>
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  Drone Slots
-                  <span className="text-xs text-gray-400 font-normal">(drag to reorder)</span>
-                </h2>
-                <div className="repair-bay-drones-grid">
-                  {(selectedSlot.droneSlots || []).map((droneSlot, index) => (
-                    <DroneSlotDisplay
-                      key={index}
-                      index={index}
-                      droneSlot={droneSlot}
-                      isDragging={draggedIndex === index}
-                      isDragOver={dragOverIndex === index}
-                      onDragStart={handleDragStart(index)}
-                      onDragOver={handleDragOver(index)}
-                      onDragEnd={handleDragEnd}
-                      onDrop={handleDrop(index)}
-                    />
-                  ))}
-                </div>
-              </section>
             </>
           ) : (
             <div className="text-center py-16 text-gray-500">
@@ -413,13 +282,6 @@ const RepairBayScreen = () => {
               const isEmpty = slot.status === 'empty';
               const isSelected = slot.id === selectedSlotId;
               const isSlot0 = slot.id === 0;
-
-              // Deck slot unlock state
-              const isUnlocked = gameStateManager.isSlotUnlocked(slot.id);
-              const highestUnlocked = singlePlayerProfile?.highestUnlockedSlot ?? 0;
-              const isNextToUnlock = !isUnlocked && slot.id === highestUnlocked + 1;
-              const unlockCost = isNextToUnlock ? ECONOMY.DECK_SLOT_UNLOCK_COSTS[slot.id] : null;
-              const canAffordUnlock = unlockCost !== null && credits >= unlockCost;
 
               // Get card/drone counts for active slots
               const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
@@ -453,7 +315,6 @@ const RepairBayScreen = () => {
 
               // Determine slot state class
               const getSlotClass = () => {
-                if (!isUnlocked) return 'dw-deck-slot--locked';
                 if (isEmpty) return 'dw-deck-slot--empty';
                 if (isUndeployable) return 'dw-deck-slot--undeployable';
                 if (isSelected) return 'dw-deck-slot--active';
@@ -468,36 +329,14 @@ const RepairBayScreen = () => {
                 <div
                   key={slot.id}
                   className={`dw-deck-slot ${getSlotClass()}`}
-                  onClick={() => isUnlocked && isActive && handleSelectSlot(slot.id)}
+                  onClick={() => isActive && handleSelectSlot(slot.id)}
                   style={shipImage ? {
                     backgroundImage: `url(${shipImage})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
-                    cursor: isUnlocked && isActive ? 'pointer' : 'default'
-                  } : { cursor: isUnlocked && isActive ? 'pointer' : 'default' }}
+                    cursor: isActive ? 'pointer' : 'default'
+                  } : { cursor: isActive ? 'pointer' : 'default' }}
                 >
-                  {!isUnlocked ? (
-                    // LOCKED SLOT CONTENT
-                    <div className="dw-deck-slot-locked-content">
-                      <Lock size={18} className="dw-deck-slot-lock-icon" />
-                      <span className="dw-deck-slot-locked-label">SLOT {slot.id}</span>
-
-                      {isNextToUnlock ? (
-                        <button
-                          className={`dw-btn-hud dw-btn-hud-cyan dw-btn--sm dw-btn--full ${!canAffordUnlock ? 'dw-btn--disabled' : ''}`}
-                          onClick={handleUnlockSlot}
-                          disabled={!canAffordUnlock}
-                        >
-                          UNLOCK - {unlockCost?.toLocaleString()}
-                        </button>
-                      ) : (
-                        <span className="dw-deck-slot-locked-hint">
-                          Unlock Slot {slot.id - 1} first
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    // UNLOCKED SLOT CONTENT - wrapped in overlay div for ship image backgrounds
                     <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                       {/* Header Row: Slot name/id + Star */}
                       <div className="flex items-center justify-between mb-1">
@@ -568,7 +407,6 @@ const RepairBayScreen = () => {
                         </div>
                       )}
                     </div>
-                  )}
                 </div>
               );
             })}

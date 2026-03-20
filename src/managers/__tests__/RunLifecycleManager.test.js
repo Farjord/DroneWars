@@ -17,7 +17,7 @@ vi.mock('../../logic/statsCalculator.js', () => ({
 }));
 vi.mock('../../data/cardData.js', () => ({ default: [{ id: 'card1', name: 'Test Card' }] }));
 vi.mock('../../logic/reputation/ReputationService.js', () => ({
-  default: { awardReputation: vi.fn(() => ({ repGained: 10, newRep: 10, previousRep: 0, newLevel: 1, previousLevel: 1, leveledUp: false, levelsGained: 0, newRewards: [], loadout: { totalValue: 100, isStarterDeck: false }, wasCapped: false, tierCap: 0 })) }
+  default: { awardReputation: vi.fn(() => ({ success: true, totalRep: 10, combatRep: 10, explorationRep: 0, extractionBonus: 0, eventRep: 10, newRep: 10, previousRep: 0, newLevel: 1, previousLevel: 1, leveledUp: false, levelsGained: 0, newRewards: [], progress: 0.002 })) }
 }));
 vi.mock('../../logic/singlePlayer/ExtractionController.js', () => ({
   calculateExtractedCredits: vi.fn(() => 500),
@@ -107,7 +107,7 @@ function createMockRunState(overrides = {}) {
       powerCell: { hull: 8, maxHull: 8, lane: 'l' },
       droneControlHub: { hull: 6, maxHull: 8, lane: 'r' },
     },
-    combatReputationEarned: [{ repEarned: 5 }],
+    reputationEvents: [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }],
     aiCoresEarned: 0,
     ...overrides,
   };
@@ -277,8 +277,12 @@ describe('RunLifecycleManager', () => {
       expect(generateRandomShopPack).toHaveBeenCalledOnce();
       expect(finalCall.singlePlayerProfile.shopPack).toEqual({ cards: ['card1'] });
 
-      // Reputation awarded
+      // Reputation awarded with new signature (events, success, mapTier)
       expect(ReputationService.awardReputation).toHaveBeenCalledOnce();
+      const repCall = ReputationService.awardReputation.mock.calls[0];
+      expect(Array.isArray(repCall[0])).toBe(true); // events array
+      expect(repCall[1]).toBe(true); // success
+      expect(repCall[2]).toBe(1); // mapTier
       expect(finalCall.lastRunSummary.reputation.repGained).toBe(10);
     });
 

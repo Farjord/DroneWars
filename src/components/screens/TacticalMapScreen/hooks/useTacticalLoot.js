@@ -12,6 +12,7 @@ import gameStateManager from '../../../../managers/GameStateManager.js';
 import ExtractionController from '../../../../logic/singlePlayer/ExtractionController.js';
 import DetectionManager from '../../../../logic/detection/DetectionManager.js';
 import MissionService from '../../../../logic/missions/MissionService.js';
+import { REPUTATION_EVENTS } from '../../../../data/reputationData.js';
 import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
@@ -199,11 +200,20 @@ export function useTacticalLoot({
       ? [...lootedPOIs, poiCoords]
       : lootedPOIs;
 
+    // Record POI_LOOT reputation event
+    const poiZone = pendingLootEncounter?.poi?.zone || 'perimeter';
+    const poiRep = REPUTATION_EVENTS.POI_LOOT[poiZone] || 0;
+    const updatedRepEvents = [
+      ...(runState.reputationEvents || []),
+      { type: 'POI_LOOT', key: poiZone, rep: poiRep, poiName: pendingLootEncounter?.poi?.poiData?.name }
+    ];
+
     // Update run state
     tacticalMapStateManager.setState({
       collectedLoot: updatedLoot,
       creditsEarned: newCredits,
-      lootedPOIs: updatedLootedPOIs
+      lootedPOIs: updatedLootedPOIs,
+      reputationEvents: updatedRepEvents
     });
 
     // Add detection for looting (from pending encounter)

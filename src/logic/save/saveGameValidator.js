@@ -30,14 +30,6 @@ export function validateSaveFile(saveData) {
     if (typeof saveData.playerProfile.gameSeed !== 'number') {
       errors.push('playerProfile.gameSeed must be a number');
     }
-    // Validate highestUnlockedSlot if present
-    if (saveData.playerProfile.highestUnlockedSlot !== undefined) {
-      if (typeof saveData.playerProfile.highestUnlockedSlot !== 'number' ||
-          saveData.playerProfile.highestUnlockedSlot < 0 ||
-          saveData.playerProfile.highestUnlockedSlot > 5) {
-        errors.push('playerProfile.highestUnlockedSlot must be 0-5');
-      }
-    }
   }
 
   // Check ship slots

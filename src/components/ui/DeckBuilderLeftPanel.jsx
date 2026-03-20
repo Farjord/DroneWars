@@ -39,15 +39,17 @@ const DeckBuilderLeftPanel = ({
       <div className="dw-panel-header">
         {/* Main navigation tabs */}
         <div className="dw-modal-tabs" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
-          <button
-            onClick={() => {
-              setLeftPanelView('shipCard');
-              setRightPanelView('shipCard');
-            }}
-            className={`dw-modal-tab ${leftPanelView === 'shipCard' ? 'dw-modal-tab--active' : ''}`}
-          >
-            Ship
-          </button>
+          {mode !== 'extraction' && (
+            <button
+              onClick={() => {
+                setLeftPanelView('shipCard');
+                setRightPanelView('shipCard');
+              }}
+              className={`dw-modal-tab ${leftPanelView === 'shipCard' ? 'dw-modal-tab--active' : ''}`}
+            >
+              Ship
+            </button>
+          )}
           <button
             onClick={() => {
               setLeftPanelView('ship');

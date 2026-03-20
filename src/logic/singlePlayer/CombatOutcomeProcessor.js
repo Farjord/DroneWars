@@ -14,8 +14,7 @@ import EncounterController from '../encounters/EncounterController.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import MissionService from '../missions/MissionService.js';
-import { calculateLoadoutValue, calculateCombatReputation } from '../reputation/ReputationCalculator.js';
-import { mapTiers } from '../../data/mapData.js';
+import { REPUTATION_EVENTS } from '../../data/reputationData.js';
 
 /**
  * CombatOutcomeProcessor
@@ -101,51 +100,20 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', 'Per-section hull:', updatedShipSections);
     debugLog('SP_COMBAT', 'Total remaining hull:', currentHull);
 
-    // 2. Calculate combat reputation earned (before loot generation)
+    // 2. Record combat reputation event (flat config-based)
     const encounterAI = encounterInfo?.aiId || gameState.singlePlayerEncounter?.aiId;
 
-    // Skip combat rep for boss encounters (use boss reward system)
     if (!encounterInfo.isBossCombat && encounterAI) {
-      const mapTier = currentRunState.mapTier || 1;
+      const ai = aiPersonalities.find(a => a.name === encounterAI);
+      const aiDifficultyLevel = ai?.difficulty || 'Medium';
+      const eventRep = REPUTATION_EVENTS.COMBAT_WIN[aiDifficultyLevel] || 0;
 
-      // Get loadout value from current ship slot
-      const gameStateObj = gameStateManager.getState();
-      const shipSlot = gameStateObj.singlePlayerShipSlots?.find(s => s.id === currentRunState.shipSlotId);
+      currentRunState.reputationEvents = [
+        ...(currentRunState.reputationEvents || []),
+        { type: 'COMBAT_WIN', key: aiDifficultyLevel, rep: eventRep, aiId: encounterAI }
+      ];
 
-      if (shipSlot) {
-        const loadoutValue = calculateLoadoutValue(shipSlot);
-
-        // Get map tier cap
-        const mapConfig = mapTiers.find(t => t.tier === mapTier);
-        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
-
-        // Calculate combat rep
-        const combatRep = calculateCombatReputation(
-          loadoutValue.totalValue,
-          encounterAI,
-          tierCap
-        );
-
-        // Add to run state tracking
-        const combatRepEntry = {
-          aiId: encounterAI,
-          aiDifficulty: combatRep.aiDifficulty,
-          deckValue: combatRep.deckValue,
-          capUsed: combatRep.tierCap,
-          repEarned: combatRep.repEarned,
-          wasCapped: combatRep.wasCapped,
-          timestamp: Date.now()
-        };
-
-        currentRunState.combatReputationEarned = [
-          ...(currentRunState.combatReputationEarned || []),
-          combatRepEntry
-        ];
-
-        debugLog('SP_COMBAT', 'Combat reputation calculated:', combatRepEntry);
-      }
-    } else if (encounterInfo.isBossCombat) {
-      debugLog('SP_COMBAT', 'Boss combat - using boss reward system, skipping combat rep');
+      debugLog('SP_COMBAT', 'Combat reputation event:', { type: 'COMBAT_WIN', key: aiDifficultyLevel, rep: eventRep });
     }
 
     // 3. Generate combat rewards using RewardManager
@@ -254,7 +222,7 @@ class CombatOutcomeProcessor {
       shipSections: updatedShipSections,
       currentHull: currentHull,
       combatsWon: (currentRunState.combatsWon || 0) + 1,
-      combatReputationEarned: currentRunState.combatReputationEarned || [],  // Preserve combat rep array
+      reputationEvents: currentRunState.reputationEvents || [],  // Preserve rep events array
       pendingSalvageLoot: isFromSalvage ? currentRunState.pendingSalvageLoot : null
     };
 
@@ -284,7 +252,7 @@ class CombatOutcomeProcessor {
       shipSections: updatedShipSections,
       currentHull: currentHull,
       combatsWon: updatedRunState.combatsWon,
-      combatReputationEarned: updatedRunState.combatReputationEarned,  // Include combat rep tracking
+      reputationEvents: updatedRunState.reputationEvents,  // Include rep events tracking
       pendingSalvageLoot: updatedRunState.pendingSalvageLoot,
       pendingPOICombat: currentRunState.pendingPOICombat,
       pendingSalvageState: currentRunState.pendingSalvageState,
@@ -700,6 +668,20 @@ class CombatOutcomeProcessor {
     // Find boss AI configuration to get rewards
     const bossAI = aiPersonalities.find(ai => ai.bossId === bossId);
     const bossConfig = bossAI?.bossConfig || {};
+
+    // Record BOSS_KILL reputation event
+    const currentRunState = tacticalMapStateManager.getState() || {};
+    const aiDifficultyLevel = bossAI?.difficulty || 'Hard';
+    const bossRepValue = REPUTATION_EVENTS.BOSS_KILL[aiDifficultyLevel] || 0;
+    if (tacticalMapStateManager.isRunActive()) {
+      tacticalMapStateManager.setState({
+        reputationEvents: [
+          ...(currentRunState.reputationEvents || []),
+          { type: 'BOSS_KILL', key: aiDifficultyLevel, rep: bossRepValue, aiId: bossAI?.name }
+        ]
+      });
+      debugLog('SP_COMBAT', 'Boss reputation event:', { type: 'BOSS_KILL', key: aiDifficultyLevel, rep: bossRepValue });
+    }
 
     // Determine if this is first victory against this boss
     const isFirstBossVictory = !bossProgress.defeatedBosses.includes(bossId);

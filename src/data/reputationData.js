@@ -1,27 +1,37 @@
 /**
  * Reputation System Configuration
  *
- * Controls how reputation is calculated and awarded based on loadout value.
+ * Controls how reputation is awarded based on in-game actions.
+ * Event-driven: players earn rep by winning combats, looting PoIs, and extracting.
  * All values are tunable starting points.
  */
 
-export const REPUTATION = {
-  // Multiplier applied when player fails to extract
-  // 0.25 = 25% of calculated rep on failure
-  FAILURE_MULTIPLIER: 0.25,
-
-  // NOTE: Reputation caps moved to mapData.js (maxReputationPerCombat property)
-  // Each map tier defines its own per-combat reputation cap
-
-  // Blueprint costs by rarity (used for loadout value calculation)
-  // These match the existing ENHANCEMENT_COSTS in economyData.js
-  BLUEPRINT_COSTS: {
-    Common: 100,
-    Uncommon: 250,
-    Rare: 600,
-    Mythic: 1500,
+export const REPUTATION_EVENTS = {
+  COMBAT_WIN: {
+    Easy: 150,
+    Normal: 300,
+    Medium: 300,
+    Hard: 500,
   },
+  BOSS_KILL: {
+    Easy: 300,
+    Normal: 600,
+    Medium: 600,
+    Hard: 1000,
+  },
+  POI_LOOT: {
+    perimeter: 100,
+    mid: 200,
+    core: 400,
+  },
+  EXTRACTION_BONUS: {
+    1: 200,   // Tier 1
+    2: 400,   // Tier 2
+    3: 700,   // Tier 3
+  },
+};
 
+export const REPUTATION = {
   // UI Colors
   COLORS: {
     primary: '#a855f7',      // Purple - matches progression theme

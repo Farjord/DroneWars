@@ -12,6 +12,7 @@ import SeededRandom from '../../utils/seededRandom.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 import aiPersonalities from '../../data/aiData.js';
 import { getShipById } from '../../data/shipData.js';
+import { REPUTATION_EVENTS } from '../../data/reputationData.js';
 
 /**
  * EncounterController - Singleton manager for POI encounters
@@ -244,26 +245,10 @@ class EncounterController {
       const guardianName = poi.poiData.guardianAI.id;
       const aiData = this.getAIData(guardianName);
 
-      // Calculate potential reputation for guardian combat
-      let potentialReputation = null;
-      const gameState = gameStateManager.getState();
-      const shipSlot = gameState.singlePlayerShipSlots?.find(s => s.id === runState?.shipSlotId);
-
-      if (shipSlot && runState) {
-        const ReputationCalculator = await import('../reputation/ReputationCalculator.js');
-        const { mapTiers } = await import('../../data/mapData.js');
-
-        const loadoutValue = ReputationCalculator.calculateLoadoutValue(shipSlot);
-        const mapTier = runState.mapTier || 1;
-        const mapConfig = mapTiers.find(t => t.tier === mapTier);
-        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
-
-        potentialReputation = ReputationCalculator.calculateCombatReputation(
-          loadoutValue.totalValue,
-          guardianName,
-          tierCap
-        );
-      }
+      // Calculate potential reputation for guardian combat (flat config lookup)
+      const guardianAI = aiPersonalities.find(a => a.name === guardianName);
+      const guardianDifficulty = guardianAI?.difficulty || 'Medium';
+      const potentialReputation = { repEarned: REPUTATION_EVENTS.COMBAT_WIN[guardianDifficulty] || 0 };
 
       // Check if this PoI requires confirmation modal before combat
       if (poi.poiData.requiresEncounterConfirmation) {
@@ -309,29 +294,13 @@ class EncounterController {
     // Calculate reward
     const reward = this.calculateReward(poi, outcome);
 
-    // Calculate potential combat reputation (only for combat encounters)
+    // Calculate potential combat reputation (flat config lookup)
     let potentialReputation = null;
     if (aiId) {
-      const gameState = gameStateManager.getState();
-      const shipSlot = gameState.singlePlayerShipSlots?.find(s => s.id === runState?.shipSlotId);
-
-      if (shipSlot && runState) {
-        const ReputationCalculator = await import('../reputation/ReputationCalculator.js');
-        const { mapTiers } = await import('../../data/mapData.js');
-
-        const loadoutValue = ReputationCalculator.calculateLoadoutValue(shipSlot);
-        const mapTier = runState.mapTier || 1;
-        const mapConfig = mapTiers.find(t => t.tier === mapTier);
-        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
-
-        potentialReputation = ReputationCalculator.calculateCombatReputation(
-          loadoutValue.totalValue,
-          aiId,
-          tierCap
-        );
-
-        debugLog('ENCOUNTER', 'Potential combat reputation:', potentialReputation);
-      }
+      const encounterAI = aiPersonalities.find(a => a.name === aiId);
+      const encounterDifficulty = encounterAI?.difficulty || 'Medium';
+      potentialReputation = { repEarned: REPUTATION_EVENTS.COMBAT_WIN[encounterDifficulty] || 0 };
+      debugLog('ENCOUNTER', 'Potential combat reputation:', potentialReputation);
     }
 
     // Build encounter result

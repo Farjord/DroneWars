@@ -71,8 +71,7 @@ vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   default: {
     getLevelData: vi.fn(() => ({ currentRep: 0, level: 0, progress: 0, currentInLevel: 0, requiredForNext: 100, isMaxLevel: false })),
     getUnclaimedRewards: vi.fn(() => []),
-    getExtractionBonus: vi.fn(() => 0),
-    getLoadoutValue: vi.fn(() => ({ isStarterDeck: true, totalValue: 0 }))
+    getExtractionBonus: vi.fn(() => 0)
   }
 }));
 
@@ -88,7 +87,6 @@ vi.mock('../../../logic/combat/shipSlotUtils.js', () => ({
 vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     STARTER_DECK_COPY_COST: 500,
-    DECK_SLOT_UNLOCK_COSTS: [0, 500, 1000, 2000, 4000, 8000],
     STARTER_DECK_EXTRACTION_LIMIT: 3,
     CUSTOM_DECK_EXTRACTION_LIMIT: 6
   }
@@ -157,7 +155,6 @@ const createMockGameState = (overrides = {}) => ({
     aiCores: 0,
     securityTokens: 0,
     defaultShipSlotId: 0,
-    highestUnlockedSlot: 0,
     stats: { runsCompleted: 0, totalCombatsWon: 0, highestTierCompleted: 1 },
     bossProgress: {
       defeatedBosses: [],
@@ -214,8 +211,7 @@ describe('Boss Hex on Hangar Grid', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -235,8 +231,7 @@ describe('Boss Hex on Hangar Grid', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -264,8 +259,7 @@ describe('Boss Hex on Hangar Grid', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -289,8 +283,7 @@ describe('Boss Hex on Hangar Grid', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -320,8 +313,7 @@ describe('Boss Hex on Hangar Grid', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -369,8 +361,7 @@ describe('Boss Challenge Flow', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 
@@ -404,8 +395,7 @@ describe('Boss Challenge Flow', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: {
-        setState: vi.fn(),
-        isSlotUnlocked: vi.fn(() => true)
+        setState: vi.fn()
       }
     });
 

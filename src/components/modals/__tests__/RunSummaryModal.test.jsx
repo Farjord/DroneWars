@@ -1,8 +1,10 @@
 /**
  * RunSummaryModal.test.jsx
- * TDD tests for RunSummaryModal reputation display
+ * Tests for RunSummaryModal reputation display
  *
- * Tests for reputation destructure fix and display correctness
+ * Updated for event-driven reputation system:
+ * - Combat Rep, Exploration Rep, Extraction Bonus breakdown
+ * - No MIA penalty, no starter deck exclusion
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -37,9 +39,9 @@ describe('RunSummaryModal - Reputation Display', () => {
       ...baseSummary,
       reputation: {
         repGained: 1500,
-        combatRepGained: 1000,
-        loadoutRepGained: 500,
-        isStarterDeck: false,
+        combatRep: 800,
+        explorationRep: 500,
+        extractionBonus: 200,
         leveledUp: false
       }
     };
@@ -54,9 +56,9 @@ describe('RunSummaryModal - Reputation Display', () => {
       ...baseSummary,
       reputation: {
         repGained: 1500,
-        combatRepGained: 1000,
-        loadoutRepGained: 500,
-        isStarterDeck: false,
+        combatRep: 800,
+        explorationRep: 500,
+        extractionBonus: 200,
         leveledUp: false
       }
     };
@@ -67,29 +69,13 @@ describe('RunSummaryModal - Reputation Display', () => {
     expect(screen.getByText('+1,500')).toBeInTheDocument();
 
     // Check combat rep breakdown
-    expect(screen.getByText('+1,000')).toBeInTheDocument();
+    expect(screen.getByText('+800')).toBeInTheDocument();
 
-    // Check loadout rep breakdown
+    // Check exploration rep breakdown
     expect(screen.getByText('+500')).toBeInTheDocument();
-  });
 
-  it('should show MIA penalty notice when success is false', () => {
-    const summary = {
-      ...baseSummary,
-      success: false,
-      reputation: {
-        repGained: 375,
-        combatRepGained: 250,
-        loadoutRepGained: 125,
-        isStarterDeck: false,
-        leveledUp: false
-      }
-    };
-
-    render(<RunSummaryModal summary={summary} onClose={vi.fn()} />);
-
-    expect(screen.getByText(/MIA Penalty Applied/i)).toBeInTheDocument();
-    expect(screen.getByText(/75% reputation lost/i)).toBeInTheDocument();
+    // Check extraction bonus
+    expect(screen.getByText('+200')).toBeInTheDocument();
   });
 
   it('should show level up notice when leveledUp is true', () => {
@@ -97,9 +83,9 @@ describe('RunSummaryModal - Reputation Display', () => {
       ...baseSummary,
       reputation: {
         repGained: 2000,
-        combatRepGained: 1500,
-        loadoutRepGained: 500,
-        isStarterDeck: false,
+        combatRep: 1500,
+        explorationRep: 300,
+        extractionBonus: 200,
         leveledUp: true,
         previousLevel: 2,
         newLevel: 3
@@ -110,20 +96,6 @@ describe('RunSummaryModal - Reputation Display', () => {
 
     expect(screen.getByText(/Level Up!/i)).toBeInTheDocument();
     expect(screen.getByText(/2.*→.*3/)).toBeInTheDocument();
-  });
-
-  it('should show starter deck notice when isStarterDeck is true', () => {
-    const summary = {
-      ...baseSummary,
-      reputation: {
-        isStarterDeck: true
-      }
-    };
-
-    render(<RunSummaryModal summary={summary} onClose={vi.fn()} />);
-
-    expect(screen.getByText(/Starter deck used/i)).toBeInTheDocument();
-    expect(screen.getByText(/no reputation earned/i)).toBeInTheDocument();
   });
 
   it('should not show reputation section when reputation is not provided', () => {
@@ -138,14 +110,14 @@ describe('RunSummaryModal - Reputation Display', () => {
     expect(screen.queryByText(/Reputation Earned/i)).toBeNull();
   });
 
-  it('should show Combat Rep and Loadout Rep labels', () => {
+  it('should show Combat Rep and Exploration Rep labels', () => {
     const summary = {
       ...baseSummary,
       reputation: {
-        repGained: 1500,
-        combatRepGained: 1000,
-        loadoutRepGained: 500,
-        isStarterDeck: false,
+        repGained: 1000,
+        combatRep: 600,
+        explorationRep: 200,
+        extractionBonus: 200,
         leveledUp: false
       }
     };
@@ -153,6 +125,26 @@ describe('RunSummaryModal - Reputation Display', () => {
     render(<RunSummaryModal summary={summary} onClose={vi.fn()} />);
 
     expect(screen.getByText('Combat Rep')).toBeInTheDocument();
-    expect(screen.getByText('Loadout Rep')).toBeInTheDocument();
+    expect(screen.getByText('Exploration Rep')).toBeInTheDocument();
+    expect(screen.getByText('Extraction Bonus')).toBeInTheDocument();
+  });
+
+  it('should not show extraction bonus on failed run (0 bonus)', () => {
+    const summary = {
+      ...baseSummary,
+      success: false,
+      reputation: {
+        repGained: 450,
+        combatRep: 300,
+        explorationRep: 150,
+        extractionBonus: 0,
+        leveledUp: false
+      }
+    };
+
+    render(<RunSummaryModal summary={summary} onClose={vi.fn()} />);
+
+    // Extraction Bonus label should not appear when bonus is 0
+    expect(screen.queryByText('Extraction Bonus')).toBeNull();
   });
 });

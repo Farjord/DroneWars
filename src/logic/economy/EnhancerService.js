@@ -123,6 +123,7 @@ class EnhancerService {
           card,
           enhancedCard: enhanced,
           quantity: owned,
+          enhancedQuantity: inventory[enhanced.id] || 0,
           copiesRequired: 0,
           cost,
           isStarterCard: true,
@@ -134,6 +135,7 @@ class EnhancerService {
           card,
           enhancedCard: enhanced,
           quantity: owned,
+          enhancedQuantity: inventory[enhanced.id] || 0,
           copiesRequired,
           cost,
           isStarterCard: false,
@@ -187,7 +189,7 @@ class EnhancerService {
         decklist: slot.decklist ? slot.decklist.map(e => ({ ...e })) : []
       }))
       : [];
-    const deckWarnings = this._fixDecks(cardId, inventory[cardId] || 0, shipSlots);
+    const deckWarnings = isStarter ? [] : this._fixDecks(cardId, inventory[cardId] || 0, shipSlots);
 
     gameStateManager.setState({
       singlePlayerInventory: inventory,

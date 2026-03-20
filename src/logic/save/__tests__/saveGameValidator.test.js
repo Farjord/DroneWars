@@ -53,31 +53,6 @@ describe('validateSaveFile', () => {
     expect(result.errors).toContain('playerProfile.gameSeed must be a number');
   });
 
-  test('highestUnlockedSlot negative produces error', () => {
-    const save = createNewSave();
-    save.playerProfile.highestUnlockedSlot = -1;
-    const result = validateSaveFile(save);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain('playerProfile.highestUnlockedSlot must be 0-5');
-  });
-
-  test('highestUnlockedSlot above 5 produces error', () => {
-    const save = createNewSave();
-    save.playerProfile.highestUnlockedSlot = 6;
-    const result = validateSaveFile(save);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain('playerProfile.highestUnlockedSlot must be 0-5');
-  });
-
-  test('valid highestUnlockedSlot (0-5) passes', () => {
-    for (let i = 0; i <= 5; i++) {
-      const save = createNewSave();
-      save.playerProfile.highestUnlockedSlot = i;
-      const result = validateSaveFile(save);
-      expect(result.valid).toBe(true);
-    }
-  });
-
   // --- Ship slots validation ---
 
   test('wrong ship slot count produces error', () => {

@@ -43,8 +43,8 @@ export default function useCardTilt(isDragging, { maxTiltDrag = 15, maxTiltHover
           const normX = Math.max(-1, Math.min(1, (e.clientX - centerX) / (rect.width / 2)));
           const normY = Math.max(-1, Math.min(1, (e.clientY - centerY) / (rect.height / 2)));
 
-          const rotateY = normX * maxTiltDrag;
-          const rotateX = -normY * maxTiltDrag;
+          const rotateY = Math.round(normX * maxTiltDrag * 10) / 10;
+          const rotateX = Math.round(-normY * maxTiltDrag * 10) / 10;
 
           if (isFirstFrame.current) {
             cardRef.current.style.transition = 'transform 300ms ease-out';
@@ -96,8 +96,8 @@ export default function useCardTilt(isDragging, { maxTiltDrag = 15, maxTiltHover
         const normX = Math.max(-1, Math.min(1, (e.clientX - centerX) / (rect.width / 2)));
         const normY = Math.max(-1, Math.min(1, (e.clientY - centerY) / (rect.height / 2)));
 
-        const rotateY = normX * maxTiltHover;
-        const rotateX = -normY * maxTiltHover;
+        const rotateY = Math.round(normX * maxTiltHover * 10) / 10;
+        const rotateX = Math.round(-normY * maxTiltHover * 10) / 10;
 
         cardRef.current.style.transition = 'none';
         cardRef.current.style.transform = `${baseScale}rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;

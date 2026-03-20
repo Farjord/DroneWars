@@ -41,7 +41,7 @@ export const ECONOMY = {
   // ========================================
 
   // Credits player starts with on new game
-  STARTING_CREDITS: 1000,
+  STARTING_CREDITS: 2000,
 
   // ========================================
   // EXTRACTION LIMITS
@@ -69,20 +69,6 @@ export const ECONOMY = {
   // Flat fee to copy entire starter deck (all cards, drones, components, ship)
   // Set to 0 for free deck creation
   STARTER_DECK_COPY_COST: 0,
-
-  // ========================================
-  // DECK SLOT UNLOCK COSTS
-  // ========================================
-
-  // Progressive costs to unlock deck slots 1-5 (Slot 0 is always free)
-  // Must unlock slots sequentially (Slot 1 before Slot 2, etc.)
-  DECK_SLOT_UNLOCK_COSTS: {
-    1: 100,    // Low barrier to entry
-    2: 250,    // Moderate increase
-    3: 500,    // Significant investment
-    4: 1000,   // Premium
-    5: 2000,   // Endgame
-  },
 
   // ========================================
   // FUTURE: Map entry costs, etc.

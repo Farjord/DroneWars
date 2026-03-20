@@ -13,7 +13,7 @@ import React, { useRef, useEffect } from 'react';
  * @param {string} text - The text content to display
  * @param {string} className - CSS classes to apply to the text element
  */
-const ScalingText = ({ text, className }) => {
+const ScalingText = ({ text, className, textKey }) => {
   const containerRef = useRef(null);
   const textRef = useRef(null);
 
@@ -44,7 +44,7 @@ const ScalingText = ({ text, className }) => {
     resizeText();
     window.addEventListener('resize', resizeText);
     return () => window.removeEventListener('resize', resizeText);
-  }, [text, className]);
+  }, [textKey ?? text, className]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden flex items-center justify-center">

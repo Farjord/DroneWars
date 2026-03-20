@@ -75,21 +75,6 @@ describe('HangarScreen - Ship Image Backgrounds', () => {
       expect(mockGetShipById).not.toHaveBeenCalled();
     });
 
-    it('should NOT call getShipById for locked slots', () => {
-      // Locked slots are not unlocked yet - they don't have decks
-      const lockedSlotId = 3;
-      const highestUnlockedSlot = 1; // Only slots 0-1 are unlocked
-      const isUnlocked = lockedSlotId <= highestUnlockedSlot;
-
-      mockGetShipById.mockClear();
-
-      // Locked slots should never trigger getShipById
-      if (isUnlocked) {
-        mockGetShipById('SHIP_001');
-      }
-
-      expect(mockGetShipById).not.toHaveBeenCalled();
-    });
   });
 
   describe('backgroundImage style application', () => {

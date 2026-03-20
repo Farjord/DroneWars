@@ -80,15 +80,15 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
                         border: '1px solid rgba(168, 85, 247, 0.4)',
                         borderRadius: '8px', fontSize: '13px', lineHeight: '1.6' }}>
             <h4 style={{ margin: '0 0 8px', color: '#a855f7', fontSize: '14px' }}>
-              How Combat Reputation Works
+              How Reputation Works
             </h4>
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li>Defeat enemies to earn reputation during runs</li>
-              <li>Reputation = min(Deck Value, Map Cap) × Enemy Difficulty</li>
-              <li>Easy enemies: 0.5× | Medium: 1.0× | Hard: 1.5×</li>
-              <li>Each combat is capped separately (can earn from multiple fights)</li>
-              <li>Reputation only awarded on successful extraction</li>
-              <li>MIA penalty: You keep only 25% of earned reputation</li>
+            <ul style={{ margin: 0, paddingLeft: '20px', color: '#ffffff' }}>
+              <li>Earn reputation from combat wins, looting PoIs, and extracting</li>
+              <li>Combat: Easy +150 | Medium +300 | Hard +500</li>
+              <li>Boss kills: Easy +300 | Medium +600 | Hard +1,000</li>
+              <li>PoI loot: Perimeter +100 | Mid +200 | Core +400</li>
+              <li>Extraction bonus: Tier 1 +200 | Tier 2 +400 | Tier 3 +700</li>
+              <li>No penalty for failed runs — you keep all earned rep</li>
               <li>Escaping combat grants no reputation</li>
             </ul>
           </div>

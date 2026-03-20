@@ -25,16 +25,6 @@ vi.mock('../../../managers/GameStateManager.js', () => ({
     setState: vi.fn(),
     subscribe: vi.fn(() => () => {}),
     updateShipSlotDroneOrder: vi.fn(),
-    isSlotUnlocked: vi.fn().mockReturnValue(true)
-  }
-}));
-
-vi.mock('../../../logic/economy/RepairService.js', () => ({
-  default: {
-    getDroneRepairCost: vi.fn().mockReturnValue(500),
-    repairDroneSlot: vi.fn().mockReturnValue({ success: true }),
-    getSectionRepairCost: vi.fn().mockReturnValue(200),
-    repairSectionSlot: vi.fn().mockReturnValue({ success: true })
   }
 }));
 
@@ -157,8 +147,6 @@ describe('RepairBayScreen', () => {
   const mockGameStateManager = {
     setState: vi.fn(),
     updateShipSlotDroneOrder: vi.fn(),
-    isSlotUnlocked: vi.fn().mockReturnValue(true),
-    unlockNextDeckSlot: vi.fn(),
     setDefaultShipSlot: vi.fn()
   };
 
@@ -166,7 +154,7 @@ describe('RepairBayScreen', () => {
     vi.clearAllMocks();
     useGameState.mockReturnValue({
       gameState: {
-        singlePlayerProfile: { credits: 1000, defaultShipSlotId: 0, highestUnlockedSlot: 3 },
+        singlePlayerProfile: { credits: 1000, defaultShipSlotId: 0 },
         singlePlayerShipSlots: createMockShipSlots(),
         repairBaySlotId: 0
       },
@@ -372,107 +360,6 @@ describe('RepairBayScreen', () => {
       // render(<RepairBayScreen />);
       // Left and Right sections have no damage
       // Should not have repair buttons
-      expect(true).toBe(true);
-    });
-  });
-
-  // ========================================
-  // PHASE 4: DRONE SLOT DISPLAY TESTS
-  // ========================================
-  describe('Drone Slots Display', () => {
-    it('should render 5 drone slots', () => {
-      // render(<RepairBayScreen />);
-      // Should show 5 slot containers (some with drones, some empty)
-      expect(true).toBe(true);
-    });
-
-    it('should show drone name for assigned slots', () => {
-      // render(<RepairBayScreen />);
-      // expect(screen.getByText('Dart')).toBeInTheDocument();
-      // expect(screen.getByText('Mammoth')).toBeInTheDocument();
-      // expect(screen.getByText('Bastion')).toBeInTheDocument();
-      expect(true).toBe(true);
-    });
-
-    it('should show damage indicator for damaged slots', () => {
-      // render(<RepairBayScreen />);
-      // Slot 1 (Mammoth) is damaged
-      // Look for damage indicator on that slot
-      expect(true).toBe(true);
-    });
-
-    it('should show empty placeholder for unassigned slots', () => {
-      // render(<RepairBayScreen />);
-      // Slots 3 and 4 are empty
-      // expect(screen.getAllByText(/empty/i).length).toBeGreaterThanOrEqual(2);
-      expect(true).toBe(true);
-    });
-
-    it('should show repair button for damaged drone slots', () => {
-      // render(<RepairBayScreen />);
-      // expect(screen.getByRole('button', { name: /repair.*heavy fighter/i })).toBeInTheDocument();
-      expect(true).toBe(true);
-    });
-
-    it('should show slot number badge on each slot', () => {
-      // render(<RepairBayScreen />);
-      // Should show Slot 1, Slot 2, etc. or just 1, 2, 3...
-      expect(true).toBe(true);
-    });
-  });
-
-  // ========================================
-  // PHASE 5: DRAG-AND-DROP TESTS
-  // ========================================
-  describe('Drag-and-Drop Reordering', () => {
-    it('should make assigned drone slots draggable', () => {
-      // render(<RepairBayScreen />);
-      // Find slot with Dart, check draggable attribute
-      // const droneSlot = screen.getByText('Dart').closest('[draggable]');
-      // expect(droneSlot).toHaveAttribute('draggable', 'true');
-      expect(true).toBe(true);
-    });
-
-    it('should NOT make empty slots draggable', () => {
-      // render(<RepairBayScreen />);
-      // Empty slots should not be draggable
-      expect(true).toBe(true);
-    });
-
-    it('should swap drone assignments when dropping on another slot', () => {
-      // render(<RepairBayScreen />);
-      // Simulate drag from slot 0 (Scout) to slot 2 (Guardian)
-      // After drop:
-      // - Slot 0 should have Bastion
-      // - Slot 2 should have Dart
-      // - Slot damage should remain in original positions
-      expect(true).toBe(true);
-    });
-
-    it('should preserve slot damage when swapping drones', () => {
-      // render(<RepairBayScreen />);
-      // Slot 1 is damaged, has Mammoth
-      // Swap slot 0 (Scout, undamaged) with slot 1 (Mammoth, damaged)
-      // After swap:
-      // - Slot 0 should have Mammoth, still UNDAMAGED (slot damage stays)
-      // - Slot 1 should have Dart, still DAMAGED (slot damage stays)
-      expect(true).toBe(true);
-    });
-
-    it('should call updateShipSlotDroneOrder after swap', () => {
-      // render(<RepairBayScreen />);
-      // Perform drag-drop
-      // expect(mockGameStateManager.updateShipSlotDroneOrder).toHaveBeenCalledWith(
-      //   0, // slotId
-      //   expect.any(Array) // newDroneSlots
-      // );
-      expect(true).toBe(true);
-    });
-
-    it('should show visual feedback during drag over', () => {
-      // render(<RepairBayScreen />);
-      // Simulate dragover on a slot
-      // Check for drag-over class or visual indicator
       expect(true).toBe(true);
     });
   });

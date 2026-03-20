@@ -65,64 +65,6 @@ class ShipSlotManager {
     debugLog('SP_SHIP', `Default ship slot set to ${slotId}`);
   }
 
-  /**
-   * Check if a deck slot is unlocked
-   * @param {number} slotId - Slot ID (0-5)
-   * @returns {boolean} True if slot is unlocked
-   */
-  isSlotUnlocked(slotId) {
-    const highestUnlocked = this.gsm.state.singlePlayerProfile?.highestUnlockedSlot ?? 0;
-    return slotId <= highestUnlocked;
-  }
-
-  /**
-   * Get the next slot available for unlocking
-   * @returns {Object|null} { slotId, cost } or null if all unlocked
-   */
-  getNextUnlockableSlot() {
-    const highestUnlocked = this.gsm.state.singlePlayerProfile?.highestUnlockedSlot ?? 0;
-    const nextSlotId = highestUnlocked + 1;
-    if (nextSlotId > 5) return null;
-    return {
-      slotId: nextSlotId,
-      cost: ECONOMY.DECK_SLOT_UNLOCK_COSTS[nextSlotId],
-    };
-  }
-
-  /**
-   * Unlock the next deck slot (sequential unlocking enforced)
-   * Deducts credits from player profile
-   * @returns {Object} { success: boolean, slotId?: number, error?: string }
-   */
-  unlockNextDeckSlot() {
-    const profile = this.gsm.state.singlePlayerProfile;
-    const currentHighest = profile.highestUnlockedSlot ?? 0;
-    const nextSlotId = currentHighest + 1;
-
-    if (nextSlotId > 5) {
-      return { success: false, error: 'All deck slots are already unlocked' };
-    }
-
-    const cost = ECONOMY.DECK_SLOT_UNLOCK_COSTS[nextSlotId];
-
-    if (profile.credits < cost) {
-      return {
-        success: false,
-        error: `Insufficient credits. Need ${cost}, have ${profile.credits}`,
-      };
-    }
-
-    const updatedProfile = {
-      ...profile,
-      credits: profile.credits - cost,
-      highestUnlockedSlot: nextSlotId,
-    };
-
-    this.gsm.setState({ singlePlayerProfile: updatedProfile });
-    debugLog('SP_SHIP', `Unlocked deck slot ${nextSlotId} for ${cost} credits`);
-    return { success: true, slotId: nextSlotId };
-  }
-
   // --- SHIP ASSIGNMENT ---
 
   /**
@@ -145,10 +87,6 @@ class ShipSlotManager {
 
     if (slot.status === 'active') {
       return { success: false, error: `Slot ${slotId} already has a ship assigned` };
-    }
-
-    if (!this.isSlotUnlocked(slotId)) {
-      return { success: false, error: `Slot ${slotId} is locked` };
     }
 
     const inventory = { ...this.gsm.state.singlePlayerInventory };

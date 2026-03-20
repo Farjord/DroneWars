@@ -312,7 +312,7 @@ const DroneToken = ({
       {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
       <div className={`w-full h-full rounded-lg ${hoverEffect} ${selectedEffect} ${isGhost ? '' : 'transition-transform duration-200'}`} style={selectedGlowStyle}>
         {/* Tilt Wrapper - 3D tilt via useCardTilt, perspective provided by parent */}
-        <div ref={tiltRef} className="w-full h-full">
+        <div ref={tiltRef} className="w-full h-full" style={{ backfaceVisibility: 'hidden' }}>
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
         <div className={`w-full h-full rounded-lg ${isGhost ? '' : 'transition-all duration-200'} ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`} style={actionTargetStyle}>
           {/* Grayscale Container - only applies exhausted effect */}

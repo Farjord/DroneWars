@@ -127,8 +127,8 @@ class TacticalMapStateManager {
       combatsLost: 0,
       damageDealtToEnemies: 0,
 
-      // Combat reputation tracking
-      combatReputationEarned: [],  // Array of { aiId, aiDifficulty, deckValue, capUsed, repEarned, wasCapped, timestamp }
+      // Reputation event tracking (event-driven accumulation)
+      reputationEvents: [],  // Array of { type: 'COMBAT_WIN'|'BOSS_KILL'|'POI_LOOT', key: string, rep: number }
 
       // Waypoints (single source of truth - survives combat transitions)
       waypoints: [],

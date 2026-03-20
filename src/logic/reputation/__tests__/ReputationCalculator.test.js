@@ -1,259 +1,169 @@
 /**
  * ReputationCalculator.test.js
- * Tests for loadout value calculation with starter pool exclusion
+ * Tests for event-driven reputation calculation
  *
- * Test Requirement: Starter pool items (cards, drones, ships, components)
- * should NOT contribute to loadout value. Only non-starter items that
- * represent player risk should count towards reputation gain.
+ * TDD: Tests written first for sumReputationEvents and calculateRunReputation
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  calculateCardValue,
-  calculateShipValue,
-  calculateDroneValue,
-  calculateComponentValue,
-  calculateLoadoutValue,
-  getBlueprintCost
-} from '../ReputationCalculator.js';
-import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../../data/saveGameSchema.js';
-import fullCardCollection from '../../../data/cardData.js';
-import fullDroneCollection from '../../../data/droneData.js';
-import { shipComponentCollection } from '../../../data/shipSectionData.js';
-import { shipCollection } from '../../../data/shipData.js';
+import { sumReputationEvents, calculateRunReputation } from '../ReputationCalculator.js';
 
-describe('ReputationCalculator - Starter Pool Exclusion', () => {
+describe('sumReputationEvents', () => {
+  it('should return 0 for empty events array', () => {
+    expect(sumReputationEvents([])).toBe(0);
+  });
 
-  describe('calculateCardValue', () => {
-    it('should return 0 for a deck containing only starter pool cards', () => {
-      // Use actual starter pool card IDs
-      const starterOnlyDecklist = [
-        { id: starterPoolCards[0], quantity: 4 },
-        { id: starterPoolCards[1], quantity: 4 }
+  it('should sum rep from a single event', () => {
+    const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+    expect(sumReputationEvents(events)).toBe(300);
+  });
+
+  it('should sum rep from multiple events', () => {
+    const events = [
+      { type: 'COMBAT_WIN', key: 'Easy', rep: 150 },
+      { type: 'COMBAT_WIN', key: 'Medium', rep: 300 },
+      { type: 'POI_LOOT', key: 'core', rep: 400 },
+    ];
+    expect(sumReputationEvents(events)).toBe(850);
+  });
+
+  it('should handle events with 0 rep', () => {
+    const events = [
+      { type: 'COMBAT_WIN', key: 'Easy', rep: 0 },
+      { type: 'POI_LOOT', key: 'perimeter', rep: 100 },
+    ];
+    expect(sumReputationEvents(events)).toBe(100);
+  });
+});
+
+describe('calculateRunReputation', () => {
+  describe('basic event summation', () => {
+    it('should return 0 for empty events on failed run', () => {
+      const result = calculateRunReputation([], false, 1, 0);
+      expect(result.eventRep).toBe(0);
+      expect(result.extractionBonus).toBe(0);
+      expect(result.totalRep).toBe(0);
+    });
+
+    it('should sum combat-only events', () => {
+      const events = [
+        { type: 'COMBAT_WIN', key: 'Medium', rep: 300 },
+        { type: 'COMBAT_WIN', key: 'Hard', rep: 500 },
       ];
-
-      const value = calculateCardValue(starterOnlyDecklist);
-      expect(value).toBe(0);
+      const result = calculateRunReputation(events, false, 1, 0);
+      expect(result.eventRep).toBe(800);
+      expect(result.combatRep).toBe(800);
+      expect(result.explorationRep).toBe(0);
     });
 
-    it('should calculate value only for non-starter cards', () => {
-      // Find a non-starter card
-      const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
-
-      if (nonStarterCard) {
-        const expectedCost = getBlueprintCost(nonStarterCard.rarity);
-        const decklist = [{ id: nonStarterCard.id, quantity: 2 }];
-
-        const value = calculateCardValue(decklist);
-        expect(value).toBe(expectedCost * 2);
-      }
-    });
-
-    it('should calculate value correctly for mixed deck (starter + non-starter)', () => {
-      // Find a non-starter card
-      const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
-
-      if (nonStarterCard) {
-        const expectedCost = getBlueprintCost(nonStarterCard.rarity);
-
-        // Mix of starter (should be 0) and non-starter (should count)
-        const mixedDecklist = [
-          { id: starterPoolCards[0], quantity: 4 },  // Starter - 0 value
-          { id: nonStarterCard.id, quantity: 3 }     // Non-starter - counted
-        ];
-
-        const value = calculateCardValue(mixedDecklist);
-        expect(value).toBe(expectedCost * 3);  // Only non-starter counts
-      }
-    });
-
-    it('should return 0 for empty decklist', () => {
-      expect(calculateCardValue([])).toBe(0);
-      expect(calculateCardValue(null)).toBe(0);
-      expect(calculateCardValue(undefined)).toBe(0);
+    it('should sum mixed events', () => {
+      const events = [
+        { type: 'COMBAT_WIN', key: 'Easy', rep: 150 },
+        { type: 'POI_LOOT', key: 'mid', rep: 200 },
+        { type: 'BOSS_KILL', key: 'Medium', rep: 600 },
+      ];
+      const result = calculateRunReputation(events, false, 1, 0);
+      expect(result.eventRep).toBe(950);
+      expect(result.combatRep).toBe(750); // COMBAT_WIN + BOSS_KILL
+      expect(result.explorationRep).toBe(200); // POI_LOOT
     });
   });
 
-  describe('calculateShipValue', () => {
-    it('should return 0 for starter pool ships', () => {
-      const starterShipId = starterPoolShipIds[0];
-      expect(starterShipId).toBeDefined();
-
-      const value = calculateShipValue(starterShipId);
-      expect(value).toBe(0);
+  describe('extraction bonus', () => {
+    it('should add extraction bonus on successful run', () => {
+      const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+      const result = calculateRunReputation(events, true, 1, 0);
+      expect(result.extractionBonus).toBe(200); // Tier 1 bonus
+      expect(result.totalRep).toBe(500); // 300 event + 200 bonus
     });
 
-    it('should calculate value for non-starter ships', () => {
-      // Find a non-starter ship
-      const nonStarterShip = shipCollection.find(s => !starterPoolShipIds.includes(s.id));
-
-      if (nonStarterShip) {
-        const expectedCost = getBlueprintCost(nonStarterShip.rarity);
-        const value = calculateShipValue(nonStarterShip.id);
-        expect(value).toBe(expectedCost);
-      }
+    it('should NOT add extraction bonus on failed run', () => {
+      const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+      const result = calculateRunReputation(events, false, 1, 0);
+      expect(result.extractionBonus).toBe(0);
+      expect(result.totalRep).toBe(300);
     });
 
-    it('should return 0 for null/undefined shipId', () => {
-      expect(calculateShipValue(null)).toBe(0);
-      expect(calculateShipValue(undefined)).toBe(0);
-    });
-  });
+    it('should scale extraction bonus by map tier', () => {
+      const events = [];
 
-  describe('calculateDroneValue', () => {
-    it('should return 0 for starter pool drones', () => {
-      const starterDrones = starterPoolDroneNames.map(name => ({ name }));
+      const t1 = calculateRunReputation(events, true, 1, 0);
+      expect(t1.extractionBonus).toBe(200);
 
-      const value = calculateDroneValue(starterDrones);
-      expect(value).toBe(0);
-    });
+      const t2 = calculateRunReputation(events, true, 2, 0);
+      expect(t2.extractionBonus).toBe(400);
 
-    it('should calculate value for non-starter drones', () => {
-      // Find a non-starter drone
-      const nonStarterDrone = fullDroneCollection.find(
-        d => !starterPoolDroneNames.includes(d.name) && d.selectable !== false
-      );
-
-      if (nonStarterDrone) {
-        const expectedCost = getBlueprintCost(nonStarterDrone.rarity);
-        const drones = [{ name: nonStarterDrone.name }];
-
-        const value = calculateDroneValue(drones);
-        expect(value).toBe(expectedCost);
-      }
+      const t3 = calculateRunReputation(events, true, 3, 0);
+      expect(t3.extractionBonus).toBe(700);
     });
 
-    it('should calculate value correctly for mixed drones (starter + non-starter)', () => {
-      const nonStarterDrone = fullDroneCollection.find(
-        d => !starterPoolDroneNames.includes(d.name) && d.selectable !== false
-      );
-
-      if (nonStarterDrone) {
-        const expectedCost = getBlueprintCost(nonStarterDrone.rarity);
-
-        const mixedDrones = [
-          { name: starterPoolDroneNames[0] },  // Starter - 0 value
-          { name: nonStarterDrone.name }        // Non-starter - counted
-        ];
-
-        const value = calculateDroneValue(mixedDrones);
-        expect(value).toBe(expectedCost);
-      }
-    });
-
-    it('should return 0 for empty/null drones array', () => {
-      expect(calculateDroneValue([])).toBe(0);
-      expect(calculateDroneValue(null)).toBe(0);
-      expect(calculateDroneValue(undefined)).toBe(0);
+    it('should default to 0 bonus for unknown tier', () => {
+      const result = calculateRunReputation([], true, 99, 0);
+      expect(result.extractionBonus).toBe(0);
     });
   });
 
-  describe('calculateComponentValue', () => {
-    // Get starter component IDs (they're stored in starterPoolCards)
-    const starterComponentIds = shipComponentCollection
-      .filter(c => starterPoolCards.includes(c.id))
-      .map(c => c.id);
-
-    it('should return 0 for starter pool components', () => {
-      if (starterComponentIds.length > 0) {
-        const starterComponents = {};
-        starterComponentIds.forEach((id, i) => {
-          starterComponents[id] = ['l', 'm', 'r'][i % 3];
-        });
-
-        const value = calculateComponentValue(starterComponents);
-        expect(value).toBe(0);
-      }
+  describe('level progression', () => {
+    it('should track previous and new rep', () => {
+      const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+      const result = calculateRunReputation(events, false, 1, 1000);
+      expect(result.previousRep).toBe(1000);
+      expect(result.newRep).toBe(1300);
     });
 
-    it('should calculate value for non-starter components', () => {
-      const nonStarterComponent = shipComponentCollection.find(
-        c => !starterPoolCards.includes(c.id)
-      );
-
-      if (nonStarterComponent) {
-        const expectedCost = getBlueprintCost(nonStarterComponent.rarity);
-        const components = { [nonStarterComponent.id]: 'l' };
-
-        const value = calculateComponentValue(components);
-        expect(value).toBe(expectedCost);
-      }
+    it('should detect level up', () => {
+      // Level 1 threshold is 5000, start at 4900
+      const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+      const result = calculateRunReputation(events, false, 1, 4900);
+      expect(result.previousLevel).toBe(0);
+      expect(result.newLevel).toBe(1);
+      expect(result.leveledUp).toBe(true);
+      expect(result.levelsGained).toBe(1);
     });
 
-    it('should return 0 for empty/null components', () => {
-      expect(calculateComponentValue({})).toBe(0);
-      expect(calculateComponentValue(null)).toBe(0);
-      expect(calculateComponentValue(undefined)).toBe(0);
+    it('should report no level up when staying in same level', () => {
+      const events = [{ type: 'COMBAT_WIN', key: 'Easy', rep: 150 }];
+      const result = calculateRunReputation(events, false, 1, 100);
+      expect(result.leveledUp).toBe(false);
+      expect(result.levelsGained).toBe(0);
+    });
+
+    it('should include progress data', () => {
+      const result = calculateRunReputation([], false, 1, 2500);
+      expect(result.progress).toBeDefined();
+      expect(typeof result.progress).toBe('number');
+    });
+
+    it('should include newRewards for level-up scenarios', () => {
+      // Level 1 at 5000 has a reward
+      const events = [{ type: 'COMBAT_WIN', key: 'Hard', rep: 500 }];
+      const result = calculateRunReputation(events, true, 3, 4500);
+      // 4500 + 500 + 700 (tier 3 bonus) = 5700 → crosses level 1 at 5000
+      expect(result.newLevel).toBe(1);
+      expect(result.unlockedLevels.length).toBeGreaterThan(0);
+      expect(result.newRewards.length).toBeGreaterThan(0);
     });
   });
 
-  describe('calculateLoadoutValue', () => {
-    it('should return 0 for Slot 0 (immutable starter deck)', () => {
-      const slot0 = {
-        id: 0,
-        isImmutable: true,
-        decklist: [{ id: starterPoolCards[0], quantity: 4 }],
-        shipId: starterPoolShipIds[0],
-        drones: [{ name: starterPoolDroneNames[0] }],
-        shipComponents: { 'POWERCELL_001': 'l' }
-      };
+  describe('return shape', () => {
+    it('should return all required fields', () => {
+      const events = [{ type: 'COMBAT_WIN', key: 'Medium', rep: 300 }];
+      const result = calculateRunReputation(events, true, 1, 0);
 
-      const result = calculateLoadoutValue(slot0);
-      expect(result.totalValue).toBe(0);
-      expect(result.isStarterDeck).toBe(true);
-    });
-
-    it('should return 0 for custom deck using only starter pool items', () => {
-      const customSlotWithStarterOnly = {
-        id: 1,
-        isImmutable: false,
-        decklist: starterPoolCards.slice(0, 5).map(id => ({ id, quantity: 4 })),
-        shipId: starterPoolShipIds[0],
-        drones: starterPoolDroneNames.map(name => ({ name })),
-        shipComponents: {
-          'POWERCELL_001': 'l',
-          'BRIDGE_001': 'm',
-          'DRONECONTROL_001': 'r'
-        }
-      };
-
-      const result = calculateLoadoutValue(customSlotWithStarterOnly);
-      expect(result.totalValue).toBe(0);
-      expect(result.isStarterDeck).toBe(false);  // Not slot 0, but still 0 value
-    });
-
-    it('should calculate value only for non-starter items in custom deck', () => {
-      const nonStarterCard = fullCardCollection.find(c => !starterPoolCards.includes(c.id));
-      const nonStarterDrone = fullDroneCollection.find(
-        d => !starterPoolDroneNames.includes(d.name) && d.selectable !== false
-      );
-
-      if (nonStarterCard && nonStarterDrone) {
-        const customSlot = {
-          id: 2,
-          isImmutable: false,
-          decklist: [
-            { id: starterPoolCards[0], quantity: 4 },  // Starter - 0
-            { id: nonStarterCard.id, quantity: 2 }     // Non-starter - counted
-          ],
-          shipId: starterPoolShipIds[0],  // Starter ship - 0
-          drones: [
-            { name: starterPoolDroneNames[0] },  // Starter - 0
-            { name: nonStarterDrone.name }        // Non-starter - counted
-          ],
-          shipComponents: { 'POWERCELL_001': 'l' }  // Starter - 0
-        };
-
-        const result = calculateLoadoutValue(customSlot);
-        const expectedCardValue = getBlueprintCost(nonStarterCard.rarity) * 2;
-        const expectedDroneValue = getBlueprintCost(nonStarterDrone.rarity);
-
-        expect(result.cardValue).toBe(expectedCardValue);
-        expect(result.droneValue).toBe(expectedDroneValue);
-        expect(result.shipValue).toBe(0);
-        expect(result.componentValue).toBe(0);
-        expect(result.totalValue).toBe(expectedCardValue + expectedDroneValue);
-      }
+      expect(result).toHaveProperty('eventRep');
+      expect(result).toHaveProperty('extractionBonus');
+      expect(result).toHaveProperty('totalRep');
+      expect(result).toHaveProperty('combatRep');
+      expect(result).toHaveProperty('explorationRep');
+      expect(result).toHaveProperty('previousRep');
+      expect(result).toHaveProperty('newRep');
+      expect(result).toHaveProperty('previousLevel');
+      expect(result).toHaveProperty('newLevel');
+      expect(result).toHaveProperty('leveledUp');
+      expect(result).toHaveProperty('levelsGained');
+      expect(result).toHaveProperty('progress');
+      expect(result).toHaveProperty('unlockedLevels');
+      expect(result).toHaveProperty('newRewards');
     });
   });
 });

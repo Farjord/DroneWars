@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Zap, Package, HelpCircle, Filter, ChevronRight } from 'lucide-react';
+import { getCardDiffs } from '../../utils/cardDiffUtils.jsx';
 import { useGameState } from '../../hooks/useGameState';
 import enhancerService from '../../logic/economy/EnhancerService.js';
 import MissionService from '../../logic/missions/MissionService.js';
@@ -61,6 +62,13 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
     result = applyFilters(result);
     return result;
   }, [enhanceableCards, selectedTab, filters]);
+
+  const filteredCardsWithDiffs = useMemo(() => {
+    return filteredCards.map(item => ({
+      ...item,
+      diffs: getCardDiffs(item.card, item.enhancedCard),
+    }));
+  }, [filteredCards]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -219,7 +227,7 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
                   gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))',
                   gap: '16px'
                 }}>
-                  {filteredCards.map(item => (
+                  {filteredCardsWithDiffs.map(item => (
                     <div
                       key={item.card.id}
                       style={{
@@ -233,10 +241,20 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
                       }}
                     >
                       {/* Two-Card Layout: [Base] -> [Enhanced+] */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ActionCard card={item.card} isPlayable={true} />
-                        <ChevronRight size={24} style={{ color: '#06b6d4', flexShrink: 0 }} />
-                        <ActionCard card={item.enhancedCard} isPlayable={true} />
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <div className="flex flex-col items-center">
+                          <ActionCard card={item.card} isPlayable={true} />
+                          <span className="text-xs font-orbitron text-cyan-300 mt-1">
+                            Owned: {item.isStarterCard ? '∞' : item.quantity}
+                          </span>
+                        </div>
+                        <ChevronRight size={24} style={{ color: '#06b6d4', flexShrink: 0, alignSelf: 'center' }} />
+                        <div className="flex flex-col items-center">
+                          <ActionCard card={item.enhancedCard} isPlayable={true} diffHighlights={item.diffs} />
+                          <span className="text-xs font-orbitron text-cyan-300 mt-1">
+                            Owned: {item.enhancedQuantity}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Controls */}
@@ -270,12 +288,6 @@ const EnhancerModal = ({ onClose, onShowHelp }) => {
                           Enhance
                         </button>
 
-                        {/* Owned Quantity */}
-                        <div className="text-sm font-orbitron text-center">
-                          <span className="text-cyan-300">
-                            Owned: {item.quantity}
-                          </span>
-                        </div>
                       </div>
                     </div>
                   ))}

@@ -225,12 +225,12 @@ const useInventoryData = (gameState) => {
   const enrichedShips = useMemo(() => {
     const slot0 = singlePlayerShipSlots?.find(slot => slot.id === 0);
     const starterShipId = slot0?.shipId;
-    const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+    const blueprintSet = new Set(singlePlayerProfile?.unlockedBlueprints || []);
 
     return (shipCollection || []).map(ship => {
       const isStarterShip = ship.id === starterShipId;
       const ownedCount = singlePlayerInventory[ship.id] || 0;
-      const isUnlocked = isStarterShip || unlockedBlueprints.includes(ship.id);
+      const isUnlocked = isStarterShip || blueprintSet.has(ship.id);
 
       return {
         ...ship,

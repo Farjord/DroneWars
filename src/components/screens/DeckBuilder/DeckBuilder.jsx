@@ -64,8 +64,8 @@ const DeckBuilder = ({
   const [showSaveToast, setShowSaveToast] = useState(false);
 
   // Panel view toggles
-  const [leftPanelView, setLeftPanelView] = useState('shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
-  const [rightPanelView, setRightPanelView] = useState('shipCard'); // 'shipCard', 'deck', 'drones', 'ship', or 'config' (extraction only)
+  const [leftPanelView, setLeftPanelView] = useState(mode === 'extraction' ? 'ship' : 'shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
+  const [rightPanelView, setRightPanelView] = useState(mode === 'extraction' ? 'ship' : 'shipCard'); // 'shipCard', 'deck', 'drones', 'ship', or 'config' (extraction only)
 
   // Mobile responsive: which panel is visible on small screens
   const [mobileActivePanel, setMobileActivePanel] = useState('left'); // 'left' or 'right'

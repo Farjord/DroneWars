@@ -229,8 +229,8 @@ function RunSummaryModal({ summary, onClose }) {
             </div>
           )}
 
-          {/* Reputation Earned Section - NEW */}
-          {reputation && !reputation.isStarterDeck && (
+          {/* Reputation Earned Section */}
+          {reputation && (
             <div className="dw-modal-info-box" style={{
               marginBottom: '24px',
               background: 'rgba(168, 85, 247, 0.08)',
@@ -242,35 +242,36 @@ function RunSummaryModal({ summary, onClose }) {
                   Reputation Earned
                 </p>
                 <p style={{ margin: '4px 0 0', fontSize: '32px', fontWeight: 700, color: '#a855f7' }}>
-                  +{reputation.repGained.toLocaleString()}
+                  +{(reputation.repGained || 0).toLocaleString()}
                 </p>
               </div>
 
               {/* Breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '13px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: reputation.extractionBonus > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '12px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px',
                                background: 'var(--modal-surface)', borderRadius: '4px' }}>
                   <span style={{ color: 'var(--modal-text-secondary)' }}>Combat Rep</span>
                   <span style={{ color: '#a855f7', fontWeight: 600 }}>
-                    +{(reputation.combatRepGained || 0).toLocaleString()}
+                    +{(reputation.combatRep || 0).toLocaleString()}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px',
                                background: 'var(--modal-surface)', borderRadius: '4px' }}>
-                  <span style={{ color: 'var(--modal-text-secondary)' }}>Loadout Rep</span>
+                  <span style={{ color: 'var(--modal-text-secondary)' }}>Exploration Rep</span>
                   <span style={{ color: '#a855f7', fontWeight: 600 }}>
-                    +{(reputation.loadoutRepGained || 0).toLocaleString()}
+                    +{(reputation.explorationRep || 0).toLocaleString()}
                   </span>
                 </div>
+                {reputation.extractionBonus > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px',
+                                 background: 'var(--modal-surface)', borderRadius: '4px' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Extraction Bonus</span>
+                    <span style={{ color: '#22c55e', fontWeight: 600 }}>
+                      +{reputation.extractionBonus.toLocaleString()}
+                    </span>
+                  </div>
+                )}
               </div>
-
-              {/* MIA Penalty Notice */}
-              {!success && (
-                <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(239, 68, 68, 0.1)',
-                               borderRadius: '4px', fontSize: '12px', color: '#ef4444', textAlign: 'center' }}>
-                  MIA Penalty Applied: 75% reputation lost
-                </div>
-              )}
 
               {/* Level Up Notice */}
               {reputation.leveledUp && (
@@ -280,17 +281,6 @@ function RunSummaryModal({ summary, onClose }) {
                   Level Up! {reputation.previousLevel} → {reputation.newLevel}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Starter Deck Notice */}
-          {reputation?.isStarterDeck && (
-            <div className="dw-modal-info-box" style={{ marginBottom: '24px',
-                                                          background: 'rgba(107, 114, 128, 0.1)',
-                                                          borderColor: 'rgba(107, 114, 128, 0.3)' }}>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-secondary)', textAlign: 'center' }}>
-                Starter deck used - no reputation earned
-              </p>
             </div>
           )}
 

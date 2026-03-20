@@ -80,8 +80,7 @@ vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   default: {
     getLevelData: vi.fn(() => ({ currentRep: 0, level: 0, progress: 0, currentInLevel: 0, requiredForNext: 100, isMaxLevel: false })),
     getUnclaimedRewards: vi.fn(() => []),
-    getExtractionBonus: vi.fn(() => 0),
-    getLoadoutValue: vi.fn(() => ({ isStarterDeck: true, totalValue: 0 }))
+    getExtractionBonus: vi.fn(() => 0)
   }
 }));
 
@@ -97,7 +96,6 @@ vi.mock('../../../logic/combat/shipSlotUtils.js', () => ({
 vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     STARTER_DECK_COPY_COST: 500,
-    DECK_SLOT_UNLOCK_COSTS: [0, 500, 1000, 2000, 4000, 8000],
     STARTER_DECK_EXTRACTION_LIMIT: 3,
     CUSTOM_DECK_EXTRACTION_LIMIT: 6
   }
@@ -151,7 +149,6 @@ const createMockGameState = (overrides = {}) => ({
       aiCores: 0,
       securityTokens: 0,
       defaultShipSlotId: 0,
-      highestUnlockedSlot: 0,
       stats: {
         runsCompleted: 0,
         runsLost: 0,

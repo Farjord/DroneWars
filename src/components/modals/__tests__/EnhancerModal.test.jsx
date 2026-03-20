@@ -9,6 +9,7 @@ const { mockEnhanceableCards } = vi.hoisted(() => ({
       card: { id: 'CONVERGENCE_BEAM', name: 'Convergence Beam', type: 'Ordnance', rarity: 'Uncommon', cost: 2, image: '/test.png', description: 'Test' },
       enhancedCard: { id: 'CONVERGENCE_BEAM_ENHANCED', name: 'Convergence Beam+', type: 'Ordnance', rarity: 'Uncommon', cost: 2, image: '/test.png', description: 'Enhanced' },
       quantity: 5,
+      enhancedQuantity: 2,
       copiesRequired: 3,
       cost: 2500,
       isStarterCard: false,
@@ -18,6 +19,7 @@ const { mockEnhanceableCards } = vi.hoisted(() => ({
       card: { id: 'PIERCING_SHOT', name: 'Piercing Shot', type: 'Ordnance', rarity: 'Uncommon', cost: 3, image: '/test2.png', description: 'Test2' },
       enhancedCard: { id: 'PIERCING_SHOT_ENHANCED', name: 'Piercing Shot+', type: 'Ordnance', rarity: 'Uncommon', cost: 3, image: '/test2.png', description: 'Enhanced2' },
       quantity: 2,
+      enhancedQuantity: 0,
       copiesRequired: 3,
       cost: 2500,
       isStarterCard: false,
@@ -27,6 +29,7 @@ const { mockEnhanceableCards } = vi.hoisted(() => ({
       card: { id: 'SYSTEM_REBOOT', name: 'System Reboot', type: 'Tactic', rarity: 'Common', cost: 1, image: '/test3.png', description: 'Test3' },
       enhancedCard: { id: 'SYSTEM_REBOOT_ENHANCED', name: 'System Reboot+', type: 'Tactic', rarity: 'Common', cost: 1, image: '/test3.png', description: 'Enhanced3' },
       quantity: 0,
+      enhancedQuantity: 1,
       copiesRequired: 0,
       cost: 1000,
       isStarterCard: true,
@@ -163,9 +166,52 @@ describe('EnhancerModal', () => {
     expect(screen.queryByText('Convergence Beam')).not.toBeInTheDocument();
   });
 
+  test('shows per-card owned counts under base and enhanced cards', () => {
+    render(<EnhancerModal onClose={mockOnClose} />);
+    // 3 cards × 2 owned labels each = 6 "Owned:" labels
+    // 5 numeric + 1 infinity for starter base card
+    const numericLabels = screen.getAllByText(/^Owned: \d+$/);
+    expect(numericLabels).toHaveLength(5);
+    // Starter base card shows ∞
+    expect(screen.getByText('Owned: ∞')).toBeInTheDocument();
+    // Convergence Beam: base=5, enhanced=2; Piercing Shot: base=2, enhanced=0
+    expect(screen.getByText('Owned: 5')).toBeInTheDocument();
+    // "Owned: 2" appears twice (Convergence Beam enhanced + Piercing Shot base)
+    expect(screen.getAllByText('Owned: 2')).toHaveLength(2);
+    // System Reboot enhanced: 1
+    expect(screen.getByText('Owned: 1')).toBeInTheDocument();
+  });
+
   test('closes modal on close button click', () => {
     render(<EnhancerModal onClose={mockOnClose} />);
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('enhanced card with different cost renders orange cost highlight', () => {
+    // CONVERGENCE_BEAM mock: base cost=2, enhanced cost=2 (same) — update to differ
+    mockEnhanceableCards[0].card.cost = 3;
+    mockEnhanceableCards[0].enhancedCard.cost = 2;
+    const { container } = render(<EnhancerModal onClose={mockOnClose} />);
+    // Find all orange cost spans (font-bold text-sm with text-orange-400)
+    const orangeCostSpans = container.querySelectorAll('.text-orange-400.font-bold.text-sm');
+    expect(orangeCostSpans.length).toBeGreaterThan(0);
+    // The orange one should show the enhanced cost "2"
+    const orangeCost = Array.from(orangeCostSpans).find(el => el.textContent === '2');
+    expect(orangeCost).toBeTruthy();
+    // Reset
+    mockEnhanceableCards[0].card.cost = 2;
+    mockEnhanceableCards[0].enhancedCard.cost = 2;
+  });
+
+  test('enhanced card with same cost does NOT have orange cost highlight', () => {
+    // Both cards cost=2 in mock (same) — no orange
+    mockEnhanceableCards[0].card.cost = 2;
+    mockEnhanceableCards[0].enhancedCard.cost = 2;
+    const { container } = render(<EnhancerModal onClose={mockOnClose} />);
+    const orangeCostSpans = container.querySelectorAll('.text-orange-400.font-bold.text-sm');
+    // None should show "2" as orange
+    const orangeCost = Array.from(orangeCostSpans).find(el => el.textContent === '2');
+    expect(orangeCost).toBeFalsy();
   });
 });

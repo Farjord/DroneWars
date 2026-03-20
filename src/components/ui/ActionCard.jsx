@@ -50,7 +50,8 @@ const ActionCard = ({
   mandatoryAction = null,
   excessCards = 0,
   scale = 1.0,
-  lanesControlled
+  lanesControlled,
+  diffHighlights = null
 }) => {
   const { name, cost, image, description, type, effect, rarity } = card;
   const goAgain = effect?.goAgain;
@@ -159,7 +160,7 @@ const ActionCard = ({
               {/* Energy Cost Chip */}
               <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
                 <Power size={14} className="text-yellow-300" />
-                <span className="text-white font-bold text-sm ml-1">{cost}</span>
+                <span className={`font-bold text-sm ml-1 ${diffHighlights?.cost ? 'text-orange-400' : 'text-white'}`}>{cost}</span>
               </div>
             </div>
           </div>
@@ -180,13 +181,17 @@ const ActionCard = ({
           {/* Description Section - MAXIMIZED SIZE */}
           <div className={`mx-1 mb-1 flex-grow bg-black/80 border p-2 rounded-md flex flex-col ${colors.descBorder}`}>
             <div className="flex-grow">
-              <ScalingText text={description} className="text-sm text-white leading-tight text-center font-exo font-normal" />
+              <ScalingText
+                text={diffHighlights?.descriptionNode ?? description}
+                textKey={diffHighlights?.descriptionNode ? description : undefined}
+                className="text-sm text-white leading-tight text-center font-exo font-normal"
+              />
             </div>
             {/* Slot Cost - moved from footer */}
             {type === 'Upgrade' && card.slots && (
               <div className="mt-auto pt-1 border-t border-slate-700/50 flex items-center justify-center gap-1">
                 <Cpu size={12} className="text-purple-400" />
-                <span className="text-[10px] text-purple-400 font-bold">Slot Cost: {card.slots}</span>
+                <span className={`text-[10px] font-bold ${diffHighlights?.slots ? 'text-orange-400' : 'text-purple-400'}`}>Slot Cost: {card.slots}</span>
               </div>
             )}
             {/* Dynamic Helper Text for lane control cards */}

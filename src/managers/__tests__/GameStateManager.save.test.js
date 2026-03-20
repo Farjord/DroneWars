@@ -30,8 +30,6 @@ describe('GameStateManager - Quick Deployments Save/Load', () => {
   const createBaseSaveData = (overrides = {}) => ({
     playerProfile: { credits: 100, gameSeed: 12345 },
     inventory: {},
-    droneInstances: [],
-    shipComponentInstances: [],
     discoveredCards: [],
     shipSlots: [],
     currentRunState: null,

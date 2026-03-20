@@ -8,7 +8,7 @@ import MapPreviewRenderer from '../ui/MapPreviewRenderer';
 import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-react';
 import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
 import { getShipById } from '../../data/shipData.js';
-import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getComponentById } from '../../logic/singlePlayer/repairHelpers.js';
 
 /**
  * MapOverviewModal Component
@@ -161,7 +161,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       for (const lane of ['l', 'm', 'r']) {
         const sectionSlot = slot.sectionSlots[lane];
         if (sectionSlot?.componentId && sectionSlot.damageDealt > 0) {
-          const componentData = shipComponentCollection?.find(c => c.id === sectionSlot.componentId);
+          const componentData = getComponentById(sectionSlot.componentId);
           const maxHull = componentData?.hull || 8;
           if (sectionSlot.damageDealt >= maxHull) {
             return { valid: false, error: `Destroyed ship component: ${sectionSlot.componentId}. Repair before deploying.` };
@@ -378,27 +378,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   <div className="dw-modal-stat-value">{totalPOIs}</div>
                 </div>
                 <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">
-                    Rep Cap
-                    <button
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'help',
-                        padding: 0,
-                        marginLeft: '4px',
-                        color: 'var(--modal-text-secondary)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        verticalAlign: 'middle'
-                      }}
-                      title="Maximum reputation you can earn from defeating a single enemy. Based on map tier. Formula: min(Deck Value, Map Cap) × AI Multiplier"
-                    >
-                      <HelpCircle size={12} />
-                    </button>
-                  </div>
+                  <div className="dw-modal-stat-label">Extraction Bonus</div>
                   <div className="dw-modal-stat-value" style={{ color: '#a855f7' }}>
-                    {(selectedMap.maxReputationPerCombat || 5000).toLocaleString()}
+                    +{selectedMap.tier === 3 ? '700' : selectedMap.tier === 2 ? '400' : '200'} rep
                   </div>
                 </div>
               </div>

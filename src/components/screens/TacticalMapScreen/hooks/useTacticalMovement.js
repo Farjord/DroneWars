@@ -124,7 +124,7 @@ export function useTacticalMovement({
     if (newDetection >= 100) {
       DetectionManager.triggerMaxDetection();
       // Signal to stop movement loop BEFORE encounter check to prevent race condition
-      // where both MIA screen and encounter modal appear simultaneously
+      // where both max-detection screen and encounter modal appear simultaneously
       shouldStopMovement.current = true;
     }
 
@@ -202,7 +202,7 @@ export function useTacticalMovement({
         // Reset currentHexIndex to 0 after trimming so heading calculation uses correct index
         setCurrentHexIndex(0);
 
-        // Check if MIA was triggered during move - stop BEFORE encounter check
+        // Check if max detection was triggered during move - stop BEFORE encounter check
         if (shouldStopMovement.current) break;
 
         // Phase 3: Check for random encounter on this hex

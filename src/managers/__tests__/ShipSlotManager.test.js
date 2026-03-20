@@ -5,7 +5,6 @@ import ShipSlotManager from '../ShipSlotManager.js';
 
 vi.mock('../../data/economyData.js', () => ({
   ECONOMY: {
-    DECK_SLOT_UNLOCK_COSTS: { 2: 500, 3: 1000, 4: 2000, 5: 5000 },
     SECTION_DAMAGE_REPAIR_COST: 10,
   }
 }));
@@ -31,7 +30,7 @@ vi.mock('../../utils/debugLogger.js', () => ({
 
 function createMockGSM(stateOverrides = {}) {
   const state = {
-    singlePlayerProfile: { highestUnlockedSlot: 1, credits: 1000, defaultShipSlotId: 0 },
+    singlePlayerProfile: { credits: 1000, defaultShipSlotId: 0 },
     singlePlayerShipSlots: [
       {
         id: 0, status: 'active', decklist: [], droneSlots: [
@@ -71,43 +70,6 @@ describe('ShipSlotManager', () => {
   beforeEach(() => {
     gsm = createMockGSM();
     manager = new ShipSlotManager(gsm);
-  });
-
-  // --- Slot Unlocking ---
-
-  describe('slot unlocking', () => {
-    it('unlockNextDeckSlot deducts credits and increments highestUnlockedSlot', () => {
-      const result = manager.unlockNextDeckSlot();
-      expect(result).toEqual({ success: true, slotId: 2 });
-      expect(gsm.state.singlePlayerProfile.credits).toBe(500); // 1000 - 500
-      expect(gsm.state.singlePlayerProfile.highestUnlockedSlot).toBe(2);
-    });
-
-    it('unlockNextDeckSlot fails on insufficient credits', () => {
-      gsm.state.singlePlayerProfile.credits = 10;
-      const result = manager.unlockNextDeckSlot();
-      expect(result.success).toBe(false);
-      expect(result.error).toMatch(/Insufficient credits/);
-    });
-
-    it('unlockNextDeckSlot fails when all slots unlocked', () => {
-      gsm.state.singlePlayerProfile.highestUnlockedSlot = 5;
-      const result = manager.unlockNextDeckSlot();
-      expect(result.success).toBe(false);
-      expect(result.error).toMatch(/already unlocked/);
-    });
-
-    it('isSlotUnlocked respects highestUnlockedSlot boundary', () => {
-      expect(manager.isSlotUnlocked(0)).toBe(true);
-      expect(manager.isSlotUnlocked(1)).toBe(true);
-      expect(manager.isSlotUnlocked(2)).toBe(false);
-    });
-
-    it('getNextUnlockableSlot returns correct slot and cost, or null when all unlocked', () => {
-      expect(manager.getNextUnlockableSlot()).toEqual({ slotId: 2, cost: 500 });
-      gsm.state.singlePlayerProfile.highestUnlockedSlot = 5;
-      expect(manager.getNextUnlockableSlot()).toBeNull();
-    });
   });
 
   // --- Ship Assignment ---
@@ -166,11 +128,6 @@ describe('ShipSlotManager', () => {
       expect(result.error).toMatch(/already has a ship/);
     });
 
-    it('fails if slot is locked', () => {
-      const result = manager.assignShipToSlot(2, 'SHIP_002');
-      expect(result.success).toBe(false);
-      expect(result.error).toMatch(/locked/);
-    });
   });
 
   // --- Slot CRUD ---

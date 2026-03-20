@@ -1,13 +1,12 @@
 /**
  * ReputationService.js
  * Centralized reputation management service
- * Handles awarding reputation and claiming rewards
+ * Handles awarding event-driven reputation and claiming rewards
  */
 
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { calculateReputationResult, calculateLoadoutValue } from './ReputationCalculator.js';
-import { REPUTATION } from '../../data/reputationData.js';
+import { calculateRunReputation } from './ReputationCalculator.js';
 import { getLevelData, REPUTATION_LEVELS, EXTRACTION_LIMIT_BONUS_RANKS, getNewlyUnlockedLevels } from '../../data/reputationRewardsData.js';
 
 class ReputationService {
@@ -63,14 +62,13 @@ class ReputationService {
   }
 
   /**
-   * Award reputation for a completed run
-   * @param {Object} shipSlot - The ship slot used for the run
-   * @param {number} tier - Map tier (1, 2, or 3)
+   * Award reputation for a completed run based on accumulated events
+   * @param {Array} reputationEvents - Events accumulated during the run
    * @param {boolean} success - Whether extraction was successful
-   * @param {number} combatReputation - Total combat rep earned during run (default: 0)
+   * @param {number} mapTier - Map tier (1, 2, or 3)
    * @returns {Object} Result including rep gained and level changes
    */
-  awardReputation(shipSlot, tier, success, combatReputation = 0) {
+  awardReputation(reputationEvents, success, mapTier) {
     const state = gameStateManager.getState();
     const profile = state.singlePlayerProfile;
 
@@ -86,45 +84,15 @@ class ReputationService {
 
     const currentRep = profile.reputation.current;
 
-    // Calculate loadout-based reputation (existing system)
-    const loadoutResult = calculateReputationResult(shipSlot, tier, success, currentRep);
-
-    // Add combat reputation (new system)
-    // Combat rep is reduced by 25% on failure (same as loadout rep)
-    const finalCombatRep = success
-      ? combatReputation
-      : Math.floor(combatReputation * REPUTATION.FAILURE_MULTIPLIER);
-
-    // Total rep gain = loadout rep + combat rep
-    const totalRepGain = loadoutResult.repGained + finalCombatRep;
-    const newRep = currentRep + totalRepGain;
-
-    // Get level data before and after total rep gain
-    const levelBefore = getLevelData(currentRep);
-    const levelAfter = getLevelData(newRep);
-
-    // Get newly unlocked levels (for rewards)
-    const unlockedLevels = getNewlyUnlockedLevels(currentRep, newRep);
-
-    // Skip if starter deck (no rep gain)
-    if (loadoutResult.loadout.isStarterDeck) {
-      debugLog('REPUTATION', 'Starter deck used - no reputation awarded');
-      return {
-        success: true,
-        repGained: 0,
-        loadoutRepGained: 0,
-        combatRepGained: 0,
-        isStarterDeck: true,
-        ...loadoutResult,
-      };
-    }
+    // Calculate run reputation from events
+    const result = calculateRunReputation(reputationEvents, success, mapTier, currentRep);
 
     // Update profile
-    profile.reputation.current = newRep;
-    profile.reputation.level = levelAfter.level;
+    profile.reputation.current = result.newRep;
+    profile.reputation.level = result.newLevel;
 
     // Add newly unlocked levels to unclaimed rewards
-    for (const unlockedLevel of unlockedLevels) {
+    for (const unlockedLevel of result.unlockedLevels) {
       if (unlockedLevel.reward && !profile.reputation.unclaimedRewards.includes(unlockedLevel.level)) {
         profile.reputation.unclaimedRewards.push(unlockedLevel.level);
       }
@@ -135,35 +103,15 @@ class ReputationService {
       singlePlayerProfile: { ...profile }
     });
 
-    debugLog('REPUTATION', `Awarded ${totalRepGain} reputation (Loadout: ${loadoutResult.repGained}, Combat: ${finalCombatRep}). ` +
-      `Total: ${currentRep} → ${newRep}. ` +
-      `Level: ${levelBefore.level} → ${levelAfter.level}. ` +
-      `New rewards: ${unlockedLevels.filter(l => l.reward).length}`);
+    debugLog('REPUTATION',
+      `Awarded ${result.totalRep} reputation (Combat: ${result.combatRep}, Exploration: ${result.explorationRep}, Extraction: ${result.extractionBonus}). ` +
+      `Total: ${currentRep} → ${result.newRep}. ` +
+      `Level: ${result.previousLevel} → ${result.newLevel}. ` +
+      `New rewards: ${result.newRewards.length}`);
 
     return {
       success: true,
-      repGained: totalRepGain,
-      loadoutRepGained: loadoutResult.repGained,
-      combatRepGained: finalCombatRep,
-      previousRep: currentRep,
-      newRep,
-      previousLevel: levelBefore.level,
-      newLevel: levelAfter.level,
-      leveledUp: levelAfter.level > levelBefore.level,
-      levelsGained: levelAfter.level - levelBefore.level,
-      progress: levelAfter.progress,
-      currentInLevel: levelAfter.currentInLevel,
-      requiredForNext: levelAfter.requiredForNext,
-      nextLevelThreshold: levelAfter.nextLevelThreshold,
-      unlockedLevels,
-      newRewards: unlockedLevels.filter(l => l.reward !== null).map(l => ({
-        level: l.level,
-        reward: l.reward,
-      })),
-      loadout: loadoutResult.loadout,
-      tierCap: loadoutResult.tierCap,
-      wasCapped: loadoutResult.wasCapped,
-      multiplier: loadoutResult.multiplier,
+      ...result,
     };
   }
 
@@ -251,27 +199,6 @@ class ReputationService {
       success: true,
       rewards,
     };
-  }
-
-  /**
-   * Preview reputation gain without awarding (for UI display)
-   * @param {Object} shipSlot - The ship slot to preview
-   * @param {number} tier - Map tier
-   * @param {boolean} success - Whether to calculate for success or failure
-   * @returns {Object} Preview of reputation gain
-   */
-  previewReputation(shipSlot, tier, success = true) {
-    const rep = this.getReputation();
-    return calculateReputationResult(shipSlot, tier, success, rep.current);
-  }
-
-  /**
-   * Get loadout value breakdown for a ship slot
-   * @param {Object} shipSlot - The ship slot to evaluate
-   * @returns {Object} Loadout value breakdown
-   */
-  getLoadoutValue(shipSlot) {
-    return calculateLoadoutValue(shipSlot);
   }
 
   /**

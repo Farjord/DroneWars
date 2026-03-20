@@ -17,8 +17,6 @@ class SaveGameService {
    * Serialize game state to JSON
    * @param {Object} playerProfile - Player profile data
    * @param {Object} inventory - Card inventory (master quantities)
-   * @param {Array} droneInstances - Drone instances with damage tracking
-   * @param {Array} shipComponentInstances - Ship component instances with hull tracking
    * @param {Array} discoveredCards - Card discovery states
    * @param {Array} shipSlots - Ship slots (6 total)
    * @param {Object|null} currentRunState - Current run state or null
@@ -73,8 +71,6 @@ class SaveGameService {
     return {
       playerProfile: saveData.playerProfile,
       inventory: saveData.inventory,
-      droneInstances: saveData.droneInstances,
-      shipComponentInstances: saveData.shipComponentInstances,
       discoveredCards: saveData.discoveredCards,
       shipSlots: saveData.shipSlots,
       currentRunState: null,  // Always null on load (abandoned if was active)

@@ -39,7 +39,7 @@ export const defaultPlayerProfile = {
   // Currency
   credits: ECONOMY.STARTING_CREDITS,
   securityTokens: 0,
-  aiCores: 0,  // Currency from defeating AI enemies, required for blueprint crafting
+  aiCores: 1,  // Currency from defeating AI enemies, required for blueprint crafting
 
   // Progression - empty at start
   unlockedBlueprints: [],
@@ -49,10 +49,6 @@ export const defaultPlayerProfile = {
 
   // Default ship slot for deployment (0-5)
   defaultShipSlotId: 0,
-
-  // Deck slot unlocking - highest slot number unlocked (0 = only starter)
-  // Must unlock slots sequentially (Slot 1 before Slot 2, etc.)
-  highestUnlockedSlot: 0,
 
   // Statistics (optional for MVP)
   stats: {
@@ -64,7 +60,7 @@ export const defaultPlayerProfile = {
     highestTierCompleted: 0,
   },
 
-  // Reputation system - rewards players for risking custom loadouts
+  // Reputation system - rewards players for in-game actions (combat, looting, extraction)
   reputation: {
     current: 0,             // Current reputation points
     level: 0,               // Current level (starts at 0)

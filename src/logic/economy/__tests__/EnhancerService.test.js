@@ -211,6 +211,31 @@ describe('EnhancerService', () => {
       const cards = enhancerService.getEnhanceableCards();
       expect(cards.some(c => c.card.id === starterCardId)).toBe(true);
     });
+
+    it('returns enhancedQuantity matching inventory count of enhanced card', () => {
+      if (!baseCardWithEnhanced) return;
+      const copiesNeeded = ECONOMY.ENHANCEMENT_COPIES_REQUIRED[baseCardWithEnhanced.rarity];
+      const enhancedId = baseCardWithEnhanced.id + '_ENHANCED';
+      gameStateManager.getState.mockReturnValue(createMockState({
+        singlePlayerInventory: { [baseCardWithEnhanced.id]: copiesNeeded + 1, [enhancedId]: 3 }
+      }));
+      creditManager.canAfford.mockReturnValue(true);
+      const cards = enhancerService.getEnhanceableCards();
+      const entry = cards.find(c => c.card.id === baseCardWithEnhanced.id);
+      expect(entry.enhancedQuantity).toBe(3);
+    });
+
+    it('returns enhancedQuantity as 0 when no enhanced copies owned', () => {
+      if (!baseCardWithEnhanced) return;
+      const copiesNeeded = ECONOMY.ENHANCEMENT_COPIES_REQUIRED[baseCardWithEnhanced.rarity];
+      gameStateManager.getState.mockReturnValue(createMockState({
+        singlePlayerInventory: { [baseCardWithEnhanced.id]: copiesNeeded + 1 }
+      }));
+      creditManager.canAfford.mockReturnValue(true);
+      const cards = enhancerService.getEnhanceableCards();
+      const entry = cards.find(c => c.card.id === baseCardWithEnhanced.id);
+      expect(entry.enhancedQuantity).toBe(0);
+    });
   });
 
   // ========================
@@ -373,6 +398,30 @@ describe('EnhancerService', () => {
       expect(slots[3].decklist.find(e => e.id === baseCardWithEnhanced.id)).toBeUndefined();
       // Slot 4: removed (capped at 0)
       expect(slots[4].decklist.find(e => e.id === baseCardWithEnhanced.id)).toBeUndefined();
+    });
+
+    it('does not alter deck quantities when enhancing a starter card', () => {
+      if (!starterCardId) return;
+      gameStateManager.getState.mockReturnValue(createMockState({
+        singlePlayerInventory: {},
+        singlePlayerShipSlots: [
+          { name: 'Starter', decklist: [{ id: starterCardId, quantity: 2 }] },
+          { name: 'Slot 1', decklist: [{ id: starterCardId, quantity: 3 }] }
+        ]
+      }));
+      creditManager.canAfford.mockReturnValue(true);
+      creditManager.deduct.mockReturnValue({ success: true });
+
+      const result = enhancerService.enhance(starterCardId);
+
+      expect(result.success).toBe(true);
+      expect(result.deckWarnings).toEqual([]);
+
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+      const slot0Deck = setStateCall.singlePlayerShipSlots[0].decklist;
+      const slot1Deck = setStateCall.singlePlayerShipSlots[1].decklist;
+      expect(slot0Deck.find(e => e.id === starterCardId)?.quantity).toBe(2);
+      expect(slot1Deck.find(e => e.id === starterCardId)?.quantity).toBe(3);
     });
 
     it('returns empty deckWarnings when no decks are affected', () => {

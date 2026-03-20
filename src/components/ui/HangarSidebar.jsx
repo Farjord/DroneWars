@@ -1,10 +1,8 @@
 import React from 'react';
-import { Star, Trash2, AlertTriangle, Lock } from 'lucide-react';
+import { Star, Trash2, AlertTriangle } from 'lucide-react';
 import SoundManager from '../../managers/SoundManager.js';
-import ReputationService from '../../logic/reputation/ReputationService';
 import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { validateShipSlot } from '../../logic/combat/shipSlotUtils.js';
-import { ECONOMY } from '../../data/economyData.js';
 import { getShipById } from '../../data/shipData.js';
 
 // Hangar button images
@@ -28,7 +26,6 @@ const HangarSidebar = ({
   onSlotClick,
   onStarToggle,
   onDeleteClick,
-  onUnlockSlot,
   onQuickDeploy
 }) => {
   return (
@@ -130,20 +127,11 @@ const HangarSidebar = ({
               const isActive = slot.status === 'active';
               const isEmpty = slot.status === 'empty';
 
-              const isUnlocked = gameStateManager.isSlotUnlocked(slot.id);
-              const highestUnlocked = singlePlayerProfile?.highestUnlockedSlot ?? 0;
-              const isNextToUnlock = !isUnlocked && slot.id === highestUnlocked + 1;
-              const unlockCost = isNextToUnlock ? ECONOMY.DECK_SLOT_UNLOCK_COSTS[slot.id] : null;
-              const credits = singlePlayerProfile?.credits ?? 0;
-              const canAfford = unlockCost !== null && credits >= unlockCost;
-
               const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
               const droneCount = isActive ? (slot.droneSlots || []).filter(s => s.assignedDrone).length : 0;
 
               const ship = isActive ? getShipById(slot.shipId) : null;
               const deckLimit = ship?.deckLimits?.totalCards ?? 40;
-
-              const loadoutValueData = isActive ? ReputationService.getLoadoutValue(slot) : null;
 
               const deckValidation = isActive ? (() => {
                 const deckObj = {};
@@ -162,7 +150,6 @@ const HangarSidebar = ({
               const isUndeployable = slotValidation.isUndeployable;
 
               const getSlotClass = () => {
-                if (!isUnlocked) return 'dw-deck-slot--locked';
                 if (isEmpty) return 'dw-deck-slot--empty';
                 if (isUndeployable) return 'dw-deck-slot--undeployable';
                 if (isDefault) return 'dw-deck-slot--default';
@@ -175,33 +162,13 @@ const HangarSidebar = ({
                 <div
                   key={slot.id}
                   className={`dw-deck-slot ${getSlotClass()}`}
-                  onClick={() => isUnlocked && onSlotClick(slot)}
+                  onClick={() => onSlotClick(slot)}
                   style={shipImage ? {
                     backgroundImage: `url(${shipImage})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                   } : undefined}
                 >
-                  {!isUnlocked ? (
-                    <div className="dw-deck-slot-locked-content">
-                      <Lock size={18} className="dw-deck-slot-lock-icon" />
-                      <span className="dw-deck-slot-locked-label">SLOT {slot.id}</span>
-
-                      {isNextToUnlock ? (
-                        <button
-                          className={`dw-btn-hud dw-btn-hud-cyan dw-btn--sm dw-btn--full ${!canAfford ? 'dw-btn--disabled' : ''}`}
-                          onClick={onUnlockSlot}
-                          disabled={!canAfford}
-                        >
-                          UNLOCK - {unlockCost?.toLocaleString()}
-                        </button>
-                      ) : (
-                        <span className="dw-deck-slot-locked-hint">
-                          Unlock Slot {slot.id - 1} first
-                        </span>
-                      )}
-                    </div>
-                  ) : (
                     <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                       {/* Header Row: Slot name/id + Star + Delete */}
                       <div className="flex items-center justify-between mb-1">
@@ -256,21 +223,12 @@ const HangarSidebar = ({
                         </div>
                       )}
 
-                      {isActive && (
-                        <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '4px' }}>
-                          {loadoutValueData?.isStarterDeck
-                            ? 'Loadout Value: None (Starter)'
-                            : `Loadout Value: ${loadoutValueData?.totalValue?.toLocaleString() || 0}`}
-                        </div>
-                      )}
-
                       {isEmpty && (
                         <div className="text-xs text-gray-500 mt-1">
                           Click to create
                         </div>
                       )}
                     </div>
-                  )}
                 </div>
               );
             })}
