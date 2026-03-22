@@ -16,7 +16,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/IsolationStrike.png',
-    description: 'Deal 2 damage to target drone. +1 if target is exposed (fewer than 2 adjacent drones).',
+    description: 'Deal 2 damage to target drone. \n \n If the target is ***exposed*** *(fewer than 2 adjacent drones)*, deal 3 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, exposedBonus: 1, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -30,10 +30,10 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/IsolationStrike.png',
-    description: 'Deal 3 damage to target drone. +1 if target is exposed (fewer than 2 adjacent drones).',
+    description: 'Deal 2 damage to target drone. \n \n If the target is ***exposed*** *(fewer than 2 adjacent drones)*, deal 4 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
-      { type: 'DAMAGE', value: 3, exposedBonus: 1, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
+      { type: 'DAMAGE', value: 2, exposedBonus: 2, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
   },
   {
@@ -45,7 +45,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 1,
     image: '/DroneWars/cards/IonPulse.png',
-    description: 'Deal 3 ion damage to target drone. Ion damage only affects shields.',
+    description: 'Deal 3 ***Ion*** damage to target drone. \n \n *(Ion damage only affects shields)*.',
     visualEffect: { type: 'ION_BURST' },
     effects: [
       { type: 'DAMAGE', value: 3, damageType: 'ION', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -60,7 +60,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 1,
     image: '/DroneWars/cards/IonPulse.png',
-    description: 'Deal 4 ion damage to target drone. Ion damage only affects shields.',
+    description: 'Deal 4 ***Ion*** damage to target drone. \n \n *(Ion damage only affects shields)*.',
     visualEffect: { type: 'ION_BURST' },
     effects: [
       { type: 'DAMAGE', value: 4, damageType: 'ION', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -76,7 +76,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/KineticSlug.png',
-    description: 'Deal 3 kinetic damage to target drone. (Kinetic damage only affects hull. It is blocked by shields.)',
+    description: 'Deal 3 ***Kinetic*** kinetic damage to target drone. \n \n *(Kinetic damage only affects hull. It is blocked by shields.)*',
     visualEffect: { type: 'KINETIC_IMPACT' },
     effects: [
       { type: 'DAMAGE', value: 3, damageType: 'KINETIC', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -91,7 +91,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/KineticSlug.png',
-    description: 'Deal 4 kinetic damage to target drone. (Kinetic damage only affects hull. It is blocked by shields.)',
+    description: 'Deal 4 ***Kinetic*** kinetic damage to target drone. \n \n *(Kinetic damage only affects hull. It is blocked by shields.)*',
     visualEffect: { type: 'KINETIC_IMPACT' },
     effects: [
       { type: 'DAMAGE', value: 4, damageType: 'KINETIC', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -107,7 +107,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/EMPSurge.png',
-    description: 'Deal 3 shield-breaker damage to target drone. (Deals double damage to shields.)',
+    description: 'Deal 3 ***shield-breaker*** damage to target drone. \n \n *(Deals double damage to shields.)*',
     visualEffect: { type: 'EMP_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 3, damageType: 'SHIELD_BREAKER', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -122,7 +122,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/EMPSurge.png',
-    description: 'Deal 3 shield-breaker damage to target drone. (Deals double damage to shields.)',
+    description: 'Deal 3 ***shield-breaker*** damage to target drone. \n \n *(Deals double damage to shields.)*',
     visualEffect: { type: 'EMP_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 3, damageType: 'SHIELD_BREAKER', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -138,7 +138,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/LaserBlast.png',
-    description: 'Deal 2 damage to target drone. If target is marked, deal 4 damage instead.',
+    description: 'Deal 2 damage to target Drone. \n \n If target is ***marked***, deal 4 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, markedBonus: 2, targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -153,7 +153,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/LaserBlast.png',
-    description: 'Deal 2 damage to target drone. If target is marked, deal 4 damage instead.',
+    description: 'Deal 2 damage to target Drone. \n \n If target is ***marked***, deal 4 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, markedBonus: 2, targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -194,7 +194,7 @@ export const ordnanceCards = [
     baseCardId: 'SHRIEKER_MISSILES',
     faction: 'NEUTRAL_1',
     name: 'Shrieker Missiles',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 5,
     image: '/DroneWars/cards/ShriekerMissiles.png',
@@ -254,11 +254,11 @@ export const ordnanceCards = [
     baseCardId: 'PIERCING_SHOT',
     faction: 'MARK',
     name: 'Piercing Shot',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/PiercingShot.png',
-    description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
+    description: 'Deal 2 ***piercing*** damage to any drone. \n \n *(Piercing damage ignores shields)*.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, damageType: 'PIERCING', targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -273,7 +273,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/PiercingShot.png',
-    description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
+    description: 'Deal 2 ***piercing*** damage to any drone. \n \n *(Piercing damage ignores shields)*.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, damageType: 'PIERCING', targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -285,7 +285,7 @@ export const ordnanceCards = [
     baseCardId: 'SIDEWINDER_MISSILES',
     faction: 'NEUTRAL_1',
     name: 'Sidewinder Missiles',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/SidewinderMissiles.png',
@@ -330,7 +330,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 5,
     image: '/DroneWars/cards/RailgunStrike.png',
-    description: 'Deal 2 piercing damage to target drone. Excess damage overflows to the ship section in that lane. If target is marked, deal 4 piercing damage instead.',
+    description: 'Deal 2 ***piercing*** damage to target drone. Excess damage ***overflows*** to the ship section in that lane. \n \n If target is ***marked***, deal 4 piercing damage instead.',
     visualEffect: { type: 'RAILGUN_ANIMATION' },
     effects: [
       {
@@ -351,7 +351,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/RailgunStrike.png',
-    description: 'Deal 2 piercing damage to target drone. Excess damage overflows to the ship section in that lane. If target is marked, deal 4 piercing damage instead.',
+    description: 'Deal 2 ***piercing*** damage to target drone. Excess damage ***overflows*** to the ship section in that lane. \n \n If target is ***marked***, deal 4 piercing damage instead.',
     visualEffect: { type: 'RAILGUN_ANIMATION' },
     effects: [
       {
@@ -373,7 +373,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Barrage.png',
-    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash).',
+    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane.',
     visualEffect: { type: 'SPLASH_EFFECT' },
     effects: [
       { type: 'SPLASH_DAMAGE', primaryDamage: 1, splashDamage: 1, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
@@ -388,7 +388,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/Barrage.png',
-    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash). If you control 3 or more drones in target lane, deal 2 damage instead.',
+    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane. \n \n If you control 3 or more drones in target lane, deal 2 damage instead.',
     visualEffect: { type: 'SPLASH_EFFECT' },
     effects: [
       {
@@ -441,7 +441,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/StrafeRun.png',
-    description: 'Deal 1 damage to the first 3 enemy drones in target lane (left to right).',
+    description: 'Deal 1 damage to the first 3 enemy drones in target lane *(left to right)*.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       {
@@ -464,7 +464,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/StrafeRun.png',
-    description: 'Deal 2 damage to the first 3 enemy drones in target lane (left to right).',
+    description: 'Deal 2 damage to the first 3 enemy drones in target lane *(left to right)*.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       {
@@ -519,7 +519,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 7,
     image: '/DroneWars/cards/PurgeProtocol.png',
-    description: 'Destroy all marked enemy drones.',
+    description: 'Destroy all ***marked*** enemy drones.',
     visualEffect: { type: 'NUKE_BLAST' },
     effects: [
       { type: 'DESTROY', scope: 'ALL', targeting: { type: 'NONE', affinity: 'ENEMY', affectedFilter: ['MARKED'] } },
@@ -534,7 +534,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 6,
     image: '/DroneWars/cards/PurgeProtocol.png',
-    description: 'Destroy all marked enemy drones.',
+    description: 'Destroy all ***marked*** enemy drones.',
     visualEffect: { type: 'NUKE_BLAST' },
     effects: [
       { type: 'DESTROY', scope: 'ALL', targeting: { type: 'NONE', affinity: 'ENEMY', affectedFilter: ['MARKED'] } },
@@ -550,7 +550,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/ParticleWhip.png',
-    description: 'Deal 1 damage to target drone. Go Again.',
+    description: 'Deal 1 damage to target drone. \n \n Go Again.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 1, goAgain: true, targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -565,7 +565,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/ParticleWhip.png',
-    description: 'Deal 2 damage to target drone. Go Again.',
+    description: 'Deal 2 damage to target drone. \n \n Go Again.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2, goAgain: true, targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' } },
@@ -612,7 +612,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/ScavengerShot.png',
-    description: 'Deal 2 damage to target drone. If it is destroyed, draw a card.',
+    description: 'Deal 2 damage to target drone. \n \n Then, if it is destroyed, draw a card.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
@@ -637,7 +637,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/ScavengerShot.png',
-    description: 'Deal 3 damage to target drone. If it is destroyed, draw a card.',
+    description: 'Deal 3 damage to target drone. \n \n Then, if it is destroyed, draw a card.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 3,
@@ -659,11 +659,11 @@ export const ordnanceCards = [
     baseCardId: 'SUNDERING_BEAM',
     faction: 'NEUTRAL_1',
     name: 'Sundering Beam',
-    rarity: 'Rare',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/FinishingBlow.png',
-    description: 'Deal 2 damage to target drone. If its current hull is 2 or less, deal 4 damage instead.',
+    description: 'Deal 2 damage to target drone. \n \n If its current hull is 2 or less, deal 4 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
@@ -688,7 +688,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/FinishingBlow.png',
-    description: 'Deal 2 damage to target drone. If its current hull is 3 or less, deal 4 damage instead.',
+    description: 'Deal 2 damage to target drone. \n \n If its current hull is 3 or less, deal 4 damage instead.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
@@ -710,15 +710,15 @@ export const ordnanceCards = [
     baseCardId: 'CONDEMNATION_RAY',
     faction: 'MARK',
     name: 'Condemnation Ray',
-    rarity: 'Rare',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/OpportunistStrike.png',
-    description: 'Deal 2 damage. +2 if target is marked. If destroyed, gain 4 energy.',
+    description: 'Deal 2 damage to target Drone. \n \n If the target is ***Marked***, deal 4 damage instead. \n \n Then, if the target is destroyed, gain 4 energy.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
-        targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' },
+        targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' },
         conditionals: [
           {
             id: 'marked-bonus',
@@ -743,13 +743,13 @@ export const ordnanceCards = [
     faction: 'MARK',
     name: 'Condemnation Ray+',
     type: 'Ordnance',
-    cost: 3,
+    cost: 4,
     image: '/DroneWars/cards/OpportunistStrike.png',
-    description: 'Deal 2 damage. +2 if target is marked. If destroyed, gain 4 energy.',
+    description: 'Deal 2 damage to target Drone. \n \n If the target is ***Marked***, deal 4 damage instead. \n \n Then, if the target is destroyed, gain 5 energy.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
-        targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' },
+        targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' },
         conditionals: [
           {
             id: 'marked-bonus',
@@ -761,7 +761,7 @@ export const ordnanceCards = [
             id: 'energy-on-destroy',
             timing: 'POST',
             condition: { type: 'ON_DESTROY' },
-            grantedEffect: { type: 'GAIN_ENERGY', value: 4 },
+            grantedEffect: { type: 'GAIN_ENERGY', value: 5 },
           },
         ],
       },
@@ -842,7 +842,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 1,
     image: '/DroneWars/cards/EnergyLeech.png',
-    description: 'Deal 1 damage to target drone. If hull damage is dealt, gain 3 energy.',
+    description: 'Deal 1 damage to target drone. \n \n Then, if hull damage is dealt, gain 3 energy.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 1,
@@ -867,7 +867,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 1,
     image: '/DroneWars/cards/EnergyLeech.png',
-    description: 'Deal 2 damage to target drone. If hull damage is dealt, gain 3 energy.',
+    description: 'Deal 2 damage to target drone. \n \n Then, if hull damage is dealt, gain 3 energy.',
     visualEffect: { type: 'LASER_BLAST' },
     effects: [
       { type: 'DAMAGE', value: 2,
@@ -889,11 +889,11 @@ export const ordnanceCards = [
     baseCardId: 'PHASE_CHARGED_LASER',
     faction: 'NEUTRAL_1',
     name: 'Phase-Charged Laser',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/FollowUpStrike.png',
-    description: 'Deal 2 damage to target drone. If this is not your first action this turn, deal 4 instead.',
+    description: 'Deal 2 damage to target drone. \n \n If this is not your first action this turn, deal 4 instead.',
     effects: [
       { type: 'DAMAGE', value: 2,
         targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' },
@@ -917,7 +917,7 @@ export const ordnanceCards = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/FollowUpStrike.png',
-    description: 'Deal 2 damage to target drone. If this is not your first action this turn, deal 5 instead.',
+    description: 'Deal 2 damage to target drone. \n \n If this is not your first action this turn, deal 5 instead.',
     effects: [
       { type: 'DAMAGE', value: 2,
         targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' },
@@ -938,12 +938,12 @@ export const ordnanceCards = [
     baseCardId: 'DEPLOY_INHIBITOR_MINE',
     faction: 'NEUTRAL_1',
     name: 'Deploy Inhibitor Mine',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Ordnance',
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/InhibitorMine.png',
-    description: 'Create an Inhibitor Mine in a friendly lane. \n \n *(Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)*',
+    description: 'Create an Inhibitor Mine in a friendly lane. \n \n *(Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -962,7 +962,7 @@ export const ordnanceCards = [
     subType: 'Mine',
     cost: 1,
     image: '/DroneWars/cards/InhibitorMine.png',
-    description: 'Create an Inhibitor Mine in a friendly lane. \n \n *(Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then destroy this mine.)*',
+    description: 'Create an Inhibitor Mine in a friendly lane. \n \n *(Inhibitor Mine: When an enemy drone is deployed here, exhaust it. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -977,12 +977,12 @@ export const ordnanceCards = [
     baseCardId: 'DEPLOY_JITTER_MINE',
     faction: 'NEUTRAL_1',
     name: 'Deploy Jitter Mine',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Ordnance',
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/JitterMine.png',
-    description: 'Create a Jitter Mine in a friendly lane. \n \n *(Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)*',
+    description: 'Create a Jitter Mine in a friendly lane. \n \n *(Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1001,7 +1001,7 @@ export const ordnanceCards = [
     subType: 'Mine',
     cost: 1,
     image: '/DroneWars/cards/JitterMine.png',
-    description: 'Create a Jitter Mine in a friendly lane. \n \n *(Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)*',
+    description: 'Create a Jitter Mine in a friendly lane. \n \n *(Jitter Mine: When an enemy drone attacks from this lane, give it -4 attack permanently. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1016,12 +1016,12 @@ export const ordnanceCards = [
     baseCardId: 'DEPLOY_PROXIMITY_MINE',
     faction: 'NEUTRAL_1',
     name: 'Deploy Proximity Mine',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Ordnance',
     subType: 'Mine',
     cost: 2,
     image: '/DroneWars/cards/ProximityMine.png',
-    description: 'Create a Proximity Mine in a friendly lane. \n \n *(Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)*',
+    description: 'Create a Proximity Mine in a friendly lane. \n \n *(Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1040,7 +1040,7 @@ export const ordnanceCards = [
     subType: 'Mine',
     cost: 1,
     image: '/DroneWars/cards/ProximityMine.png',
-    description: 'Create a Proximity Mine in a friendly lane. \n \n *(Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)*',
+    description: 'Create a Proximity Mine in a friendly lane. \n \n *(Proximity Mine: When an enemy drone moves into this lane, deal 4 damage to it. Then Self Destruct.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -1060,7 +1060,7 @@ export const ordnanceCards = [
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/CrossfirePattern.png',
-    description: 'If you control both flank lanes (left and right), deal 3 kinetic damage to both enemy flank ship sections.',
+    description: 'If you control both flank lanes *(left and right)*, deal 3 ***kinetic*** damage to both enemy flank ship sections.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1086,7 +1086,7 @@ export const ordnanceCards = [
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/CrossfirePattern.png',
-    description: 'If you control both flank lanes (left and right), deal 4 kinetic damage to both enemy flank ship sections.',
+    description: 'If you control both flank lanes *(left and right)*, deal 4 ***kinetic*** damage to both enemy flank ship sections.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1108,12 +1108,43 @@ export const ordnanceCards = [
     baseCardId: 'BREACH_THE_LINE',
     faction: 'NEUTRAL_1',
     name: 'Breach the Line',
-    rarity: 'Common',
+    rarity: 'Rare',
     type: 'Ordnance',
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/BreachTheLine.png',
-    description: 'If you control the middle lane, deal 6 kinetic damage to the enemy middle ship section.',
+    description: 'If you control the middle lane, deal 4 ***kinetic*** damage to the enemy middle ship section.',
+    effects: [
+      {
+        type: 'CONDITIONAL_SECTION_DAMAGE',
+        condition: {
+          type: 'CONTROL_LANES',
+          lanes: ['lane2'],
+          operator: 'ALL',
+        },
+        damage: 4,
+        targets: 'MIDDLE_SECTION',
+        damageType: 'KINETIC',
+        targeting: {
+          type: 'SHIP_SECTION',
+          affinity: 'ENEMY',
+          restrictions: ['REQUIRES_LANE_CONTROL'],
+          validSections: ['middle'],
+        },
+      },
+    ],
+
+  },
+  {
+    id: 'BREACH_THE_LINE_ENHANCED',
+    baseCardId: 'BREACH_THE_LINE',
+    faction: 'NEUTRAL_1',
+    name: 'Breach the Line+',
+    type: 'Ordnance',
+    cost: 4,
+    momentumCost: 1,
+    image: '/DroneWars/cards/BreachTheLine.png',
+    description: 'If you control the middle lane, deal 6 ***kinetic*** damage to the enemy middle ship section.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1136,37 +1167,6 @@ export const ordnanceCards = [
 
   },
   {
-    id: 'BREACH_THE_LINE_ENHANCED',
-    baseCardId: 'BREACH_THE_LINE',
-    faction: 'NEUTRAL_1',
-    name: 'Breach the Line+',
-    type: 'Ordnance',
-    cost: 4,
-    momentumCost: 1,
-    image: '/DroneWars/cards/BreachTheLine.png',
-    description: 'If you control the middle lane, deal 8 kinetic damage to the enemy middle ship section.',
-    effects: [
-      {
-        type: 'CONDITIONAL_SECTION_DAMAGE',
-        condition: {
-          type: 'CONTROL_LANES',
-          lanes: ['lane2'],
-          operator: 'ALL',
-        },
-        damage: 8,
-        targets: 'MIDDLE_SECTION',
-        damageType: 'KINETIC',
-        targeting: {
-          type: 'SHIP_SECTION',
-          affinity: 'ENEMY',
-          restrictions: ['REQUIRES_LANE_CONTROL'],
-          validSections: ['middle'],
-        },
-      },
-    ],
-
-  },
-  {
     id: 'OVERRUN',
     baseCardId: 'OVERRUN',
     faction: 'NEUTRAL_1',
@@ -1176,7 +1176,7 @@ export const ordnanceCards = [
     cost: 2,
     momentumCost: 1,
     image: '/DroneWars/cards/Overrun.png',
-    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 3 kinetic damage to the corresponding ship section.',
+    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 3 ***kinetic damage*** to the corresponding ship section.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1198,7 +1198,7 @@ export const ordnanceCards = [
     cost: 2,
     momentumCost: 1,
     image: '/DroneWars/cards/Overrun.png',
-    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 4 kinetic damage to the corresponding ship section.',
+    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 4 ***kinetic*** damage to the corresponding ship section.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1221,7 +1221,7 @@ export const ordnanceCards = [
     cost: 3,
     momentumCost: 2,
     image: '/DroneWars/cards/Encirclement.png',
-    description: 'If you control all three lanes, deal 3 kinetic damage to all enemy ship sections.',
+    description: 'If you control all three lanes, deal 3 ***Kinetic*** damage to all enemy ship sections.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1247,7 +1247,7 @@ export const ordnanceCards = [
     cost: 3,
     momentumCost: 2,
     image: '/DroneWars/cards/Encirclement.png',
-    description: 'If you control all three lanes, deal 4 kinetic damage to all enemy ship sections.',
+    description: 'If you control all three lanes, deal 4 ***Kinetic*** damage to all enemy ship sections.',
     effects: [
       {
         type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1313,10 +1313,7 @@ export const ordnanceCards = [
     ],
 
   },
-
-  // --- targetSelection Cards ---
-
-  {
+ {
     id: 'SCATTER_SHOT',
     baseCardId: 'SCATTER_SHOT',
     faction: 'NEUTRAL_1',
@@ -1395,7 +1392,7 @@ export const ordnanceCards = [
     baseCardId: 'CULL_THE_WEAK',
     faction: 'NEUTRAL_1',
     name: 'Cull the Weak',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/CullTheWeak.png',

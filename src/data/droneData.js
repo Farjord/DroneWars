@@ -702,13 +702,13 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Infiltrator.png',
     abilities: [{
       name: 'Infiltration Protocol',
-      description: 'Does not exhaust when moving into a lane you currently do not control.',
+      description: 'After Move: If you do not control the target lane, then this drone does not exhaust and you go again.',
       type: 'TRIGGERED',
       trigger: 'ON_MOVE',
       triggerTiming: 'ANY_TURN',
       keywordIcon: 'INFILTRATE',
       triggerFilter: { laneControl: 'NOT_CONTROLLED_BY_ACTOR' },
-      effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }]
+      effects: [{ type: 'DOES_NOT_EXHAUST', effectTarget: 'TRIGGER_OWNER' }, { type: 'GO_AGAIN', effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -876,10 +876,10 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
   {
-    name: 'Disruption Drone',
+    name: 'Wraith',
     class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon',
     attack: 1, hull: 1, shields: 0, speed: 1,
-    image: '/DroneWars/img/DisruptionDrone.png',
+    image: '/DroneWars/img/Wraith.png',
     abilities: [{
       name: 'Energy Disruption',
       description: "When an enemy drone moves into this lane, your opponent loses 1 energy.",

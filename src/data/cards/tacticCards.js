@@ -16,7 +16,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SystemLock.png',
-    description: 'Target drone gains Snared. (Cancel its next move to remove this status.)',
+    description: 'Target drone gains Snared. \n \n *(Cancel its next move to remove this status.)*',
     effects: [
       { type: 'APPLY_SNARED', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -31,7 +31,7 @@ export const tacticCards = [
     cost: 2,
     momentumCost: 1,
     image: '/DroneWars/cards/SystemLock.png',
-    description: 'Target drone gains Immobile. (It cannot optionally Move.)',
+    description: 'Target drone gains Immobile. \n \n *(It cannot optionally Move.)*',
     effects: [
       { type: 'APPLY_CANNOT_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -46,7 +46,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/WeaponMalfunction.png',
-    description: 'Target drone gains Suppressed. (Cancel its next attack to remove this status.)',
+    description: 'Target drone gains Suppressed. \n \n *(Cancel its next attack to remove this status.)*',
     effects: [
       { type: 'APPLY_SUPPRESSED', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -61,7 +61,7 @@ export const tacticCards = [
     cost: 2,
     momentumCost: 1,
     image: '/DroneWars/cards/WeaponMalfunction.png',
-    description: 'Target drone gains Disarmed. (It cannot optionally Attack.)',
+    description: 'Target drone gains Disarmed. \n \n *(It cannot optionally Attack.)*',
     effects: [
       { type: 'APPLY_CANNOT_ATTACK', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -76,7 +76,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SensorJam.png',
-    description: 'Target drone gains Blinded. (It cannot optionally Intercept.)',
+    description: 'Target drone gains Blinded. \n \n *(It cannot optionally Intercept.)*',
     effects: [
       { type: 'APPLY_CANNOT_INTERCEPT', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -90,7 +90,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/SensorJam.png',
-    description: 'Target drone gains Blinded. (It cannot optionally Intercept.) Go again.',
+    description: 'Target drone gains Blinded. \n \n *(It cannot optionally Intercept.)* \n \n Go again.',
     effects: [
       { type: 'APPLY_CANNOT_INTERCEPT', goAgain: true, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -118,7 +118,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/StasisField.png',
-    description: 'Target drone does not ready during the next ready phase. Go again.',
+    description: 'Target drone does not ready during the next ready phase. \n \n Go again.',
     effects: [
       { type: 'APPLY_DOES_NOT_READY', goAgain: true, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -132,7 +132,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
-    description: 'Move target class 2 or less ready enemy drone to an adjacent lane.',
+    description: 'Move target class 2 or less ready enemy drone to an adjacent lane. It does not exhaust.',
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 2 }, 'NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
@@ -145,7 +145,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
-    description: 'Move target class 3 or less ready enemy drone to an adjacent lane.',
+    description: 'Move target class 3 or less ready enemy drone to an adjacent lane. It does not exhaust.',
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE', restrictions: [{ stat: 'class', comparison: 'LTE', value: 3 }, 'NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
@@ -213,9 +213,9 @@ export const tacticCards = [
     name: 'EMP Burst',
     rarity: 'Common',
     type: 'Tactic',
-    cost: 4,
+    cost: 3,
     image: '/DroneWars/cards/EMPBurst.png',
-    description: 'Exhaust target drone (class 2 or less).',
+    description: 'Exhaust target Class 2 or less Drone.',
     effects: [
       { type: 'EXHAUST_DRONE',
         targeting: {
@@ -236,9 +236,54 @@ export const tacticCards = [
     faction: 'NEUTRAL_1',
     name: 'EMP Burst+',
     type: 'Tactic',
-    cost: 4,
+    cost: 2,
     image: '/DroneWars/cards/EMPBurst.png',
-    description: 'Exhaust target drone (class 3 or less).',
+    description: 'Exhaust target Class 2 or less Drone.',
+    effects: [
+      { type: 'EXHAUST_DRONE',
+        targeting: {
+          type: 'DRONE',
+          affinity: 'ANY',
+          location: 'ANY_LANE',
+          restrictions: [
+            { stat: 'class', comparison: 'LTE', value: 2 },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'SHORT_CIRCUIT',
+    baseCardId: 'SHORT_CIRCUIT',
+    faction: 'NEUTRAL_1',
+    name: 'Short Circuit',
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 4,
+    image: '/DroneWars/cards/ShortCircuit.png',
+    description: 'Exhaust target Class 3 or less Drone.',
+    effects: [
+      { type: 'EXHAUST_DRONE',
+        targeting: {
+          type: 'DRONE',
+          affinity: 'ANY',
+          location: 'ANY_LANE',
+          restrictions: [
+            { stat: 'class', comparison: 'LTE', value: 3 },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'SHORT_CIRCUIT_ENHANCED',
+    baseCardId: 'SHORT_CIRCUIT',
+    faction: 'NEUTRAL_1',
+    name: 'Short Circuit+',
+    type: 'Tactic',
+    cost: 3,
+    image: '/DroneWars/cards/ShortCircuit.png',
+    description: 'Exhaust target Class 3 or less Drone.',
     effects: [
       { type: 'EXHAUST_DRONE',
         targeting: {
@@ -297,7 +342,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/StaticField.png',
-    description: 'Give an enemy drone -2 attack until the end of the turn.',
+    description: 'Target enemy drone gets -2 attack until the end of the turn.',
     effects: [
       {
         type: 'MODIFY_STAT',
@@ -315,7 +360,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/StaticField.png',
-    description: 'Give an enemy drone -3 attack until the end of the turn.',
+    description: 'Target enemy drone gets -3 attack until the end of the turn.',
     effects: [
       {
         type: 'MODIFY_STAT',
@@ -356,7 +401,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in one of your lanes. (Jammer: Opponent card effects cannot target drones in this lane. Removed at the start of the next round.)',
+    description: 'Create a Jammer in one of your lanes. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -370,7 +415,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in one of your lanes. (Jammer: Opponent card effects cannot target drones in this lane. Removed at the start of the next round.)',
+    description: 'Create a Jammer in one of your lanes. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -416,7 +461,7 @@ export const tacticCards = [
     baseCardId: 'EXHAUST',
     faction: 'NEUTRAL_1',
     name: 'EXHAUST',
-    rarity: 'Uncommon',
+    rarity: 'Rare',
     type: 'Tactic',
     cost: 3,
     momentumCost: 1,
@@ -446,11 +491,11 @@ export const tacticCards = [
     baseCardId: 'FEINT',
     faction: 'NEUTRAL_1',
     name: 'Feint',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/ExhaustingStrike.png',
-    description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower speed in the same lane.',
+    description: 'Exhaust a friendly drone. \n \n Then exhaust an enemy Drone with lower Speed in the same lane.',
     visualEffect: { type: 'DISRUPTION' },
     effects: [
       { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
@@ -465,7 +510,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/ExhaustingStrike.png',
-    description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower or equal speed in the same lane.',
+    description: 'Exhaust a friendly drone. \n \n Then exhaust an enemy drone with equal or lower speed in the same lane.',
     visualEffect: { type: 'DISRUPTION' },
     effects: [
       { type: 'EXHAUST_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
@@ -475,13 +520,13 @@ export const tacticCards = [
   {
     id: 'FORCED_REPOSITIONING',
     baseCardId: 'FORCED_REPOSITIONING',
-    faction: 'NEUTRAL_1',
+    faction: 'MOVEMENT',
     name: 'Forced Repositioning',
     rarity: 'Uncommon',
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/ForcedRepositioning.png',
-    description: 'Move a friendly drone to an adjacent lane. Then move an enemy drone from the original lane with higher attack.',
+    description: 'Move a friendly ready Drone to an adjacent lane. It does not exhaust. \n \n Then move a ready enemy drone from the original lane with higher attack. It does not exhaust.',
     visualEffect: { type: 'MOVEMENT' },
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
@@ -491,12 +536,12 @@ export const tacticCards = [
   {
     id: 'FORCED_REPOSITIONING_ENHANCED',
     baseCardId: 'FORCED_REPOSITIONING',
-    faction: 'NEUTRAL_1',
+    faction: 'MOVEMENT',
     name: 'Forced Repositioning+',
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/ForcedRepositioning.png',
-    description: 'Move a friendly drone to an adjacent lane. Then move an enemy drone from the original lane with higher attack.',
+    description: 'Move a friendly ready drone to an adjacent lane. \n \n Then move a ready enemy drone from the original lane with higher attack.',
     visualEffect: { type: 'MOVEMENT' },
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], prompt: 'Move a friendly drone' },
@@ -508,12 +553,12 @@ export const tacticCards = [
     baseCardId: 'MAINFRAME_BREACH',
     faction: 'NEUTRAL_1',
     name: 'Mainframe Breach',
-    rarity: 'Uncommon',
+    rarity: 'Rare',
     type: 'Tactic',
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/MainframeBreach.png',
-    description: 'Target opponent discards 2 cards at random and loses 4 energy.',
+    description: 'Target opponent discards 2 cards at random. \n \n Then they lose 4 energy.',
     effects: [
       { type: 'DISCARD', count: 2, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
       { type: 'DRAIN_ENERGY', amount: 4, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
@@ -528,7 +573,7 @@ export const tacticCards = [
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/MainframeBreach.png',
-    description: 'Target opponent discards 3 cards at random and loses 4 energy.',
+    description: 'Target opponent discards 3 cards at random. \n \n Then they lose 4 energy.',
     effects: [
       { type: 'DISCARD', count: 3, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
       { type: 'DRAIN_ENERGY', amount: 4, targetPlayer: 'opponent', targeting: { type: 'NONE' } },
@@ -575,7 +620,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/SacrificeforPower.png',
-    description: 'Discard a card from your hand. Then give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
+    description: 'Discard a card from your hand. \n \n Then give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
     visualEffect: { type: 'BUFF' },
     effects: [
       { type: 'DISCARD_CARD', targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' }, prompt: 'Discard a card from your hand' },
@@ -590,7 +635,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/SacrificeforPower.png',
-    description: 'Discard a card from your hand. Then give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost. Go again.',
+    description: 'Discard a card from your hand. \n \n Then give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost. \n \n Go again.',
     visualEffect: { type: 'BUFF' },
     effects: [
       { type: 'DISCARD_CARD', targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' }, prompt: 'Discard a card from your hand' },
@@ -607,7 +652,7 @@ export const tacticCards = [
     cost: 2,
     aiOnly: true,
     image: '/DroneWars/cards/TransmitThreat.png',
-    description: 'Immediately trigger the Round Start ability of every Signal Beacon drone currently on the board.',
+    description: 'Immediately trigger the ***End of Round*** ability of every Signal Beacon drone currently on the board.',
     effects: [
       { type: 'INCREASE_THREAT', value: 2, perDrone: 'Signal Beacon', targeting: { type: 'NONE' } },
     ],
@@ -621,7 +666,7 @@ export const tacticCards = [
     cost: 1,
     aiOnly: true,
     image: '/DroneWars/cards/TransmitThreat.png',
-    description: 'Immediately trigger the Round Start ability of every Signal Beacon drone currently on the board.',
+    description: 'Immediately trigger the ***End of Round*** ability of every Signal Beacon drone currently on the board.',
     effects: [
       { type: 'INCREASE_THREAT', value: 2, perDrone: 'Signal Beacon', targeting: { type: 'NONE' } },
     ],
@@ -632,7 +677,7 @@ export const tacticCards = [
     baseCardId: 'MARK_ENEMY',
     faction: 'MARK',
     name: 'Mark Enemy',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/MarkEnemy.png',
@@ -650,7 +695,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 0,
     image: '/DroneWars/cards/MarkEnemy.png',
-    description: 'Mark an enemy drone. Go again.',
+    description: 'Mark an enemy drone. \n \n Go again.',
     effects: [
      { type: 'MARK_DRONE', goAgain: true, targeting: { type: 'DRONE', affinity: 'ENEMY', location: 'ANY_LANE' } },
     ],
@@ -701,11 +746,11 @@ export const tacticCards = [
     baseCardId: 'COMMAND_OVERRIDE',
     faction: 'NEUTRAL_1',
     name: 'Command Override',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/CommandOverride.png',
-    description: 'Opponent discards 1 card at random. Exposed Bridge: discards 3 instead.',
+    description: 'Opponent discards 1 card at random. \n \n ***Exposed Bridge:*** Discard 3 cards instead.',
     effects: [{
       type: 'DISCARD', count: 1, targetPlayer: 'opponent',
       targeting: { type: 'NONE' },
@@ -724,7 +769,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/CommandOverride.png',
-    description: 'Opponent discards 1 card at random. Exposed Bridge: discards 3 instead.',
+    description: 'Opponent discards 1 card at random. \n \n ***Exposed Bridge:*** Discard 3 cards instead.',
     effects: [{
       type: 'DISCARD', count: 1, targetPlayer: 'opponent',
       targeting: { type: 'NONE' },
@@ -740,11 +785,11 @@ export const tacticCards = [
     baseCardId: 'SIGNAL_HIJACK',
     faction: 'NEUTRAL_1',
     name: 'Signal Hijack',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SignalHijack.png',
-    description: 'Exhaust an enemy drone (class 1 or less). Exposed DCH: class 4 or less.',
+    description: 'Exhaust target Class 1 or less enemy drone. \n \n ***Exposed Control Hub:*** Class 4 or less instead.',
     effects: [{
       type: 'EXHAUST_DRONE',
       targeting: {
@@ -766,7 +811,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/SignalHijack.png',
-    description: 'Exhaust an enemy drone (class 2 or less). Exposed DCH: class 4 or less.',
+    description: 'Exhaust target Class 1 or less enemy drone. \n \n ***Exposed Control Hub:*** Class 4 or less instead.',
     effects: [{
       type: 'EXHAUST_DRONE',
       targeting: {
@@ -785,11 +830,11 @@ export const tacticCards = [
     baseCardId: 'ENERGY_SIPHON',
     faction: 'NEUTRAL_1',
     name: 'Energy Siphon',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/EnergySiphon.png',
-    description: 'Steal 1 energy from opponent. Exposed Power Cell: steal 3 instead.',
+    description: 'Steal 1 energy from opponent. \n \n ***Exposed Power Cell:*** Steal 3 instead.',
     effects: [{
       type: 'STEAL_ENERGY', amount: 1, targetPlayer: 'opponent',
       targeting: { type: 'NONE' },
@@ -808,7 +853,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/EnergySiphon.png',
-    description: 'Steal 2 energy from opponent. Exposed Power Cell: steal 4 instead.',
+    description: 'Steal 2 energy from opponent. \n \n ***Exposed Power Cell:*** Steal 4 instead.',
     effects: [{
       type: 'STEAL_ENERGY', amount: 2, targetPlayer: 'opponent',
       targeting: { type: 'NONE' },

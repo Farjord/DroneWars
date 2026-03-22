@@ -12,11 +12,11 @@ export const supportCards = [
     baseCardId: 'SYSTEM_RESTORE',
     faction: 'NEUTRAL_1',
     name: 'System Restore',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/SystemRestore.png',
-    description: 'Remove all status effects from target drone, including marked status. Go again.',
+    description: 'Remove all status effects from target drone. \n \n Go again.',
     effects: [
       { type: 'CLEAR_ALL_STATUS', goAgain: true, targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
     ],
@@ -29,7 +29,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/SystemRestore.png',
-    description: 'Remove all status effects from target drone, including marked status. Go again.',
+    description: 'Remove all status effects from target drone. \n \n Go again.',
     effects: [
       { type: 'CLEAR_ALL_STATUS', goAgain: true, targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
     ],
@@ -42,8 +42,8 @@ export const supportCards = [
     rarity: 'Common',
     type: 'Support',
     cost: 2,
-    image: '/DroneWars/cards/Reboot.png',
-    description: 'Draw 2 cards from your deck. Go again.',
+    image: '/DroneWars/cards/SystemReboot.png',
+    description: 'Draw 2 cards from your deck. \n \n Go again.',
     effects: [
       { type: 'DRAW', value: 2, goAgain: true, targeting: { type: 'NONE' } },
     ],
@@ -55,8 +55,8 @@ export const supportCards = [
     name: 'System Reboot+',
     type: 'Support',
     cost: 2,
-    image: '/DroneWars/cards/Reboot.png',
-    description: 'Draw 3 cards from your deck. Go again.',
+    image: '/DroneWars/cards/SystemReboot.png',
+    description: 'Draw 3 cards from your deck. \n \n Go again.',
     effects: [
       { type: 'DRAW', value: 3, goAgain: true, targeting: { type: 'NONE' } },
     ],
@@ -70,7 +70,7 @@ export const supportCards = [
     type: 'Support',
     cost: 0,
     image: '/DroneWars/cards/OutThink.png',
-    description: 'Draw 2 cards. Can only be played when you control fewer lanes than your opponent.',
+    description: 'Draw 2 cards. \n \n Can only be played when you control fewer lanes than your opponent.',
     effects: [
       { type: 'DRAW', value: 2, targeting: { type: 'NONE' } },
     ],
@@ -84,7 +84,7 @@ export const supportCards = [
     type: 'Support',
     cost: 0,
     image: '/DroneWars/cards/OutThink.png',
-    description: 'Draw 3 cards. Can only be played when you control fewer lanes than your opponent.',
+    description: 'Draw 3 cards. \n \n Can only be played when you control fewer lanes than your opponent.',
     effects: [
       { type: 'DRAW', value: 3, targeting: { type: 'NONE' } },
     ],
@@ -99,7 +99,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/EnergySurge.png',
-    description: 'Gain 3 Energy. Go again',
+    description: 'Gain 3 Energy. \n \n Go again',
     effects: [
       { type: 'GAIN_ENERGY', value: 3, goAgain: true, targeting: { type: 'NONE' } },
     ],
@@ -112,7 +112,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/EnergySurge.png',
-    description: 'Gain 5 Energy. Go again.',
+    description: 'Gain 5 Energy. \n \n Go again.',
     effects: [
       { type: 'GAIN_ENERGY', value: 5, goAgain: true, targeting: { type: 'NONE' } },
     ],
@@ -126,7 +126,7 @@ export const supportCards = [
     type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/AdrenalineRush.png',
-    description: 'Ready an exhausted friendly drone with a Class of 2 or less.',
+    description: 'Ready an exhausted friendly Class of 2 or less drone.',
     effects: [
       { type: 'READY_DRONE',
         targeting: {
@@ -145,13 +145,69 @@ export const supportCards = [
     id: 'REACTIVATION_PROTOCOL_ENHANCED',
     baseCardId: 'REACTIVATION_PROTOCOL',
     faction: 'NEUTRAL_1',
-    name: 'Reactivation Protocol+',
+    name: 'Reactivation Protocol',
+    rarity: 'Common',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/AdrenalineRush.png',
+    description: 'Ready an exhausted friendly Class of 2 or less drone.',
+    effects: [
+      { type: 'READY_DRONE',
+        targeting: {
+          type: 'DRONE',
+          affinity: 'FRIENDLY',
+          location: 'ANY_LANE',
+          restrictions: [
+            { stat: 'class', comparison: 'LTE', value: 2 },
+            'EXHAUSTED',
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'REBOOT',
+    baseCardId: 'REBOOT',
+    faction: 'NEUTRAL_1',
+    name: 'Reboot',
     type: 'Support',
     cost: 5,
-    image: '/DroneWars/cards/AdrenalineRush.png',
-    description: 'Ready an exhausted friendly drone.',
+    image: '/DroneWars/cards/Reboot.png',
+   description: 'Ready an exhausted friendly drone. \n \n Then, if it has 2 or less CPU, draw 2 cards.',
     effects: [
-      { type: 'READY_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['EXHAUSTED'], } },
+      { type: 'READY_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['EXHAUSTED'], },
+            conditionals: [
+          {
+            id: 'draw_on_low_CPU',
+            timing: 'POST',
+            condition: { type: 'TARGET_STAT_LTE', stat: 'cpu', value: 2 },
+            grantedEffect: { type: 'DRAW', value: 2 },
+          },
+        ],
+     },
+    ],
+  },
+    {
+    id: 'REBOOT_ENHANCED',
+    baseCardId: 'REBOOT',
+    faction: 'NEUTRAL_1',
+    name: 'Reboot+',
+    rarity: 'Common',
+    type: 'Support',
+    cost: 4,
+    image: '/DroneWars/cards/Reboot.png',
+   description: 'Ready an exhausted friendly drone. \n \n Then, if it has 2 or less CPU, draw 2 cards.',
+    effects: [
+      { type: 'READY_DRONE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['EXHAUSTED'], },
+            conditionals: [
+          {
+            id: 'draw_on_low_CPU',
+            timing: 'POST',
+            condition: { type: 'TARGET_STAT_LTE', stat: 'cpu', value: 2 },
+            grantedEffect: { type: 'DRAW', value: 2 },
+          },
+        ],
+     },
     ],
   },
   {
@@ -163,7 +219,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/NanobotRepair.png',
-    description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull. Go again.',
+    description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull. \n \n Go again.',
     effects: [
       { type: 'HEAL_HULL', value: 3, goAgain: true, targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
     ],
@@ -176,7 +232,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/NanobotRepair.png',
-    description: 'Restore 4 hull to a friendly drone. Cannot exceed its maximum hull. Go again.',
+    description: 'Restore 4 hull to a friendly drone. Cannot exceed its maximum hull. \n \n Go again.',
     effects: [
       { type: 'HEAL_HULL', value: 4, goAgain: true, targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' } },
     ],
@@ -201,8 +257,35 @@ export const supportCards = [
     faction: 'NEUTRAL_1',
     name: 'Emergency Patch+',
     type: 'Support',
-    cost: 4,
+    cost: 1,
     image: '/DroneWars/cards/EmergencyPatch.png',
+    description: 'Restore 1 hull to one of your ship sections. \n \n Go again.',
+    effects: [
+      { type: 'HEAL_HULL', value: 1, goAgain: true, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } },
+    ],
+  },
+    {
+    id: 'HULL_REPAIR',
+    baseCardId: 'HULL_REPAIR',
+    faction: 'NEUTRAL_1',
+    name: 'Hull Repair',
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 5,
+    image: '/DroneWars/cards/HullRepair.png',
+    description: 'Restore 4 hull to one of your ship sections.',
+    effects: [
+      { type: 'HEAL_HULL', value: 4, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } },
+    ],
+  },
+  {
+    id: 'HULL_REPAIR_ENHANCED',
+    baseCardId: 'HULL_REPAIR',
+    faction: 'NEUTRAL_1',
+    name: 'Hull Repair+',
+    type: 'Support',
+    cost: 4,
+    image: '/DroneWars/cards/HullRepair.png',
     description: 'Restore 4 hull to one of your ship sections.',
     effects: [
       { type: 'HEAL_HULL', value: 4, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } },
@@ -217,7 +300,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldRecharge.png',
-    description: 'Restore 2 shield to all friendly drones in a target lane. Go again.',
+    description: 'Restore 2 shield to all friendly drones in a target lane. \n \n Go again.',
     effects: [
       { type: 'HEAL_SHIELDS', value: 2, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -230,7 +313,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldRecharge.png',
-    description: 'Restore 3 shield to all friendly drones in a target lane. Go again.',
+    description: 'Restore 3 shield to all friendly drones in a target lane. \n \n Go again.',
     effects: [
       { type: 'HEAL_SHIELDS', value: 3, goAgain: true, targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -275,7 +358,7 @@ export const supportCards = [
     baseCardId: 'STREAMLINE',
     faction: 'NEUTRAL_1',
     name: 'Streamline',
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/Streamline.png',
@@ -308,7 +391,7 @@ export const supportCards = [
   {
     id: 'BOOSTERS',
     baseCardId: 'BOOSTERS',
-    faction: 'MOVEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Boosters',
     rarity: 'Common',
     type: 'Support',
@@ -326,7 +409,7 @@ export const supportCards = [
   {
     id: 'BOOSTERS_ENHANCED',
     baseCardId: 'BOOSTERS',
-    faction: 'MOVEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Boosters+',
     type: 'Support',
     cost: 0,
@@ -349,7 +432,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/DesperateMeasures.png',
-    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections. Go again.',
+    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections. \n \n Go again.',
     effects: [
       {
         type: 'REPEATING_EFFECT',
@@ -371,7 +454,7 @@ export const supportCards = [
     type: 'Support',
     cost: 0,
     image: '/DroneWars/cards/DesperateMeasures.png',
-    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections. Go again.',
+    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections. \n \n Go again.',
     effects: [
       {
         type: 'REPEATING_EFFECT',
@@ -390,12 +473,12 @@ export const supportCards = [
     baseCardId: 'REPOSITION',
     faction: 'MOVEMENT',
     name: 'Reposition',
-    rarity: 'Common',
+    rarity: 'Rare',
     type: 'Support',
     cost: 5,
     momentumCost: 1,
     image: '/DroneWars/cards/Reposition.png',
-    description: 'Move up to 3 friendly drones to the same adjacent lane. The moved drones are not exhausted.',
+    description: 'Move up to 3 friendly ready drones to the same adjacent lane. The moved drones are not exhausted.',
     effects: [
       {
         type: 'SINGLE_MOVE',
@@ -461,13 +544,13 @@ export const supportCards = [
   {
     id: 'MANEUVER',
     baseCardId: 'MANEUVER',
-    faction: 'MOVEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Maneuver',
     rarity: 'Common',
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/Maneuver.png',
-    description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
+    description: 'Move a friendly drone to an adjacent lane. It does not exhaust.',
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'] },
     ],
@@ -475,12 +558,12 @@ export const supportCards = [
   {
     id: 'MANEUVER_ENHANCED',
     baseCardId: 'MANEUVER',
-    faction: 'MOVEMENT',
+    faction: 'NEUTRAL_1',
     name: 'Maneuver+',
     type: 'Support',
     cost: 4,
     image: '/DroneWars/cards/Maneuver.png',
-    description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
+    description: 'Move a friendly drone to an adjacent lane. It does not exhaust. \n \n Go again.',
     effects: [
       { type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'], goAgain: true },
     ],
@@ -494,7 +577,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/StrategicPlanning.png',
-    description: 'Look at the top 5 cards of your deck and draw 1. Shuffle your deck.',
+    description: 'Look at the top 5 cards of your deck and draw 1. \n \n Shuffle your deck.',
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 5, drawCount: 1, shuffleAfter: true, targeting: { type: 'NONE' } }],
   },
   {
@@ -505,7 +588,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/StrategicPlanning.png',
-    description: 'Look at the top 7 cards of your deck and draw 2. Shuffle your deck.',
+    description: 'Look at the top 7 cards of your deck and draw 2. \n \n Shuffle your deck.',
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 7, drawCount: 2, shuffleAfter: true, targeting: { type: 'NONE' } }],
   },
   {
@@ -517,7 +600,7 @@ export const supportCards = [
     type: 'Support',
     cost: 4,
     image: '/DroneWars/cards/EquipmentCache.png',
-    description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
+    description: 'Search your deck for an Upgrade card and add it to your hand. \n \n Shuffle your deck.',
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 999, drawCount: 1, shuffleAfter: true, filter: { type: 'Upgrade' }, targeting: { type: 'NONE' } }],
   },
   {
@@ -528,7 +611,7 @@ export const supportCards = [
     type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/EquipmentCache.png',
-    description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
+    description: 'Search your deck for an Upgrade card and add it to your hand. \n \n Shuffle your deck.',
     effects: [{ type: 'SEARCH_AND_DRAW', searchCount: 999, drawCount: 1, shuffleAfter: true, filter: { type: 'Upgrade' }, targeting: { type: 'NONE' } }],
   },
   {
@@ -540,7 +623,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldBoost.png',
-    description: 'Restore up to 2 shields to a friendly ship section. Go again.',
+    description: 'Restore up to 2 shields to a friendly ship section. \n \n Go again.',
     effects: [
       { type: 'RESTORE_SECTION_SHIELDS', value: 2, goAgain: true, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } },
     ],
@@ -553,7 +636,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldBoost.png',
-    description: 'Restore up to 3 shields to a friendly ship section. Go again.',
+    description: 'Restore up to 3 shields to a friendly ship section. \n \n Go again.',
     effects: [
       { type: 'RESTORE_SECTION_SHIELDS', value: 3, goAgain: true, targeting: { type: 'SHIP_SECTION', affinity: 'FRIENDLY' } },
     ],
@@ -563,11 +646,11 @@ export const supportCards = [
     baseCardId: 'SWIFT_MANEUVER',
     faction: 'MOVEMENT',
     name: 'Swift Maneuver',
-    rarity: 'Common',
+    rarity: 'Uncommon',
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/SwiftManeuver.png',
-    description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust. \n \n Then, if its speed is 5 or higher, go again.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -585,7 +668,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/SwiftManeuver.png',
-    description: 'Move a friendly drone to an adjacent lane. If its speed is 4 or higher, go again.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust.\n \n Then, if its speed is 4 or higher, go again.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -604,7 +687,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/TacticalShift.png',
-    description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust. \n \n Then, if the opponent has more drones in that lane, draw a card.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -622,7 +705,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/TacticalShift.png',
-    description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust. \n \n Then, if the opponent has more drones in that lane, draw a card.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -641,7 +724,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
-    description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +1 attack.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust. \n \n Then, if its attack is less than 4, give it +1 attack until the end of the round.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -659,7 +742,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
-    description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +2 attack.',
+    description: 'Move a friendly ready drone to an adjacent lane. It does not exhaust. \n \n Then, if its attack is less than 4, give it +2 attack until the end of the round.',
     effects: [
       {
         type: 'SINGLE_MOVE', targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE', restrictions: ['NOT_EXHAUSTED'] }, destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }, properties: ['DO_NOT_EXHAUST'],
@@ -676,9 +759,9 @@ export const supportCards = [
     name: 'Scramble Dart',
     rarity: 'Common',
     type: 'Support',
-    cost: 1,
+    cost: 3,
     image: '/DroneWars/cards/Dart.png',
-    description: 'Create a Dart token in a friendly lane. (Dart Token: 1 ATK, 1 Hull, 1 Shield. Does not count towards lane control.)',
+    description: 'Create a Dart token in a friendly lane. \n \n *(Dart Token: 1 ATK, 1 Hull, 1 Shield.)*',
     effects: [
       { type: 'CREATE_TOKENS', tokenName: 'Dart', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -689,9 +772,9 @@ export const supportCards = [
     faction: 'NEUTRAL_1',
     name: 'Scramble Dart+',
     type: 'Support',
-    cost: 0,
+    cost: 2,
     image: '/DroneWars/cards/Dart.png',
-    description: 'Create a Dart token in a friendly lane. (Dart Token: 1 ATK, 1 Hull, 1 Shield. Does not count towards lane control.)',
+    description: 'Create a Dart token in a friendly lane. \n \n *(Dart Token: 1 ATK, 1 Hull, 1 Shield.)*',
     effects: [
       { type: 'CREATE_TOKENS', tokenName: 'Dart', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -705,9 +788,8 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RallyBeacon.png',
-    description: 'Create a Rally Beacon in a friendly lane. (Rally Beacon: When a friendly drone moves into this lane, go again.)',
-    effects: [
-      { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
+    description: 'Create a Rally Beacon in a friendly lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
+    effects: [      { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
   },
   {
@@ -718,7 +800,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RallyBeacon.png',
-    description: 'Create a Rally Beacon in a friendly lane. (Rally Beacon: When a friendly drone moves into this lane, go again.)',
+    description: 'Create a Rally Beacon in a friendly lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -732,7 +814,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RepairRelay.png',
-    description: 'Create a Repair Relay in a friendly lane. (Repair Relay: End of round, if you control this lane, heal 1 hull to the ship section here.)',
+    description: 'Create a Repair Relay in a friendly lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -745,7 +827,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RepairRelay.png',
-    description: 'Create a Repair Relay in a friendly lane. (Repair Relay: End of round, if you control this lane, heal 1 hull to the ship section here.)',
+    description: 'Create a Repair Relay in a friendly lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -759,7 +841,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/ShieldArray.png',
-    description: 'Create a Shield Array in a friendly lane. (Shield Array: Other friendly drones in this lane gain +1 max shields.)',
+    description: 'Create a Shield Array in a friendly lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Shield Array', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -772,7 +854,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldArray.png',
-    description: 'Create a Shield Array in a friendly lane. (Shield Array: Other friendly drones in this lane gain +1 max shields.)',
+    description: 'Create a Shield Array in a friendly lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Shield Array', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -786,7 +868,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RelayBeacon.png',
-    description: 'Create a Relay Beacon in a friendly lane. (Relay Beacon: When any drone moves into this lane, draw a card.)',
+    description: 'Create a Relay Beacon in a friendly lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Relay Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -799,7 +881,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RelayBeacon.png',
-    description: 'Create a Relay Beacon in a friendly lane. (Relay Beacon: When any drone moves into this lane, draw a card.)',
+    description: 'Create a Relay Beacon in a friendly lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Relay Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -910,7 +992,7 @@ export const supportCards = [
     baseCardId: 'RALLY',
     faction: 'NEUTRAL_1',
     name: 'RALLY',
-    rarity: 'Common',
+    rarity: 'Rare',
     type: 'Support',
     cost: 2,
     momentumCost: 1,
@@ -939,7 +1021,7 @@ export const supportCards = [
     baseCardId: 'SUPERIOR_INTEL',
     faction: 'NEUTRAL_1',
     name: 'Superior Intel',
-    rarity: 'Uncommon',
+    rarity: 'Rare',
     type: 'Support',
     cost: 2,
     momentumCost: 1,
@@ -972,7 +1054,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/MarkExploit.png',
-    description: 'Give a friendly drone +2 attack this turn. +1 if there is a marked enemy drone in the same lane.',
+    description: 'Give a friendly drone +2 attack this turn. \n \n If there is a marked enemy drone in the same lane, give +3 attack instead.',
     effects: [
       {
         type: 'MODIFY_STAT',
@@ -997,7 +1079,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/MarkExploit.png',
-    description: 'Give a friendly drone +3 attack this turn. +1 if there is a marked enemy drone in the same lane.',
+    description: 'Give a friendly drone +3 attack this turn. \n \n If there is a marked enemy drone in the same lane, give +4 attack instead.',
     effects: [
       {
         type: 'MODIFY_STAT',
