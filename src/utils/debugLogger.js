@@ -25,8 +25,8 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: false,         // Numbered step-by-step AI turn trace
-    ANIMATIONS: false,           // Animation system
+    AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
+    ANIMATIONS: true,           // Animation system
     COMMITMENTS: false,           // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
@@ -61,7 +61,7 @@ const DEBUG_CONFIG = {
     SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: false,     // Encounter rolls: chance, roll value, increase per salvage
     DRAG_PERF: false,             // Drag performance investigation: cursor position, re-renders, state updates
-    MODE_TRANSITION: true,         // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
+    MODE_TRANSITION: false,         // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
     RUN_STATE: false,              // TacticalMapStateManager persistence debugging (background, waypoints)
     COMBAT_FLOW: true,             // Combat type identification and state restoration after combat
     WAYPOINT_MANAGER: false,      // Waypoint path storage and restoration debugging
@@ -88,13 +88,13 @@ const DEBUG_CONFIG = {
     MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)
     MP_SYNC_TRACE: false,         // State broadcast cycle trace (11 numbered steps)
     MP_GAME_TRACE: false,         // Game start trace (5 numbered steps)
-    TRIGGER_SYNC_TRACE: false,    // Trigger animation sync trace (8 numbered steps, server→client)
+    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, server→client)
     MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
-    ROUND_TRACE: true,            // Round initialization substep trace (7 numbered steps)
-    PHASE_TRACE: true,            // Phase lifecycle trace (8 numbered steps)
-    ROUND_TRANSITION_TRACE: true,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
+    ROUND_TRACE: false,            // Round initialization substep trace (7 numbered steps)
+    PHASE_TRACE: false,            // Phase lifecycle trace (8 numbered steps)
+    ROUND_TRANSITION_TRACE: false,  // Round boundary flow trace (20 numbered steps, SERVER+CLIENT)
     COMMIT_TRACE: false,           // Commitment pipeline: screen submit → [1/6] received → [2/6] stored → [2b/6] PhaseManager notified → [3/6] AI auto-commit → [4/6] apply → [5/6] applied → [6/6] transition
     STATE_CHECKPOINT: false,       // Master game state snapshots at key moments
 
@@ -135,7 +135,7 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
-    TRIGGERS: false,                      // Unified trigger system (TriggerProcessor)
+    TRIGGERS: true,                      // Unified trigger system (TriggerProcessor)
     MINE_WARNING: false,                 // Mine warning hover detection and sound lifecycle
 
     // Single-Player State Management

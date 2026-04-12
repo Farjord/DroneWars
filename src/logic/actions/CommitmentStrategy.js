@@ -7,6 +7,9 @@ import { initializeForCombat as initializeDroneAvailability } from '../availabil
 import { initializeDroneSelection, extractDronesFromDeck } from '../../utils/droneSelectionUtils.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
+import { calculateSectionBaseStats } from '../statsCalculator.js';
 
 /**
  * Get phase commitment status
@@ -63,12 +66,13 @@ export function clearPhaseCommitments(phase = null, ctx) {
 }
 
 /**
- * Check if all 6 pre-game sub-commitments are complete (both players x 3 sub-phases).
+ * Check if all pre-game sub-commitments are complete (both players x 2 sub-phases).
+ * Placement is auto-applied during deckSelection and has no separate commitment step.
  * @param {Object} commitments - The commitments object from game state
- * @returns {boolean} True when both players have completed deckSelection, droneSelection, and placement
+ * @returns {boolean} True when both players have completed deckSelection and droneSelection
  */
 export function isPreGameComplete(commitments) {
-  const subPhases = ['deckSelection', 'droneSelection', 'placement'];
+  const subPhases = ['deckSelection', 'droneSelection'];
   return subPhases.every(subPhase =>
     commitments[subPhase]?.player1?.completed &&
     commitments[subPhase]?.player2?.completed
@@ -287,15 +291,6 @@ export async function handleAICommitment(phase, currentState, ctx, subPhase) {
             });
             break;
 
-          case 'placement':
-            aiResult = await aiPhaseProcessor.processPlacement();
-            await ctx.processCommitment({
-              playerId: 'player2',
-              phase: 'preGameSetup',
-              actionData: { subPhase: 'placement', placedSections: aiResult }
-            });
-            break;
-
           default:
             debugLog('COMMITMENTS', `No AI handler for preGameSetup sub-phase: ${subPhase}`);
         }
@@ -393,13 +388,56 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
 
   switch (subPhase) {
     case 'deckSelection': {
+      const playerShipId = currentState[playerId]?.shipId;
+      const shipCard = playerShipId ? getShipById(playerShipId) : getDefaultShip();
+
+      // Rebuild shipSections from selected ship components so non-default sections
+      // (e.g. BRIDGE_002 → 'tacticalBridge') exist in shipSections before placement.
+      let updatedShipSections = currentState[playerId]?.shipSections || {};
+      if (commitmentData.shipComponents && Object.keys(commitmentData.shipComponents).length > 0) {
+        updatedShipSections = {};
+        Object.keys(commitmentData.shipComponents).forEach(componentId => {
+          const component = shipComponentCollection.find(c => c.id === componentId);
+          if (component?.key) {
+            const baseStats = calculateSectionBaseStats(shipCard, component);
+            updatedShipSections[component.key] = {
+              ...component,
+              hull: baseStats.hull,
+              maxHull: baseStats.maxHull,
+              shields: baseStats.shields,
+              allocatedShields: baseStats.allocatedShields,
+              thresholds: baseStats.thresholds,
+              lane: commitmentData.shipComponents[componentId] || 'l'
+            };
+          }
+        });
+      }
+
       stateUpdates[playerId] = {
         ...currentState[playerId],
         deck: commitmentData.deck,
         deckDronePool: commitmentData.drones || [],
         selectedShipComponents: commitmentData.shipComponents || {},
+        shipSections: updatedShipSections,
         discard: []
       };
+
+      // Derive and store placement from lane assignments — no separate placement step needed.
+      const laneToIndex = { 'l': 0, 'm': 1, 'r': 2 };
+      const placedSections = [null, null, null];
+      if (commitmentData.shipComponents) {
+        Object.entries(commitmentData.shipComponents).forEach(([componentId, lane]) => {
+          const component = shipComponentCollection.find(c => c.id === componentId);
+          if (component?.key && lane in laneToIndex) {
+            placedSections[laneToIndex[lane]] = component.key;
+          }
+        });
+      }
+      if (playerId === 'player1') {
+        stateUpdates.placedSections = placedSections;
+      } else {
+        stateUpdates.opponentPlacedSections = placedSections;
+      }
 
       // Initialize drone selection trio/pool for this player
       if (commitmentData.drones) {
@@ -410,7 +448,7 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
         stateUpdates[`${playerId}DroneSelectionPool`] = droneData.droneSelectionPool;
       }
 
-      debugLog('COMMITMENTS', `✅ Applied deckSelection for ${playerId} (immediate)`);
+      debugLog('COMMITMENTS', `✅ Applied deckSelection for ${playerId} (immediate, placement auto-derived)`);
       break;
     }
 
@@ -427,33 +465,6 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
         droneAvailability: initializeDroneAvailability(drones, upgrades)
       };
       debugLog('COMMITMENTS', `✅ Applied droneSelection for ${playerId} (immediate)`);
-      break;
-    }
-
-    case 'placement': {
-      const placedArr = commitmentData.placedSections;
-      const laneShorts = ['l', 'm', 'r'];
-
-      // Update lane property on each section to match placement position
-      const playerState = currentState[playerId];
-      const updatedSections = {};
-      Object.keys(playerState.shipSections).forEach(key => {
-        updatedSections[key] = { ...playerState.shipSections[key] };
-      });
-      placedArr.forEach((sectionKey, index) => {
-        if (updatedSections[sectionKey]) {
-          updatedSections[sectionKey].lane = laneShorts[index];
-        }
-      });
-      stateUpdates[playerId] = { ...currentState[playerId], shipSections: updatedSections };
-
-      // Store placedSections array
-      if (playerId === 'player1') {
-        stateUpdates.placedSections = placedArr;
-      } else {
-        stateUpdates.opponentPlacedSections = placedArr;
-      }
-      debugLog('COMMITMENTS', `✅ Applied placement for ${playerId} (immediate)`);
       break;
     }
 

@@ -7,7 +7,6 @@
 import {
   processDeckSelection as _processDeckSelection,
   processDroneSelection as _processDroneSelection,
-  processPlacement as _processPlacement,
   extractDronesFromDeck as _extractDronesFromDeck,
   randomlySelectDrones as _randomlySelectDrones
 } from '../logic/ai/AISimultaneousPhaseStrategy.js';
@@ -157,10 +156,6 @@ class AIPhaseProcessor {
 
   async processDeckSelection(aiPersonality = null) {
     return _processDeckSelection(this.gameStateManager, aiPersonality || this.currentAIPersonality);
-  }
-
-  async processPlacement(aiPersonality = null) {
-    return _processPlacement(aiPersonality || this.currentAIPersonality);
   }
 
   // --- Sequential Turn Delegation ---

@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   extractDronesFromDeck,
-  randomlySelectDrones,
-  processPlacement
+  randomlySelectDrones
 } from '../AISimultaneousPhaseStrategy.js';
 
 const mockDronePool = [
@@ -51,23 +50,6 @@ describe('AISimultaneousPhaseStrategy', () => {
       const result1 = randomlySelectDrones([...mockDronePool], 3, mockGSM);
       const result2 = randomlySelectDrones([...mockDronePool], 3, mockGSM);
       expect(result1.map(d => d.name)).toEqual(result2.map(d => d.name));
-    });
-  });
-
-  describe('processPlacement', () => {
-    it('converts personality shipComponents to placement array', async () => {
-      const personality = {
-        name: 'Test',
-        shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
-      };
-      const result = await processPlacement(personality);
-      expect(result).toHaveLength(3);
-      expect(result).toContain('bridge');
-    });
-
-    it('falls back to default placement when no shipComponents', async () => {
-      const result = await processPlacement(null);
-      expect(result).toEqual(['bridge', 'powerCell', 'droneControlHub']);
     });
   });
 });

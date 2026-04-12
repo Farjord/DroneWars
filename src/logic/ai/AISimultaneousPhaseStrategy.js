@@ -1,7 +1,6 @@
 // --- AI Simultaneous Phase Strategy ---
-// Handles AI decisions for simultaneous phases: deck selection, drone selection, placement
+// Handles AI decisions for simultaneous phases: deck selection and drone selection.
 
-import { shipComponentsToPlacement } from '../cards/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 
@@ -93,29 +92,6 @@ export async function processDroneSelection(gameStateManager, dronePool) {
   debugLog('AI_DECISIONS', `🤖 AI randomly selected 5 drones from ${availableDrones.length} available: ${selectedDrones.map(d => d.name).join(', ')}`);
 
   return selectedDrones;
-}
-
-/**
- * Process AI ship placement for placement phase.
- * Converts personality shipComponents to placement array.
- *
- * @param {Object} currentAIPersonality - AI personality with shipComponents
- * @returns {Promise<string[]>} Array of placed section keys
- */
-export async function processPlacement(currentAIPersonality) {
-  const personality = currentAIPersonality;
-  debugLog('AI_DECISIONS', '🤖 processPlacement starting...');
-
-  let placedSections;
-  if (personality?.shipComponents) {
-    placedSections = shipComponentsToPlacement(personality.shipComponents);
-    debugLog('AI_DECISIONS', `🎯 Using ${personality.name} placement: ${placedSections.join(', ')}`);
-  } else {
-    placedSections = ['bridge', 'powerCell', 'droneControlHub'];
-    debugLog('AI_DECISIONS', `⚠️ No shipComponents in personality, using default: ${placedSections.join(', ')}`);
-  }
-
-  return placedSections;
 }
 
 /**

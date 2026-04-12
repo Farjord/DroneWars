@@ -79,7 +79,7 @@ const shipCollection = [
     image: '/DroneWars/Ships/Scout.png',
 
     // BASELINE COMBAT VALUES
-    baseHull: 5,
+    baseHull: 3,
     baseShields: 2,
     baseThresholds: {
       damaged: 3,
@@ -99,8 +99,37 @@ const shipCollection = [
     factionCardAllowances: {},
     shipBonus: null,
     shipAbility: null
-  }
+  },
+  {
+    id: 'SHIP_004',
+    name: 'Poros',
+    rarity: 'Common',
+    faction: null,
+    description: 'Functional. Available. Replaceable.',
+    image: '/DroneWars/Ships/Poros.png',
 
+    // BASELINE COMBAT VALUES
+    baseHull: 4,
+    baseShields: 3,
+    baseThresholds: {
+      damaged: 3,
+      critical: 0
+    },
+
+    // DECK COMPOSITION LIMITS
+    deckLimits: {
+      totalCards: 40,
+      ordnanceLimit: 15,
+      tacticLimit: 15,
+      supportLimit: 15,
+      upgradeLimit: 5
+    },
+
+    // FUTURE PROPERTIES
+    factionCardAllowances: {},
+    shipBonus: null,
+    shipAbility: null
+  },
 ];
 
 // Backward-compatible re-exports (logic moved to shipDataHelpers)

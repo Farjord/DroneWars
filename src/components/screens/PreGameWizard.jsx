@@ -1,8 +1,8 @@
 // ========================================
 // PRE-GAME WIZARD
 // ========================================
-// Local wizard that manages client-side progression through the three
-// pre-game setup steps: deck selection → drone selection → ship placement.
+// Local wizard that manages client-side progression through the two
+// pre-game setup steps: deck selection → drone selection.
 // The server stays in a single 'preGameSetup' phase; this component
 // handles which screen to show based on local step progression.
 
@@ -10,11 +10,10 @@ import React, { useState } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import DeckSelectionScreen from './DeckSelectionScreen.jsx';
 import DroneSelectionScreen from './DroneSelectionScreen.jsx';
-import ShipPlacementScreen from './ShipPlacementScreen.jsx';
 import WaitingForOpponentScreen from './WaitingForOpponentScreen.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
-const STEPS = ['deckSelection', 'droneSelection', 'placement'];
+const STEPS = ['deckSelection', 'droneSelection'];
 
 function PreGameWizard() {
   const [localStepIndex, setLocalStepIndex] = useState(0);
@@ -51,8 +50,6 @@ function PreGameWizard() {
       return <DeckSelectionScreen onStepComplete={handleStepComplete} />;
     case 'droneSelection':
       return <DroneSelectionScreen onStepComplete={handleStepComplete} />;
-    case 'placement':
-      return <ShipPlacementScreen onStepComplete={handleStepComplete} />;
     default:
       return null;
   }

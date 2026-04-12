@@ -35,6 +35,33 @@ vi.mock('../../../utils/seededRandom.js', () => ({
   }
 }));
 
+// Mock ship section data
+vi.mock('../../../data/shipSectionData.js', () => ({
+  shipComponentCollection: [
+    { id: 'BRIDGE_001', key: 'bridge', type: 'Bridge', hullModifier: 0, shieldsModifier: 0, thresholdModifiers: { damaged: 0, critical: 0 } },
+    { id: 'BRIDGE_002', key: 'tacticalBridge', type: 'Bridge', hullModifier: 0, shieldsModifier: 0, thresholdModifiers: { damaged: 0, critical: 0 } },
+    { id: 'POWERCELL_001', key: 'powerCell', type: 'Power Cell', hullModifier: 0, shieldsModifier: 0, thresholdModifiers: { damaged: 0, critical: 0 } },
+    { id: 'DRONECONTROL_001', key: 'droneControlHub', type: 'Drone Control Hub', hullModifier: 0, shieldsModifier: 0, thresholdModifiers: { damaged: 0, critical: 0 } }
+  ]
+}));
+
+// Mock ship data
+vi.mock('../../../data/shipData.js', () => ({
+  getShipById: vi.fn(() => ({ baseHull: 10, baseShields: 3, baseThresholds: { damaged: 6, critical: 3 } })),
+  getDefaultShip: vi.fn(() => ({ baseHull: 10, baseShields: 3, baseThresholds: { damaged: 6, critical: 3 } }))
+}));
+
+// Mock statsCalculator
+vi.mock('../../statsCalculator.js', () => ({
+  calculateSectionBaseStats: vi.fn((shipCard) => ({
+    hull: shipCard.baseHull,
+    maxHull: shipCard.baseHull,
+    shields: shipCard.baseShields,
+    allocatedShields: shipCard.baseShields,
+    thresholds: shipCard.baseThresholds
+  }))
+}));
+
 // Mock AIPhaseProcessor
 vi.mock('../../../managers/AIPhaseProcessor.js', () => ({
   default: {
@@ -43,8 +70,7 @@ vi.mock('../../../managers/AIPhaseProcessor.js', () => ({
       drones: [{ name: 'AIDart', maxDeploy: 2 }],
       shipComponents: {}
     })),
-    processDroneSelection: vi.fn(async () => [{ name: 'AIDart', maxDeploy: 2 }]),
-    processPlacement: vi.fn(async () => [{ sectionName: 'bridge', lane: 0 }])
+    processDroneSelection: vi.fn(async () => [{ name: 'AIDart', maxDeploy: 2 }])
   }
 }));
 
@@ -156,6 +182,44 @@ describe('applyPlayerCommitment', () => {
       expect(setStateCall.player2DroneSelectionTrio).toBeDefined();
       expect(setStateCall.player2DroneSelectionPool).toBeDefined();
     });
+
+    it('rebuilds shipSections when non-default components are selected (BRIDGE_002 fix)', () => {
+      applyPlayerCommitment('deckSelection', 'player1', {
+        deck: testDeck,
+        drones: testDrones,
+        shipComponents: {
+          'BRIDGE_002': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
+      }, mockCtx);
+
+      const sections = mockCtx.setState.mock.calls[0][0].player1.shipSections;
+
+      expect(sections).toHaveProperty('tacticalBridge');
+      expect(sections).toHaveProperty('powerCell');
+      expect(sections).toHaveProperty('droneControlHub');
+      expect(sections).not.toHaveProperty('bridge');
+      expect(sections.tacticalBridge.hull).toBe(10);
+      expect(sections.tacticalBridge.thresholds).toEqual({ damaged: 6, critical: 3 });
+    });
+
+    it('rebuilds shipSections with standard default components', () => {
+      applyPlayerCommitment('deckSelection', 'player1', {
+        deck: testDeck,
+        drones: testDrones,
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
+      }, mockCtx);
+
+      const sections = mockCtx.setState.mock.calls[0][0].player1.shipSections;
+      expect(sections).toHaveProperty('bridge');
+      expect(sections).toHaveProperty('powerCell');
+      expect(sections).toHaveProperty('droneControlHub');
+    });
   });
 
   describe('subPhase=droneSelection', () => {
@@ -191,31 +255,36 @@ describe('applyPlayerCommitment', () => {
     });
   });
 
-  describe('subPhase=placement', () => {
-    const testSections = [
-      { sectionName: 'bridge', lane: 0 },
-      { sectionName: 'weapons', lane: 1 }
-    ];
-
-    it('applies placedSections for player1 only', () => {
-      applyPlayerCommitment('placement', 'player1', {
-        placedSections: testSections
+  describe('placement auto-derived from deckSelection', () => {
+    it('stores placedSections for player1 derived from shipComponents lanes', () => {
+      applyPlayerCommitment('deckSelection', 'player1', {
+        deck: [],
+        drones: [],
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
       }, mockCtx);
 
       const setStateCall = mockCtx.setState.mock.calls[0][0];
-
-      expect(setStateCall.placedSections).toEqual(testSections);
+      expect(setStateCall.placedSections).toEqual(['bridge', 'powerCell', 'droneControlHub']);
       expect(setStateCall.opponentPlacedSections).toBeUndefined();
     });
 
-    it('applies placedSections for player2 as opponentPlacedSections', () => {
-      applyPlayerCommitment('placement', 'player2', {
-        placedSections: testSections
+    it('stores opponentPlacedSections for player2 derived from shipComponents lanes', () => {
+      applyPlayerCommitment('deckSelection', 'player2', {
+        deck: [],
+        drones: [],
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
       }, mockCtx);
 
       const setStateCall = mockCtx.setState.mock.calls[0][0];
-
-      expect(setStateCall.opponentPlacedSections).toEqual(testSections);
+      expect(setStateCall.opponentPlacedSections).toEqual(['bridge', 'powerCell', 'droneControlHub']);
       expect(setStateCall.placedSections).toBeUndefined();
     });
   });
@@ -310,7 +379,7 @@ describe('isPreGameComplete', () => {
     expect(isPreGameComplete({})).toBe(false);
   });
 
-  it('returns false when only some sub-phases committed by one player', () => {
+  it('returns false when only deckSelection is complete', () => {
     const commitments = {
       deckSelection: {
         player1: { completed: true },
@@ -320,17 +389,13 @@ describe('isPreGameComplete', () => {
     expect(isPreGameComplete(commitments)).toBe(false);
   });
 
-  it('returns false when one player has all 3 but other is missing', () => {
+  it('returns false when droneSelection is incomplete for one player', () => {
     const commitments = {
       deckSelection: {
         player1: { completed: true },
         player2: { completed: true }
       },
       droneSelection: {
-        player1: { completed: true },
-        player2: { completed: true }
-      },
-      placement: {
         player1: { completed: true },
         player2: { completed: false }
       }
@@ -338,17 +403,13 @@ describe('isPreGameComplete', () => {
     expect(isPreGameComplete(commitments)).toBe(false);
   });
 
-  it('returns true when both players have all 3 sub-phases committed', () => {
+  it('returns true when both players have completed deckSelection and droneSelection', () => {
     const commitments = {
       deckSelection: {
         player1: { completed: true },
         player2: { completed: true }
       },
       droneSelection: {
-        player1: { completed: true },
-        player2: { completed: true }
-      },
-      placement: {
         player1: { completed: true },
         player2: { completed: true }
       }
@@ -413,17 +474,4 @@ describe('handleAICommitment for preGameSetup', () => {
     );
   });
 
-  it('dispatches AI placement commitment when subPhase is placement', async () => {
-    await handleAICommitment('preGameSetup', {}, mockCtx, 'placement');
-
-    expect(mockCtx.processCommitment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        playerId: 'player2',
-        phase: 'preGameSetup',
-        actionData: expect.objectContaining({
-          subPhase: 'placement'
-        })
-      })
-    );
-  });
 });

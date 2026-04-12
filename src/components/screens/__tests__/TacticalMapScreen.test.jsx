@@ -71,8 +71,8 @@ describe('buildShipSections Hull Calculation', () => {
       });
     });
 
-    it('should use Scout baseHull of 5', () => {
-      // EXPLANATION: Scout has baseHull=5 in shipData.js
+    it('should use Scout baseHull of 3', () => {
+      // EXPLANATION: Scout has baseHull=3 in shipData.js
 
       const mockShipSlot = {
         shipId: 'SHIP_003', // Scout
@@ -85,10 +85,10 @@ describe('buildShipSections Hull Calculation', () => {
 
       const sections = buildShipSections(mockShipSlot, 0, null);
 
-      // Each section should have hull=5
+      // Each section should have hull=3 (baseHull with 0 modifiers)
       sections.forEach(section => {
-        expect(section.maxHull).toBe(5);
-        expect(section.hull).toBe(5);
+        expect(section.maxHull).toBe(3);
+        expect(section.hull).toBe(3);
       });
     });
   });
