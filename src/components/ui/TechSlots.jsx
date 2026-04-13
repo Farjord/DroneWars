@@ -97,7 +97,7 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
           : warned
             ? '0 0 0.6vw #ff4400, 0 0 1.2vw #ff440060'
             : highlighted
-              ? undefined
+              ? undefined // handled by .valid-target animation
               : `0 0 0.4vw ${fc.glow}40`,
         overflow: 'visible',
         pointerEvents: 'auto',
@@ -108,7 +108,7 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
           : warned
             ? 'techSlotWarning 0.6s ease-in-out infinite'
             : highlighted
-              ? undefined
+              ? undefined // handled by .valid-target animation
               : 'techSlotShimmer 3s ease-in-out infinite',
       }}
       onClick={onClick ? () => onClick(techDrone) : undefined}
