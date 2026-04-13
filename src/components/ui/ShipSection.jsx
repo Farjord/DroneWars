@@ -7,6 +7,7 @@
 import React from 'react';
 import ShipAbilityIcon from './ShipAbilityIcon.jsx';
 import { resolveAssetUrl } from '../../services/AssetPreloader.js';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 
 /**
  * SHIP SECTION COMPONENT
@@ -109,7 +110,12 @@ const ShipSection = ({
     }
   }
 
-  const cardTargetEffect = isCardTarget ? 'ring-4 ring-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : '';
+  const targetFc = isOpponent ? FACTION_COLORS.opponent : FACTION_COLORS.player;
+  const cardTargetEffect = isCardTarget ? 'valid-target' : '';
+  const cardTargetStyle = isCardTarget ? {
+    '--valid-target-color': targetFc.glow,
+    '--valid-target-color-dim': `${targetFc.glow}60`,
+  } : {};
   const sectionName = section === 'droneControlHub' ? 'Drone Control Hub' : section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 
   const backgroundImageStyle = {
@@ -142,7 +148,7 @@ const ShipSection = ({
         ${cardTargetEffect}
         ${reallocationEffect}
       `}
-      style={backgroundImageStyle}
+      style={{ ...backgroundImageStyle, ...cardTargetStyle }}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
