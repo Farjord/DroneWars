@@ -212,9 +212,10 @@ const DroneToken = ({
   } : {};
   // When another target is focused, unfocused valid targets go static at 0.5
   const isUnfocusedTarget = isActionTarget && !isSelectedState && !isHovered && anyTargetFocused;
-  const actionTargetEffect = (isActionTarget && !isSelectedState && !isHovered && !anyTargetFocused) ? 'animate-pulse' : '';
+  const actionTargetEffect = (isActionTarget && !isSelectedState) ? 'valid-target' : '';
   const actionTargetStyle = isActionTarget ? {
-    boxShadow: `0 0 8px 3px ${fc.glow}ee, 0 0 18px 8px ${fc.glow}77`,
+    '--valid-target-color': fc.glow,
+    '--valid-target-color-dim': `${fc.glow}60`,
   } : {};
   const dimmingStyle = (isUnfocusedTarget || isInvalidTarget) ? { opacity: 0.5 } : {};
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';

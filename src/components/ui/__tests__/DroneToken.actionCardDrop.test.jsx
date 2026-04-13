@@ -203,8 +203,8 @@ describe('DroneToken action card drop', () => {
       );
 
       const tokenDiv = document.querySelector('[data-drone-id="drone-1"]');
-      // The visual effects container should have animate-pulse
-      const effectsContainer = tokenDiv.querySelector('.animate-pulse');
+      // The visual effects container should have valid-target
+      const effectsContainer = tokenDiv.querySelector('.valid-target');
       expect(effectsContainer).toBeTruthy();
     });
   });
