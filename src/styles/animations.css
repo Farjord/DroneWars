@@ -380,16 +380,16 @@
 }
 
 /* === VALID TARGET GLOW === */
-/* Unified pulsing border + glow for all targetable game elements.           */
-/* Set --valid-target-color and --valid-target-color-dim on the element.     */
-@keyframes validTargetPulse {
+/* Unified pulsing border + glow for all targetable game elements. */
+/* Set --valid-target-color and --valid-target-color-dim on the element. */
+@keyframes valid-target-pulse {
   0%, 100% { box-shadow: 0 0 0.6vw var(--valid-target-color), 0 0 1.2vw var(--valid-target-color-dim); }
   50%       { box-shadow: 0 0 1.0vw var(--valid-target-color), 0 0 2.0vw var(--valid-target-color-dim); }
 }
 
 .valid-target {
   border: 0.15vw solid var(--valid-target-color) !important;
-  animation: validTargetPulse 0.8s ease-in-out infinite;
+  animation: valid-target-pulse 0.8s ease-in-out infinite;
 }
 
 /* === MOMENTUM TITLE GLOW === */
