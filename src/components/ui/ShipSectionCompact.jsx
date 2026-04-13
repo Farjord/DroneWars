@@ -88,7 +88,12 @@ const ShipSectionCompact = ({
         relative h-full cursor-pointer
         transition-all duration-300
         ${reallocationEffect}
+        ${isCardTarget ? 'valid-target' : ''}
       `}
+      style={isCardTarget ? {
+        '--valid-target-color': fc.glow,
+        '--valid-target-color-dim': `${fc.glow}60`,
+      } : undefined}
       onClick={handleClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -110,7 +115,6 @@ const ShipSectionCompact = ({
 
       {/* Clipped visual layer — 11 decorative layers + ship art, no interaction */}
       <div
-        className={isCardTarget ? 'animate-pulse' : ''}
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       >
         <ShipSectionVisualLayers
