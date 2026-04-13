@@ -109,7 +109,7 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       });
     });
 
-    it('should have pulse overlay on targetable lanes (without animate-pulse on container)', () => {
+    it('should have valid-target class on targetable lane container', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -117,17 +117,13 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       };
 
       const { container } = render(<DroneLanesDisplay {...props} />);
-
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
-      const lane1 = laneContainers[0]; // First lane
+      const lane1 = laneContainers[0];
 
-      // Lane should have a pulse overlay child (not ring classes on the container)
-      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
-      expect(pulseOverlay).not.toBeNull();
-      expect(pulseOverlay.className).toContain('absolute');
+      expect(lane1.classList.contains('valid-target')).toBe(true);
     });
 
-    it('should have background color on pulse overlay for targetable lanes', () => {
+    it('should NOT have valid-target class on non-targetable lanes', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -135,14 +131,10 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       };
 
       const { container } = render(<DroneLanesDisplay {...props} />);
-
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
-      const lane1 = laneContainers[0]; // First lane
-
-      // Pulse overlay should exist and contain decorative layers
-      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
-      expect(pulseOverlay).not.toBeNull();
-      expect(pulseOverlay.children.length).toBeGreaterThan(0);
+      // lane2 and lane3 are not targeted — they should NOT have valid-target
+      expect(laneContainers[1].classList.contains('valid-target')).toBe(false);
+      expect(laneContainers[2].classList.contains('valid-target')).toBe(false);
     });
   });
 

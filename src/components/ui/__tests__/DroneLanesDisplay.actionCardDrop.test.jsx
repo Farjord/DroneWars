@@ -234,9 +234,9 @@ describe('DroneLanesDisplay action card drop', () => {
         el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
-      // Lanes should have targeting pulse child when dragging LANE card
+      // Lanes should have valid-target class when dragging LANE card
       lanes.forEach(lane => {
-        expect(lane.querySelector('.lane-target-pulse')).toBeTruthy();
+        expect(lane.classList.contains('valid-target')).toBe(true);
       });
     });
 

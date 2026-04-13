@@ -352,9 +352,8 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
-      // Targetable lane gets a pulse overlay child with lane-target-pulse class
-      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
-      expect(pulseOverlay).not.toBeNull();
+      // Targetable lane container should have valid-target class
+      expect(lane1.classList.contains('valid-target')).toBe(true);
     });
   });
 });
