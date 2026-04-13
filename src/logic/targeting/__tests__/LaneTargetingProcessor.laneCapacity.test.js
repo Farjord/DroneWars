@@ -74,7 +74,7 @@ describe('LaneTargetingProcessor — lane capacity filtering', () => {
   });
 
   describe('HEAL effect (non-deployment)', () => {
-    it('returns all lanes even when one is full', () => {
+    it('returns all lanes even when one is full — effects array shape', () => {
       const ctx = makeContext('HEAL', {
         lane1: makeDrones(MAX_DRONES_PER_LANE),
       });
@@ -82,6 +82,45 @@ describe('LaneTargetingProcessor — lane capacity filtering', () => {
       const targets = processor.process(ctx);
 
       expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
+    });
+
+    it('returns all lanes even when one is full — singular effect shape (drone ability)', () => {
+      // Drone ACTIVE abilities use `effect` (singular), not `effects[]`
+      const ctx = {
+        actingPlayerId: 'player1',
+        player1: makePlayerState({ lane1: makeDrones(MAX_DRONES_PER_LANE) }),
+        player2: makePlayerState(),
+        definition: {
+          targeting: { type: 'LANE', affinity: 'FRIENDLY' },
+          effect: { type: 'HEAL', value: 1 },   // singular, no effects[]
+        },
+      };
+
+      const targets = processor.process(ctx);
+
+      expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
+    });
+  });
+
+  describe('ANY affinity with CREATE_TOKENS', () => {
+    it('excludes the full lane from both player targets', () => {
+      // player1 (acting) and player2 both have lane1 full
+      const ctx = {
+        actingPlayerId: 'player1',
+        player1: makePlayerState({ lane1: makeDrones(MAX_DRONES_PER_LANE) }),
+        player2: makePlayerState({ lane1: makeDrones(MAX_DRONES_PER_LANE) }),
+        definition: {
+          targeting: { type: 'LANE', affinity: 'ANY' },
+          effects: [{ type: 'CREATE_TOKENS' }],
+        },
+      };
+
+      const targets = processor.process(ctx);
+
+      const ids = targets.map(t => t.id);
+      expect(ids.filter(id => id === 'lane1')).toHaveLength(0);
+      expect(ids.filter(id => id === 'lane2')).toHaveLength(2); // one per player
+      expect(ids.filter(id => id === 'lane3')).toHaveLength(2);
     });
   });
 
