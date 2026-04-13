@@ -45,10 +45,6 @@ const SHIMMER_CSS = `
     0%, 100% { opacity: 0.85; }
     50% { opacity: 1; }
   }
-  @keyframes techSlotHighlight {
-    0%, 100% { box-shadow: 0 0 0.6vw var(--tech-glow), 0 0 1.2vw var(--tech-glow-dim); }
-    50% { box-shadow: 0 0 1vw var(--tech-glow), 0 0 2vw var(--tech-glow-dim); }
-  }
   @keyframes techSlotWarning {
     0%, 100% { box-shadow: 0 0 0.6vw #ff4400, 0 0 1.2vw #ff440060; }
     50% { box-shadow: 0 0 1.2vw #ff6600, 0 0 2.4vw #ff660080; }
@@ -78,7 +74,7 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
 
   return (
     <div
-      className="tech-slot-filled"
+      className={`tech-slot-filled${highlighted && !exhausted && !warned ? ' valid-target' : ''}`}
       data-drone-id={techDrone.id}
       data-tech-slot=""
       style={{
@@ -87,15 +83,21 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
         height: SLOT_SIZE,
         borderRadius: '50%',
         background: exhausted ? 'rgba(40,40,50,0.7)' : fc.bg,
-        border: `0.15vw solid ${exhausted ? 'rgba(100,100,120,0.4)' : warned ? '#ff4400' : fc.primary}`,
-        '--tech-glow': fc.glow,
-        '--tech-glow-dim': `${fc.glow}60`,
+        border: exhausted
+          ? '0.15vw solid rgba(100,100,120,0.4)'
+          : warned
+            ? '0.15vw solid #ff4400'
+            : `0.15vw solid ${fc.primary}`,
+        ...(highlighted && !exhausted && !warned ? {
+          '--valid-target-color': fc.glow,
+          '--valid-target-color-dim': `${fc.glow}60`,
+        } : {}),
         boxShadow: exhausted
           ? 'none'
           : warned
             ? '0 0 0.6vw #ff4400, 0 0 1.2vw #ff440060'
             : highlighted
-              ? `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`
+              ? undefined
               : `0 0 0.4vw ${fc.glow}40`,
         overflow: 'visible',
         pointerEvents: 'auto',
@@ -106,7 +108,7 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
           : warned
             ? 'techSlotWarning 0.6s ease-in-out infinite'
             : highlighted
-              ? 'techSlotHighlight 0.8s ease-in-out infinite'
+              ? undefined
               : 'techSlotShimmer 3s ease-in-out infinite',
       }}
       onClick={onClick ? () => onClick(techDrone) : undefined}
@@ -142,11 +144,8 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
 
   const emptyHighlightStyle = highlightEmptySlots ? {
     ...emptySlotStyle,
-    border: `0.15vw solid ${fc.primary}`,
-    '--tech-glow': fc.glow,
-    '--tech-glow-dim': `${fc.glow}60`,
-    boxShadow: `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`,
-    animation: 'techSlotHighlight 0.8s ease-in-out infinite',
+    '--valid-target-color': fc.glow,
+    '--valid-target-color-dim': `${fc.glow}60`,
     cursor: 'pointer',
     pointerEvents: 'auto',
   } : emptySlotStyle;
@@ -180,6 +179,7 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
         return (
           <div
             key={`empty-${i}`}
+            className={highlightEmptySlots ? 'valid-target' : undefined}
             style={emptyHighlightStyle}
             onClick={highlightEmptySlots && onEmptySlotClick ? onEmptySlotClick : undefined}
             onMouseUp={highlightEmptySlots ? (e) => {
