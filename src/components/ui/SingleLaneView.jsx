@@ -11,6 +11,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
 import { shouldRenderChainGhost } from './ghostSideHelpers.js';
 import { isLaneFull } from '../../logic/utils/gameEngineUtils.js';
+import { FACTION_COLORS } from '../../utils/factionColors.js';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
@@ -396,12 +397,21 @@ const SingleLaneView = ({
       className={`rounded-lg relative
         ${isInteractivePlayerLane ? 'cursor-pointer' : ''}
         ${isHoveredTarget ? 'scale-[1.01] z-10 transition-transform duration-200 ease-out' : 'transition-transform duration-200 ease-in-out'}
+        ${isTargetable ? 'valid-target' : ''}
       `}
-      style={{ overflow: 'visible', width: '100%', height: '100%' }}
+      style={{
+        overflow: 'visible',
+        width: '100%',
+        height: '100%',
+        ...(isTargetable ? {
+          '--valid-target-color': isPlayer ? FACTION_COLORS.player.glow : FACTION_COLORS.opponent.glow,
+          '--valid-target-color-dim': `${isPlayer ? FACTION_COLORS.player.glow : FACTION_COLORS.opponent.glow}60`,
+        } : {}),
+      }}
     >
       {/* Clipped visual layer — decorative, no interaction */}
       <div
-        className={`absolute inset-0 ${isTargetable ? 'lane-target-pulse' : ''}`}
+        className="absolute inset-0"
         style={{ pointerEvents: 'none', ...(isDragSourceLane ? { zIndex: 2 } : {}) }}
       >
         <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} laneId={laneId} />
