@@ -17,6 +17,7 @@ import TargetingRouter from '../../../logic/TargetingRouter.js';
 import { isLaneControlCardPlayable } from '../../../logic/targeting/LaneControlValidator.js';
 import { LaneControlCalculator } from '../../../logic/combat/LaneControlCalculator.js';
 import { isCardConditionMet } from '../../../logic/targeting/CardConditionValidator.js';
+import { FACTION_COLORS } from '../../../utils/factionColors.js';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
@@ -355,14 +356,20 @@ function HandView({
 
               // Apply pulse effect during mandatory/effect-chain discard (all target cards), optional discard (only selectable cards).
               // Applied to wrapper div to avoid CSS conflicts with rarity animations.
-              const shouldPulse = effectiveDiscardAction?.type === 'discard' ||
+              const shouldPulse = (effectiveDiscardAction?.type === 'discard' && !isEffectChainTarget) ||
                 (turnPhase === 'optionalDiscard' && cardIsPlayable);
 
               return (
                 <div
                   key={card.instanceId || `${card.id}-${index}`}
-                  className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''}`}
-                  style={style}
+                  className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''} ${isEffectChainTarget ? 'valid-target' : ''}`}
+                  style={{
+                    ...style,
+                    ...(isEffectChainTarget ? {
+                      '--valid-target-color': FACTION_COLORS.player.glow,
+                      '--valid-target-color-dim': `${FACTION_COLORS.player.glow}60`,
+                    } : {}),
+                  }}
                   onMouseEnter={(e) => {
                     setHoveredCardId(card.instanceId);
                     const rect = e.currentTarget.getBoundingClientRect();
