@@ -668,6 +668,14 @@ const App = ({ phaseAnimationQueue }) => {
     abilityMode, addLogEntry,
   });
 
+  // When the deployment confirmation modal is open, insertionPreview may have been cleared
+  // by SingleLaneView's onMouseLeave (fires synchronously before React re-renders with
+  // the new deploymentConfirmation state). Reconstruct from deploymentConfirmation so the
+  // ghost drone remains visible behind the modal.
+  const effectiveInsertionPreview = (deploymentConfirmation?.insertionIndex != null)
+    ? { laneId: deploymentConfirmation.lane, index: deploymentConfirmation.insertionIndex, drone: deploymentConfirmation.drone, isPlayer: true }
+    : insertionPreview;
+
   // Positioned after useDragMechanics — depends on draggedActionCard (useDragMechanics)
   // and setHoveredLane/setAffectedDroneIds (useCardSelection)
   const handleLaneHover = useCallback((laneData) => {
@@ -1126,7 +1134,7 @@ const App = ({ phaseAnimationQueue }) => {
         hoveredLane={hoveredLane}
         setHoveredLane={handleLaneHover}
         laneControl={laneControl}
-        insertionPreview={insertionPreview}
+        insertionPreview={effectiveInsertionPreview}
         setInsertionPreview={setInsertionPreview}
         onLaneMouseMove={handleLaneMouseMove}
       />

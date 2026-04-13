@@ -230,11 +230,13 @@ const useDragMechanics = ({
 
     setDraggedCard(null);
     setCardDragArrowState(prev => ({ ...prev, visible: false }));
-    setInsertionPreview(null);
+    // insertionPreview is NOT cleared here — it must persist when the energy
+    // confirmation modal is shown so the ghost drone remains visible.
 
     if (lane) {
       if (currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) {
         debugLog('DRAG_DROP_DEPLOY', '⛔ handleCardDragEnd early return - not current player or passed', { currentPlayer, localPlayerId: getLocalPlayerId(), passed: passInfo[getLocalPlayerId() + 'Passed'] });
+        setInsertionPreview(null);
         return;
       }
 
@@ -242,6 +244,7 @@ const useDragMechanics = ({
       const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats, lane);
       if (!validationResult.isValid) {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Validation failed', { reason: validationResult.reason, message: validationResult.message });
+        setInsertionPreview(null);
         setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
         return;
       }
@@ -249,12 +252,16 @@ const useDragMechanics = ({
       debugLog('DRAG_DROP_DEPLOY', '✅ Validation passed', { budgetCost, energyCost });
       if (energyCost > 0) {
         debugLog('DRAG_DROP_DEPLOY', '📋 Showing confirmation modal (energyCost > 0)');
+        // Keep insertionPreview alive so the ghost drone remains visible behind the modal
         setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag, insertionIndex: capturedInsertionIndex });
         return;
       }
 
+      setInsertionPreview(null);
       debugLog('DRAG_DROP_DEPLOY', '🚀 Calling executeDeployment', { lane, droneName: droneToDeployFromDrag.name });
       executeDeployment(lane, droneToDeployFromDrag, capturedInsertionIndex);
+    } else {
+      setInsertionPreview(null);
     }
   }, [draggedCard, currentPlayer, getLocalPlayerId, passInfo, roundNumber, localPlayerState, totalLocalPlayerDrones, localPlayerEffectiveStats, gameEngine, setModalContent, executeDeployment, insertionPreview]);
 
