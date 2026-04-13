@@ -176,7 +176,8 @@ function filterFullDestinations(destTargets, playerStates, batchSize = 1, select
     const state = playerStates[t.owner];
     if (!state) return true;
     const currentCount = state.dronesOnBoard[t.id]?.length || 0;
-    const ghostCount = countPendingArrivals(selections, t.id);
+    // Pass t.owner so only arrivals for the drone's actual owner inflate the ghost count.
+    const ghostCount = countPendingArrivals(selections, t.id, t.owner);
     return currentCount + ghostCount + batchSize <= MAX_DRONES_PER_LANE;
   });
 }
@@ -234,16 +235,19 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
       const effect = effects[0];
 
       if (isCompoundEffect(effect)) {
+        const droneOwnerId = initialTarget?.owner ?? actingPlayerId;
         const rawDestTargets = computeDestinationTargets(
           effect.destination,
           { target: initialTarget, lane: initialLane },
-          actingPlayerId
+          actingPlayerId,
+          droneOwnerId
         );
         const destTargets = filterFullDestinations(rawDestTargets, playerStates, 1, base.selections);
         setChainState({
           ...base,
           subPhase: 'destination',
           pendingTarget: initialTarget,
+          pendingDroneOwnerId: droneOwnerId,
           pendingLane: initialLane,
           validTargets: destTargets,
           prompt: effect.prompt || 'Select destination',
@@ -273,10 +277,12 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
 
     if (isCompoundEffect(effect)) {
       const resolvedDest = resolveDestinationRefs(effect.destination, chainState.selections);
+      const droneOwnerId = target?.owner ?? actingPlayerId;
       const rawDestTargets = computeDestinationTargets(
         resolvedDest,
         { target, lane },
-        actingPlayerId
+        actingPlayerId,
+        droneOwnerId
       );
       const destTargets = filterFullDestinations(rawDestTargets, playerStates, 1, chainState.selections);
 
@@ -313,7 +319,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
             selections: sels,
             currentIndex: prev.effects.length,
             complete: true,
-            pendingTarget: null, pendingLane: null, validTargets: [], prompt: '',
+            pendingTarget: null, pendingLane: null, pendingDroneOwnerId: null, validTargets: [], prompt: '',
           }));
           return;
         }
@@ -325,6 +331,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         ...prev,
         subPhase: 'destination',
         pendingTarget: target,
+        pendingDroneOwnerId: droneOwnerId,
         pendingLane: lane,
         validTargets: destTargets,
         prompt: effect.prompt || 'Select destination',
@@ -454,16 +461,19 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
 
     if (isCompoundEffect(effect)) {
       // Advance to destination selection
+      const droneOwnerId = (Array.isArray(targets) ? targets[0] : targets)?.owner ?? actingPlayerId;
       const rawDestTargets = computeDestinationTargets(
         effect.destination,
         { target: targets, lane: sourceLane },
-        actingPlayerId
+        actingPlayerId,
+        droneOwnerId
       );
       const destTargets = filterFullDestinations(rawDestTargets, playerStates, targets.length, chainState.selections);
       setChainState(prev => ({
         ...prev,
         subPhase: 'destination',
         pendingTarget: targets,
+        pendingDroneOwnerId: droneOwnerId,
         pendingLane: sourceLane,
         validTargets: destTargets,
         prompt: effect.prompt || 'Select destination lane',

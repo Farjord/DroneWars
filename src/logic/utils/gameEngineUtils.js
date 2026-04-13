@@ -4,6 +4,8 @@
 // Shared helper functions for targeting and game logic
 // Extracted from gameLogic.js for reuse across modular processors
 
+import fullTechCollection from '../../data/techData.js';
+
 /** Maximum drones (including tokens) allowed per player per lane */
 export const MAX_DRONES_PER_LANE = 5;
 
@@ -16,12 +18,17 @@ export const MAX_TECH_PER_LANE = 5;
  *
  * @param {Array|null} selections - Effect chain selections array
  * @param {string} laneId - Lane ID to count arrivals for
+ * @param {string|null} droneOwnerId - If provided, only count arrivals for drones owned by this player
  * @returns {number} Count of pending arrivals
  */
-export const countPendingArrivals = (selections, laneId) => {
+export const countPendingArrivals = (selections, laneId, droneOwnerId = null) => {
   if (!selections) return 0;
   return selections.reduce((count, sel) => {
     if (!sel || sel.skipped || sel.destination !== laneId) return count;
+    if (droneOwnerId !== null) {
+      const selOwner = Array.isArray(sel.target) ? sel.target[0]?.owner : sel.target?.owner;
+      if (selOwner && selOwner !== droneOwnerId) return count;
+    }
     return count + (Array.isArray(sel.target) ? sel.target.length : 1);
   }, 0);
 };
@@ -32,11 +39,12 @@ export const countPendingArrivals = (selections, laneId) => {
  * @param {Object} playerState - Player state to check
  * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
  * @param {Array|null} selections - Optional effect chain selections for ghost drone counting
+ * @param {string|null} droneOwnerId - If provided, only count ghost arrivals for drones owned by this player
  * @returns {boolean} True if lane has >= MAX_DRONES_PER_LANE drones
  */
-export const isLaneFull = (playerState, laneId, selections = null) => {
+export const isLaneFull = (playerState, laneId, selections = null, droneOwnerId = null) => {
   const realCount = playerState.dronesOnBoard[laneId]?.length || 0;
-  const ghostCount = countPendingArrivals(selections, laneId);
+  const ghostCount = countPendingArrivals(selections, laneId, droneOwnerId);
   return (realCount + ghostCount) >= MAX_DRONES_PER_LANE;
 };
 
@@ -46,11 +54,12 @@ export const isLaneFull = (playerState, laneId, selections = null) => {
  * @param {Object} playerState - Player state to check
  * @param {string} laneId - Lane ID ('lane1', 'lane2', 'lane3')
  * @param {Array|null} selections - Optional effect chain selections for ghost drone counting
+ * @param {string|null} droneOwnerId - If provided, only count ghost arrivals for drones owned by this player
  * @returns {{ count: number, max: number, isFull: boolean }}
  */
-export const getLaneCapacity = (playerState, laneId, selections = null) => {
+export const getLaneCapacity = (playerState, laneId, selections = null, droneOwnerId = null) => {
   const realCount = playerState.dronesOnBoard[laneId]?.length || 0;
-  const ghostCount = countPendingArrivals(selections, laneId);
+  const ghostCount = countPendingArrivals(selections, laneId, droneOwnerId);
   const count = realCount + ghostCount;
   return { count, max: MAX_DRONES_PER_LANE, isFull: count >= MAX_DRONES_PER_LANE };
 };
@@ -128,10 +137,11 @@ export const getJammerDronesInLane = (playerState, lane) => {
 };
 
 /**
- * Count how many drones of a specific type are in a lane
+ * Count how many drones of a specific type are in a lane.
+ * Searches both dronesOnBoard and techSlots — assumes drone names and tech names are disjoint.
  *
  * @param {Object} playerState - Player state to check
- * @param {string} droneName - Name of the drone type to count (e.g., "Jammer")
+ * @param {string} droneName - Name of the drone/tech type to count (e.g., "Jammer")
  * @param {string} laneId - Lane ID to check ('lane1', 'lane2', 'lane3')
  * @returns {number} Count of matching drones in the lane
  */
@@ -139,4 +149,24 @@ export const countDroneTypeInLane = (playerState, droneName, laneId) => {
     const boardCount = (playerState.dronesOnBoard[laneId] || []).filter(d => d.name === droneName).length;
     const techCount = (playerState.techSlots?.[laneId] || []).filter(d => d.name === droneName).length;
     return boardCount + techCount;
+};
+
+/**
+ * Check whether a tech slot in a given lane can accept another instance of the named tech.
+ * Enforces both overall tech slot capacity (MAX_TECH_PER_LANE) and per-tech maxPerLane limits.
+ *
+ * @param {Object} playerState - Player state containing techSlots
+ * @param {string} laneId - Lane to check
+ * @param {string} tokenName - Tech name to check
+ * @returns {boolean} True if the tech can be placed in this lane
+ */
+export const isTechSlotAvailable = (playerState, laneId, tokenName) => {
+  const slot = playerState.techSlots?.[laneId] ?? [];
+  if (slot.length >= MAX_TECH_PER_LANE) return false;
+  const baseTech = fullTechCollection.find(t => t.name === tokenName);
+  if (baseTech?.maxPerLane) {
+    const current = countDroneTypeInLane(playerState, tokenName, laneId);
+    if (current >= baseTech.maxPerLane) return false;
+  }
+  return true;
 };

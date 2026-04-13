@@ -310,14 +310,77 @@ describe('useEffectChain — multi-effect chains', () => {
     expect(state1.currentIndex).toBe(1);
     expect(state1.subPhase).toBe('target');
 
-    act(() => result.current.selectChainTarget({ id: 'p2d1' }, 'lane1'));
+    act(() => result.current.selectChainTarget({ id: 'p2d1', owner: 'player2' }, 'lane1'));
     expect(result.current.effectChainState.subPhase).toBe('destination');
+    // Enemy drone move: pendingDroneOwnerId must be player2, not the acting player
+    expect(result.current.effectChainState.pendingDroneOwnerId).toBe('player2');
 
     act(() => result.current.selectChainDestination('lane2'));
     expect(result.current.effectChainState.complete).toBe(true);
     expect(result.current.effectChainState.selections).toHaveLength(2);
     expect(result.current.effectChainState.selections[0].destination).toBe('lane2');
     expect(result.current.effectChainState.selections[1].destination).toBe('lane2');
+  });
+
+  it('Forced Repositioning: full local lane does not block enemy move to same lane', () => {
+    // player1's lane2 is at 4 drones — moving their lane1 drone there fills it (ghost = 1, total = 5).
+    // player2's lane2 is empty. The enemy move to lane2 must remain valid.
+    const makeFull = (n) => Array.from({ length: n }, (_, i) => ({ id: `fill${i}`, name: 'Filler' }));
+    const { result } = renderChainHook({
+      playerStates: {
+        player1: {
+          dronesOnBoard: {
+            lane1: [{ id: 'p1d1', name: 'Scout', attack: 2, speed: 4, hull: 3 }],
+            lane2: makeFull(4),
+            lane3: [],
+          },
+          hand: [],
+        },
+        player2: {
+          dronesOnBoard: {
+            lane1: [{ id: 'p2d1', name: 'Fighter', attack: 3, speed: 5, hull: 4, owner: 'player2' }],
+            lane2: [],
+            lane3: [],
+          },
+          hand: [],
+        },
+      },
+    });
+
+    const card = {
+      name: 'Forced Repositioning',
+      effects: [
+        {
+          type: 'SINGLE_MOVE',
+          targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+          destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
+        },
+        {
+          type: 'SINGLE_MOVE',
+          targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' } },
+          destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+          mandatory: true,
+        },
+      ],
+    };
+
+    act(() => result.current.startEffectChain(card));
+
+    // Effect 0: friendly drone from lane1 → lane2 (fills player1's side of lane2 to 5 via ghost)
+    act(() => result.current.selectChainTarget({ id: 'p1d1', owner: 'player1' }, 'lane1'));
+    expect(result.current.effectChainState.subPhase).toBe('destination');
+    act(() => result.current.selectChainDestination('lane2'));
+
+    // Effect 1: enemy drone — should NOT be blocked by player1's full lane2
+    expect(result.current.effectChainState.currentIndex).toBe(1);
+    expect(result.current.effectChainState.mandatoryEffectBlocked).toBeFalsy();
+    expect(result.current.effectChainState.validTargets.some(t => t.id === 'p2d1')).toBe(true);
+
+    // Destination for effect 1 is { ref: 0, field: 'destinationLane' } → resolves to 'lane2'.
+    // Since there is exactly 1 valid target (player2's lane2 is not full), auto-selection fires
+    // and the chain completes immediately — no manual destination subPhase needed.
+    act(() => result.current.selectChainTarget({ id: 'p2d1', owner: 'player2' }, 'lane1'));
+    expect(result.current.effectChainState.complete).toBe(true);
   });
 });
 

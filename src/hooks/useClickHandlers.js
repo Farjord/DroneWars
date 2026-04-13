@@ -366,7 +366,9 @@ export default function useClickHandlers({
             return;
           }
         }
-        if (isLaneFull(localPlayerState, lane, effectChainState?.selections)) {
+        const droneOwnerId = effectChainState.pendingDroneOwnerId ?? getLocalPlayerId();
+        const droneOwnerState = droneOwnerId === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+        if (isLaneFull(droneOwnerState, lane, effectChainState.selections, droneOwnerId)) {
           setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
           return;
         }

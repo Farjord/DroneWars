@@ -5,9 +5,18 @@
  * from valid targets, while non-deployment effects (HEAL) do not.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock tech collection so maxPerLane tests are independent of production data values.
+// 'Stubbed Mine' maxPerLane:1 lets us test per-tech exclusion without relying on real data.
+vi.mock('../../../data/techData.js', () => ({
+  default: [
+    { name: 'Stubbed Mine', maxPerLane: 1 },
+  ]
+}));
+
 import LaneTargetingProcessor from '../lane/LaneTargetingProcessor.js';
-import { MAX_DRONES_PER_LANE } from '../../utils/gameEngineUtils.js';
+import { MAX_DRONES_PER_LANE, MAX_TECH_PER_LANE } from '../../utils/gameEngineUtils.js';
 
 const processor = new LaneTargetingProcessor();
 
@@ -139,5 +148,82 @@ describe('LaneTargetingProcessor — lane capacity filtering', () => {
 
       expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
     });
+  });
+});
+
+// ─── CREATE_TECH targeting ───────────────────────────────────────────────────
+
+const makeTechPlayerState = (techSlots = {}) => ({
+  dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+  techSlots: { lane1: [], lane2: [], lane3: [], ...techSlots },
+});
+
+const makeTechContext = (tokenName, player1Overrides = {}) => ({
+  actingPlayerId: 'player1',
+  player1: makeTechPlayerState(player1Overrides),
+  player2: makeTechPlayerState(),
+  definition: {
+    targeting: { type: 'LANE', affinity: 'FRIENDLY' },
+    effects: [{ type: 'CREATE_TECH', tokenName }],
+  },
+});
+
+// Uses mocked tech collection: 'Stubbed Mine' has maxPerLane:1
+describe('LaneTargetingProcessor — CREATE_TECH filtering', () => {
+  it('returns all three lanes when no tech is placed yet', () => {
+    const ctx = makeTechContext('Stubbed Mine');
+    const targets = processor.process(ctx);
+    expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
+  });
+
+  it('excludes a lane that already has the same tech at maxPerLane', () => {
+    const ctx = makeTechContext('Stubbed Mine', {
+      lane1: [{ id: 't1', name: 'Stubbed Mine', isTech: true }],
+    });
+    const targets = processor.process(ctx);
+    const ids = targets.map(t => t.id);
+    expect(ids).not.toContain('lane1');
+    expect(ids).toContain('lane2');
+    expect(ids).toContain('lane3');
+  });
+
+  it('still includes a lane that has a different tech', () => {
+    const ctx = makeTechContext('Stubbed Mine', {
+      lane1: [{ id: 't1', name: 'Other Tech', isTech: true }],
+    });
+    const targets = processor.process(ctx);
+    expect(targets.map(t => t.id)).toContain('lane1');
+  });
+
+  it('excludes a lane whose tech slot is at MAX_TECH_PER_LANE regardless of tech type', () => {
+    const full = Array.from({ length: MAX_TECH_PER_LANE }, (_, i) => ({
+      id: `t${i}`, name: 'Other Tech', isTech: true,
+    }));
+    const ctx = makeTechContext('Stubbed Mine', { lane2: full });
+    const targets = processor.process(ctx);
+    expect(targets.map(t => t.id)).not.toContain('lane2');
+  });
+
+  it('returns no lanes when all are blocked by the same tech', () => {
+    const mine = [{ id: 't1', name: 'Stubbed Mine', isTech: true }];
+    const ctx = makeTechContext('Stubbed Mine', {
+      lane1: mine,
+      lane2: mine,
+      lane3: mine,
+    });
+    const targets = processor.process(ctx);
+    expect(targets).toHaveLength(0);
+  });
+
+  it('returns all lanes when player state is absent (graceful fallback)', () => {
+    const ctx = {
+      actingPlayerId: 'player1',
+      definition: {
+        targeting: { type: 'LANE', affinity: 'FRIENDLY' },
+        effects: [{ type: 'CREATE_TECH', tokenName: 'Stubbed Mine' }],
+      },
+    };
+    const targets = processor.process(ctx);
+    expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
   });
 });

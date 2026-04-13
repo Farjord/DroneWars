@@ -232,16 +232,20 @@ export function computeChainTargets(effect, effectIndex, selections, positionTra
  * @param {Object} destination - { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' }
  * @param {Object} selection - { target, lane } — the primary selection for this effect
  * @param {string} actingPlayerId - Acting player ID
+ * @param {string|null} droneOwnerId - Owner of the drone being moved; defaults to actingPlayerId.
+ *   Must be set to the opponent ID when moving enemy drones so destination targets carry the
+ *   correct owner for capacity checks.
  * @returns {Array} Valid lane target objects
  */
-export function computeDestinationTargets(destination, selection, actingPlayerId) {
+export function computeDestinationTargets(destination, selection, actingPlayerId, droneOwnerId = null) {
   if (!destination || destination.type !== 'LANE') return [];
 
+  const targetOwner = droneOwnerId ?? actingPlayerId;
   const lanes = ['lane1', 'lane2', 'lane3'];
 
   // Concrete lane ID (e.g., resolved from a ref) — single valid destination
   if (lanes.includes(destination.location)) {
-    return [{ id: destination.location, owner: actingPlayerId, type: 'lane' }];
+    return [{ id: destination.location, owner: targetOwner, type: 'lane' }];
   }
 
   if (destination.location === 'ADJACENT_TO_PRIMARY') {
@@ -250,7 +254,7 @@ export function computeDestinationTargets(destination, selection, actingPlayerId
     const sourceIdx = parseInt(sourceLane.replace('lane', ''), 10);
     return lanes
       .filter(laneId => Math.abs(parseInt(laneId.replace('lane', ''), 10) - sourceIdx) === 1)
-      .map(laneId => ({ id: laneId, owner: actingPlayerId, type: 'lane' }));
+      .map(laneId => ({ id: laneId, owner: targetOwner, type: 'lane' }));
   }
 
   return [];

@@ -401,7 +401,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in one of your lanes. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
+    description: 'Create a Jammer in one of your lanes. Max 1 per lane. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -415,7 +415,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/DeployJammers.png',
-    description: 'Create a Jammer in one of your lanes. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
+    description: 'Create a Jammer in one of your lanes. Max 1 per lane. \n \n *(Jammer: Opponent card effects cannot target drones in this lane. End of Round: Self Destruct.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Jammer', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -429,7 +429,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor in a friendly lane. \n \n *(Enemy drones cannot move out of this lane. Removed at the start of the next round.)*',
+    description: 'Create a Thruster Inhibitor in a friendly lane. Max 1 per lane. \n \n *(Enemy drones cannot move out of this lane. Removed at the start of the next round.)*',
     effects: [
       {
         type: 'CREATE_TECH',
@@ -447,7 +447,7 @@ export const tacticCards = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/ThrusterInhibitor.png',
-    description: 'Create a Thruster Inhibitor in a friendly lane. \n \n *(Enemy drones cannot move out of this lane. Removed at the start of the next round.)*',
+    description: 'Create a Thruster Inhibitor in a friendly lane. Max 1 per lane. \n \n *(Enemy drones cannot move out of this lane. Removed at the start of the next round.)*',
     effects: [
       {
         type: 'CREATE_TECH',

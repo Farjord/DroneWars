@@ -788,7 +788,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RallyBeacon.png',
-    description: 'Create a Rally Beacon in a friendly lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
+    description: 'Create a Rally Beacon in a friendly lane. Max 1 per lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
     effects: [      { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
   },
@@ -800,7 +800,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RallyBeacon.png',
-    description: 'Create a Rally Beacon in a friendly lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
+    description: 'Create a Rally Beacon in a friendly lane. Max 1 per lane. \n \n *(Rally Beacon: When a friendly drone moves into this lane, Go Again. Once per Round)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Rally Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -814,7 +814,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RepairRelay.png',
-    description: 'Create a Repair Relay in a friendly lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
+    description: 'Create a Repair Relay in a friendly lane. Max 1 per lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -827,7 +827,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RepairRelay.png',
-    description: 'Create a Repair Relay in a friendly lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
+    description: 'Create a Repair Relay in a friendly lane. Max 1 per lane. \n \n *(Repair Relay: End of Round: If you control this lane, heal 1 hull to the ship section here.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Repair Relay', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -841,7 +841,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/ShieldArray.png',
-    description: 'Create a Shield Array in a friendly lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
+    description: 'Create a Shield Array in a friendly lane. Max 1 per lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Shield Array', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -854,7 +854,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldArray.png',
-    description: 'Create a Shield Array in a friendly lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
+    description: 'Create a Shield Array in a friendly lane. Max 1 per lane. \n \n *(Shield Array: Other friendly drones in this lane gain +1 max shields.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Shield Array', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -868,7 +868,7 @@ export const supportCards = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/RelayBeacon.png',
-    description: 'Create a Relay Beacon in a friendly lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
+    description: 'Create a Relay Beacon in a friendly lane. Max 1 per lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Relay Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],
@@ -881,7 +881,7 @@ export const supportCards = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/RelayBeacon.png',
-    description: 'Create a Relay Beacon in a friendly lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
+    description: 'Create a Relay Beacon in a friendly lane. Max 1 per lane. \n \n *(Relay Beacon: When any drone moves into this lane, draw a card.)*',
     effects: [
       { type: 'CREATE_TECH', tokenName: 'Relay Beacon', targeting: { type: 'LANE', affinity: 'FRIENDLY' } },
     ],

@@ -278,6 +278,12 @@ const BattleColumn = ({
 }) => {
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
+  const isCreateTechCard =
+    selectedCard?.effects?.[0]?.type === 'CREATE_TECH' ||
+    draggedActionCard?.card?.effects?.[0]?.type === 'CREATE_TECH';
+  const laneIsValidForPlayerTech = isCreateTechCard &&
+    validCardTargets.some(t => t.id === laneId && t.owner === getLocalPlayerId());
+
   // During drone drag or attack targeting, dissolve the source lane's stacking
   // context so the drone (z-[150]) escapes to root level and paints above the
   // TargetingArrow SVGs (z-100). Only dissolve the lane that actually contains
@@ -419,6 +425,13 @@ const BattleColumn = ({
           faction="player"
           techDrones={localPlayerState.techSlots?.[laneId] || []}
           highlightedSlots={validCardTargets.filter(t => t.isTech && t.owner === getLocalPlayerId()).map(t => t.id)}
+          highlightEmptySlots={laneIsValidForPlayerTech}
+          onEmptySlotClick={(e) => handleLaneClick(e, laneId, true)}
+          onEmptySlotDrop={() => handleActionCardDragEnd(
+            { id: laneId, owner: getLocalPlayerId(), type: 'lane' },
+            'lane',
+            getLocalPlayerId()
+          )}
           onTechClick={validCardTargets.some(t => t.isTech)
             ? (tech) => handleTargetClick({ ...tech, owner: getLocalPlayerId() })
             : onViewTechDetail}

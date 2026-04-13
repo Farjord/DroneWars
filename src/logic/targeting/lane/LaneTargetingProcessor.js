@@ -5,9 +5,9 @@
 // Returns lane IDs with affinity-based filtering and capacity awareness
 
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
-import { isLaneFull } from '../../utils/gameEngineUtils.js';
+import { isLaneFull, isTechSlotAvailable } from '../../utils/gameEngineUtils.js';
 
-// Effects that require a free slot in the target lane (capacity-filtered)
+// Effects that require a free drone slot in the target lane (capacity-filtered)
 const DEPLOYMENT_EFFECT_TYPES = new Set(['CREATE_TOKENS']);
 
 /**
@@ -35,9 +35,10 @@ class LaneTargetingProcessor extends BaseTargetingProcessor {
     const { actingPlayerId, definition, player1, player2 } = context;
     const { affinity } = definition.targeting;
 
-    // Determine if this effect requires an open slot (deployment-type effects)
     const effectType = definition.effects?.[0]?.type ?? definition.effect?.type;
-    const requiresOpenSlot = DEPLOYMENT_EFFECT_TYPES.has(effectType);
+    const requiresOpenDroneSlot = DEPLOYMENT_EFFECT_TYPES.has(effectType);
+    const isCreateTech = effectType === 'CREATE_TECH';
+    const tokenName = definition.effects?.[0]?.tokenName;
 
     const opponentId = this.getOpponentPlayerId(actingPlayerId);
     const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
@@ -49,16 +50,18 @@ class LaneTargetingProcessor extends BaseTargetingProcessor {
     laneIds.forEach(laneId => {
       // FRIENDLY or ANY — lanes owned by acting player
       if (affinity === 'FRIENDLY' || affinity === 'ANY') {
-        if (!requiresOpenSlot || !actingPlayerState || !isLaneFull(actingPlayerState, laneId)) {
-          targets.push({ id: laneId, owner: actingPlayerId, type: 'lane' });
-        }
+        const laneOk = isCreateTech
+          ? !actingPlayerState || isTechSlotAvailable(actingPlayerState, laneId, tokenName)
+          : !requiresOpenDroneSlot || !actingPlayerState || !isLaneFull(actingPlayerState, laneId);
+        if (laneOk) targets.push({ id: laneId, owner: actingPlayerId, type: 'lane' });
       }
 
       // ENEMY or ANY — lanes owned by opponent
       if (affinity === 'ENEMY' || affinity === 'ANY') {
-        if (!requiresOpenSlot || !opponentPlayerState || !isLaneFull(opponentPlayerState, laneId)) {
-          targets.push({ id: laneId, owner: opponentId, type: 'lane' });
-        }
+        const laneOk = isCreateTech
+          ? !opponentPlayerState || isTechSlotAvailable(opponentPlayerState, laneId, tokenName)
+          : !requiresOpenDroneSlot || !opponentPlayerState || !isLaneFull(opponentPlayerState, laneId);
+        if (laneOk) targets.push({ id: laneId, owner: opponentId, type: 'lane' });
       }
     });
 

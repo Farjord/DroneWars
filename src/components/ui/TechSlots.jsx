@@ -137,7 +137,20 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
   );
 };
 
-export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], warnedSlots = [], onTechClick, draggedActionCard, onActionCardDrop, owner }) {
+export default function TechSlots({ faction, techDrones = [], highlightedSlots = [], warnedSlots = [], onTechClick, draggedActionCard, onActionCardDrop, owner, highlightEmptySlots = false, onEmptySlotClick, onEmptySlotDrop }) {
+  const fc = FACTION_COLORS[faction];
+
+  const emptyHighlightStyle = highlightEmptySlots ? {
+    ...emptySlotStyle,
+    border: `0.15vw solid ${fc.primary}`,
+    '--tech-glow': fc.glow,
+    '--tech-glow-dim': `${fc.glow}60`,
+    boxShadow: `0 0 0.6vw ${fc.glow}, 0 0 1.2vw ${fc.glow}60`,
+    animation: 'techSlotHighlight 0.8s ease-in-out infinite',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+  } : emptySlotStyle;
+
   return (
     <div style={getContainerStyle(faction)}>
       {Array.from({ length: SLOT_COUNT }, (_, i) => {
@@ -164,7 +177,20 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
             />
           );
         }
-        return <div key={`empty-${i}`} style={emptySlotStyle} />;
+        return (
+          <div
+            key={`empty-${i}`}
+            style={emptyHighlightStyle}
+            onClick={highlightEmptySlots && onEmptySlotClick ? onEmptySlotClick : undefined}
+            onMouseUp={highlightEmptySlots ? (e) => {
+              if (draggedActionCard && onEmptySlotDrop) {
+                debugLog('DRAG_DROP_DEPLOY', '🎯 Empty tech slot action card drop detected');
+                onEmptySlotDrop();
+                e.stopPropagation();
+              }
+            } : undefined}
+          />
+        );
       })}
     </div>
   );

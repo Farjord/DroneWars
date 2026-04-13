@@ -9,7 +9,7 @@ import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateAffectedSections } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter } from '../utils/gameUtils.js';
 import { isCompoundEffect, resolveDestinationRefs } from '../logic/cards/chainTargetResolver.js';
-import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
+import { isLaneFull, MAX_TECH_PER_LANE } from '../logic/utils/gameEngineUtils.js';
 import { calculateInsertionIndex } from '../components/ui/insertionIndexCalculator.js';
 import { computeGhostIsPlayer } from '../components/ui/ghostSideHelpers.js';
 import { isRepositionNoOp } from './isRepositionNoOp.js';
@@ -112,19 +112,24 @@ const useDragMechanics = ({
     const drone = draggedCard || draggedDrone?.drone || _getTokenBaseDrone(draggedActionCard?.card);
     if (!drone) return;
 
+    // Determine ghost ownership so capacity check uses the correct side.
+    // Token creation is always friendly; deployment cards are always local player's.
+    // Enemy drone drags (chain target drags) land on the opponent's side.
+    // TODO: check effect.targeting.affinity for future OPPONENT-targeted token cards
+    const isPlayer = isTokenCreationDrag ? true : computeGhostIsPlayer(draggedCard, drone, localPlayerState);
+    const ghostOwnerState = isPlayer ? localPlayerState : opponentPlayerState;
+
     // Suppress ghost in full lanes (allow same-lane reorder where dragged drone is already counted)
     const isSameLaneReorder = draggedDrone && draggedDrone.sourceLane === laneId;
-    if (!isSameLaneReorder && isLaneFull(localPlayerState, laneId)) {
+    if (!isSameLaneReorder && isLaneFull(ghostOwnerState, laneId)) {
       setInsertionPreview(null);
       return;
     }
 
     const excludeId = draggedDrone?.drone?.id || null;
     const index = calculateInsertionIndex(mouseX, laneContentElement, excludeId);
-    // Token creation targets FRIENDLY lanes; TODO: check effect.targeting.affinity for future OPPONENT-targeted token cards
-    const isPlayer = isTokenCreationDrag ? true : computeGhostIsPlayer(draggedCard, drone, localPlayerState);
     setInsertionPreview({ laneId, index, drone, isPlayer });
-  }, [draggedCard, draggedDrone, draggedActionCard, localPlayerState]);
+  }, [draggedCard, draggedDrone, draggedActionCard, localPlayerState, opponentPlayerState]);
 
   // --- Selection-driven effects ---
 
@@ -559,6 +564,15 @@ const useDragMechanics = ({
         setCardConfirmation({ card, target: { ...target, owner: targetOwner }, insertionIndex: capturedInsertionIndex });
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, dragCardTargets });
+        if (targetType === 'lane' && card.effects[0]?.type === 'CREATE_TECH') {
+          const tokenName = card.effects[0].tokenName;
+          const laneId = target.id;
+          const slotFull = (localPlayerState.techSlots?.[laneId]?.length ?? 0) >= MAX_TECH_PER_LANE;
+          const text = slotFull
+            ? 'The tech slots in this lane are already at capacity.'
+            : `This lane already has a ${tokenName} deployed.`;
+          setModalContent({ title: 'Cannot Deploy Tech', text, isBlocking: true });
+        }
         cancelCardSelection('drag-invalid-target');
       }
     } else {
@@ -727,7 +741,9 @@ const useDragMechanics = ({
         const currentEffect = effectChainState.effects[effectChainState.currentIndex];
         const resolvedDest = resolveDestinationRefs(currentEffect.destination, effectChainState.selections);
         if (resolvedDest?.location && ['lane1', 'lane2', 'lane3'].includes(resolvedDest.location)) {
-          if (isLaneFull(localPlayerState, resolvedDest.location, effectChainState.selections)) {
+          const droneOwnerId = droneData?.owner ?? getLocalPlayerId();
+          const droneOwnerState = droneOwnerId === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+          if (isLaneFull(droneOwnerState, resolvedDest.location, effectChainState.selections, droneOwnerId)) {
             setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
             return;
           }
@@ -763,8 +779,12 @@ const useDragMechanics = ({
         const isValidDestination = effectChainState.validTargets?.some(t => t.id === targetLane);
         if (isValidDestination) {
           selectChainDestination(targetLane, capturedChainInsertionIndex);
-        } else if (isLaneFull(localPlayerState, targetLane, effectChainState.selections)) {
-          setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
+        } else {
+          const droneOwnerId = effectChainState.pendingDroneOwnerId ?? getLocalPlayerId();
+          const droneOwnerState = droneOwnerId === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+          if (isLaneFull(droneOwnerState, targetLane, effectChainState.selections, droneOwnerId)) {
+            setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
+          }
         }
       }
       return;

@@ -478,4 +478,22 @@ describe('computeDestinationTargets', () => {
     const targets = computeDestinationTargets(dest, { lane: 'lane2' }, 'player1');
     expect(targets.every(t => t.owner === 'player1' && t.type === 'lane')).toBe(true);
   });
+
+  it('uses droneOwnerId for target owner when provided (enemy drone move)', () => {
+    const dest = { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' };
+    const targets = computeDestinationTargets(dest, { lane: 'lane2' }, 'player1', 'player2');
+    expect(targets.every(t => t.owner === 'player2')).toBe(true);
+  });
+
+  it('uses droneOwnerId for concrete lane destination', () => {
+    const dest = { type: 'LANE', location: 'lane2' };
+    const targets = computeDestinationTargets(dest, { lane: 'lane1' }, 'player1', 'player2');
+    expect(targets).toEqual([{ id: 'lane2', owner: 'player2', type: 'lane' }]);
+  });
+
+  it('defaults to actingPlayerId when droneOwnerId is null', () => {
+    const dest = { type: 'LANE', location: 'lane2' };
+    const targets = computeDestinationTargets(dest, { lane: 'lane1' }, 'player1', null);
+    expect(targets[0].owner).toBe('player1');
+  });
 });
