@@ -70,8 +70,8 @@ describe('DeploymentProcessor animation ordering', () => {
     });
   });
 
-  it('TELEPORT_IN precedes trigger events with STATE_SNAPSHOT bridge', () => {
-    // ON_DEPLOY trigger returns animation events
+  it('ON_DEPLOY-only: DEPLOYMENT_PRE_TRIGGER + TELEPORT_IN precede trigger events, no bridge snapshot', () => {
+    // ON_DEPLOY trigger returns animation events (no mine trigger)
     mockFireTrigger.mockImplementation((triggerType, context) => {
       if (triggerType === 'ON_DEPLOY') {
         return {
@@ -91,23 +91,72 @@ describe('DeploymentProcessor animation ordering', () => {
       vi.fn(), 'player1'
     );
 
-    const types = result.animationEvents.map(e => e.type);
+    const events = result.animationEvents;
+    const types = events.map(e => e.type);
 
-    // TELEPORT_IN should come before triggers
+    // DEPLOYMENT_PRE_TRIGGER meta event carries preDeployTriggerState and comes first
+    const metaIdx = types.indexOf('DEPLOYMENT_PRE_TRIGGER');
+    expect(metaIdx).toBe(0);
+    expect(events[metaIdx].preDeployTriggerState).toBeDefined();
+
+    // TELEPORT_IN follows the meta event
     const teleportIdx = types.indexOf('TELEPORT_IN');
-    expect(teleportIdx).toBeGreaterThanOrEqual(0);
+    expect(teleportIdx).toBeGreaterThan(metaIdx);
 
-    // STATE_SNAPSHOT should bridge action and trigger events
-    const snapshotIdx = types.indexOf('STATE_SNAPSHOT');
-    expect(snapshotIdx).toBeGreaterThan(teleportIdx);
+    // No bridge STATE_SNAPSHOT for ON_DEPLOY-only triggers — drone is
+    // established by the TELEPORT_IN animation itself
+    expect(types).not.toContain('STATE_SNAPSHOT');
 
-    // TRIGGER_CHAIN_PAUSE between snapshot and triggers
+    // TRIGGER_CHAIN_PAUSE follows TELEPORT_IN
     const pauseIdx = types.indexOf('TRIGGER_CHAIN_PAUSE');
-    expect(pauseIdx).toBeGreaterThan(snapshotIdx);
+    expect(pauseIdx).toBeGreaterThan(teleportIdx);
 
-    // Trigger events after pause
+    // Trigger event follows pause
     const triggerIdx = types.indexOf('TRIGGER_FIRED');
     expect(triggerIdx).toBeGreaterThan(pauseIdx);
+
+    // Trigger events tagged post-state so client plays them after TELEPORT_IN
+    expect(events[pauseIdx].timingOverride).toBe('post-state');
+    expect(events[triggerIdx].timingOverride).toBe('post-state');
+  });
+
+  it('returns preDeployTriggerState capturing state before ON_DEPLOY fires', () => {
+    // ON_DEPLOY marks the opponent drone
+    mockFireTrigger.mockImplementation((triggerType, context) => {
+      if (triggerType === 'ON_DEPLOY') {
+        const modified = JSON.parse(JSON.stringify(context.playerStates));
+        // Simulate Scanner marking an opponent drone
+        const oppDrones = modified.player2?.dronesOnBoard?.lane1 ?? [];
+        if (oppDrones[0]) oppDrones[0].isMarked = true;
+        return {
+          triggered: true,
+          newPlayerStates: modified,
+          animationEvents: [{ type: 'TRIGGER_FIRED', abilityName: 'Target Scanner' }],
+        };
+      }
+      return { triggered: false, newPlayerStates: null, animationEvents: [] };
+    });
+
+    const opponentWithDrone = {
+      ...makeOpponentState(),
+      dronesOnBoard: { lane1: [{ id: 'p2_d_0001', name: 'Dart', isMarked: false }], lane2: [], lane3: [] },
+    };
+
+    const drone = { name: 'Scanner', class: 1, hull: 2, attack: 1, shields: 0 };
+    const result = processor.executeDeployment(
+      drone, 'lane2', 2,
+      makePlayerState(), opponentWithDrone,
+      { player1: [], player2: [] },
+      vi.fn(), 'player1'
+    );
+
+    // preDeployTriggerState: captured before ON_DEPLOY → opponent drone NOT marked
+    expect(result.preDeployTriggerState).toBeDefined();
+    const preOpponentDrones = result.preDeployTriggerState.player2.dronesOnBoard.lane1;
+    expect(preOpponentDrones[0].isMarked).toBe(false);
+
+    // finalPlayerState / opponentState: after ON_DEPLOY → opponent drone IS marked
+    expect(result.opponentState.dronesOnBoard.lane1[0].isMarked).toBe(true);
   });
 
   it('bridge STATE_SNAPSHOT uses pre-mine state when ON_LANE_DEPLOYMENT fires', () => {

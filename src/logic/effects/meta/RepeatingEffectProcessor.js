@@ -55,6 +55,8 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
     let currentStates = this.clonePlayerStates(playerStates);
     const allAdditionalEffects = [];
     const allAnimationEvents = [];
+    const allTriggerAnimationEvents = [];
+    let firstPreTriggerState = null;
 
     // Calculate how many times to repeat based on condition
     const repeatCount = this.calculateRepeatCount(effect.repeatCondition, actingPlayerId, currentStates);
@@ -107,6 +109,14 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
           allAnimationEvents.push(...result.animationEvents);
         }
 
+        // Accumulate trigger animation events (e.g. ON_CARD_DRAWN → Odin, ON_ENERGY_GAINED → Thor)
+        if (result.triggerAnimationEvents?.length > 0) {
+          allTriggerAnimationEvents.push(...result.triggerAnimationEvents);
+          if (!firstPreTriggerState && result.preTriggerState) {
+            firstPreTriggerState = result.preTriggerState;
+          }
+        }
+
         debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] Sub-effect ${subEffect.type} executed in repetition ${i + 1}`);
       }
     }
@@ -114,7 +124,9 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
     const result = {
       newPlayerStates: currentStates,
       additionalEffects: allAdditionalEffects,
-      animationEvents: allAnimationEvents
+      animationEvents: allAnimationEvents,
+      triggerAnimationEvents: allTriggerAnimationEvents,
+      preTriggerState: firstPreTriggerState
     };
 
     this.logProcessComplete(effect, result, context);

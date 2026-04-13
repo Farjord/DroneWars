@@ -22,9 +22,13 @@ const TRIGGER_CHAIN_PAUSE_MS = 400;
  * @param {Array} steps[].triggerEvents - Trigger animations from TriggerProcessor
  * @param {Object} [steps[].intermediateState] - { player1, player2 } for STATE_SNAPSHOT
  * @param {Array} [steps[].postSnapshotEvents] - Events needing DOM update first (e.g., TELEPORT_IN)
+ * @param {Object} [options] - Optional sequence-level options
+ * @param {string} [options.triggerTimingOverride] - When set, applies this timing to all trigger
+ *   events and the TRIGGER_CHAIN_PAUSE. Used by deployment with TELEPORT_IN to ensure trigger
+ *   notifications play after the teleport animation rather than before it.
  * @returns {Array} Ordered raw event sequence
  */
-export function buildAnimationSequence(steps) {
+export function buildAnimationSequence(steps, { triggerTimingOverride } = {}) {
   const sequence = [];
   for (const step of steps) {
     const { actionEvents = [], triggerEvents = [], intermediateState = null, postSnapshotEvents = [] } = step;
@@ -39,8 +43,14 @@ export function buildAnimationSequence(steps) {
     }
 
     if (triggerEvents.length > 0) {
-      sequence.push({ type: TRIGGER_CHAIN_PAUSE, duration: TRIGGER_CHAIN_PAUSE_MS });
-      sequence.push(...triggerEvents);
+      sequence.push({
+        type: TRIGGER_CHAIN_PAUSE,
+        duration: TRIGGER_CHAIN_PAUSE_MS,
+        ...(triggerTimingOverride && { timingOverride: triggerTimingOverride }),
+      });
+      sequence.push(...triggerEvents.map(e =>
+        triggerTimingOverride ? { ...e, timingOverride: triggerTimingOverride } : e
+      ));
     }
   }
 

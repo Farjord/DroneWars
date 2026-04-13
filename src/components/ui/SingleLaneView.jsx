@@ -10,6 +10,7 @@ import DroneToken from './DroneToken.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { getLaneClipPath, DroneLaneVisualLayers } from './DroneLaneLayers.jsx';
 import { shouldRenderChainGhost } from './ghostSideHelpers.js';
+import { isLaneFull } from '../../logic/utils/gameEngineUtils.js';
 
 /** Check if an effect is compound (needs target + destination selection). Inlined to avoid circular imports. */
 const isCompoundEffect = (effect) =>
@@ -299,7 +300,7 @@ const SingleLaneView = ({
 
   const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === laneId && t.owner === owner)) ||
                        (selectedCard && validCardTargets.some(t => t.id === laneId && t.owner === owner)) ||
-                       (draggedCard && isPlayer) ||
+                       (draggedCard && isPlayer && !isLaneFull(player, laneId)) ||
                        isActionCardLaneTarget;
 
   const isHoveredTarget = isTargetable && hoveredLane?.id === laneId && hoveredLane?.owner === owner;

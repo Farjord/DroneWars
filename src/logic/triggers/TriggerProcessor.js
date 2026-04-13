@@ -920,14 +920,17 @@ class TriggerProcessor {
 
   /**
    * Validate triggerOwner for controller triggers.
-   * CONTROLLER: the drone's owner is the one performing the action
+   * CONTROLLER (or absent): the drone's owner is the one performing the action
    * OPPONENT: the drone's owner's opponent is performing the action
-   * ANY: always matches
+   * ANY: always matches (both players' drones fire)
+   *
+   * Absent triggerOwner defaults to CONTROLLER — controller triggers are semantically
+   * "fired when the owner acts", so scoping to the controller is the safe default.
    */
   _validateControllerOwner(triggerOwner, reactorOwnerPlayerId, triggeringPlayerId) {
-    if (!triggerOwner || triggerOwner === TRIGGER_OWNERS.ANY) return true;
+    if (triggerOwner === TRIGGER_OWNERS.ANY) return true;
 
-    if (triggerOwner === TRIGGER_OWNERS.CONTROLLER) {
+    if (!triggerOwner || triggerOwner === TRIGGER_OWNERS.CONTROLLER) {
       return reactorOwnerPlayerId === triggeringPlayerId;
     }
 

@@ -411,6 +411,12 @@ class EffectChainProcessor {
           if (addResult) {
             currentStates = addResult.newPlayerStates;
             effectActionEvents.push(...(addResult.animationEvents || []));
+            if (addResult.triggerAnimationEvents?.length > 0) {
+              effectTriggerEvents.push(...addResult.triggerAnimationEvents);
+              if (!result.preTriggerState && addResult.preTriggerState) {
+                result.preTriggerState = addResult.preTriggerState;
+              }
+            }
           }
           debugLog('CARD_PLAY_TRACE', `[7] Effect [${i}] conditional side-effect: ${addEffect.type}`, { card: card.name, processed: !!addResult });
         }

@@ -199,6 +199,17 @@ function DeckSelectionScreen({ onStepComplete }) {
       return;
     }
 
+    if (!lane) {
+      // Remove the component entirely rather than setting it to null,
+      // so deselected sections never appear in the committed payload.
+      setSelectedShipComponents(prev => {
+        const next = { ...prev };
+        delete next[componentId];
+        return next;
+      });
+      return;
+    }
+
     setSelectedShipComponents(prev => ({
       ...prev,
       [componentId]: lane

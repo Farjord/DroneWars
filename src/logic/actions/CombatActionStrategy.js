@@ -256,10 +256,7 @@ export async function processMove(payload, ctx) {
   };
 
   // Apply ON_MOVE effects via TriggerProcessor (fires for all drones per PRD 3.3)
-  console.log('[DEBUG-CAS] About to create TriggerProcessor');
   const triggerProcessor = new TriggerProcessor();
-  console.log('[DEBUG-CAS] TriggerProcessor created, calling fireTrigger');
-  console.log('[DEBUG-CAS] typeof fireTrigger:', typeof triggerProcessor.fireTrigger);
   let opponentState = JSON.parse(JSON.stringify(opponentPlayerState));
   const moveResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_MOVE, {
     lane: toLane,
@@ -271,7 +268,8 @@ export async function processMove(payload, ctx) {
       [opponentPlayerId]: opponentState
     },
     placedSections,
-    logCallback: (entry) => ctx.addLogEntry(entry)
+    logCallback: (entry) => ctx.addLogEntry(entry),
+    currentTurnPlayerId: playerId
   });
   let stateAfterMoveEffects = moveResult.triggered
     ? moveResult.newPlayerStates[playerId]
@@ -316,8 +314,8 @@ export async function processMove(payload, ctx) {
     currentTurnPlayerId: playerId
   });
 
-  // Capture goAgain from mine result BEFORE building sequence
-  const goAgain = mineResult.goAgain;
+  // Capture goAgain from either trigger result — ON_MOVE (e.g. Infiltration Protocol) or ON_LANE_MOVEMENT_IN (mines)
+  const goAgain = moveResult.goAgain || mineResult.goAgain;
 
   // Determine final player states (after mine destruction)
   let finalPlayerState = stateAfterMoveEffects;
@@ -364,7 +362,8 @@ export async function processMove(payload, ctx) {
 
   debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
 
-  // If drone was destroyed by mine, end turn immediately
+  // If drone was destroyed by mine, end turn immediately regardless of any goAgain —
+  // a destroyed drone cannot act, so GO_AGAIN from ON_MOVE is intentionally suppressed.
   if (droneDestroyedByMine) {
     return {
       success: true,

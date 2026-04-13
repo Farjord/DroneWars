@@ -311,7 +311,7 @@ class AnimationManager {
     // are already positioned correctly by buildAnimationSequence / capture ordering.
     const preAnimations = animations.filter(a => {
       const timing = a.timing || 'pre-state';
-      return timing !== 'post-state';
+      return timing !== 'post-state' && timing !== 'meta';
     });
     if (preAnimations.length > 0) {
       const preStart = timingLog('[ANIM MGR] Pre-state animations', {
@@ -362,23 +362,9 @@ class AnimationManager {
       otherPostCount: otherPostState.length
     });
 
-    // 5. Play non-teleport post-state animations normally
-    if (otherPostState.length > 0) {
-      const postStart = timingLog('[ANIM MGR] Post-state animations', {
-        count: otherPostState.length,
-        names: otherPostState.map(a => a.animationName).join(', ')
-      });
-
-      debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing non-teleport post-state animations...');
-      await this.executeAnimations(otherPostState, executor.getAnimationSource(), executor);
-      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Non-teleport post-state animations complete');
-
-      timingLog('[ANIM MGR] Post-state complete', {
-        count: otherPostState.length
-      }, postStart);
-    }
-
-    // 6. Handle TELEPORT_IN with mid-animation reveal timing
+    // 5. Handle TELEPORT_IN FIRST so drone appears before trigger notifications play.
+    //    When TELEPORT_IN co-exists with trigger animations (also post-state via timingOverride),
+    //    the intended sequence is: teleport in → pause → trigger notification → mark applied.
     if (teleportAnimations.length > 0) {
       const teleportStart = timingLog('[ANIM MGR] Teleport animations', {
         count: teleportAnimations.length
@@ -391,6 +377,22 @@ class AnimationManager {
       timingLog('[ANIM MGR] Teleport complete', {
         count: teleportAnimations.length
       }, teleportStart);
+    }
+
+    // 6. Play other post-state animations (trigger notifications, STATE_SNAPSHOT with mark, etc.)
+    if (otherPostState.length > 0) {
+      const postStart = timingLog('[ANIM MGR] Post-state animations', {
+        count: otherPostState.length,
+        names: otherPostState.map(a => a.animationName).join(', ')
+      });
+
+      debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing post-teleport animations...');
+      await this.executeAnimations(otherPostState, executor.getAnimationSource(), executor);
+      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Post-teleport animations complete');
+
+      timingLog('[ANIM MGR] Post-state complete', {
+        count: otherPostState.length
+      }, postStart);
     }
 
     debugLog('ANIM_TRACE', '[5/6] Animation execution complete', {
@@ -469,7 +471,11 @@ class AnimationManager {
     animations.forEach(anim => {
       const timing = anim.timing || 'pre-state'; // Default to pre-state for safety
 
-      if (timing === 'post-state') {
+      if (timing === 'meta') {
+        // Meta events (e.g. DEPLOYMENT_PRE_TRIGGER) are extracted by client before
+        // executeWithStateUpdate is called — they should never reach execution.
+        return;
+      } else if (timing === 'post-state') {
         postState.push(anim);
       } else if (timing === 'independent') {
         independent.push(anim);

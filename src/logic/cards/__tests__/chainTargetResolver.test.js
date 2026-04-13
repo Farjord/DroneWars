@@ -328,6 +328,28 @@ describe('computeChainTargets', () => {
     expect(targets.every(t => t.owner === 'player2' && t.type === 'lane')).toBe(true);
   });
 
+  it('CREATE_TOKENS excludes a full friendly lane from valid targets', () => {
+    const fullLane = Array.from({ length: 5 }, (_, i) => ({ id: `fd${i}`, name: 'Dart' }));
+    const states = makePlayerStates();
+    states.player1.dronesOnBoard.lane1 = fullLane;
+    const effect = { type: 'CREATE_TOKENS', targeting: { type: 'LANE', affinity: 'FRIENDLY' } };
+
+    const targets = computeChainTargets(effect, 0, [], null, makeContext({ playerStates: states }));
+
+    const ids = targets.map(t => t.id);
+    expect(ids).not.toContain('lane1');
+    expect(ids).toContain('lane2');
+    expect(ids).toContain('lane3');
+  });
+
+  it('CREATE_TOKENS returns all lanes when none are full', () => {
+    const effect = { type: 'CREATE_TOKENS', targeting: { type: 'LANE', affinity: 'FRIENDLY' } };
+
+    const targets = computeChainTargets(effect, 0, [], null, makeContext());
+
+    expect(targets.map(t => t.id).sort()).toEqual(['lane1', 'lane2', 'lane3']);
+  });
+
   it('returns hand cards for CARD_IN_HAND targeting', () => {
     const effect = { type: 'DISCARD_CARD', targeting: { type: 'CARD_IN_HAND', affinity: 'FRIENDLY' } };
     const targets = computeChainTargets(effect, 0, [], null, makeContext());

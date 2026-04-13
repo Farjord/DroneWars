@@ -169,7 +169,7 @@ export async function processCardPlay(payload, ctx) {
         const drones = playerStates[pid].dronesOnBoard[lane] || [];
         const drone = drones.find(d => d.id === targetId);
         if (drone) {
-          target = { ...drone, owner: pid };
+          target = { ...drone, owner: pid, lane };
           break;
         }
       }

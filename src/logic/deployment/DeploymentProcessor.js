@@ -348,6 +348,13 @@ class DeploymentProcessor {
     let finalOpponentState = opponentState;
     const allTriggerEvents = [];
 
+    // Capture state BEFORE ON_DEPLOY fires — drone is on board, no trigger effects applied yet.
+    // Used by the client to set up a mark-free pending state for TELEPORT_IN sequencing.
+    const preDeployTriggerState = {
+      [playerId]: JSON.parse(JSON.stringify(newPlayerState)),
+      [opponentId]: JSON.parse(JSON.stringify(opponentState)),
+    };
+
     const triggerProcessor = new TriggerProcessor();
     const deployResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DEPLOY, {
       lane,
@@ -418,16 +425,35 @@ class DeploymentProcessor {
       timestamp: Date.now()
     };
 
-    // Build ordered sequence: TELEPORT_IN → STATE_SNAPSHOT → triggers
-    // Bridge snapshot uses pre-mine state so drone appears ready (not exhausted)
-    // and mine is still visible when the trigger announcement plays
+    // Meta event: carries preDeployTriggerState to client so it can build a mark-free
+    // pending state. The client extracts this before animation playback; it is never
+    // played as a visual animation.
+    const preDeployMetaEvent = {
+      type: 'DEPLOYMENT_PRE_TRIGGER',
+      preDeployTriggerState,
+    };
+
+    // Trigger timing override: when TELEPORT_IN and triggers coexist, the client must
+    // play TELEPORT_IN first (post-state) then trigger notifications (also post-state).
+    // Tagging trigger events 'post-state' ensures they stay behind TELEPORT_IN in
+    // the execution order established by executeWithStateUpdate.
+    const hasTriggerEvents = allTriggerEvents.length > 0;
+    const triggerTimingOverride = hasTriggerEvents ? 'post-state' : undefined;
+
+    // Bridge snapshot (preMineIntermediateState) is only needed for mine triggers,
+    // where the UI must show the mine still present before the mine-explosion animation.
+    // For ON_DEPLOY-only triggers (e.g. Scanner marking), no bridge is needed:
+    // the TELEPORT_IN animation establishes the drone on the board visually.
+    const bridgeState = (mineResult.triggered && mineResult.animationEvents.length > 0)
+      ? preMineIntermediateState
+      : null;
+
+    // Build ordered sequence: meta → TELEPORT_IN → (bridge STATE_SNAPSHOT) → triggers
     const animationEvents = buildAnimationSequence([{
-      actionEvents: [teleportInEvent],
+      actionEvents: [preDeployMetaEvent, teleportInEvent],
       triggerEvents: allTriggerEvents,
-      intermediateState: allTriggerEvents.length > 0
-        ? preMineIntermediateState
-        : null,
-    }]);
+      intermediateState: bridgeState,
+    }], { triggerTimingOverride });
 
     debugLog('DEPLOYMENT', `✅ Deployment complete`, {
       droneId: newDrone.id,
@@ -445,6 +471,7 @@ class DeploymentProcessor {
       animationEvents,
       opponentState: finalOpponentState, // Return updated opponent state
       preMineIntermediateState,
+      preDeployTriggerState,
     };
   }
 }

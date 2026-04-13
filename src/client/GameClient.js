@@ -22,6 +22,8 @@ class GameClient extends GameServer {
     // stateProvider protocol fields (used by AnimationManager.executeWithStateUpdate)
     this.pendingServerState = null;
     this.pendingFinalServerState = null;
+    this.pendingFullFinalState = null;
+    this._teleportingDroneIds = new Set();
 
     // Response queue — serializes _onResponse processing so concurrent
     // server broadcasts (e.g., deferred continuation) don't overlap
@@ -106,8 +108,16 @@ class GameClient extends GameServer {
       phase: newPhase,
     });
 
+    // Extract deployment meta event (carries preDeployTriggerState) before announcement routing.
+    // This event is never played as a visual animation — it only informs pending state setup.
+    const preDeployMeta = allAnimations.find(a => a.animationName === 'DEPLOYMENT_PRE_TRIGGER');
+    const preDeployTriggerState = preDeployMeta?.payload?.preDeployTriggerState ?? null;
+    const animationsForDisplay = preDeployMeta
+      ? allAnimations.filter(a => a.animationName !== 'DEPLOYMENT_PRE_TRIGGER')
+      : allAnimations;
+
     // Extract phase/pass announcements — route to AnnouncementQueue, not AnimationManager
-    const { visualAnimations } = this._extractAndQueueAnnouncements(allAnimations);
+    const { visualAnimations } = this._extractAndQueueAnnouncements(animationsForDisplay);
 
     // Preserve local gameMode from current store state
     state = { ...state, gameMode: this.getState().gameMode, localPlayerId: this.playerId };
@@ -166,28 +176,62 @@ class GameClient extends GameServer {
 
     // TELEPORT_IN handling
     const hasTeleportIn = visualAnimations.some(anim => anim.animationName === TELEPORT_IN);
+    const hasTriggerAnimations = visualAnimations.some(anim => anim.animationName === TRIGGER_FIRED);
 
     debugLog('DEPLOY_TRACE', '[9a/10] _onResponse: about to add isTeleporting flags', {
       hasTeleportIn,
+      hasTriggerAnimations,
+      hasPreDeployTriggerState: !!preDeployTriggerState,
     });
 
-    if (hasTeleportIn) {
+    if (hasTeleportIn && hasTriggerAnimations && preDeployTriggerState) {
+      // Deployment with TELEPORT_IN + triggers: use mark-free pre-trigger state as the
+      // intermediate pending state so the mark does not appear before TELEPORT_IN plays.
+      // pendingServerState  → pre-trigger players + isTeleporting (drone invisible)
+      // pendingFinalServerState → pre-trigger players (no isTeleporting, for drone reveal at 70%)
+      // pendingFullFinalState   → full engine state (applied after all animations for turn transitions)
+      const preStateWithTeleporting = addTeleportingFlags(
+        { player1: preDeployTriggerState.player1, player2: preDeployTriggerState.player2 },
+        visualAnimations
+      );
+      this.pendingServerState = { ...state, ...preStateWithTeleporting };
+      this.pendingFinalServerState = { ...state, ...preDeployTriggerState };
+      this.pendingFullFinalState = state;
+    } else if (hasTeleportIn) {
       const modifiedPlayers = addTeleportingFlags(
         { player1: state.player1, player2: state.player2 },
         visualAnimations
       );
       this.pendingServerState = { ...state, ...modifiedPlayers };
       this.pendingFinalServerState = state;
+      this.pendingFullFinalState = null;
     } else {
       this.pendingServerState = state;
       this.pendingFinalServerState = null;
+      this.pendingFullFinalState = null;
     }
+
+    this._teleportingDroneIds = hasTeleportIn
+      ? new Set(
+          visualAnimations
+            .filter(a => a.animationName === TELEPORT_IN)
+            .map(a => a.payload?.targetId)
+            .filter(Boolean)
+        )
+      : new Set();
 
     try {
       await this.animationManager.executeWithStateUpdate(visualAnimations, this);
+      // Apply full final state after all animations — handles turn transitions
+      // deferred when using pre-trigger state as pendingServerState.
+      if (this.pendingFullFinalState) {
+        this._applyState(this.pendingFullFinalState);
+      }
     } finally {
       this.pendingServerState = null;
       this.pendingFinalServerState = null;
+      this.pendingFullFinalState = null;
+      this._teleportingDroneIds = new Set();
     }
   }
 
@@ -208,6 +252,9 @@ class GameClient extends GameServer {
 
   revealTeleportedDrones() {
     if (!this.pendingFinalServerState) return;
+    // Clear teleporting IDs now that the drone is being revealed — subsequent
+    // STATE_SNAPSHOT events must not re-hide the already-visible drone.
+    this._teleportingDroneIds = new Set();
     const current = this.getState();
     const revealed = {
       ...current,
@@ -221,6 +268,9 @@ class GameClient extends GameServer {
    * Apply intermediate state during animation playback.
    * Called by AnimationManager when processing STATE_SNAPSHOT events.
    * Merges snapshot player states into current state, preserving non-player fields.
+   * Re-applies isTeleporting on drones that are currently mid-teleport — server
+   * snapshots never carry this client-side flag, so without this a teleporting
+   * drone would flash visible in any mid-sequence state update before TELEPORT_IN plays.
    */
   applyIntermediateState(snapshotPlayerStates) {
     debugLog('ANIM_TRACE', '[state-intermediate] applyIntermediateState', {
@@ -228,10 +278,31 @@ class GameClient extends GameServer {
       hasPlayer2: !!snapshotPlayerStates.player2,
     });
     const current = this.getState();
+
+    const preserveTeleportingFlags = (newPlayer) => {
+      if (!newPlayer?.dronesOnBoard || this._teleportingDroneIds.size === 0) return newPlayer;
+      let anyModified = false;
+      const dronesOnBoard = Object.fromEntries(
+        Object.entries(newPlayer.dronesOnBoard).map(([lane, drones]) => [
+          lane,
+          Array.isArray(drones)
+            ? drones.map(drone => {
+                if (this._teleportingDroneIds.has(drone.id) && !drone.isTeleporting) {
+                  anyModified = true;
+                  return { ...drone, isTeleporting: true };
+                }
+                return drone;
+              })
+            : drones,
+        ])
+      );
+      return anyModified ? { ...newPlayer, dronesOnBoard } : newPlayer;
+    };
+
     this._applyState({
       ...current,
-      player1: snapshotPlayerStates.player1 || current.player1,
-      player2: snapshotPlayerStates.player2 || current.player2,
+      player1: preserveTeleportingFlags(snapshotPlayerStates.player1 || current.player1),
+      player2: preserveTeleportingFlags(snapshotPlayerStates.player2 || current.player2),
     });
   }
 

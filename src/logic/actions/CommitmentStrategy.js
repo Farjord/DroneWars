@@ -397,6 +397,8 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
       if (commitmentData.shipComponents && Object.keys(commitmentData.shipComponents).length > 0) {
         updatedShipSections = {};
         Object.keys(commitmentData.shipComponents).forEach(componentId => {
+          const lane = commitmentData.shipComponents[componentId];
+          if (!lane) return; // skip components with no lane assignment (deselected)
           const component = shipComponentCollection.find(c => c.id === componentId);
           if (component?.key) {
             const baseStats = calculateSectionBaseStats(shipCard, component);
@@ -407,7 +409,7 @@ export function applyPlayerCommitment(subPhase, playerId, commitmentData, ctx) {
               shields: baseStats.shields,
               allocatedShields: baseStats.allocatedShields,
               thresholds: baseStats.thresholds,
-              lane: commitmentData.shipComponents[componentId] || 'l'
+              lane
             };
           }
         });

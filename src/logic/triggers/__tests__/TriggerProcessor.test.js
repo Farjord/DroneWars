@@ -317,6 +317,28 @@ vi.mock('../../../data/droneData.js', () => ({
         trigger: 'ON_ROUND_END',
         effects: [{ type: 'HEAL_HULL', value: 1, targetType: 'SHIP_SECTION' }]
       }]
+    },
+    {
+      name: 'TestNoOwnerControllerDrone',
+      attack: 1, hull: 2, shields: 0, speed: 1,
+      abilities: [{
+        name: 'No Owner Ability',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_DRAWN',
+        // deliberately no triggerOwner — tests the default-CONTROLLER behaviour
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
+    },
+    {
+      name: 'TestAnyOwnerControllerDrone',
+      attack: 1, hull: 2, shields: 0, speed: 1,
+      abilities: [{
+        name: 'Any Owner Ability',
+        type: 'TRIGGERED',
+        trigger: 'ON_CARD_DRAWN',
+        triggerOwner: 'ANY',
+        effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+      }]
     }
   ]
 }));
@@ -512,6 +534,38 @@ describe('TriggerProcessor', () => {
       );
 
       expect(matches).toHaveLength(0);
+    });
+
+    it('absent triggerOwner defaults to CONTROLLER — own drone fires, opponent drone does not', () => {
+      // Both players have the same drone type with no triggerOwner specified.
+      // This is the Odin mirror bug: when player1 draws, only player1's drone should fire.
+      const p1Drone = { id: 'p1_noowner', name: 'TestNoOwnerControllerDrone', attack: 1 };
+      const p2Drone = { id: 'p2_noowner', name: 'TestNoOwnerControllerDrone', attack: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [p1Drone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [p2Drone];
+
+      const matches = processor.findMatchingTriggers(
+        TRIGGER_TYPES.ON_CARD_DRAWN, null, null, 'player1', 'player1', basePlayerStates
+      );
+
+      expect(matches).toHaveLength(1);
+      expect(matches[0].drone.id).toBe('p1_noowner');
+    });
+
+    it('triggerOwner ANY fires for both players — own and opponent drone both match', () => {
+      const p1Drone = { id: 'p1_any', name: 'TestAnyOwnerControllerDrone', attack: 1 };
+      const p2Drone = { id: 'p2_any', name: 'TestAnyOwnerControllerDrone', attack: 1 };
+      basePlayerStates.player1.dronesOnBoard.lane1 = [p1Drone];
+      basePlayerStates.player2.dronesOnBoard.lane1 = [p2Drone];
+
+      const matches = processor.findMatchingTriggers(
+        TRIGGER_TYPES.ON_CARD_DRAWN, null, null, 'player1', 'player1', basePlayerStates
+      );
+
+      expect(matches).toHaveLength(2);
+      const ids = matches.map(m => m.drone.id);
+      expect(ids).toContain('p1_any');
+      expect(ids).toContain('p2_any');
     });
 
     it('should return empty array when no drones match', () => {

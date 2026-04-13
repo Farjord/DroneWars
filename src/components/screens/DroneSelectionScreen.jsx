@@ -275,7 +275,7 @@ function DroneSelectionScreen({ onStepComplete }) {
               disabled={!isSelectionComplete}
               className="dw-btn-hud dw-btn-hud-cyan"
             >
-              Continue to Ship Placement →
+              Confirm
             </button>
           </div>
         </div>

@@ -314,6 +314,77 @@ describe('GameClient', () => {
 
       expect(client.pendingServerState).toBeNull();
       expect(client.pendingFinalServerState).toBeNull();
+      expect(client.pendingFullFinalState).toBeNull();
+    });
+
+    it('deploy+trigger path: uses pre-trigger state for pendingServerState, full state for pendingFullFinalState', async () => {
+      const { addTeleportingFlags } = await import('../../utils/teleportUtils.js');
+      const preTriggerState = {
+        player1: { dronesOnBoard: { lane1: [] }, hp: 20 },
+        player2: { dronesOnBoard: { lane1: [{ id: 'p2_d1', isMarked: false }] }, hp: 20 },
+      };
+      const metaEvent = {
+        animationName: 'DEPLOYMENT_PRE_TRIGGER',
+        timing: 'meta',
+        payload: { preDeployTriggerState: preTriggerState },
+      };
+      const teleportAnim = { animationName: 'TELEPORT_IN', payload: {} };
+      const triggerAnim = { animationName: 'TRIGGER_FIRED', payload: {} };
+      const fullState = makeState({
+        player1: { dronesOnBoard: { lane1: [{ id: 'p1_d1' }] }, hp: 20 },
+        player2: { dronesOnBoard: { lane1: [{ id: 'p2_d1', isMarked: true }] }, hp: 20 },
+      });
+
+      let capturedProvider;
+      mockAnimMgr.executeWithStateUpdate.mockImplementation(async (_anims, provider) => {
+        capturedProvider = provider;
+      });
+
+      await client._onResponse({
+        state: fullState,
+        animations: { actionAnimations: [metaEvent, teleportAnim, triggerAnim], systemAnimations: [] },
+        result: { success: true },
+      });
+
+      // addTeleportingFlags called with pre-trigger player states (mark-free)
+      expect(addTeleportingFlags).toHaveBeenCalledWith(
+        { player1: preTriggerState.player1, player2: preTriggerState.player2 },
+        expect.arrayContaining([teleportAnim, triggerAnim])
+      );
+      // AnimationManager receives filtered animations (no meta event)
+      const animsPassedToMgr = mockAnimMgr.executeWithStateUpdate.mock.calls[0][0];
+      expect(animsPassedToMgr.some(a => a.animationName === 'DEPLOYMENT_PRE_TRIGGER')).toBe(false);
+      expect(capturedProvider).toBe(client);
+    });
+
+    it('deploy+trigger path: applies pendingFullFinalState after animations complete', async () => {
+      const preTriggerState = {
+        player1: { dronesOnBoard: { lane1: [] }, hp: 20 },
+        player2: { dronesOnBoard: { lane1: [] }, hp: 20 },
+      };
+      const metaEvent = {
+        animationName: 'DEPLOYMENT_PRE_TRIGGER',
+        timing: 'meta',
+        payload: { preDeployTriggerState: preTriggerState },
+      };
+      const fullState = makeState({ turnPhase: 'roundEnd' });
+      const applyUpdateCalls = [];
+      mockStore.applyUpdate.mockImplementation(s => applyUpdateCalls.push(s.turnPhase));
+
+      await client._onResponse({
+        state: fullState,
+        animations: {
+          actionAnimations: [
+            metaEvent,
+            { animationName: 'TELEPORT_IN', payload: {} },
+            { animationName: 'TRIGGER_FIRED', payload: {} },
+          ],
+          systemAnimations: [],
+        },
+      });
+
+      // The full final state (roundEnd) must be applied after animations
+      expect(applyUpdateCalls).toContain('roundEnd');
     });
   });
 
@@ -696,6 +767,44 @@ describe('GameClient', () => {
       });
 
       expect(mockStore.gameStateManager.syncFromServer).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves isTeleporting flags on drones when snapshot overwrites player state', () => {
+      client._teleportingDroneIds = new Set(['drone1']);
+
+      // Drone not in current state yet — only in pendingServerState
+      const current = makeState({
+        player2: { dronesOnBoard: { lane1: [] } },
+      });
+      mockStore.getState.mockReturnValue(current);
+
+      // Snapshot has drone placed (as server would send) without isTeleporting
+      const snapshot = {
+        player2: { dronesOnBoard: { lane1: [{ id: 'drone1', name: 'Scanner' }] } },
+      };
+
+      client.applyIntermediateState(snapshot);
+
+      const applied = mockStore.applyUpdate.mock.calls[0][0];
+      expect(applied.player2.dronesOnBoard.lane1[0].isTeleporting).toBe(true);
+    });
+
+    it('does not preserve isTeleporting flags after drone has been revealed', () => {
+      client._teleportingDroneIds = new Set(); // cleared by revealTeleportedDrones
+
+      const current = makeState({
+        player2: { dronesOnBoard: { lane1: [{ id: 'drone1', name: 'Scanner' }] } },
+      });
+      mockStore.getState.mockReturnValue(current);
+
+      const snapshot = {
+        player2: { dronesOnBoard: { lane1: [{ id: 'drone1', name: 'Scanner' }] } },
+      };
+
+      client.applyIntermediateState(snapshot);
+
+      const applied = mockStore.applyUpdate.mock.calls[0][0];
+      expect(applied.player2.dronesOnBoard.lane1[0].isTeleporting).toBeFalsy();
     });
   });
 

@@ -801,6 +801,7 @@ const fullDroneCollection = [
       description: 'Each time you draw cards during the action phase, permanently gain +1 attack per card drawn.',
       type: 'TRIGGERED',
       trigger: 'ON_CARD_DRAWN',
+      triggerOwner: 'CONTROLLER',
       triggerTiming: 'ANY_TURN',
       effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
     }],
@@ -822,6 +823,7 @@ const fullDroneCollection = [
       description: 'Each time you gain energy during the action phase, permanently gain +1 attack per 2 energy gained (rounded down).',
       type: 'TRIGGERED',
       trigger: 'ON_ENERGY_GAINED',
+      triggerOwner: 'CONTROLLER',
       triggerTiming: 'ANY_TURN',
       scalingDivisor: 2,
       effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]

@@ -130,6 +130,17 @@ class GameEngine {
             },
           };
         }
+        if (anim.animationName === 'DEPLOYMENT_PRE_TRIGGER' && anim.payload?.preDeployTriggerState) {
+          return {
+            ...anim,
+            payload: {
+              ...anim.payload,
+              preDeployTriggerState: StateRedactor.redactForPlayer(
+                anim.payload.preDeployTriggerState, playerId
+              ),
+            },
+          };
+        }
         return { ...anim };
       };
       const clientAnimations = {

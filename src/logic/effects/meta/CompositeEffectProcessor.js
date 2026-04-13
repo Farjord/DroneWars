@@ -27,7 +27,7 @@ class CompositeEffectProcessor extends BaseEffectProcessor {
    * @param {string} effect.type - Must be 'COMPOSITE_EFFECT'
    * @param {Array<Object>} effect.effects - Sub-effects to execute sequentially
    * @param {Object} context - Effect context
-   * @returns {Object} Result { newPlayerStates, additionalEffects, animationEvents }
+   * @returns {Object} Result { newPlayerStates, additionalEffects, animationEvents, triggerAnimationEvents, preTriggerState }
    */
   process(effect, context) {
     this.logProcessStart(effect, context);
@@ -36,6 +36,8 @@ class CompositeEffectProcessor extends BaseEffectProcessor {
     let currentStates = this.clonePlayerStates(context.playerStates);
     const allAdditionalEffects = [];
     const allAnimationEvents = [];
+    const allTriggerAnimationEvents = [];
+    let firstPreTriggerState = null;
 
     debugLog('EFFECT_PROCESSING', `[COMPOSITE_EFFECT] ${actingPlayerId} executing ${effect.effects.length} sub-effects`, {
       subEffects: effect.effects.map(e => e.type)
@@ -65,13 +67,23 @@ class CompositeEffectProcessor extends BaseEffectProcessor {
         allAnimationEvents.push(...result.animationEvents);
       }
 
+      // Accumulate trigger animation events (e.g. ON_CARD_DRAWN → Odin, ON_ENERGY_GAINED → Thor)
+      if (result.triggerAnimationEvents?.length > 0) {
+        allTriggerAnimationEvents.push(...result.triggerAnimationEvents);
+        if (!firstPreTriggerState && result.preTriggerState) {
+          firstPreTriggerState = result.preTriggerState;
+        }
+      }
+
       debugLog('EFFECT_PROCESSING', `[COMPOSITE_EFFECT] Sub-effect ${subEffect.type} executed`);
     }
 
     const result = {
       newPlayerStates: currentStates,
       additionalEffects: allAdditionalEffects,
-      animationEvents: allAnimationEvents
+      animationEvents: allAnimationEvents,
+      triggerAnimationEvents: allTriggerAnimationEvents,
+      preTriggerState: firstPreTriggerState
     };
 
     this.logProcessComplete(effect, result, context);

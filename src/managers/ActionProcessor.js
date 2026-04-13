@@ -221,22 +221,30 @@ class ActionProcessor {
       executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
       mapAnimationEvents: (events) => {
         const mapped = (events || []).map((event, idx) => {
+          // Meta event: carries preDeployTriggerState to client — never played as animation.
+          if (event.type === 'DEPLOYMENT_PRE_TRIGGER') {
+            return {
+              animationName: 'DEPLOYMENT_PRE_TRIGGER',
+              timing: 'meta',
+              payload: { preDeployTriggerState: event.preDeployTriggerState },
+            };
+          }
           if (event.type === STATE_SNAPSHOT) {
             return {
               animationName: STATE_SNAPSHOT,
-              timing: 'pre-state',
+              timing: event.timingOverride || 'pre-state',
               payload: event
             };
           }
           if (event.type === TRIGGER_CHAIN_PAUSE) {
             return {
               animationName: TRIGGER_CHAIN_PAUSE,
-              timing: 'pre-state',
+              timing: event.timingOverride || 'pre-state',
               payload: event
             };
           }
           const animDef = ap.animationManager?.animations[event.type];
-          const timing = animDef?.timing || 'pre-state';
+          const timing = event.timingOverride || animDef?.timing || 'pre-state';
           return {
             animationName: event.type,
             timing,

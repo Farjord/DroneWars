@@ -6,6 +6,9 @@
 import { resolveRefFromSelections } from './EffectChainProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
+import LaneTargetingProcessor from '../targeting/lane/LaneTargetingProcessor.js';
+
+const laneTargetingProcessor = new LaneTargetingProcessor();
 
 // --- Ref Resolution ---
 
@@ -170,15 +173,6 @@ function computeDroneTargets(targeting, actingPlayerId, playerStates, positionTr
   return targets;
 }
 
-function computeLaneTargets(targeting, actingPlayerId) {
-  const targetPlayerId = getTargetPlayerId(targeting.affinity || 'ENEMY', actingPlayerId);
-  return ['lane1', 'lane2', 'lane3'].map(laneId => ({
-    id: laneId,
-    owner: targetPlayerId,
-    type: 'lane',
-  }));
-}
-
 function computeCardInHandTargets(targeting, actingPlayerId, playerStates, positionTracker) {
   const targetPlayerId = getTargetPlayerId(targeting.affinity || 'FRIENDLY', actingPlayerId);
   const hand = playerStates[targetPlayerId]?.hand || [];
@@ -217,7 +211,12 @@ export function computeChainTargets(effect, effectIndex, selections, positionTra
     case 'DRONE':
       return computeDroneTargets(targeting, actingPlayerId, playerStates, positionTracker, getEffectiveStats, effect.type);
     case 'LANE':
-      return computeLaneTargets(targeting, actingPlayerId);
+      return laneTargetingProcessor.process({
+        actingPlayerId,
+        definition: { targeting, effects: [{ type: effect.type }] },
+        player1: playerStates.player1,
+        player2: playerStates.player2,
+      });
     case 'CARD_IN_HAND':
       return computeCardInHandTargets(targeting, actingPlayerId, playerStates, positionTracker);
     case 'SHIP_SECTION':
