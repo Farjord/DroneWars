@@ -54,7 +54,8 @@ const ActionCard = ({
   excessCards = 0,
   scale = 1.0,
   lanesControlled,
-  diffHighlights = null
+  diffHighlights = null,
+  validTargetColor = null
 }) => {
   const { name, cost, image, description, type, effect, rarity } = card;
   const goAgain = effect?.goAgain;
@@ -135,6 +136,7 @@ const ActionCard = ({
         width: '100%',
         height: '100%',
         clipPath: CARD_CLIP_PATH,
+        ...(validTargetColor ? { background: validTargetColor } : {}),
       }}
     >
       <div

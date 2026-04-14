@@ -87,7 +87,9 @@ const TechSlotItem = ({ techDrone, techDef, faction, highlighted, exhausted, war
           ? '0.15vw solid rgba(100,100,120,0.4)'
           : warned
             ? '0.15vw solid #ff4400'
-            : `0.15vw solid ${fc.primary}`,
+            : (highlighted && !exhausted && !warned)
+              ? `0.15vw solid ${fc.bright}`
+              : `0.15vw solid ${fc.primary}`,
         ...(highlighted && !exhausted && !warned ? {
           '--valid-target-color': fc.glow,
           '--valid-target-color-dim': `${fc.glow}60`,
@@ -144,6 +146,7 @@ export default function TechSlots({ faction, techDrones = [], highlightedSlots =
 
   const emptyHighlightStyle = highlightEmptySlots ? {
     ...emptySlotStyle,
+    border: `0.15vw solid ${fc.bright}`,
     '--valid-target-color': fc.glow,
     '--valid-target-color-dim': `${fc.glow}60`,
     cursor: 'pointer',

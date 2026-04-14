@@ -329,7 +329,10 @@ const DroneToken = ({
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
             {/* Main Token Body */}
-            <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
+            <div
+              className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}
+              style={(isActionTarget && !isSelectedState) ? { borderColor: fc.bright, borderWidth: '2px' } : undefined}
+            >
               <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
               <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)' }} />
               {/* Faction-colour overlay on selection/targeting */}

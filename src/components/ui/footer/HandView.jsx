@@ -441,6 +441,7 @@ function HandView({
                     mandatoryAction={effectiveDiscardAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}
+                    validTargetColor={isEffectChainTarget ? FACTION_COLORS.player.bright : null}
                     onClick={
                       effectiveDiscardAction?.type === 'discard'
                         ? (c) => {
