@@ -178,9 +178,9 @@ describe('DroneLanesDisplay drag-and-drop', () => {
         el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
-      // All lanes should have valid-target class when dragging
+      // All lanes should have valid-target-shaped on visual layer when dragging
       lanes.forEach(lane => {
-        expect(lane.classList.contains('valid-target')).toBe(true);
+        expect(lane.querySelector('.valid-target-shaped')).toBeTruthy();
       });
     });
 
@@ -198,9 +198,9 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       // Opponent lanes should NOT have the drag targeting highlight
-      // Non-targetable lanes should not have valid-target class
+      // Non-targetable lanes should not have valid-target-shaped on their visual layer
       lanes.forEach(lane => {
-        expect(lane.classList.contains('valid-target')).toBe(false);
+        expect(lane.querySelector('.valid-target-shaped')).toBeNull();
       });
     });
   });

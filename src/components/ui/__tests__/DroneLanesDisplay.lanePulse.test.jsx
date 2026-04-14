@@ -109,7 +109,7 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       });
     });
 
-    it('should have valid-target class on targetable lane container', () => {
+    it('should have valid-target-shaped class on visual layer of targetable lane', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -120,10 +120,11 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
-      expect(lane1.classList.contains('valid-target')).toBe(true);
+      // valid-target-shaped is on the visual layer child (drop-shadow follows trapezoid clip-path)
+      expect(lane1.querySelector('.valid-target-shaped')).toBeTruthy();
     });
 
-    it('should NOT have valid-target class on non-targetable lanes', () => {
+    it('should NOT have valid-target-shaped class on non-targetable lanes', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -132,9 +133,9 @@ describe('DroneLanesDisplay lane targeting styles', () => {
 
       const { container } = render(<DroneLanesDisplay {...props} />);
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
-      // lane2 and lane3 are not targeted — they should NOT have valid-target
-      expect(laneContainers[1].classList.contains('valid-target')).toBe(false);
-      expect(laneContainers[2].classList.contains('valid-target')).toBe(false);
+      // lane2 and lane3 are not targeted — visual layer should NOT have valid-target-shaped
+      expect(laneContainers[1].querySelector('.valid-target-shaped')).toBeNull();
+      expect(laneContainers[2].querySelector('.valid-target-shaped')).toBeNull();
     });
   });
 

@@ -352,8 +352,8 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
       const laneContainers = container.querySelectorAll('[data-testid^="lane-drop-zone"]');
       const lane1 = laneContainers[0];
 
-      // Targetable lane container should have valid-target class
-      expect(lane1.classList.contains('valid-target')).toBe(true);
+      // Targetable lane visual layer should have valid-target-shaped class (drop-shadow follows trapezoid)
+      expect(lane1.querySelector('.valid-target-shaped')).toBeTruthy();
     });
   });
 });

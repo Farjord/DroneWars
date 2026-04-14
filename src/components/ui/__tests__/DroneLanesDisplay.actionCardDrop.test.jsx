@@ -234,9 +234,9 @@ describe('DroneLanesDisplay action card drop', () => {
         el.dataset.testid && el.dataset.testid.startsWith('lane-drop-zone')
       );
 
-      // Lanes should have valid-target class when dragging LANE card
+      // Lanes should have valid-target-shaped on visual layer when dragging LANE card
       lanes.forEach(lane => {
-        expect(lane.classList.contains('valid-target')).toBe(true);
+        expect(lane.querySelector('.valid-target-shaped')).toBeTruthy();
       });
     });
 
@@ -255,7 +255,7 @@ describe('DroneLanesDisplay action card drop', () => {
 
       // Lanes should NOT have action card targeting highlight when targets cleared
       lanes.forEach(lane => {
-        expect(lane.classList.contains('valid-target')).toBe(false);
+        expect(lane.querySelector('.valid-target-shaped')).toBeNull();
       });
     });
   });

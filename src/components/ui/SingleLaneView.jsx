@@ -397,7 +397,6 @@ const SingleLaneView = ({
       className={`rounded-lg relative
         ${isInteractivePlayerLane ? 'cursor-pointer' : ''}
         ${isHoveredTarget ? 'scale-[1.01] z-10 transition-transform duration-200 ease-out' : 'transition-transform duration-200 ease-in-out'}
-        ${isTargetable ? 'valid-target' : ''}
       `}
       style={{
         overflow: 'visible',
@@ -409,9 +408,10 @@ const SingleLaneView = ({
         } : {}),
       }}
     >
-      {/* Clipped visual layer — decorative, no interaction */}
+      {/* Clipped visual layer — decorative, no interaction. */}
+      {/* valid-target-shaped applies drop-shadow here so the glow follows the trapezoid clip-path. */}
       <div
-        className="absolute inset-0"
+        className={`absolute inset-0 ${isTargetable ? 'valid-target-shaped' : ''}`}
         style={{ pointerEvents: 'none', ...(isDragSourceLane ? { zIndex: 2 } : {}) }}
       >
         <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} laneId={laneId} />
