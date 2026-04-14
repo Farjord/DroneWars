@@ -198,10 +198,9 @@ describe('DroneLanesDisplay drag-and-drop', () => {
       );
 
       // Opponent lanes should NOT have the drag targeting highlight
-      // (they should have their normal red background, not cyan highlight)
+      // Non-targetable lanes should not have valid-target class
       lanes.forEach(lane => {
-        // Should not have the animate-pulse that indicates targetable
-        expect(lane.className).not.toMatch(/animate-pulse/);
+        expect(lane.classList.contains('valid-target')).toBe(false);
       });
     });
   });

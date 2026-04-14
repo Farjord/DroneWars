@@ -255,8 +255,7 @@ describe('DroneLanesDisplay action card drop', () => {
 
       // Lanes should NOT have action card targeting highlight when targets cleared
       lanes.forEach(lane => {
-        expect(lane.className).not.toContain('ring-cyan-400');
-        expect(lane.className).not.toContain('bg-cyan-800');
+        expect(lane.classList.contains('valid-target')).toBe(false);
       });
     });
   });

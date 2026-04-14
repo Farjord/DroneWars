@@ -1,8 +1,8 @@
 // ========================================
 // DRONE LANES DISPLAY - LANE PULSE ISOLATION TESTS
 // ========================================
-// TDD tests to verify that animate-pulse is NOT on lane containers
-// Only individual drones that match affectedDroneIds should pulse
+// TDD tests to verify valid-target class placement on lane containers
+// animate-pulse must NOT be on lane containers (drones handle their own pulse)
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
