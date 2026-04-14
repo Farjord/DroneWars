@@ -142,6 +142,7 @@ const useCardSelection = ({
       lane: sel.lane,
       destination: sel.destination || null,
       skipped: sel.skipped || false,
+      insertionIndex: sel.insertionIndex ?? null,
     }));
 
     debugLog('CARD_PLAY_TRACE', '[1.5] Chain complete — showing confirmation modal', {

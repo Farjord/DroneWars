@@ -354,7 +354,7 @@ function HandView({
                 ...(isCardDragging && { opacity: 0.3 })
               };
 
-              // Apply pulse effect during mandatory/effect-chain discard (all target cards), optional discard (only selectable cards).
+              // Apply valid-target glow during mandatory/effect-chain discard (all target cards), optional discard (only selectable cards).
               // Applied to wrapper div to avoid CSS conflicts with rarity animations.
               const shouldPulse = (effectiveDiscardAction?.type === 'discard' && !isEffectChainTarget) ||
                 (turnPhase === 'optionalDiscard' && cardIsPlayable);
@@ -362,12 +362,12 @@ function HandView({
               return (
                 <div
                   key={card.instanceId || `${card.id}-${index}`}
-                  className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''} ${isEffectChainTarget ? 'valid-target' : ''}`}
+                  className={`${styles.cardWrapper} ${(shouldPulse || isEffectChainTarget) ? 'valid-target' : ''}`}
                   style={{
                     ...style,
-                    ...(isEffectChainTarget ? {
-                      '--valid-target-color': FACTION_COLORS.player.glow,
-                      '--valid-target-color-dim': `${FACTION_COLORS.player.glow}60`,
+                    ...((isEffectChainTarget || shouldPulse) ? {
+                      '--valid-target-color': FACTION_COLORS.player.bright,
+                      '--valid-target-color-dim': `${FACTION_COLORS.player.bright}60`,
                     } : {}),
                   }}
                   onMouseEnter={(e) => {
@@ -441,7 +441,7 @@ function HandView({
                     mandatoryAction={effectiveDiscardAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}
-                    validTargetColor={isEffectChainTarget ? FACTION_COLORS.player.bright : null}
+                    validTargetColor={(isEffectChainTarget || shouldPulse) ? FACTION_COLORS.player.bright : null}
                     onClick={
                       effectiveDiscardAction?.type === 'discard'
                         ? (c) => {

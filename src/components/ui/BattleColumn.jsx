@@ -273,6 +273,7 @@ const BattleColumn = ({
   insertionPreview,
   setInsertionPreview,
   onLaneMouseMove,
+  confirmationGhosts,
   // Mine warning
   warnedMineIds = [],
 }) => {
@@ -335,6 +336,7 @@ const BattleColumn = ({
     insertionPreview,
     setInsertionPreview,
     onLaneMouseMove,
+    confirmationGhosts,
     interceptedBadge,
   };
 

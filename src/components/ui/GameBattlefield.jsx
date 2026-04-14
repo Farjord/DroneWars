@@ -63,6 +63,7 @@ function GameBattlefield({
   insertionPreview,
   setInsertionPreview,
   onLaneMouseMove,
+  confirmationGhosts,
 }) {
   // Compute effective ship stats once, pass down to all columns
   const { getEffectiveShipStats } = useGameData();
@@ -138,6 +139,7 @@ function GameBattlefield({
     insertionPreview,
     setInsertionPreview,
     onLaneMouseMove,
+    confirmationGhosts,
     warnedMineIds,
   };
 

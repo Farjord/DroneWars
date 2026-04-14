@@ -155,6 +155,32 @@ describe('Ghost side scoping', () => {
     });
   });
 
+  describe('confirmationGhosts — null insertionIndex filter', () => {
+    // Mirrors the filter in App.jsx confirmationGhosts computation.
+    // When a chain effect's destination is auto-resolved (no drag), insertionIndex is absent.
+    const confirmationGhostsFilter = sel => sel.destination != null;
+
+    it('includes a selection with a destination and no insertionIndex', () => {
+      const sel = { target: { id: 'd1', owner: 'player2' }, lane: 'lane1', destination: 'lane2' };
+      expect(confirmationGhostsFilter(sel)).toBe(true);
+    });
+
+    it('includes a selection with a destination and insertionIndex = 0', () => {
+      const sel = { target: { id: 'd1', owner: 'player1' }, lane: 'lane1', destination: 'lane2', insertionIndex: 0 };
+      expect(confirmationGhostsFilter(sel)).toBe(true);
+    });
+
+    it('excludes a selection with no destination', () => {
+      const sel = { target: { id: 'd1', owner: 'player1' }, lane: 'lane1' };
+      expect(confirmationGhostsFilter(sel)).toBe(false);
+    });
+
+    it('excludes a selection with destination = null', () => {
+      const sel = { target: { id: 'd1', owner: 'player1' }, lane: 'lane1', destination: null };
+      expect(confirmationGhostsFilter(sel)).toBe(false);
+    });
+  });
+
   describe('onMouseMove guard — shouldFireLaneMouseMove', () => {
     // Extracted condition from SingleLaneView onMouseMove handler:
     // fires when: isPlayer || isDestinationPhase || draggedDrone?.isChainTargetDrag

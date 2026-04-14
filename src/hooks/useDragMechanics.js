@@ -369,6 +369,7 @@ const useDragMechanics = ({
 
     const { card } = draggedActionCard;
     const capturedInsertionIndex = insertionPreview?.index ?? null;
+    const capturedGhostPreview = insertionPreview ? { ...insertionPreview } : null;
     debugLog('DRAG_DROP_DEPLOY', '📥 Action card drag end', { cardName: card.name, target, targetType, targetOwner });
 
     // Cleanup drag state
@@ -561,7 +562,7 @@ const useDragMechanics = ({
         (t.id === target.id || t.id === target.name) && t.owner === targetOwner
       );
       if (isValidTarget) {
-        setCardConfirmation({ card, target: { ...target, owner: targetOwner }, insertionIndex: capturedInsertionIndex });
+        setCardConfirmation({ card, target: { ...target, owner: targetOwner }, insertionIndex: capturedInsertionIndex, ghostPreview: capturedGhostPreview });
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, dragCardTargets });
         if (targetType === 'lane' && card.effects[0]?.type === 'CREATE_TECH') {
@@ -825,8 +826,9 @@ const useDragMechanics = ({
 
     const attackerDrone = interceptorDrone; // Rename for clarity in normal flow
 
-    // Capture insertion index before cleanup (needed for same-lane reorder)
+    // Capture insertion index and ghost snapshot before cleanup
     const capturedInsertionIndex = insertionPreview?.index ?? null;
+    const ghostPreview = insertionPreview ? { ...insertionPreview } : null;
 
     // Cleanup drag state first
     setDraggedDrone(null);
@@ -903,6 +905,7 @@ const useDragMechanics = ({
           card: null,
           isSnared: attackerDrone.isSnared || false,
           insertionIndex: capturedInsertionIndex,
+          ghostPreview,
         };
 
         setMoveConfirmation(moveConfData);
@@ -936,6 +939,7 @@ const useDragMechanics = ({
           card: null,  // Regular drone drag (not card-based)
           isSnared: attackerDrone.isSnared || false,
           insertionIndex: capturedInsertionIndex,
+          ghostPreview,
         };
 
         debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - regular drag move]', {

@@ -29,14 +29,31 @@ const renderDronesOnBoard = ({
   hoveredTarget, draggedDrone, handleDroneDragStart,
   handleDroneDragEnd, draggedActionCard, handleActionCardDragEnd,
   getLocalPlayerId, getOpponentPlayerId, abilityMode, effectChainState,
-  selectedCard, hoveredLane, insertionPreview, interceptedBadge,
+  selectedCard, hoveredLane, insertionPreview, confirmationGhosts, interceptedBadge,
 }) => {
   // When any drone is hovered or selected during targeting, dim the rest
   // In abilityMode, selectedDrone is the ability *source* — not a target focus
+  //
+  // hoveredTarget persists across effect-chain transitions: a drone hovered in effect N
+  // stays in hoveredTarget when effect N+1 begins. Without the guard below, that stale
+  // hover triggers anyTargetFocused=true and dims all of effect N+1's valid targets.
+  // Fix: only count the hover as "focused" if the hovered drone is itself a valid target.
+  const hoveredDroneIsTarget = hoveredTarget?.type === 'drone' && !!(
+    validAbilityTargets.some(t => t.id === hoveredTarget.target?.id) ||
+    effectiveCardTargets.some(t => t.id === hoveredTarget.target?.id)
+  );
   const anyTargetFocused = !!(
-    (hoveredTarget?.target && hoveredTarget?.type === 'drone') ||
+    hoveredDroneIsTarget ||
     (selectedDrone && !abilityMode) ||
     effectChainState?.pendingTarget || effectChainState?.pendingMultiTargets?.length);
+
+  // During an effect chain, use effectChainState.validTargets directly rather than the
+  // validCardTargets prop. The prop is synced via a useEffect in useCardSelection — it lags
+  // one render behind after each chain advancement, which causes targets to appear unhighlighted
+  // for one paint cycle. Reading from the chain state synchronously eliminates that lag.
+  const effectiveCardTargets = (effectChainState && !effectChainState.complete)
+    ? effectChainState.validTargets
+    : validCardTargets;
 
   // Build drone elements array, then splice in ghost at insertion position
   const droneElements = drones.map((drone, index) => {
@@ -47,7 +64,7 @@ const renderDronesOnBoard = ({
 
           const droneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           const abilityTargetMatch = validAbilityTargets.some(t => t.id === drone.id && t.owner === droneOwner);
-          const cardTargetMatch = validCardTargets.some(t => t.id === drone.id && t.owner === droneOwner);
+          const cardTargetMatch = effectiveCardTargets.some(t => t.id === drone.id && t.owner === droneOwner);
           const affectedDroneMatch = affectedDroneIds?.includes(drone.id) ?? false;
           const isActionTarget = abilityTargetMatch || cardTargetMatch || affectedDroneMatch;
 
@@ -208,6 +225,32 @@ const renderDronesOnBoard = ({
     droneElements.splice(insertionPreview.index, 0, ghostElement);
   }
 
+  // Confirmation destination ghosts — show where each drone will land during card confirmation.
+  // Supports multi-drone cards (e.g. Forced Repositioning). Spliced in reverse index order
+  // so earlier splices don't shift the indices of later ones.
+  // index may be null when the destination was auto-resolved (no drag) — treated as end-of-lane.
+  if (confirmationGhosts) {
+    const forThisLane = confirmationGhosts.filter(g => g.laneId === lane && g.isPlayer === isPlayer);
+    [...forThisLane].sort((a, b) => (b.index ?? Infinity) - (a.index ?? Infinity)).forEach(g => {
+      const ghostEl = (
+        <DroneToken
+          key={`conf-ghost-${g.drone.id}`}
+          drone={g.drone}
+          lane={lane}
+          isPlayer={isPlayer}
+          isGhost={true}
+          onClick={() => {}}
+          droneRefs={droneRefs}
+          mandatoryAction={null}
+          localPlayerState={localPlayerState}
+          getLocalPlayerId={getLocalPlayerId}
+          getOpponentPlayerId={getOpponentPlayerId}
+        />
+      );
+      droneElements.splice(g.index ?? droneElements.length, 0, ghostEl);
+    });
+  }
+
   // Chain selection ghosts — preview pending moves from completed chain selections
   const chainGhosts = (effectChainState && !effectChainState.complete)
     ? effectChainState.selections?.filter(sel =>
@@ -289,6 +332,7 @@ const SingleLaneView = ({
   insertionPreview = null,
   setInsertionPreview = null,
   onLaneMouseMove = null,
+  confirmationGhosts = null,
   // Intercepted badge state
   interceptedBadge = null,
 }) => {
@@ -498,6 +542,7 @@ const SingleLaneView = ({
           selectedCard,
           hoveredLane,
           insertionPreview,
+          confirmationGhosts,
           interceptedBadge,
         })}
       </div>

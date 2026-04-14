@@ -668,13 +668,41 @@ const App = ({ phaseAnimationQueue }) => {
     abilityMode, addLogEntry,
   });
 
-  // When the deployment confirmation modal is open, insertionPreview may have been cleared
-  // by SingleLaneView's onMouseLeave (fires synchronously before React re-renders with
-  // the new deploymentConfirmation state). Reconstruct from deploymentConfirmation so the
-  // ghost drone remains visible behind the modal.
-  const effectiveInsertionPreview = (deploymentConfirmation?.insertionIndex != null)
-    ? { laneId: deploymentConfirmation.lane, index: deploymentConfirmation.insertionIndex, drone: deploymentConfirmation.drone, isPlayer: true }
-    : insertionPreview;
+  // When any confirmation modal is open, insertionPreview may already be cleared
+  // (SingleLaneView's onMouseLeave fires synchronously before React state propagates).
+  // Reconstruct the ghost from whichever confirmation is active so the drone remains
+  // visible at its intended position behind the modal.
+  const effectiveInsertionPreview = (() => {
+    // Deployment confirmation — data is self-contained
+    if (deploymentConfirmation?.insertionIndex != null) {
+      return { laneId: deploymentConfirmation.lane, index: deploymentConfirmation.insertionIndex, drone: deploymentConfirmation.drone, isPlayer: true };
+    }
+    // Move confirmation (direct drone drag) — ghostPreview snapshotted before clearing
+    if (moveConfirmation?.ghostPreview) {
+      return moveConfirmation.ghostPreview;
+    }
+    // Card confirmation (direct action card drop, e.g. token creation) — ghostPreview snapshotted before clearing
+    if (cardConfirmation?.ghostPreview) {
+      return cardConfirmation.ghostPreview;
+    }
+    // Chain cases are handled by confirmationGhosts below (supports multiple drones)
+    return insertionPreview;
+  })();
+
+  // For card confirmation from chain completion (e.g. Forced Repositioning moving 2 drones),
+  // build an array of destination ghosts — one per chain selection that has a destination
+  // and insertionIndex. Passed to SingleLaneView so all moved drones remain visible.
+  const localDroneIds = new Set(Object.values(localPlayerState?.dronesOnBoard ?? {}).flat().map(d => d.id));
+  const confirmationGhosts = cardConfirmation?.chainSelections
+    ? cardConfirmation.chainSelections
+        .filter(sel => sel.destination != null)
+        .map(sel => {
+          const drone = Array.isArray(sel.target) ? sel.target[0] : sel.target;
+          if (!drone?.id) return null;
+          return { laneId: sel.destination, index: sel.insertionIndex, drone, isPlayer: localDroneIds.has(drone.id) };
+        })
+        .filter(Boolean)
+    : null;
 
   // Positioned after useDragMechanics — depends on draggedActionCard (useDragMechanics)
   // and setHoveredLane/setAffectedDroneIds (useCardSelection)
@@ -1137,6 +1165,7 @@ const App = ({ phaseAnimationQueue }) => {
         insertionPreview={effectiveInsertionPreview}
         setInsertionPreview={setInsertionPreview}
         onLaneMouseMove={handleLaneMouseMove}
+        confirmationGhosts={confirmationGhosts}
       />
 
       <div style={{ flex: '0 0 20%', maxHeight: '20%' }}>
