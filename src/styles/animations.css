@@ -380,19 +380,19 @@
 }
 
 /* === VALID TARGET GLOW === */
-/* Unified pulsing ring + glow for all targetable game elements. */
+/* Unified glow for all targetable game elements. */
 /* Set --valid-target-color and --valid-target-color-dim on the element. */
-/* Ring uses box-shadow (not border) so layout is unaffected when the class is toggled. */
+/* filter: drop-shadow operates on the composite rendered output of the element + all children, */
+/* so it follows the actual visible shape even when .valid-target sits on a borderless wrapper */
+/* whose children fill 100% of its bounds (drone tokens, action cards with clip-path, etc.). */
 @keyframes valid-target-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0.15vw var(--valid-target-color),
-                0 0 0.6vw var(--valid-target-color),
-                0 0 1.2vw var(--valid-target-color-dim);
+    filter: drop-shadow(0 0 3px var(--valid-target-color))
+            drop-shadow(0 0 8px var(--valid-target-color-dim));
   }
   50% {
-    box-shadow: 0 0 0 0.15vw var(--valid-target-color),
-                0 0 1.0vw var(--valid-target-color),
-                0 0 2.0vw var(--valid-target-color-dim);
+    filter: drop-shadow(0 0 5px var(--valid-target-color))
+            drop-shadow(0 0 14px var(--valid-target-color-dim));
   }
 }
 
@@ -401,10 +401,11 @@
 }
 
 /* Shape-aware variant for clip-path elements (e.g. lanes). */
-/* Apply to the wrapper that contains the clipped child — drop-shadow follows the visible shape. */
+/* Apply to a wrapper containing only a near-transparent clipped shape — */
+/* drop-shadow follows the visible boundary without affecting lane content. */
 @keyframes valid-target-shaped-pulse {
-  0%, 100% { filter: drop-shadow(0 0 4px var(--valid-target-color)) drop-shadow(0 0 8px var(--valid-target-color-dim)); }
-  50%       { filter: drop-shadow(0 0 7px var(--valid-target-color)) drop-shadow(0 0 14px var(--valid-target-color-dim)); }
+  0%, 100% { filter: drop-shadow(0 0 6px var(--valid-target-color)) drop-shadow(0 0 12px var(--valid-target-color-dim)); }
+  50%       { filter: drop-shadow(0 0 10px var(--valid-target-color)) drop-shadow(0 0 20px var(--valid-target-color-dim)); }
 }
 
 .valid-target-shaped {

@@ -408,14 +408,37 @@ const SingleLaneView = ({
         } : {}),
       }}
     >
-      {/* Clipped visual layer — decorative, no interaction. */}
-      {/* valid-target-shaped applies drop-shadow here so the glow follows the trapezoid clip-path. */}
+      {/* Clipped visual layer — decorative, no interaction */}
       <div
-        className={`absolute inset-0 ${isTargetable ? 'valid-target-shaped' : ''}`}
+        className="absolute inset-0"
         style={{ pointerEvents: 'none', ...(isDragSourceLane ? { zIndex: 2 } : {}) }}
       >
         <DroneLaneVisualLayers isOpponent={!isPlayer} clipPath={clipPath} laneControlState={controlledOwner} laneId={laneId} />
       </div>
+
+      {/* Valid-target glow — SVG polygon with fill:none so drop-shadow glows only the border. */}
+      {/* Mirrors DroneLaneVisualLayers' existing SVG stroke; filter: drop-shadow on the wrapper */}
+      {/* follows the stroke pixels only, producing a pure trapezoid-border glow, no interior fill. */}
+      {isTargetable && (
+        <div
+          className="valid-target-shaped"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}
+        >
+          <svg
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <polygon
+              points={isPlayer ? '0,0 100,0 88,100 12,100' : '12,0 88,0 100,100 0,100'}
+              fill="none"
+              stroke={isPlayer ? FACTION_COLORS.player.glow : FACTION_COLORS.opponent.glow}
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        </div>
+      )}
 
       {/* Content layer — unclipped, interactive */}
       <div
