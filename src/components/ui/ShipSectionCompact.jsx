@@ -125,7 +125,9 @@ const ShipSectionCompact = ({
         />
       </div>
 
-      {/* Affected section overlay — red glow for NONE-targeting cards (Crossfire, Encirclement) */}
+      {/* Affected section overlay — animate-pulse intentionally NOT converted to .valid-target:
+          isAffectedSection is a passive collateral-damage indicator (Crossfire, Encirclement),
+          not a "valid target" signal. These are semantically distinct visual states. */}
       {isAffectedSection && (
         <div
           className="animate-pulse"
