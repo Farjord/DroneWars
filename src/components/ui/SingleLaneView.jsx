@@ -31,6 +31,14 @@ const renderDronesOnBoard = ({
   getLocalPlayerId, getOpponentPlayerId, abilityMode, effectChainState,
   selectedCard, hoveredLane, insertionPreview, confirmationGhosts, interceptedBadge,
 }) => {
+  // During an effect chain, use effectChainState.validTargets directly rather than the
+  // validCardTargets prop. The prop is synced via a useEffect in useCardSelection — it lags
+  // one render behind after each chain advancement, which causes targets to appear unhighlighted
+  // for one paint cycle. Reading from the chain state synchronously eliminates that lag.
+  const effectiveCardTargets = (effectChainState && !effectChainState.complete)
+    ? effectChainState.validTargets
+    : validCardTargets;
+
   // When any drone is hovered or selected during targeting, dim the rest
   // In abilityMode, selectedDrone is the ability *source* — not a target focus
   //
@@ -46,14 +54,6 @@ const renderDronesOnBoard = ({
     hoveredDroneIsTarget ||
     (selectedDrone && !abilityMode) ||
     effectChainState?.pendingTarget || effectChainState?.pendingMultiTargets?.length);
-
-  // During an effect chain, use effectChainState.validTargets directly rather than the
-  // validCardTargets prop. The prop is synced via a useEffect in useCardSelection — it lags
-  // one render behind after each chain advancement, which causes targets to appear unhighlighted
-  // for one paint cycle. Reading from the chain state synchronously eliminates that lag.
-  const effectiveCardTargets = (effectChainState && !effectChainState.complete)
-    ? effectChainState.validTargets
-    : validCardTargets;
 
   // Build drone elements array, then splice in ghost at insertion position
   const droneElements = drones.map((drone, index) => {
