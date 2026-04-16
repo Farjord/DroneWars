@@ -77,6 +77,24 @@ describe('DroneActionAnnouncementOverlay', () => {
     expect(screen.getByText('INTERCEPTED!')).toBeTruthy();
   });
 
+  it('shows interceptor drone (not original target) when isIntercepted is true', () => {
+    const interceptorPayload = {
+      ...attackPayload,
+      isIntercepted: true,
+      targetDrone: { id: 'd3', name: 'Guardian' },  // interceptor replaces target in payload
+    };
+    render(
+      <DroneActionAnnouncementOverlay
+        variant="attack"
+        payload={interceptorPayload}
+        onComplete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Guardian')).toBeTruthy();
+    expect(screen.queryByText('Viper')).toBeNull();  // original target not shown
+  });
+
   it('does not render INTERCEPTED! badge when isIntercepted is false', () => {
     render(
       <DroneActionAnnouncementOverlay

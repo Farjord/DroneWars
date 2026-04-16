@@ -62,20 +62,22 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
       setIsVisible(true);
     });
 
+    let cleanupTimer;
     const displayTimer = setTimeout(() => {
       setIsVisible(false);
-
-      const cleanupTimer = setTimeout(() => {
+      cleanupTimer = setTimeout(() => {
         onComplete?.();
       }, ACTION_ANNOUNCEMENT_FADE_MS);
-
-      return () => clearTimeout(cleanupTimer);
     }, ACTION_ANNOUNCEMENT_DISPLAY_MS);
 
-    return () => clearTimeout(displayTimer);
+    return () => {
+      clearTimeout(displayTimer);
+      clearTimeout(cleanupTimer);
+    };
   }, [onComplete]);
 
   const renderAttackContent = () => {
+    // targetDrone holds the interceptor drone when isIntercepted=true — payload contract
     const { attackerDrone, attackerLane, attackerIsPlayer, targetDrone, targetLane, targetIsPlayer, isIntercepted } = payload;
 
     return (
