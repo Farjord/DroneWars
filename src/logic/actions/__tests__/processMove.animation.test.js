@@ -59,6 +59,7 @@ function makeCtx() {
     setPlayerStates: vi.fn(),
     addLogEntry: vi.fn(),
     getAnimationManager: vi.fn().mockReturnValue(null),
+    captureAnimations: vi.fn(),
     executeAndCaptureAnimations: vi.fn(),
     executeGoAgainAnimation: vi.fn(),
     mapAnimationEvents: vi.fn().mockImplementation((events) =>

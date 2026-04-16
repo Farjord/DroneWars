@@ -101,6 +101,7 @@ const makeMoveCtx = () => {
       getPlacedSections: () => ({ player1: [], player2: [] }),
       setPlayerStates: vi.fn(),
       addLogEntry: vi.fn(),
+      captureAnimations: vi.fn(),
       mapAnimationEvents: vi.fn(() => []),
       executeAndCaptureAnimations: vi.fn(),
       executeGoAgainAnimation: vi.fn(),

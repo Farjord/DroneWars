@@ -113,6 +113,22 @@ export async function processAttack(payload, ctx) {
     });
   }
 
+  // Announce drone attack before board animations fire
+  const defendingPlayerId = finalAttackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
+  ctx.captureAnimations([{
+    animationName: 'ATTACK_ANNOUNCEMENT',
+    timing: 'pre-state',
+    payload: {
+      attackerDrone: finalAttackDetails.attacker,
+      attackerLane: finalAttackDetails.lane,
+      attackerPlayerId: finalAttackDetails.attackingPlayer,
+      targetDrone: finalAttackDetails.interceptor || finalAttackDetails.target,
+      targetLane: finalAttackDetails.lane,
+      targetPlayerId: defendingPlayerId,
+      isIntercepted: !!finalAttackDetails.interceptor,
+    },
+  }]);
+
   const logCallback = (entry) => {
     ctx.addLogEntry(entry, 'resolveAttack',
       finalAttackDetails.attackingPlayer === 'player2' ? finalAttackDetails.aiContext : null);
@@ -236,6 +252,18 @@ export async function processMove(payload, ctx) {
     });
     return { success: true, snaredConsumed: true, shouldEndTurn: true };
   }
+
+  // Announce drone move before board animations fire
+  ctx.captureAnimations([{
+    animationName: 'MOVE_ANNOUNCEMENT',
+    timing: 'pre-state',
+    payload: {
+      drone,
+      sourceLane: fromLane,
+      destinationLane: toLane,
+      dronePlayerId: playerId,
+    },
+  }]);
 
   // Create a copy of the entire player state for processing
   let newPlayerState = JSON.parse(JSON.stringify(playerState));
