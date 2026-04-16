@@ -18,6 +18,7 @@ export const INITIAL_ANIMATION_STATE = {
   cardReveals: [],
   shipAbilityReveals: [],
   phaseAnnouncements: [],
+  droneActionAnnouncements: [],
   laserEffects: [],
   teleportEffects: [],
   overflowProjectiles: [],
