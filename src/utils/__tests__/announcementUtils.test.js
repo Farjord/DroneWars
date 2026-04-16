@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { personalizeAnnouncements, extractAnnouncements } from '../announcementUtils.js';
+import { ACTION_ANNOUNCEMENT_TOTAL_MS } from '../../config/announcementTiming.js';
 
 describe('personalizeAnnouncements', () => {
   const baseState = {
@@ -336,7 +337,7 @@ describe('extractAnnouncements — drone action types', () => {
 
     expect(announcements).toHaveLength(1);
     expect(announcements[0].phaseName).toBe('droneAttack');
-    expect(announcements[0].duration).toBe(2800);
+    expect(announcements[0].duration).toBe(ACTION_ANNOUNCEMENT_TOTAL_MS);
     expect(announcements[0].data.attackerDrone).toEqual(attackerDrone);
     expect(announcements[0].data.targetDrone).toEqual(targetDrone);
     expect(announcements[0].data.isIntercepted).toBe(false);
@@ -362,7 +363,7 @@ describe('extractAnnouncements — drone action types', () => {
 
     expect(announcements).toHaveLength(1);
     expect(announcements[0].phaseName).toBe('droneMove');
-    expect(announcements[0].duration).toBe(2800);
+    expect(announcements[0].duration).toBe(ACTION_ANNOUNCEMENT_TOTAL_MS);
     expect(announcements[0].data.drone).toEqual(drone);
     expect(announcements[0].data.sourceLane).toBe('lane1');
     expect(announcements[0].data.destinationLane).toBe('lane2');
