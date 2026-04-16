@@ -211,7 +211,9 @@ class AnnouncementQueue {
       stageCount: stages?.length || 1,
       formula: this.currentAnimation.compound
         ? `${stages.length} * (${SCRAMBLE_DURATION_MS} + ${STAGE_HOLD_MS}) + ${FADE_OUT_MS} = ${duration}`
-        : `PHASE_DISPLAY_DURATION = ${duration}`,
+        : (this.currentAnimation.duration != null
+            ? `duration override = ${duration}`
+            : `PHASE_DISPLAY_DURATION = ${duration}`),
       phaseText: this.currentAnimation.phaseText || null,
       variant: this.currentAnimation.variant || null,
       subtitleVariant: this.currentAnimation.subtitleVariant || null,
