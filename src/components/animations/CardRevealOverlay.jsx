@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import './revealOverlay.css';
 import ActionCard from '../ui/ActionCard.jsx';
+import { ACTION_ANNOUNCEMENT_DISPLAY_MS, ACTION_ANNOUNCEMENT_FADE_MS } from '../../config/announcementTiming.js';
 
 /**
  * CardRevealOverlay - Shows card being played with player-aware label
@@ -24,17 +25,17 @@ const CardRevealOverlay = ({ card, label, onComplete }) => {
       setIsVisible(true);
     });
 
-    // Auto-dismiss after 1 second
+    // Auto-dismiss after ACTION_ANNOUNCEMENT_DISPLAY_MS
     const displayTimer = setTimeout(() => {
       setIsVisible(false);
 
       // Wait for fade-out animation to complete before cleanup
       const cleanupTimer = setTimeout(() => {
         onComplete?.();
-      }, 300); // Match CSS transition duration
+      }, ACTION_ANNOUNCEMENT_FADE_MS);
 
       return () => clearTimeout(cleanupTimer);
-    }, 1000);
+    }, ACTION_ANNOUNCEMENT_DISPLAY_MS);
 
     return () => clearTimeout(displayTimer);
   }, [onComplete]);
@@ -79,7 +80,7 @@ const CardRevealOverlay = ({ card, label, onComplete }) => {
             ${!isVisible ? 'card-reveal-dissolve' : ''}
           `}
         >
-          <ActionCard card={card} isPlayable={false} />
+          <ActionCard card={card} isPlayable={true} />
         </div>
 
         {/* Digital scan line effect */}

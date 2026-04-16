@@ -47,7 +47,7 @@ class AnimationManager {
 
       // Card visuals
       [CARD_REVEAL]: {
-        duration: 1000,  // 1 second card reveal
+        duration: 2500,  // matches ACTION_ANNOUNCEMENT_DISPLAY_MS
         type: 'CARD_REVEAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
