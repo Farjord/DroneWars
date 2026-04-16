@@ -145,10 +145,11 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
         ${isVisible ? 'opacity-100' : 'opacity-0'}
       `}
     >
+      {/* duration-300 matches ACTION_ANNOUNCEMENT_FADE_MS */}
       {/* Semi-transparent background */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-      {/* Content container */}
+      {/* Content container — duration-300 matches ACTION_ANNOUNCEMENT_FADE_MS */}
       <div
         className={`
           relative flex flex-row items-center justify-center gap-8

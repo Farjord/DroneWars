@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import DroneActionAnnouncementOverlay from '../DroneActionAnnouncementOverlay.jsx';
+import { ACTION_ANNOUNCEMENT_DISPLAY_MS, ACTION_ANNOUNCEMENT_FADE_MS } from '../../../config/announcementTiming.js';
 
 // Mock DroneToken — avoid context dependencies in unit tests
 vi.mock('../../ui/DroneToken.jsx', () => ({
@@ -148,7 +149,7 @@ describe('DroneActionAnnouncementOverlay', () => {
     expect(onComplete).not.toHaveBeenCalled();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2500 + 300 + 50);
+      await vi.advanceTimersByTimeAsync(ACTION_ANNOUNCEMENT_DISPLAY_MS + ACTION_ANNOUNCEMENT_FADE_MS + 50);
     });
 
     expect(onComplete).toHaveBeenCalledOnce();
