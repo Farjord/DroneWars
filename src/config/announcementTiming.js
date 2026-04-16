@@ -13,6 +13,12 @@ export const SCRAMBLE_DURATION_MS = 500;
 export const STAGE_HOLD_MS = 1000;
 export const FADE_OUT_MS = 300;
 
+// Action announcement overlays (CardRevealOverlay + DroneActionAnnouncementOverlay)
+export const ACTION_ANNOUNCEMENT_DISPLAY_MS = 2500;
+export const ACTION_ANNOUNCEMENT_FADE_MS = 300;
+// Total queue duration for drone action announcements
+export const ACTION_ANNOUNCEMENT_TOTAL_MS = ACTION_ANNOUNCEMENT_DISPLAY_MS + ACTION_ANNOUNCEMENT_FADE_MS;
+
 // Derived: single-announcement total (1 stage)
 export const PHASE_DISPLAY_DURATION = SCRAMBLE_DURATION_MS + STAGE_HOLD_MS + FADE_OUT_MS; // 1800ms
 
