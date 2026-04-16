@@ -308,3 +308,156 @@ describe('extractAnnouncements', () => {
     expect(announcements[1].subtitleVariant).toBe('opponent');
   });
 });
+
+describe('extractAnnouncements — drone action types', () => {
+  const attackerDrone = { id: 'drone-1', name: 'Dart' };
+  const targetDrone = { id: 'drone-2', name: 'Viper' };
+
+  it('extracts ATTACK_ANNOUNCEMENT into announcements with phaseName droneAttack', () => {
+    const allAnimations = [
+      {
+        animationName: 'ATTACK_ANNOUNCEMENT',
+        payload: {
+          attackerDrone,
+          attackerLane: 'lane1',
+          attackerPlayerId: 'player1',
+          attackerIsPlayer: true,
+          targetDrone,
+          targetLane: 'lane1',
+          targetPlayerId: 'player2',
+          targetIsPlayer: false,
+          isIntercepted: false,
+        },
+      },
+      { animationName: 'DRONE_ATTACK_START', payload: {} },
+    ];
+
+    const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
+
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0].phaseName).toBe('droneAttack');
+    expect(announcements[0].duration).toBe(2800);
+    expect(announcements[0].data.attackerDrone).toEqual(attackerDrone);
+    expect(announcements[0].data.targetDrone).toEqual(targetDrone);
+    expect(announcements[0].data.isIntercepted).toBe(false);
+    expect(visualAnimations).toHaveLength(1);
+  });
+
+  it('extracts MOVE_ANNOUNCEMENT into announcements with phaseName droneMove', () => {
+    const drone = { id: 'drone-1', name: 'Dart' };
+    const allAnimations = [
+      {
+        animationName: 'MOVE_ANNOUNCEMENT',
+        payload: {
+          drone,
+          sourceLane: 'lane1',
+          destinationLane: 'lane2',
+          dronePlayerId: 'player1',
+          droneIsPlayer: true,
+        },
+      },
+    ];
+
+    const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
+
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0].phaseName).toBe('droneMove');
+    expect(announcements[0].duration).toBe(2800);
+    expect(announcements[0].data.drone).toEqual(drone);
+    expect(announcements[0].data.sourceLane).toBe('lane1');
+    expect(announcements[0].data.destinationLane).toBe('lane2');
+    expect(visualAnimations).toHaveLength(0);
+  });
+
+  it('sets intercepted flag on attack announcement', () => {
+    const interceptorDrone = { id: 'drone-3', name: 'Interceptor' };
+    const allAnimations = [
+      {
+        animationName: 'ATTACK_ANNOUNCEMENT',
+        payload: {
+          attackerDrone,
+          attackerLane: 'lane1',
+          attackerPlayerId: 'player1',
+          attackerIsPlayer: true,
+          targetDrone: interceptorDrone,
+          targetLane: 'lane1',
+          targetPlayerId: 'player2',
+          targetIsPlayer: false,
+          isIntercepted: true,
+        },
+      },
+    ];
+
+    const { announcements } = extractAnnouncements(allAnimations);
+
+    expect(announcements[0].data.isIntercepted).toBe(true);
+    expect(announcements[0].data.targetDrone).toEqual(interceptorDrone);
+  });
+});
+
+describe('personalizeAnnouncements — drone action types', () => {
+  const attackerDrone = { id: 'drone-1', name: 'Dart' };
+  const targetDrone = { id: 'drone-2', name: 'Viper' };
+  const baseState = { roundNumber: 1, firstPlayerOfRound: 'player1' };
+
+  it('sets attackerIsPlayer=true when local player is attacker', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'ATTACK_ANNOUNCEMENT',
+        payload: {
+          attackerPlayerId: 'player1',
+          targetPlayerId: 'player2',
+          attackerDrone, targetDrone,
+          attackerLane: 'lane1', targetLane: 'lane1',
+          isIntercepted: false,
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.attackerIsPlayer).toBe(true);
+    expect(animations.actionAnimations[0].payload.targetIsPlayer).toBe(false);
+  });
+
+  it('sets attackerIsPlayer=false when local player is defender', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'ATTACK_ANNOUNCEMENT',
+        payload: {
+          attackerPlayerId: 'player2',
+          targetPlayerId: 'player1',
+          attackerDrone, targetDrone,
+          attackerLane: 'lane1', targetLane: 'lane1',
+          isIntercepted: false,
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.attackerIsPlayer).toBe(false);
+    expect(animations.actionAnimations[0].payload.targetIsPlayer).toBe(true);
+  });
+
+  it('sets droneIsPlayer on MOVE_ANNOUNCEMENT', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'MOVE_ANNOUNCEMENT',
+        payload: {
+          dronePlayerId: 'player1',
+          drone: attackerDrone,
+          sourceLane: 'lane1',
+          destinationLane: 'lane2',
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.droneIsPlayer).toBe(true);
+  });
+});

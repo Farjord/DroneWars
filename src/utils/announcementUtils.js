@@ -4,6 +4,8 @@
 // Shared personalization and extraction logic for phase/pass announcements.
 // Used by GameEngine (multiplayer broadcast) and SinglePlayerCombatInitializer (local).
 
+import { ACTION_ANNOUNCEMENT_TOTAL_MS } from '../config/announcementTiming.js';
+
 /**
  * Personalize announcement animations for a specific player.
  * Mutates animations in-place — caller should clone if immutability is needed.
@@ -39,6 +41,19 @@ export function personalizeAnnouncements(animations, playerId, state) {
       const text = isLocal ? 'YOU PASSED' : 'OPPONENT PASSED';
       const variant = isLocal ? 'player' : 'opponent';
       anim.payload = { ...anim.payload, text, phase: 'playerPass', variant };
+    } else if (anim.animationName === 'ATTACK_ANNOUNCEMENT') {
+      const { attackerPlayerId, targetPlayerId } = anim.payload;
+      anim.payload = {
+        ...anim.payload,
+        attackerIsPlayer: attackerPlayerId === playerId,
+        targetIsPlayer: targetPlayerId === playerId,
+      };
+    } else if (anim.animationName === 'MOVE_ANNOUNCEMENT') {
+      const { dronePlayerId } = anim.payload;
+      anim.payload = {
+        ...anim.payload,
+        droneIsPlayer: dronePlayerId === playerId,
+      };
     }
   };
 
@@ -52,20 +67,39 @@ export function personalizeAnnouncements(animations, playerId, state) {
  * Mirrors GameClient._extractAndQueueAnnouncements but as a pure function.
  */
 export function extractAnnouncements(allAnimations) {
-  const announcementTypes = new Set(['PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT', 'INTERCEPTION_ANNOUNCEMENT']);
+  const announcementTypes = new Set([
+    'PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT', 'INTERCEPTION_ANNOUNCEMENT',
+    'ATTACK_ANNOUNCEMENT', 'MOVE_ANNOUNCEMENT',
+  ]);
   const visualAnimations = [];
   const announcements = [];
 
   for (const anim of allAnimations) {
     if (announcementTypes.has(anim.animationName)) {
-      announcements.push({
-        id: `phase-anim-${crypto.randomUUID()}`,
-        phaseName: anim.payload.phase || 'playerPass',
-        phaseText: anim.payload.text,
-        subtitle: anim.payload.subtitle || null,
-        variant: anim.payload.variant || null,
-        subtitleVariant: anim.payload.subtitleVariant || null,
-      });
+      if (anim.animationName === 'ATTACK_ANNOUNCEMENT') {
+        announcements.push({
+          id: `drone-action-${crypto.randomUUID()}`,
+          phaseName: 'droneAttack',
+          duration: ACTION_ANNOUNCEMENT_TOTAL_MS,
+          data: anim.payload,
+        });
+      } else if (anim.animationName === 'MOVE_ANNOUNCEMENT') {
+        announcements.push({
+          id: `drone-action-${crypto.randomUUID()}`,
+          phaseName: 'droneMove',
+          duration: ACTION_ANNOUNCEMENT_TOTAL_MS,
+          data: anim.payload,
+        });
+      } else {
+        announcements.push({
+          id: `phase-anim-${crypto.randomUUID()}`,
+          phaseName: anim.payload.phase || 'playerPass',
+          phaseText: anim.payload.text,
+          subtitle: anim.payload.subtitle || null,
+          variant: anim.payload.variant || null,
+          subtitleVariant: anim.payload.subtitleVariant || null,
+        });
+      }
     } else {
       visualAnimations.push(anim);
     }
