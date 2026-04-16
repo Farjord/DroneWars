@@ -16,6 +16,7 @@ import {
   TECH_DEPLOY, TECH_DESTROY, TECH_TRIGGER_FIRE,
   STAT_BUFF, STAT_DEBUFF,
 } from '../config/animationTypes.js';
+import { ACTION_ANNOUNCEMENT_TOTAL_MS } from '../config/announcementTiming.js';
 
 class AnimationManager {
   constructor(gameStateManager) {
@@ -47,7 +48,7 @@ class AnimationManager {
 
       // Card visuals
       [CARD_REVEAL]: {
-        duration: 2500,  // matches ACTION_ANNOUNCEMENT_DISPLAY_MS
+        duration: ACTION_ANNOUNCEMENT_TOTAL_MS,  // display + fade
         type: 'CARD_REVEAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
