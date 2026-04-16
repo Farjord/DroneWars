@@ -204,7 +204,7 @@ class AnnouncementQueue {
     const stages = this.currentAnimation.stages;
     const duration = this.currentAnimation.compound
       ? computeCompoundDuration(stages.length)
-      : PHASE_DISPLAY_DURATION;
+      : (this.currentAnimation.duration ?? PHASE_DISPLAY_DURATION);
 
     debugLog('ANNOUNCE_TRACE', `⏱️ QUEUE TIMER: waiting ${duration}ms`, {
       compound: this.currentAnimation.compound || false,

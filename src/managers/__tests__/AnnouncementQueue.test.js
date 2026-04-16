@@ -283,6 +283,32 @@ describe('AnnouncementQueue', () => {
     expect(queue.isPlaying()).toBe(false);
   });
 
+  it('uses announcement duration override when provided', async () => {
+    vi.useFakeTimers();
+    const queue = new AnnouncementQueue();
+    queue.release();
+
+    const endedItems = [];
+    queue.on('animationEnded', (item) => endedItems.push(item));
+
+    queue.enqueue({
+      id: 'test-1',
+      phaseName: 'droneAttack',
+      duration: 2800,
+      data: {},
+    });
+
+    // Should NOT have ended after default 1800ms
+    await vi.advanceTimersByTimeAsync(1800);
+    expect(endedItems).toHaveLength(0);
+
+    // Should have ended after 2800ms
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(endedItems).toHaveLength(1);
+
+    vi.useRealTimers();
+  });
+
   it('non-compound items still use standard 1800ms duration', async () => {
     const ended = vi.fn();
     queue.on('animationEnded', ended);
