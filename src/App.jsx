@@ -756,25 +756,39 @@ const App = ({ phaseAnimationQueue }) => {
         stageVariants: animation.stages?.map(s => ({ text: s.phaseText, v: s.variant, sv: s.subtitleVariant })),
       });
       setCurrentPhaseAnimation(animation);
-      animationDispatch.set('phaseAnnouncements', [{
-        id: animation.id,
-        phaseText: animation.phaseText,
-        subtitle: animation.subtitle,
-        variant: animation.variant || null,
-        subtitleVariant: animation.subtitleVariant || null,
-        compound: animation.compound || false,
-        stages: animation.stages || null,
-        onComplete: () => {
-          // Animation completes after queue duration (1.8s standard / 2.6s compound)
-        }
-      }]);
+
+      if (animation.phaseName === 'droneAttack' || animation.phaseName === 'droneMove') {
+        animationDispatch.set('droneActionAnnouncements', [{
+          id: animation.id,
+          variant: animation.phaseName === 'droneAttack' ? 'attack' : 'move',
+          payload: animation.data,
+          onComplete: () => animationDispatch.clear('droneActionAnnouncements'),
+        }]);
+      } else {
+        animationDispatch.set('phaseAnnouncements', [{
+          id: animation.id,
+          phaseText: animation.phaseText,
+          subtitle: animation.subtitle,
+          variant: animation.variant || null,
+          subtitleVariant: animation.subtitleVariant || null,
+          compound: animation.compound || false,
+          stages: animation.stages || null,
+          onComplete: () => {
+            // Animation completes after queue duration (1.8s standard / 2.6s compound)
+          }
+        }]);
+      }
     };
 
     const handleAnimationEnded = (animation) => {
       debugLog('ANNOUNCE_TRACE', '⏱️ APP: animationEnded — unmounting overlay', {
         phaseName: animation.phaseName,
       });
-      animationDispatch.clear('phaseAnnouncements');
+      if (animation.phaseName === 'droneAttack' || animation.phaseName === 'droneMove') {
+        animationDispatch.clear('droneActionAnnouncements');
+      } else {
+        animationDispatch.clear('phaseAnnouncements');
+      }
       setCurrentPhaseAnimation(null);
     };
 
