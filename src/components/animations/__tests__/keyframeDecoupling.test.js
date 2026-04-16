@@ -131,6 +131,7 @@ describe('Keyframe Decoupling', () => {
     { jsx: 'ExplosionEffect.jsx', importPath: './ExplosionEffect.css' },
     { jsx: 'LaserEffect.jsx', importPath: './LaserEffect.css' },
     { jsx: 'CardRevealOverlay.jsx', importPath: './revealOverlay.css' },
+    { jsx: 'DroneActionAnnouncementOverlay.jsx', importPath: './revealOverlay.css' },
     { jsx: 'StatusConsumptionOverlay.jsx', importPath: './revealOverlay.css' },
     { jsx: 'PhaseAnnouncementOverlay.jsx', importPath: './PhaseAnnouncementOverlay.css' },
     { jsx: 'OverflowProjectile.jsx', importPath: '../../styles/animations.css' },
