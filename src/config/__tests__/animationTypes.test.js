@@ -15,8 +15,19 @@ describe('animationTypes constants', () => {
   });
 
   it('every constant value equals its export name', () => {
+    // Exception: DRONE_ATTACK_ANNOUNCEMENT and DRONE_MOVE_ANNOUNCEMENT have values
+    // without the DRONE_ prefix because that's what CombatActionStrategy emits
+    const exceptions = new Set(['DRONE_ATTACK_ANNOUNCEMENT', 'DRONE_MOVE_ANNOUNCEMENT']);
     for (const [name, value] of Object.entries(AnimTypes)) {
+      if (exceptions.has(name)) {
+        continue;
+      }
       expect(value).toBe(name);
     }
+  });
+
+  it('announcement constants have correct emit names', () => {
+    expect(AnimTypes.DRONE_ATTACK_ANNOUNCEMENT).toBe('ATTACK_ANNOUNCEMENT');
+    expect(AnimTypes.DRONE_MOVE_ANNOUNCEMENT).toBe('MOVE_ANNOUNCEMENT');
   });
 });
