@@ -5,6 +5,7 @@
 // Used by GameEngine (multiplayer broadcast) and SinglePlayerCombatInitializer (local).
 
 import { ACTION_ANNOUNCEMENT_TOTAL_MS } from '../config/announcementTiming.js';
+import { debugLog } from './debugLogger.js';
 
 /**
  * Personalize announcement animations for a specific player.
@@ -42,18 +43,37 @@ export function personalizeAnnouncements(animations, playerId, state) {
       const variant = isLocal ? 'player' : 'opponent';
       anim.payload = { ...anim.payload, text, phase: 'playerPass', variant };
     } else if (anim.animationName === 'ATTACK_ANNOUNCEMENT') {
+      const beforeKeys = Object.keys(anim.payload);
       const { attackerPlayerId, targetPlayerId } = anim.payload;
       anim.payload = {
         ...anim.payload,
         attackerIsPlayer: attackerPlayerId === playerId,
         targetIsPlayer: targetPlayerId === playerId,
       };
+      debugLog('ANNOUNCE_TRACE', `🔄 PERSONALIZE ATTACK_ANNOUNCEMENT attackerLane=${anim.payload.attackerLane} targetLane=${anim.payload.targetLane} forPlayer=${playerId}`, {
+        forPlayer: playerId,
+        beforeKeys,
+        afterKeys: Object.keys(anim.payload),
+        attackerLane: anim.payload.attackerLane,
+        targetLane: anim.payload.targetLane,
+        attackerIsPlayer: anim.payload.attackerIsPlayer,
+        targetIsPlayer: anim.payload.targetIsPlayer,
+      });
     } else if (anim.animationName === 'MOVE_ANNOUNCEMENT') {
+      const beforeKeys = Object.keys(anim.payload);
       const { dronePlayerId } = anim.payload;
       anim.payload = {
         ...anim.payload,
         droneIsPlayer: dronePlayerId === playerId,
       };
+      debugLog('ANNOUNCE_TRACE', `🔄 PERSONALIZE MOVE_ANNOUNCEMENT sourceLane=${anim.payload.sourceLane} destinationLane=${anim.payload.destinationLane} forPlayer=${playerId}`, {
+        forPlayer: playerId,
+        beforeKeys,
+        afterKeys: Object.keys(anim.payload),
+        sourceLane: anim.payload.sourceLane,
+        destinationLane: anim.payload.destinationLane,
+        droneIsPlayer: anim.payload.droneIsPlayer,
+      });
     }
   };
 
@@ -77,19 +97,35 @@ export function extractAnnouncements(allAnimations) {
   for (const anim of allAnimations) {
     if (announcementTypes.has(anim.animationName)) {
       if (anim.animationName === 'ATTACK_ANNOUNCEMENT') {
-        announcements.push({
+        const built = {
           id: `drone-action-${crypto.randomUUID()}`,
           phaseName: 'droneAttack',
           duration: ACTION_ANNOUNCEMENT_TOTAL_MS,
           data: anim.payload,
+        };
+        debugLog('ANNOUNCE_TRACE', `📦 EXTRACT droneAttack attackerLane=${built.data?.attackerLane} targetLane=${built.data?.targetLane}`, {
+          id: built.id,
+          duration: built.duration,
+          dataKeys: Object.keys(built.data || {}),
+          attackerLane: built.data?.attackerLane,
+          targetLane: built.data?.targetLane,
         });
+        announcements.push(built);
       } else if (anim.animationName === 'MOVE_ANNOUNCEMENT') {
-        announcements.push({
+        const built = {
           id: `drone-action-${crypto.randomUUID()}`,
           phaseName: 'droneMove',
           duration: ACTION_ANNOUNCEMENT_TOTAL_MS,
           data: anim.payload,
+        };
+        debugLog('ANNOUNCE_TRACE', `📦 EXTRACT droneMove sourceLane=${built.data?.sourceLane} destinationLane=${built.data?.destinationLane}`, {
+          id: built.id,
+          duration: built.duration,
+          dataKeys: Object.keys(built.data || {}),
+          sourceLane: built.data?.sourceLane,
+          destinationLane: built.data?.destinationLane,
         });
+        announcements.push(built);
       } else {
         announcements.push({
           id: `phase-anim-${crypto.randomUUID()}`,

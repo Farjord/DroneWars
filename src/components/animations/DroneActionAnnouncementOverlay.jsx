@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import './revealOverlay.css';
 import DroneToken from '../ui/DroneToken.jsx';
 import { ACTION_ANNOUNCEMENT_DISPLAY_MS, ACTION_ANNOUNCEMENT_FADE_MS } from '../../config/announcementTiming.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Formats a lane id like 'lane1' into a human-readable label like 'Lane 1'.
@@ -34,14 +35,17 @@ const LaneBadge = ({ laneId }) => {
 
 /**
  * Wrapper that scales a DroneToken by 1.3× for the overlay display.
- * All non-interactive props are set to their safe no-op defaults so DroneToken
- * renders without needing game context (the mock in tests replaces DroneToken entirely).
+ * Forwards `lane` so DroneToken can compute effective stats (auras, lane-conditional mods).
+ * Other non-interactive props are set to safe no-op defaults.
  */
-const ScaledDroneToken = ({ drone, isPlayer }) => (
-  <div style={{ transform: 'scale(1.3)', transformOrigin: 'center top' }}>
+const ScaledDroneToken = ({ drone, isPlayer, lane }) => (
+  // `zoom` (rather than `transform: scale()`) because zoom reflows parent layout —
+  // flex column reserves the scaled height so LaneBadge / stat hexes aren't covered.
+  <div style={{ zoom: 1.3 }}>
     <DroneToken
       drone={drone}
       isPlayer={isPlayer}
+      lane={lane}
       isPotentialInterceptor={false}
       isInvalidTarget={false}
       isActionTarget={false}
@@ -61,6 +65,18 @@ const ScaledDroneToken = ({ drone, isPlayer }) => (
  */
 const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const p = payload || {};
+    debugLog('ANNOUNCE_TRACE', `🎬 OVERLAY RENDER props variant=${variant} attackerLane=${p.attackerLane} targetLane=${p.targetLane} sourceLane=${p.sourceLane} destinationLane=${p.destinationLane}`, {
+      payloadKeys: Object.keys(p),
+      attackerDroneId: p.attackerDrone?.id,
+      targetDroneId: p.targetDrone?.id,
+      droneId: p.drone?.id,
+    });
+    // Mount-only: intentional empty dep array. Prevents log storm from fade-timer re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -89,7 +105,7 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
       <>
         {/* Attacker column */}
         <div className="flex flex-col items-center gap-2">
-          <ScaledDroneToken drone={attackerDrone} isPlayer={attackerIsPlayer} />
+          <ScaledDroneToken drone={attackerDrone} isPlayer={attackerIsPlayer} lane={attackerLane} />
           <LaneBadge laneId={attackerLane} />
         </div>
 
@@ -107,7 +123,7 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
 
         {/* Target column */}
         <div className="flex flex-col items-center gap-2">
-          <ScaledDroneToken drone={targetDrone} isPlayer={targetIsPlayer} />
+          <ScaledDroneToken drone={targetDrone} isPlayer={targetIsPlayer} lane={targetLane} />
           <LaneBadge laneId={targetLane} />
         </div>
       </>
@@ -121,7 +137,7 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
       <>
         {/* Drone column */}
         <div className="flex flex-col items-center gap-2">
-          <ScaledDroneToken drone={drone} isPlayer={droneIsPlayer} />
+          <ScaledDroneToken drone={drone} isPlayer={droneIsPlayer} lane={sourceLane} />
           <LaneBadge laneId={sourceLane} />
         </div>
 

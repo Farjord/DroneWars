@@ -758,9 +758,16 @@ const App = ({ phaseAnimationQueue }) => {
       setCurrentPhaseAnimation(animation);
 
       if (animation.phaseName === 'droneAttack' || animation.phaseName === 'droneMove') {
+        const variant = animation.phaseName === 'droneAttack' ? 'attack' : 'move';
+        const d = animation.data || {};
+        debugLog('ANNOUNCE_TRACE', `📡 APP DISPATCH → droneActionAnnouncements variant=${variant} attackerLane=${d.attackerLane} targetLane=${d.targetLane} sourceLane=${d.sourceLane} destinationLane=${d.destinationLane}`, {
+          receivedId: animation.id,
+          phaseName: animation.phaseName,
+          receivedDataKeys: Object.keys(d),
+        });
         animationDispatch.set('droneActionAnnouncements', [{
           id: animation.id,
-          variant: animation.phaseName === 'droneAttack' ? 'attack' : 'move',
+          variant,
           payload: animation.data,
           onComplete: () => animationDispatch.clear('droneActionAnnouncements'),
         }]);

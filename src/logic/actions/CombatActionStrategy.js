@@ -128,6 +128,32 @@ export async function processAttack(payload, ctx) {
     getLaneOfDrone(targetDroneForAnnouncement.id, currentState[defendingPlayerId])
     ?? finalAttackDetails.lane;
 
+  debugLog('ANNOUNCE_TRACE', `🎯 BUILDING ATTACK_ANNOUNCEMENT attackerLane=${attackerLane} targetLane=${targetLane} attackDetailsLane=${finalAttackDetails.lane} attackerId=${finalAttackDetails.attacker?.id} targetId=${targetDroneForAnnouncement?.id}`, {
+    prereqs: {
+      attackerId: finalAttackDetails.attacker?.id,
+      attackerName: finalAttackDetails.attacker?.name,
+      targetId: targetDroneForAnnouncement?.id,
+      targetName: targetDroneForAnnouncement?.name,
+      interceptorId: finalAttackDetails.interceptor?.id || null,
+      attackDetailsLane: finalAttackDetails.lane,
+      attackerPlayerId,
+      defendingPlayerId,
+      attackerBoardLanes: Object.keys(currentState[attackerPlayerId]?.dronesOnBoard || {}),
+      defenderBoardLanes: Object.keys(currentState[defendingPlayerId]?.dronesOnBoard || {}),
+      resolvedAttackerLane: attackerLane,
+      resolvedTargetLane: targetLane,
+    },
+    payload: {
+      attackerDrone: { id: finalAttackDetails.attacker?.id, name: finalAttackDetails.attacker?.name },
+      attackerLane,
+      attackerPlayerId,
+      targetDrone: { id: targetDroneForAnnouncement?.id, name: targetDroneForAnnouncement?.name },
+      targetLane,
+      targetPlayerId: defendingPlayerId,
+      isIntercepted: !!finalAttackDetails.interceptor,
+    },
+  });
+
   ctx.captureAnimations([{
     animationName: 'ATTACK_ANNOUNCEMENT',
     timing: 'pre-state',
@@ -267,6 +293,23 @@ export async function processMove(payload, ctx) {
   }
 
   // Announce drone move before board animations fire
+  debugLog('ANNOUNCE_TRACE', `🎯 BUILDING MOVE_ANNOUNCEMENT sourceLane=${fromLane} destinationLane=${toLane} droneId=${drone?.id} playerId=${playerId}`, {
+    prereqs: {
+      droneId: drone?.id,
+      droneName: drone?.name,
+      fromLane,
+      toLane,
+      playerId,
+      boardLanes: Object.keys(playerState?.dronesOnBoard || {}),
+    },
+    payload: {
+      drone: { id: drone?.id, name: drone?.name },
+      sourceLane: fromLane,
+      destinationLane: toLane,
+      dronePlayerId: playerId,
+    },
+  });
+
   ctx.captureAnimations([{
     animationName: 'MOVE_ANNOUNCEMENT',
     timing: 'pre-state',

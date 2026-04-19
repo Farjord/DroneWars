@@ -204,6 +204,14 @@ class AnnouncementQueue {
       remaining: this.queue.length,
     });
 
+    if (this.currentAnimation.phaseName === 'droneAttack' || this.currentAnimation.phaseName === 'droneMove') {
+      const d = this.currentAnimation.data || {};
+      debugLog('ANNOUNCE_TRACE', `📤 DRONE-ACTION QUEUE → animationStarted phase=${this.currentAnimation.phaseName} attackerLane=${d.attackerLane} targetLane=${d.targetLane} sourceLane=${d.sourceLane} destinationLane=${d.destinationLane}`, {
+        id: this.currentAnimation.id,
+        dataKeys: Object.keys(d),
+      });
+    }
+
     this.emit('animationStarted', this.currentAnimation);
 
     const stages = this.currentAnimation.stages;

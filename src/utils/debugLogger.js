@@ -25,8 +25,8 @@ const DEBUG_CONFIG = {
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking
     PHASE_TRANSITIONS: false,    // Game phase transitions and flow
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions
-    AI_TURN_TRACE: true,         // Numbered step-by-step AI turn trace
-    ANIMATIONS: true,           // Animation system
+    AI_TURN_TRACE: false,        // Numbered step-by-step AI turn trace
+    ANIMATIONS: false,          // Animation system
     COMMITMENTS: false,           // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution
     PASS_LOGIC: false,           // Pass handling and pass notification debugging
@@ -44,7 +44,7 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details
     VALIDATION: false,           // State validation and reconciliation
     TIMING: false,               // High-resolution timing milestones with timestamps
-    ANNOUNCE_TRACE: false,        // Announcement queueing and playback tracing
+    ANNOUNCE_TRACE: true,         // Announcement queueing and playback tracing
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation
     FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
@@ -63,10 +63,10 @@ const DEBUG_CONFIG = {
     DRAG_PERF: false,             // Drag performance investigation: cursor position, re-renders, state updates
     MODE_TRANSITION: false,         // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
     RUN_STATE: false,              // TacticalMapStateManager persistence debugging (background, waypoints)
-    COMBAT_FLOW: true,             // Combat type identification and state restoration after combat
+    COMBAT_FLOW: false,            // Combat type identification and state restoration after combat
     WAYPOINT_MANAGER: false,      // Waypoint path storage and restoration debugging
     REWARD_MANAGER: false,        // Reward generation and seed management debugging
-    TRANSITION_MANAGER: true,      // State transitions between TacticalMap and Combat
+    TRANSITION_MANAGER: false,     // State transitions between TacticalMap and Combat
     PATH_HIGHLIGHTING: false,      // Path/waypoint display state in HexGridRenderer
     SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
@@ -81,14 +81,14 @@ const DEBUG_CONFIG = {
 
     // Client-Server Architecture Traces
     INIT_TRACE: false,             // End-to-end game initialization trace (8 numbered steps)
-    DEPLOY_TRACE: true,           // End-to-end drone deployment trace (10 numbered steps)
+    DEPLOY_TRACE: false,          // End-to-end drone deployment trace (10 numbered steps)
     ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
     MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)
     MP_SYNC_TRACE: false,         // State broadcast cycle trace (11 numbered steps)
     MP_GAME_TRACE: false,         // Game start trace (5 numbered steps)
-    TRIGGER_SYNC_TRACE: true,    // Trigger animation sync trace (8 numbered steps, server→client)
+    TRIGGER_SYNC_TRACE: false,   // Trigger animation sync trace (8 numbered steps, server→client)
     MESSAGE_QUEUE: false,         // Message queue ordering and resync (6 calls in MessageQueue.js)
 
     // Extended Pipeline Traces
@@ -135,11 +135,11 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: false,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: false,             // ON_MOVE ability trigger flow (HEAL, MODIFY_STAT)
-    TRIGGERS: true,                      // Unified trigger system (TriggerProcessor)
+    TRIGGERS: false,                     // Unified trigger system (TriggerProcessor)
     MINE_WARNING: false,                 // Mine warning hover detection and sound lifecycle
 
     // Single-Player State Management
-    SP_COMBAT: true,               // Single-player combat init, abandon, and state transitions
+    SP_COMBAT: false,              // Single-player combat init, abandon, and state transitions
     SP_SAVE: false,                    // Save/load, profile creation, migration
     SP_INVENTORY: false,               // Card inventory, discovery state
     SP_SHIP: false,                    // Ship slot CRUD, deck management, component instances
