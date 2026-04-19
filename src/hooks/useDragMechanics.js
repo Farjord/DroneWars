@@ -104,19 +104,34 @@ const useDragMechanics = ({
 
 
   // --- Insertion Preview ---
-  // Calculate insertion index as mouse moves over lanes during drag
+  // Calculate insertion index as mouse moves over lanes during drag, or during
+  // chain destination selection (click-based, no drag).
   const handleLaneMouseMove = useCallback((laneId, mouseX, laneContentElement) => {
     const isTokenCreationDrag = !!_getTokenBaseDrone(draggedActionCard?.card);
-    if (!draggedCard && !draggedDrone && !isTokenCreationDrag) return;
+    const isChainDestinationPhase = effectChainState?.subPhase === 'destination' && !effectChainState.complete;
 
-    const drone = draggedCard || draggedDrone?.drone || _getTokenBaseDrone(draggedActionCard?.card);
+    if (!draggedCard && !draggedDrone && !isTokenCreationDrag && !isChainDestinationPhase) return;
+
+    // During click-based chain destination (no active drag), use the pending target drone.
+    const chainPendingDrone = (isChainDestinationPhase && !draggedCard && !draggedDrone && !isTokenCreationDrag)
+      ? (Array.isArray(effectChainState.pendingTarget) ? effectChainState.pendingTarget[0] : effectChainState.pendingTarget)
+      : null;
+
+    const drone = draggedCard || draggedDrone?.drone || _getTokenBaseDrone(draggedActionCard?.card) || chainPendingDrone;
     if (!drone) return;
 
     // Determine ghost ownership so capacity check uses the correct side.
     // Token creation is always friendly; deployment cards are always local player's.
     // Enemy drone drags (chain target drags) land on the opponent's side.
+    // For click-based chain destination: check the pending drone's owner.
     // TODO: check effect.targeting.affinity for future OPPONENT-targeted token cards
-    const isPlayer = isTokenCreationDrag ? true : computeGhostIsPlayer(draggedCard, drone, localPlayerState);
+    let isPlayer;
+    if (chainPendingDrone) {
+      const pendingDroneOwnerId = effectChainState.pendingDroneOwnerId ?? getLocalPlayerId();
+      isPlayer = pendingDroneOwnerId === getLocalPlayerId();
+    } else {
+      isPlayer = isTokenCreationDrag ? true : computeGhostIsPlayer(draggedCard, drone, localPlayerState);
+    }
     const ghostOwnerState = isPlayer ? localPlayerState : opponentPlayerState;
 
     // Suppress ghost in full lanes (allow same-lane reorder where dragged drone is already counted)
@@ -129,7 +144,7 @@ const useDragMechanics = ({
     const excludeId = draggedDrone?.drone?.id || null;
     const index = calculateInsertionIndex(mouseX, laneContentElement, excludeId);
     setInsertionPreview({ laneId, index, drone, isPlayer });
-  }, [draggedCard, draggedDrone, draggedActionCard, localPlayerState, opponentPlayerState]);
+  }, [draggedCard, draggedDrone, draggedActionCard, localPlayerState, opponentPlayerState, effectChainState, getLocalPlayerId]);
 
   // --- Selection-driven effects ---
 
@@ -733,6 +748,7 @@ const useDragMechanics = ({
     if (draggedDrone.isChainTargetDrag && effectChainState?.subPhase === 'target') {
       const droneData = draggedDrone.drone;
       const fromLane = draggedDrone.sourceLane;
+      const capturedInsertionIndex = insertionPreview?.index ?? null;
       setDraggedDrone(null);
       setDroneDragArrowState(prev => ({ ...prev, visible: false }));
       setInsertionPreview(null);
@@ -762,7 +778,7 @@ const useDragMechanics = ({
           .some(([_, drones]) => drones.some(d => d.id === droneData.id));
         const opponentId = getLocalPlayerId() === 'player1' ? 'player2' : 'player1';
         const droneOwner = isLocalDrone ? getLocalPlayerId() : opponentId;
-        selectChainTarget({ ...droneData, owner: droneOwner }, fromLane);
+        selectChainTarget({ ...droneData, owner: droneOwner }, fromLane, capturedInsertionIndex);
       }
       return;
     }

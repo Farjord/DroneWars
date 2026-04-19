@@ -505,6 +505,90 @@ describe('AnnouncementQueue', () => {
     });
   });
 
+  // --- Mixed-queue: drone + phase items must not be merged ---
+
+  describe('drone item isolation (no phaseText)', () => {
+    function mkDroneAnnouncement(id, phaseName = 'droneAttack') {
+      // Mirrors what extractAnnouncements produces for ATTACK_ANNOUNCEMENT / MOVE_ANNOUNCEMENT:
+      // no phaseText field, has a duration and data payload.
+      return { id, phaseName, duration: 2800, data: {} };
+    }
+
+    it('drone item alone plays as a standalone (not wrapped in compound)', () => {
+      const started = [];
+      queue.on('animationStarted', a => started.push(a));
+
+      queue.enqueue(mkDroneAnnouncement('d1'));
+
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeUndefined();
+      expect(started[0].id).toBe('d1');
+    });
+
+    it('drone item + phase item are NOT merged — each plays standalone in order', async () => {
+      const started = [];
+      queue.on('animationStarted', a => started.push(a));
+
+      queue.enqueueAll([mkDroneAnnouncement('d1'), mkAnnouncement('p1')]);
+
+      // First item should be the drone item, playing standalone
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeUndefined();
+      expect(started[0].id).toBe('d1');
+
+      // After drone item completes, phase item plays
+      await vi.advanceTimersByTimeAsync(2800);
+      expect(started).toHaveLength(2);
+      expect(started[1].compound).toBeUndefined();
+      expect(started[1].id).toBe('p1');
+    });
+
+    it('phase item + drone item are NOT merged — each plays standalone in order', async () => {
+      const started = [];
+      queue.on('animationStarted', a => started.push(a));
+
+      queue.enqueueAll([mkAnnouncement('p1'), mkDroneAnnouncement('d1')]);
+
+      // Mixed queue: first item is phase but not all are mergeable, so plays standalone
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeUndefined();
+      expect(started[0].id).toBe('p1');
+
+      // After phase item completes, drone item plays
+      await vi.advanceTimersByTimeAsync(PHASE_DISPLAY_DURATION);
+      expect(started).toHaveLength(2);
+      expect(started[1].compound).toBeUndefined();
+      expect(started[1].id).toBe('d1');
+    });
+
+    it('two drone items queued together each play standalone in order', async () => {
+      const started = [];
+      queue.on('animationStarted', a => started.push(a));
+
+      queue.enqueueAll([mkDroneAnnouncement('d1', 'droneAttack'), mkDroneAnnouncement('d2', 'droneMove')]);
+
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBeUndefined();
+      expect(started[0].id).toBe('d1');
+
+      await vi.advanceTimersByTimeAsync(2800);
+      expect(started).toHaveLength(2);
+      expect(started[1].compound).toBeUndefined();
+      expect(started[1].id).toBe('d2');
+    });
+
+    it('two phase items still merge into a compound when no drone items present', () => {
+      const started = [];
+      queue.on('animationStarted', a => started.push(a));
+
+      queue.enqueueAll([mkAnnouncement('p1'), mkAnnouncement('p2')]);
+
+      expect(started).toHaveLength(1);
+      expect(started[0].compound).toBe(true);
+      expect(started[0].stages).toHaveLength(2);
+    });
+  });
+
   // --- Accessor correctness ---
 
   it('isPlaying, getCurrentAnimation, getQueueLength return correct values', async () => {

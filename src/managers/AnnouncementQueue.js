@@ -166,8 +166,13 @@ class AnnouncementQueue {
       return;
     }
 
-    // Auto-merge: when 2+ items are queued, merge into a single compound chain
-    if (this.queue.length >= 2) {
+    // Auto-merge: only merge phase-style items (all items must have phaseText defined).
+    // Drone action items (droneAttack, droneMove) have no phaseText and must always
+    // play standalone. A mixed queue plays one item at a time to prevent undefined
+    // phaseText values reaching PhaseAnnouncementOverlay stages.
+    const allMergeable = this.queue.length >= 2 && this.queue.every(item => item.phaseText !== undefined);
+
+    if (allMergeable) {
       const items = this.queue.splice(0);
       this.currentAnimation = {
         id: `chain-${crypto.randomUUID()}`,

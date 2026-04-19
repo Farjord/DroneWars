@@ -52,7 +52,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, variant, subtitleVarian
 
   // Compute scramble targets and variants based on current stage
   const currentStage = (compound && stages) ? stages[stageIndex] : null;
-  const headingTarget = currentStage ? currentStage.phaseText : (phaseText || '');
+  const headingTarget = currentStage ? (currentStage.phaseText ?? '') : (phaseText || '');
   const subtitleTarget = currentStage ? (currentStage.subtitle || '') : (subtitle || '');
   const headingVariant = currentStage ? currentStage.variant : variant;
   const currentSubtitleVariant = currentStage ? currentStage.subtitleVariant : subtitleVariant;

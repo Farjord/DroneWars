@@ -123,7 +123,7 @@ const makeCtx = (overrides = {}) => {
 
 const makeAttackDetails = (overrides = {}) => ({
   attackingPlayer: 'player1',
-  source: makeDrone('attacker-1', 'Attacker'),
+  attacker: makeDrone('attacker-1', 'Attacker'),
   target: makeDrone('target-1', 'Target'),
   damage: 3,
   ...overrides,
@@ -362,5 +362,103 @@ describe('CombatActionStrategy — INTERCEPTION_ANNOUNCEMENT', () => {
       a => a.animationName === 'INTERCEPTION_ANNOUNCEMENT'
     );
     expect(announcementCaptures).toHaveLength(0);
+  });
+});
+
+describe('CombatActionStrategy — ATTACK_ANNOUNCEMENT lanes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveAttack.mockReturnValue({
+      newPlayerStates: {
+        player1: makePlayerState(),
+        player2: makePlayerState(),
+      },
+      animationEvents: [],
+      shouldEndTurn: true,
+    });
+    mockCalculateAiInterception.mockReturnValue({ hasInterceptors: false });
+  });
+
+  it('resolves attacker and target lanes from board state', async () => {
+    const attacker = makeDrone('attacker-1', 'Attacker');
+    const target = makeDrone('target-1', 'Target');
+
+    const attackDetails = makeAttackDetails({ attacker, target });
+
+    const { ctx, capturedAnimations } = makeCtx({
+      stateOverrides: {
+        player1: makePlayerState({
+          name: 'Human',
+          dronesOnBoard: { lane1: [attacker], lane2: [], lane3: [] },
+        }),
+        player2: makePlayerState({
+          name: 'AI Player',
+          dronesOnBoard: { lane1: [], lane2: [target], lane3: [] },
+        }),
+      },
+    });
+
+    await processAttack({ attackDetails }, ctx);
+
+    const attackAnnouncements = capturedAnimations.filter(
+      a => a.animationName === 'ATTACK_ANNOUNCEMENT'
+    );
+    expect(attackAnnouncements).toHaveLength(1);
+    expect(attackAnnouncements[0].payload.attackerLane).toBe('lane1');
+    expect(attackAnnouncements[0].payload.targetLane).toBe('lane2');
+  });
+
+  it('resolves target lane to the interceptor\'s lane when intercepted', async () => {
+    const attacker = makeDrone('attacker-1', 'Attacker');
+    const originalTarget = makeDrone('target-1', 'Target');
+    const interceptor = makeDrone('interceptor-1', 'Shield');
+
+    const attackDetails = makeAttackDetails({
+      attacker,
+      target: originalTarget,
+      interceptor,
+    });
+
+    const { ctx, capturedAnimations } = makeCtx({
+      stateOverrides: {
+        player1: makePlayerState({
+          name: 'Human',
+          dronesOnBoard: { lane1: [attacker], lane2: [], lane3: [] },
+        }),
+        player2: makePlayerState({
+          name: 'AI Player',
+          dronesOnBoard: { lane1: [], lane2: [originalTarget], lane3: [interceptor] },
+        }),
+      },
+    });
+
+    await processAttack({ attackDetails }, ctx);
+
+    const attackAnnouncements = capturedAnimations.filter(
+      a => a.animationName === 'ATTACK_ANNOUNCEMENT'
+    );
+    expect(attackAnnouncements).toHaveLength(1);
+    expect(attackAnnouncements[0].payload.attackerLane).toBe('lane1');
+    expect(attackAnnouncements[0].payload.targetLane).toBe('lane3');
+    expect(attackAnnouncements[0].payload.isIntercepted).toBe(true);
+  });
+
+  it('falls back to attackDetails.lane when drones are not on the board', async () => {
+    const attacker = makeDrone('attacker-ghost', 'Attacker');
+    const target = makeDrone('target-ghost', 'Target');
+
+    const attackDetails = makeAttackDetails({ attacker, target, lane: 'lane2' });
+
+    // Neither drone is on either board — getLaneOfDrone returns null
+    const { ctx, capturedAnimations } = makeCtx();
+
+    await processAttack({ attackDetails }, ctx);
+
+    const attackAnnouncements = capturedAnimations.filter(
+      a => a.animationName === 'ATTACK_ANNOUNCEMENT'
+    );
+    expect(attackAnnouncements).toHaveLength(1);
+    expect(attackAnnouncements[0].payload.attackerLane).toBe('lane2');
+    expect(attackAnnouncements[0].payload.targetLane).toBe('lane2');
   });
 });

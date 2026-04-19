@@ -270,7 +270,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
   /**
    * Record a target selection for the current effect.
    */
-  const selectChainTarget = useCallback((target, lane) => {
+  const selectChainTarget = useCallback((target, lane, insertionIndex = null) => {
     if (!chainState) return;
 
     const effect = chainState.effects[chainState.currentIndex];
@@ -292,7 +292,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         const destLane = destTargets[0].id;
         if (target?.id) chainState.positionTracker.recordMove(target.id, destLane);
         const context = makeContext();
-        const selection = { target: { ...target, lane }, lane, destination: destLane };
+        const selection = { target: { ...target, lane }, lane, destination: destLane, insertionIndex };
         const newSelections = [...chainState.selections, selection];
         setChainState(advanceToNextSelection({
           ...chainState,

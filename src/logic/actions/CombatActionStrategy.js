@@ -13,6 +13,7 @@ import { hasMovementInhibitorInLane } from '../../utils/gameUtils.js';
 import { buildDefaultMovementAnimation } from '../effects/movement/animations/DefaultMovementAnimation.js';
 import { buildAnimationSequence } from '../animations/AnimationSequenceBuilder.js';
 import { insertDroneInLane } from '../utils/laneInsertionUtils.js';
+import { getLaneOfDrone } from '../utils/gameEngineUtils.js';
 
 /**
  * Process attack action
@@ -113,17 +114,29 @@ export async function processAttack(payload, ctx) {
     });
   }
 
-  // Announce drone attack before board animations fire
-  const defendingPlayerId = finalAttackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
+  // Announce drone attack before board animations fire.
+  // Lanes are resolved from the current board state so the overlay doesn't
+  // depend on callers propagating attackDetails.lane (not all entry points do).
+  const attackerPlayerId = finalAttackDetails.attackingPlayer;
+  const defendingPlayerId = attackerPlayerId === 'player1' ? 'player2' : 'player1';
+  const targetDroneForAnnouncement = finalAttackDetails.interceptor || finalAttackDetails.target;
+
+  const attackerLane =
+    getLaneOfDrone(finalAttackDetails.attacker.id, currentState[attackerPlayerId])
+    ?? finalAttackDetails.lane;
+  const targetLane =
+    getLaneOfDrone(targetDroneForAnnouncement.id, currentState[defendingPlayerId])
+    ?? finalAttackDetails.lane;
+
   ctx.captureAnimations([{
     animationName: 'ATTACK_ANNOUNCEMENT',
     timing: 'pre-state',
     payload: {
       attackerDrone: finalAttackDetails.attacker,
-      attackerLane: finalAttackDetails.lane,
-      attackerPlayerId: finalAttackDetails.attackingPlayer,
-      targetDrone: finalAttackDetails.interceptor || finalAttackDetails.target,
-      targetLane: finalAttackDetails.lane,
+      attackerLane,
+      attackerPlayerId,
+      targetDrone: targetDroneForAnnouncement,
+      targetLane,
       targetPlayerId: defendingPlayerId,
       isIntercepted: !!finalAttackDetails.interceptor,
     },

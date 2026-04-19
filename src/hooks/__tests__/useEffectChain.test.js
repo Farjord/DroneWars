@@ -863,3 +863,98 @@ describe('useEffectChain — edge cases', () => {
     expect(result.current.effectChainState.currentIndex).toBe(0);
   });
 });
+
+// ── selectChainTarget — insertionIndex preservation in auto-resolve path ────
+//
+// When a compound effect's destination is ref-locked to a concrete lane,
+// selectChainTarget auto-resolves without prompting the user. The insertionIndex
+// the player expressed via drag must survive that auto-resolve step.
+// This covers the isChainTargetDrag flow (e.g. Forced Repositioning effect[1]).
+
+describe('selectChainTarget — insertionIndex preserved through auto-resolve', () => {
+  // Mirrors the real Forced Repositioning card:
+  // effect[0] destination: ADJACENT_TO_PRIMARY (player picks lane)
+  // effect[1] destination: { ref: 0, field: 'destinationLane' } (auto-resolved)
+  const card = {
+    name: 'Forced Repositioning',
+    effects: [
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
+        destination: { type: 'LANE', location: 'ADJACENT_TO_PRIMARY' },
+      },
+      {
+        type: 'SINGLE_MOVE',
+        targeting: { type: 'DRONE', affinity: 'ENEMY', location: { ref: 0, field: 'sourceLane' } },
+        destination: { type: 'LANE', location: { ref: 0, field: 'destinationLane' } },
+        mandatory: true,
+      },
+    ],
+  };
+
+  // player1 drone in lane2, player2 drone in lane2 (effect[1] source lane)
+  function renderWithSetup() {
+    return renderChainHook({
+      playerStates: {
+        player1: {
+          dronesOnBoard: {
+            lane1: [],
+            lane2: [{ id: 'p1d2', name: 'Tank', attack: 4, speed: 2, hull: 6 }],
+            lane3: [],
+          },
+          hand: [],
+        },
+        player2: {
+          dronesOnBoard: {
+            lane1: [],
+            lane2: [{ id: 'p2d2', name: 'Fighter', attack: 3, speed: 5, hull: 4 }],
+            lane3: [],
+          },
+          hand: [],
+        },
+      },
+    });
+  }
+
+  // Advance past effect[0] so chain is in target phase for effect[1]
+  function advanceToEffect1(result, destinationLane = 'lane3', destIndex = 1) {
+    act(() => result.current.startEffectChain(card, { id: 'p1d2', owner: 'player1' }, 'lane2'));
+    expect(result.current.effectChainState.subPhase).toBe('destination');
+    act(() => result.current.selectChainDestination(destinationLane, destIndex));
+    expect(result.current.effectChainState.subPhase).toBe('target');
+    expect(result.current.effectChainState.currentIndex).toBe(1);
+  }
+
+  it('preserves insertionIndex 2 in selection when auto-resolve fires', () => {
+    const { result } = renderWithSetup();
+    advanceToEffect1(result);
+
+    act(() => result.current.selectChainTarget({ id: 'p2d2', owner: 'player2' }, 'lane2', 2));
+
+    expect(result.current.effectChainState.complete).toBe(true);
+    expect(result.current.effectChainState.selections[1].destination).toBe('lane3');
+    expect(result.current.effectChainState.selections[1].insertionIndex).toBe(2);
+  });
+
+  it('preserves insertionIndex 0 (leftmost) in auto-resolve selection', () => {
+    const { result } = renderWithSetup();
+    advanceToEffect1(result);
+
+    act(() => result.current.selectChainTarget({ id: 'p2d2', owner: 'player2' }, 'lane2', 0));
+
+    expect(result.current.effectChainState.complete).toBe(true);
+    expect(result.current.effectChainState.selections[1].insertionIndex).toBe(0);
+  });
+
+  it('defaults insertionIndex to null when argument omitted (no-drag / confirm-button path)', () => {
+    // When the player clicks a drone rather than dragging, there is no UI mechanism
+    // to pick a position in the auto-resolved destination lane. Null (append) is correct.
+    const { result } = renderWithSetup();
+    advanceToEffect1(result);
+
+    act(() => result.current.selectChainTarget({ id: 'p2d2', owner: 'player2' }, 'lane2'));
+
+    expect(result.current.effectChainState.complete).toBe(true);
+    expect(result.current.effectChainState.selections[1].insertionIndex).toBeNull();
+  });
+});

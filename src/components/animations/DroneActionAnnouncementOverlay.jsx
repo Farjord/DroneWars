@@ -12,20 +12,25 @@ import { ACTION_ANNOUNCEMENT_DISPLAY_MS, ACTION_ANNOUNCEMENT_FADE_MS } from '../
 
 /**
  * Formats a lane id like 'lane1' into a human-readable label like 'Lane 1'.
- * @param {string} laneId
+ * Returns '' when laneId is falsy so callers never crash on missing data.
+ * @param {string|undefined|null} laneId
  * @returns {string}
  */
-const formatLane = (laneId) => laneId.replace('lane', 'Lane ');
+const formatLane = (laneId) => (laneId ? laneId.replace('lane', 'Lane ') : '');
 
 /**
  * Small badge shown beneath a drone token to identify its lane.
+ * Renders nothing when laneId is missing so we don't show an empty bubble.
  * @param {string} laneId - Raw lane identifier e.g. 'lane1'
  */
-const LaneBadge = ({ laneId }) => (
-  <span className="mt-2 px-3 py-0.5 rounded-full bg-black/50 border border-cyan-400/40 text-cyan-200 font-orbitron text-xs uppercase tracking-wider">
-    {formatLane(laneId)}
-  </span>
-);
+const LaneBadge = ({ laneId }) => {
+  if (!laneId) return null;
+  return (
+    <span className="mt-2 px-3 py-0.5 rounded-full bg-black/50 border border-cyan-400/40 text-cyan-200 font-orbitron text-xs uppercase tracking-wider">
+      {formatLane(laneId)}
+    </span>
+  );
+};
 
 /**
  * Wrapper that scales a DroneToken by 1.3× for the overlay display.
