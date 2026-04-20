@@ -250,7 +250,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
           pendingDroneOwnerId: droneOwnerId,
           pendingLane: initialLane,
           validTargets: destTargets,
-          prompt: effect.prompt || 'Select destination',
+          prompt: effect.prompt || 'Drag the drone to a lane',
         });
         return;
       }
@@ -334,7 +334,7 @@ const useEffectChain = ({ playerStates, actingPlayerId, getEffectiveStats }) => 
         pendingDroneOwnerId: droneOwnerId,
         pendingLane: lane,
         validTargets: destTargets,
-        prompt: effect.prompt || 'Select destination',
+        prompt: effect.prompt || 'Drag the drone to a lane',
       }));
       return;
     }

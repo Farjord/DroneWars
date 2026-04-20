@@ -1,6 +1,4 @@
 import { debugLog } from '../utils/debugLogger.js';
-import { isLaneFull } from '../logic/utils/gameEngineUtils.js';
-import { resolveDestinationRefs } from '../logic/cards/chainTargetResolver.js';
 
 /**
  * @typedef {Object} AbilityHandlerConfig
@@ -59,7 +57,6 @@ export default function useClickHandlers({
   // --- From useCardSelection — effect chain ---
   effectChainState,
   selectChainTarget,
-  selectChainDestination,
   selectChainMultiTarget,
   setPendingChainTarget,
 
@@ -84,8 +81,6 @@ export default function useClickHandlers({
 
   // --- External services ---
   gameEngine,
-  // --- Insertion preview ---
-  insertionPreview,
 }) {
 
   // --- handleToggleDroneSelection ---
@@ -343,35 +338,16 @@ export default function useClickHandlers({
     }
 
     // --- 9.1.2 HANDLE EFFECT CHAIN LANE/DRONE SELECTION ---
-    if (effectChainState && !effectChainState.complete) {
+    // NOTE: Destination selection during an effect chain is drag-only (see
+    // handleDroneDragStart's chain branch in useDragMechanics). Click here only
+    // handles LANE-type *targeting*, not destination picking.
+    if (effectChainState && !effectChainState.complete && effectChainState.subPhase !== 'destination') {
       const laneOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
       const isValidChainLane = validCardTargets.some(t => t.id === lane && t.owner === laneOwner);
       if (isValidChainLane) {
-        if (effectChainState.subPhase === 'destination') {
-          selectChainDestination(lane, insertionPreview?.index ?? null);
-        } else {
-          // Lane as target (for LANE-type targeting)
-          selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);
-        }
+        // Lane as target (for LANE-type targeting)
+        selectChainTarget({ id: lane, owner: laneOwner, type: 'lane' }, lane);
         return;
-      } else if (effectChainState.subPhase === 'destination') {
-        const currentEffect = effectChainState.effects?.[effectChainState.currentIndex];
-        const rawLocation = currentEffect?.destination?.location;
-        const isRefLocked = rawLocation && typeof rawLocation === 'object' && 'ref' in rawLocation;
-        if (isRefLocked) {
-          const resolvedDest = resolveDestinationRefs(currentEffect.destination, effectChainState.selections);
-          const lanes = ['lane1', 'lane2', 'lane3'];
-          if (resolvedDest?.location && lanes.includes(resolvedDest.location) && lane !== resolvedDest.location) {
-            setModalContent({ title: "Wrong Lane", text: "This card requires all moves go to the same lane.", isBlocking: true });
-            return;
-          }
-        }
-        const droneOwnerId = effectChainState.pendingDroneOwnerId ?? getLocalPlayerId();
-        const droneOwnerState = droneOwnerId === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
-        if (isLaneFull(droneOwnerState, lane, effectChainState.selections, droneOwnerId)) {
-          setModalContent({ title: "Lane Full", text: "Cannot move here — this lane is at maximum capacity.", isBlocking: true });
-          return;
-        }
       }
     }
 

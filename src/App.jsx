@@ -923,7 +923,7 @@ const App = ({ phaseAnimationQueue }) => {
     validAbilityTargets,
     cancelCardSelection,
     // From useCardSelection — effect chain
-    effectChainState, selectChainTarget, selectChainDestination,
+    effectChainState, selectChainTarget,
     selectChainMultiTarget, setPendingChainTarget,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
@@ -938,8 +938,6 @@ const App = ({ phaseAnimationQueue }) => {
     submitAction,
     // External services
     gameEngine, gameDataService,
-    // Insertion preview
-    insertionPreview,
     // Refs
     droneRefs, gameAreaRef,
   });
