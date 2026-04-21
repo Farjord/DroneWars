@@ -38,7 +38,8 @@ export const LaneBadge = ({ laneId }) => {
 export const ScaledDroneToken = ({ drone, isPlayer, lane }) => (
   // `zoom` (rather than `transform: scale()`) because zoom reflows parent layout —
   // flex column reserves the scaled height so LaneBadge / stat hexes aren't covered.
-  <div style={{ zoom: 1.3 }}>
+  // 2.4× makes the token approximately the same height as a native-size ActionCard (275px).
+  <div style={{ zoom: 2.4 }}>
     <DroneToken
       drone={drone}
       isPlayer={isPlayer}
@@ -52,10 +53,10 @@ export const ScaledDroneToken = ({ drone, isPlayer, lane }) => (
 );
 
 /**
- * Wrapper that scales an EntityToken by 1.3× — mirrors ScaledDroneToken exactly.
+ * Wrapper that scales an EntityToken by 2.4× — mirrors ScaledDroneToken exactly.
  */
 export const ScaledEntityToken = ({ label, subLabel, isPlayer, iconUrl }) => (
-  <div style={{ zoom: 1.3 }}>
+  <div style={{ zoom: 2.4 }}>
     <EntityToken label={label} subLabel={subLabel} isPlayer={isPlayer} iconUrl={iconUrl} />
   </div>
 );
