@@ -31,6 +31,9 @@ export const MOVEMENT_BLOCKED = 'MOVEMENT_BLOCKED';
 export const DRONE_ATTACK_ANNOUNCEMENT = 'ATTACK_ANNOUNCEMENT';
 export const DRONE_MOVE_ANNOUNCEMENT = 'MOVE_ANNOUNCEMENT';
 
+// Card play announcement (replaces CARD_REVEAL when a card has non-player targets)
+export const CARD_ANNOUNCEMENT = 'CARD_ANNOUNCEMENT';
+
 // Deployment
 export const TELEPORT_IN = 'TELEPORT_IN';
 export const TELEPORT_OUT = 'TELEPORT_OUT';

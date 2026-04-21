@@ -74,6 +74,22 @@ export function personalizeAnnouncements(animations, playerId, state) {
         destinationLane: anim.payload.destinationLane,
         droneIsPlayer: anim.payload.droneIsPlayer,
       });
+    } else if (anim.animationName === 'CARD_ANNOUNCEMENT') {
+      const { playerId: cardPlayerId, targets = [] } = anim.payload;
+      const personalizedTargets = targets.map(t => ({
+        ...t,
+        targetIsPlayer: t.ownerId != null ? t.ownerId === playerId : null,
+      }));
+      anim.payload = {
+        ...anim.payload,
+        cardIsPlayer: cardPlayerId === playerId,
+        targets: personalizedTargets,
+      };
+      debugLog('ANNOUNCE_TRACE', `🔄 PERSONALIZE CARD_ANNOUNCEMENT card=${anim.payload.cardName} targetCount=${personalizedTargets.length} forPlayer=${playerId}`, {
+        forPlayer: playerId,
+        cardIsPlayer: anim.payload.cardIsPlayer,
+        targetKinds: personalizedTargets.map(t => t.kind),
+      });
     }
   };
 
@@ -89,7 +105,7 @@ export function personalizeAnnouncements(animations, playerId, state) {
 export function extractAnnouncements(allAnimations) {
   const announcementTypes = new Set([
     'PHASE_ANNOUNCEMENT', 'PASS_ANNOUNCEMENT', 'INTERCEPTION_ANNOUNCEMENT',
-    'ATTACK_ANNOUNCEMENT', 'MOVE_ANNOUNCEMENT',
+    'ATTACK_ANNOUNCEMENT', 'MOVE_ANNOUNCEMENT', 'CARD_ANNOUNCEMENT',
   ]);
   const visualAnimations = [];
   const announcements = [];
@@ -124,6 +140,20 @@ export function extractAnnouncements(allAnimations) {
           dataKeys: Object.keys(built.data || {}),
           sourceLane: built.data?.sourceLane,
           destinationLane: built.data?.destinationLane,
+        });
+        announcements.push(built);
+      } else if (anim.animationName === 'CARD_ANNOUNCEMENT') {
+        const built = {
+          id: `card-play-${crypto.randomUUID()}`,
+          phaseName: 'cardPlay',
+          duration: ACTION_ANNOUNCEMENT_TOTAL_MS,
+          data: anim.payload,
+        };
+        debugLog('ANNOUNCE_TRACE', `📦 EXTRACT cardPlay card=${built.data?.cardName} targetCount=${built.data?.targets?.length || 0}`, {
+          id: built.id,
+          duration: built.duration,
+          cardName: built.data?.cardName,
+          targetKinds: (built.data?.targets || []).map(t => t.kind),
         });
         announcements.push(built);
       } else {

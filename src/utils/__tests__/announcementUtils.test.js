@@ -462,3 +462,91 @@ describe('personalizeAnnouncements — drone action types', () => {
     expect(animations.actionAnimations[0].payload.droneIsPlayer).toBe(true);
   });
 });
+
+describe('CARD_ANNOUNCEMENT personalization and extraction', () => {
+  const baseState = { roundNumber: 1, firstPlayerOfRound: 'player1' };
+
+  it('personalizes CARD_ANNOUNCEMENT cardIsPlayer for local card-player', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'CARD_ANNOUNCEMENT',
+        payload: {
+          cardName: 'Ion Pulse',
+          playerId: 'player1',
+          targets: [{ kind: 'DRONE', drone: { id: 'd1' }, lane: 'lane2', ownerId: 'player2' }],
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.cardIsPlayer).toBe(true);
+    expect(animations.actionAnimations[0].payload.targets[0].targetIsPlayer).toBe(false);
+  });
+
+  it('personalizes CARD_ANNOUNCEMENT per-target targetIsPlayer based on ownerId', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'CARD_ANNOUNCEMENT',
+        payload: {
+          cardName: 'Forced Repositioning',
+          playerId: 'player2',
+          targets: [
+            { kind: 'DRONE', drone: { id: 'friend' }, lane: 'lane1', ownerId: 'player2' },
+            { kind: 'DRONE', drone: { id: 'foe' }, lane: 'lane2', ownerId: 'player1' },
+          ],
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.cardIsPlayer).toBe(false);
+    expect(animations.actionAnimations[0].payload.targets[0].targetIsPlayer).toBe(false);
+    expect(animations.actionAnimations[0].payload.targets[1].targetIsPlayer).toBe(true);
+  });
+
+  it('passes through null ownerId (LANE summary) as null targetIsPlayer', () => {
+    const animations = {
+      actionAnimations: [{
+        animationName: 'CARD_ANNOUNCEMENT',
+        payload: {
+          cardName: 'Nuke',
+          playerId: 'player1',
+          targets: [{ kind: 'LANE', lane: 'lane2', summary: true }],
+        },
+      }],
+      systemAnimations: [],
+    };
+
+    personalizeAnnouncements(animations, 'player1', baseState);
+
+    expect(animations.actionAnimations[0].payload.targets[0].targetIsPlayer).toBeNull();
+  });
+
+  it('extracts CARD_ANNOUNCEMENT with phaseName cardPlay and duration', () => {
+    const allAnimations = [
+      {
+        animationName: 'CARD_ANNOUNCEMENT',
+        payload: {
+          cardName: 'Ion Pulse',
+          cardData: { id: 'ionPulse' },
+          playerId: 'player1',
+          targets: [{ kind: 'DRONE', drone: { id: 'd1' }, lane: 'lane2', ownerId: 'player2' }],
+        },
+      },
+      { animationName: 'CARD_VISUAL', payload: {} },
+    ];
+
+    const { announcements, visualAnimations } = extractAnnouncements(allAnimations);
+
+    expect(announcements).toHaveLength(1);
+    expect(announcements[0].phaseName).toBe('cardPlay');
+    expect(announcements[0].duration).toBe(ACTION_ANNOUNCEMENT_TOTAL_MS);
+    expect(announcements[0].data.cardName).toBe('Ion Pulse');
+    expect(announcements[0].data.targets).toHaveLength(1);
+    expect(visualAnimations).toHaveLength(1);
+  });
+});

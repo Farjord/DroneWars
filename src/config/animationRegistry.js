@@ -14,6 +14,7 @@ import CardRevealOverlay from '../components/animations/CardRevealOverlay.jsx';
 import ShipAbilityRevealOverlay from '../components/animations/ShipAbilityRevealOverlay.jsx';
 import PhaseAnnouncementOverlay from '../components/animations/PhaseAnnouncementOverlay.jsx';
 import DroneActionAnnouncementOverlay from '../components/animations/DroneActionAnnouncementOverlay.jsx';
+import CardPlayAnnouncementOverlay from '../components/animations/CardPlayAnnouncementOverlay.jsx';
 import LaserEffect from '../components/animations/LaserEffect.jsx';
 import TeleportEffect from '../components/animations/TeleportEffect.jsx';
 import OverflowProjectile from '../components/animations/OverflowProjectile.jsx';
@@ -37,6 +38,7 @@ export const ANIMATION_REGISTRY = {
   shipAbilityReveals: ShipAbilityRevealOverlay,
   phaseAnnouncements: PhaseAnnouncementOverlay,
   droneActionAnnouncements: DroneActionAnnouncementOverlay,
+  cardPlayAnnouncements: CardPlayAnnouncementOverlay,
   laserEffects: LaserEffect,
   teleportEffects: TeleportEffect,
   overflowProjectiles: OverflowProjectile,

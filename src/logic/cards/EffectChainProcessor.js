@@ -8,7 +8,7 @@ import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { CARD_REVEAL, CARD_VISUAL, STATE_SNAPSHOT, TELEPORT_IN } from '../../config/animationTypes.js';
+import { CARD_REVEAL, CARD_ANNOUNCEMENT, CARD_VISUAL, STATE_SNAPSHOT, TELEPORT_IN } from '../../config/animationTypes.js';
 import { stripChainFields } from './chainConstants.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
@@ -102,6 +102,68 @@ function resolveEffectValues(effectData, effectResults) {
     }
   }
   return resolved;
+}
+
+// Build the ordered targets[] for a CARD_ANNOUNCEMENT payload.
+// Walks effects+selections; emits one entry per non-player-targeting stage, in selection order.
+// NONE / CARD_IN_HAND stages are skipped — they're self-explanatory (draw, energy, discard your own).
+// Returns [] when the card has no non-player targets (caller falls back to CARD_REVEAL).
+function buildAnnouncementTargets(effects, selections, playerStates) {
+  const droneLookup = (droneId) => {
+    for (const pid of ['player1', 'player2']) {
+      const board = playerStates[pid]?.dronesOnBoard || {};
+      for (const lane of ['lane1', 'lane2', 'lane3']) {
+        if ((board[lane] || []).some(d => d.id === droneId)) return { lane, ownerId: pid };
+      }
+    }
+    return { lane: null, ownerId: null };
+  };
+
+  const targets = [];
+  for (let i = 0; i < effects.length; i++) {
+    const effect = effects[i];
+    const selection = selections[i];
+    if (!selection || selection.skipped || !selection.target) continue;
+    const type = effect?.targeting?.type;
+    const affinity = effect?.targeting?.affinity || null;
+    const scope = effect?.scope || null;
+    const t = selection.target;
+
+    if (type === 'DRONE') {
+      const lookup = droneLookup(t.id);
+      targets.push({
+        kind: 'DRONE',
+        drone: t,
+        lane: t.lane || lookup.lane,
+        ownerId: t.owner || lookup.ownerId,
+      });
+    } else if (type === 'LANE') {
+      targets.push({
+        kind: 'LANE',
+        lane: t.id,
+        affinity,
+        // scope 'LANE' (Nuke) and 'ALL' (Purge Protocol) hit many entities — overlay summarises.
+        summary: scope === 'LANE' || scope === 'ALL',
+      });
+    } else if (type === 'SHIP_SECTION') {
+      const sectionOwnerId = t.owner || null;
+      targets.push({
+        kind: 'SHIP_SECTION',
+        sectionType: t.type || t.key,
+        shipId: sectionOwnerId ? playerStates[sectionOwnerId]?.shipId : null,
+        ownerId: sectionOwnerId,
+      });
+    } else if (type === 'TECH') {
+      targets.push({
+        kind: 'TECH',
+        techName: t.name || t.id,
+        lane: t.lane || null,
+        ownerId: t.owner || null,
+      });
+    }
+    // NONE, CARD_IN_HAND, or unknown: intentionally skipped.
+  }
+  return targets;
 }
 
 // Checks board entities (drones, tech) and ship sections. Non-board targets (cards in hand, lanes) always pass.
@@ -208,15 +270,37 @@ class EffectChainProcessor {
     let dynamicGoAgain = false;
     const effectResults = [];
 
-    // CARD_REVEAL animation
-    cardPreambleEvents.push({
-      type: CARD_REVEAL,
-      cardId: card.id,
-      cardName: card.name,
-      cardData: card,
-      targetPlayer: playerId,
-      timestamp: Date.now(),
-    });
+    // Card-play announcement: if the card has any non-player targets (DRONE/LANE/SHIP_SECTION/TECH),
+    // emit a CARD_ANNOUNCEMENT (3-column overlay with card + targets). Otherwise fall back to
+    // CARD_REVEAL (simple card image). Never emit both — avoids the player seeing two card images.
+    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates);
+    if (announcementTargets.length > 0) {
+      cardPreambleEvents.push({
+        type: CARD_ANNOUNCEMENT,
+        cardId: card.id,
+        cardName: card.name,
+        cardData: card,
+        targetPlayer: playerId,
+        playerId,
+        targets: announcementTargets,
+        timestamp: Date.now(),
+      });
+      debugLog('ANNOUNCE_TRACE', `🎯 BUILDING CARD_ANNOUNCEMENT ${card.name} targetCount=${announcementTargets.length}`, {
+        cardId: card.id,
+        playerId,
+        targetKinds: announcementTargets.map(t => t.kind).join(','),
+        targets: announcementTargets,
+      });
+    } else {
+      cardPreambleEvents.push({
+        type: CARD_REVEAL,
+        cardId: card.id,
+        cardName: card.name,
+        cardData: card,
+        targetPlayer: playerId,
+        timestamp: Date.now(),
+      });
+    }
 
     // CARD_VISUAL animation (if card has visualEffect and a board target)
     if (card.visualEffect && selections[0]?.target) {

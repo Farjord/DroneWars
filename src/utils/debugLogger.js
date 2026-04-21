@@ -44,7 +44,7 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details
     VALIDATION: false,           // State validation and reconciliation
     TIMING: false,               // High-resolution timing milestones with timestamps
-    ANNOUNCE_TRACE: true,         // Announcement queueing and playback tracing
+    ANNOUNCE_TRACE: false,        // Announcement queueing and playback tracing
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation
     FIRST_PLAYER: false,        // First player determination and seeded random
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
@@ -82,7 +82,7 @@ const DEBUG_CONFIG = {
     // Client-Server Architecture Traces
     INIT_TRACE: false,             // End-to-end game initialization trace (8 numbered steps)
     DEPLOY_TRACE: false,          // End-to-end drone deployment trace (10 numbered steps)
-    ANIM_TRACE: true,             // End-to-end animation pipeline trace (7 numbered steps)
+    ANIM_TRACE: false,            // End-to-end animation pipeline trace (7 numbered steps)
 
     // Multiplayer Pipeline Traces
     MP_JOIN_TRACE: false,         // Connection lifecycle trace (7 numbered steps)

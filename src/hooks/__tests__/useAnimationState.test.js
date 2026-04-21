@@ -3,8 +3,8 @@ import { animationReducer, INITIAL_ANIMATION_STATE, createAnimationDispatch } fr
 
 describe('animationReducer', () => {
   describe('INITIAL_ANIMATION_STATE', () => {
-    it('has exactly 21 channel keys', () => {
-      expect(Object.keys(INITIAL_ANIMATION_STATE)).toHaveLength(21);
+    it('has exactly 22 channel keys', () => {
+      expect(Object.keys(INITIAL_ANIMATION_STATE)).toHaveLength(22);
     });
 
     it('all channels initialize as empty arrays', () => {
@@ -17,7 +17,8 @@ describe('animationReducer', () => {
       const expectedChannels = [
         'flyingDrones', 'flashEffects', 'healEffects', 'statChangeEffects',
         'cardVisuals', 'cardReveals', 'shipAbilityReveals', 'phaseAnnouncements',
-        'droneActionAnnouncements', 'laserEffects', 'teleportEffects', 'overflowProjectiles',
+        'droneActionAnnouncements', 'cardPlayAnnouncements', 'laserEffects',
+        'teleportEffects', 'overflowProjectiles',
         'splashEffects', 'barrageImpacts', 'railgunTurrets', 'railgunBeams', 'passNotifications',
         'goAgainNotifications', 'triggerFiredNotifications', 'movementBlockedNotifications',
         'statusConsumptions'

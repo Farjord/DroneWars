@@ -154,6 +154,7 @@ export async function processAttack(payload, ctx) {
     },
   });
 
+  const isTargetSection = !targetDroneForAnnouncement.attack && !!targetDroneForAnnouncement.type;
   ctx.captureAnimations([{
     animationName: 'ATTACK_ANNOUNCEMENT',
     timing: 'pre-state',
@@ -165,6 +166,7 @@ export async function processAttack(payload, ctx) {
       targetLane,
       targetPlayerId: defendingPlayerId,
       isIntercepted: !!finalAttackDetails.interceptor,
+      ...(isTargetSection && { targetShipId: currentState[defendingPlayerId]?.shipId }),
     },
   }]);
 

@@ -771,6 +771,18 @@ const App = ({ phaseAnimationQueue }) => {
           payload: animation.data,
           onComplete: () => animationDispatch.clear('droneActionAnnouncements'),
         }]);
+      } else if (animation.phaseName === 'cardPlay') {
+        const d = animation.data || {};
+        debugLog('ANNOUNCE_TRACE', `📡 APP DISPATCH → cardPlayAnnouncements card=${d.cardName} targetCount=${d.targets?.length || 0}`, {
+          receivedId: animation.id,
+          cardName: d.cardName,
+          targetKinds: (d.targets || []).map(t => t.kind),
+        });
+        animationDispatch.set('cardPlayAnnouncements', [{
+          id: animation.id,
+          payload: animation.data,
+          onComplete: () => animationDispatch.clear('cardPlayAnnouncements'),
+        }]);
       } else {
         animationDispatch.set('phaseAnnouncements', [{
           id: animation.id,
@@ -793,6 +805,8 @@ const App = ({ phaseAnimationQueue }) => {
       });
       if (animation.phaseName === 'droneAttack' || animation.phaseName === 'droneMove') {
         animationDispatch.clear('droneActionAnnouncements');
+      } else if (animation.phaseName === 'cardPlay') {
+        animationDispatch.clear('cardPlayAnnouncements');
       } else {
         animationDispatch.clear('phaseAnnouncements');
       }

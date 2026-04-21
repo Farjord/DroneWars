@@ -210,6 +210,13 @@ class AnnouncementQueue {
         id: this.currentAnimation.id,
         dataKeys: Object.keys(d),
       });
+    } else if (this.currentAnimation.phaseName === 'cardPlay') {
+      const d = this.currentAnimation.data || {};
+      debugLog('ANNOUNCE_TRACE', `📤 CARD-PLAY QUEUE → animationStarted card=${d.cardName} targetCount=${d.targets?.length || 0}`, {
+        id: this.currentAnimation.id,
+        cardName: d.cardName,
+        targetKinds: (d.targets || []).map(t => t.kind),
+      });
     }
 
     this.emit('animationStarted', this.currentAnimation);

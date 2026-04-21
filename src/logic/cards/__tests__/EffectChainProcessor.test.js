@@ -809,7 +809,7 @@ describe('EffectChainProcessor', () => {
       expect(snapshotDiscard.some(c => c.instanceId === 'inst_move')).toBe(true);
     });
 
-    it('CARD_REVEAL and CARD_VISUAL appear before STATE_SNAPSHOT', () => {
+    it('card preamble (CARD_ANNOUNCEMENT or CARD_REVEAL) appears before STATE_SNAPSHOT', () => {
       mockMoveTriggerEvents = [
         { type: 'TRIGGER_FIRED', triggerName: 'Mine', timestamp: Date.now() }
       ];
@@ -827,14 +827,15 @@ describe('EffectChainProcessor', () => {
       const selections = [{ target: friendly, lane: 'lane1', destination: 'lane2' }];
       const result = processor.processEffectChain(card, selections, 'player1', createCtx(states));
 
-      const revealIdx = result.animationEvents.findIndex(e => e.type === 'CARD_REVEAL');
+      // Cards with a non-player target emit CARD_ANNOUNCEMENT; untargeted cards emit CARD_REVEAL.
+      // Either counts as the preamble for ordering purposes.
+      const preambleIdx = result.animationEvents.findIndex(e => e.type === 'CARD_ANNOUNCEMENT' || e.type === 'CARD_REVEAL');
       const snapshotIdx = result.animationEvents.findIndex(e => e.type === 'STATE_SNAPSHOT');
       const triggerIdx = result.animationEvents.findIndex(e => e.type === 'TRIGGER_FIRED');
 
-      expect(revealIdx).toBeGreaterThan(-1);
+      expect(preambleIdx).toBeGreaterThan(-1);
       expect(snapshotIdx).toBeGreaterThan(-1);
-      // CARD_REVEAL before STATE_SNAPSHOT before TRIGGER_FIRED
-      expect(revealIdx).toBeLessThan(snapshotIdx);
+      expect(preambleIdx).toBeLessThan(snapshotIdx);
       expect(snapshotIdx).toBeLessThan(triggerIdx);
     });
 

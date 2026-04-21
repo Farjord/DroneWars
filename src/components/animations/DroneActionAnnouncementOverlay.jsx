@@ -7,52 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import './revealOverlay.css';
-import DroneToken from '../ui/DroneToken.jsx';
 import { ACTION_ANNOUNCEMENT_DISPLAY_MS, ACTION_ANNOUNCEMENT_FADE_MS } from '../../config/announcementTiming.js';
 import { debugLog } from '../../utils/debugLogger.js';
-
-/**
- * Formats a lane id like 'lane1' into a human-readable label like 'Lane 1'.
- * Returns '' when laneId is falsy so callers never crash on missing data.
- * @param {string|undefined|null} laneId
- * @returns {string}
- */
-const formatLane = (laneId) => (laneId ? laneId.replace('lane', 'Lane ') : '');
-
-/**
- * Small badge shown beneath a drone token to identify its lane.
- * Renders nothing when laneId is missing so we don't show an empty bubble.
- * @param {string} laneId - Raw lane identifier e.g. 'lane1'
- */
-const LaneBadge = ({ laneId }) => {
-  if (!laneId) return null;
-  return (
-    <span className="mt-2 px-3 py-0.5 rounded-full bg-black/50 border border-cyan-400/40 text-cyan-200 font-orbitron text-xs uppercase tracking-wider">
-      {formatLane(laneId)}
-    </span>
-  );
-};
-
-/**
- * Wrapper that scales a DroneToken by 1.3× for the overlay display.
- * Forwards `lane` so DroneToken can compute effective stats (auras, lane-conditional mods).
- * Other non-interactive props are set to safe no-op defaults.
- */
-const ScaledDroneToken = ({ drone, isPlayer, lane }) => (
-  // `zoom` (rather than `transform: scale()`) because zoom reflows parent layout —
-  // flex column reserves the scaled height so LaneBadge / stat hexes aren't covered.
-  <div style={{ zoom: 1.3 }}>
-    <DroneToken
-      drone={drone}
-      isPlayer={isPlayer}
-      lane={lane}
-      isPotentialInterceptor={false}
-      isInvalidTarget={false}
-      isActionTarget={false}
-      droneRefs={{ current: {} }}
-    />
-  </div>
-);
+import { LaneBadge, ScaledDroneToken, ScaledEntityToken, formatLane } from './announcementTokens.jsx';
+import { resolveShipSectionImage } from '../../logic/cards/shipSectionImageResolver.js';
 
 /**
  * DroneActionAnnouncementOverlay
@@ -99,7 +57,9 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
 
   const renderAttackContent = () => {
     // targetDrone holds the interceptor drone when isIntercepted=true — payload contract
-    const { attackerDrone, attackerLane, attackerIsPlayer, targetDrone, targetLane, targetIsPlayer, isIntercepted } = payload;
+    const { attackerDrone, attackerLane, attackerIsPlayer, targetDrone, targetLane, targetIsPlayer, isIntercepted, targetShipId } = payload;
+    // targetShipId is only present when the target is a ship section (no attack/speed stats)
+    const isSection = targetShipId != null || (!targetDrone?.attack && !!targetDrone?.type);
 
     return (
       <>
@@ -123,8 +83,17 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
 
         {/* Target column */}
         <div className="flex flex-col items-center gap-2">
-          <ScaledDroneToken drone={targetDrone} isPlayer={targetIsPlayer} lane={targetLane} />
-          <LaneBadge laneId={targetLane} />
+          {isSection
+            ? <ScaledEntityToken
+                label={targetDrone?.type || targetDrone?.key}
+                isPlayer={targetIsPlayer}
+                iconUrl={resolveShipSectionImage(targetShipId, targetDrone?.type || targetDrone?.key, targetIsPlayer ?? false)}
+              />
+            : <>
+                <ScaledDroneToken drone={targetDrone} isPlayer={targetIsPlayer} lane={targetLane} />
+                <LaneBadge laneId={targetLane} />
+              </>
+          }
         </div>
       </>
     );
