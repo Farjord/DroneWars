@@ -104,8 +104,8 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
 
   const renderMoveContent = () => {
     const { drone, sourceLane, destinationLane, droneIsPlayer, destinationSectionType, destinationShipId } = payload;
-    // Section in the destination lane belongs to the opponent of the moving drone.
-    const destSectionIsPlayer = !droneIsPlayer;
+    // Section in the destination lane belongs to the same player as the moving drone.
+    const destSectionIsPlayer = droneIsPlayer;
 
     return (
       <>

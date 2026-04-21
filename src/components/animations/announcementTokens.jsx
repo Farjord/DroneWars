@@ -15,7 +15,8 @@ import { FACTION_COLORS } from '../../utils/factionColors.js';
  * Formats a lane id like 'lane1' into a human-readable label like 'Lane 1'.
  * Returns '' when laneId is falsy so callers never crash on missing data.
  */
-export const formatLane = (laneId) => (laneId ? laneId.replace('lane', 'Lane ') : '');
+const LANE_LABELS = { lane1: 'Left', lane2: 'Centre', lane3: 'Right' };
+export const formatLane = (laneId) => LANE_LABELS[laneId] ?? '';
 
 /**
  * Small badge shown beneath a token to identify its lane.

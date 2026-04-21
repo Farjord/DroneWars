@@ -314,8 +314,8 @@ export async function processMove(payload, ctx) {
   });
 
   const destLaneIdx = parseInt(toLane.replace('lane', ''), 10) - 1;
-  const destSectionKey = allPlacedSections[opponentPlayerId]?.[destLaneIdx];
-  const destSectionData = destSectionKey ? opponentPlayerState?.shipSections?.[destSectionKey] : null;
+  const destSectionKey = allPlacedSections[playerId]?.[destLaneIdx];
+  const destSectionData = destSectionKey ? playerState?.shipSections?.[destSectionKey] : null;
 
   ctx.captureAnimations([{
     animationName: 'MOVE_ANNOUNCEMENT',
@@ -326,7 +326,7 @@ export async function processMove(payload, ctx) {
       destinationLane: toLane,
       dronePlayerId: playerId,
       destinationSectionType: destSectionData?.type || null,
-      destinationShipId: opponentPlayerState?.shipId || null,
+      destinationShipId: playerState?.shipId || null,
     },
   }]);
 
