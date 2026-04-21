@@ -31,19 +31,19 @@ const TargetEntry = ({ target }) => {
   }
 
   if (kind === 'LANE') {
-    // scope LANE (Nuke) or ALL (Purge Protocol) — bigger styled summary label.
-    if (target.summary) {
+    if (target.sectionType) {
+      const iconUrl = resolveShipSectionImage(target.shipId, target.sectionType, target.targetIsPlayer ?? true);
       return (
-        <div className="flex flex-col items-center justify-center">
-          <span className="text-3xl font-orbitron font-bold text-cyan-200 uppercase tracking-wider drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">
-            {formatLane(target.lane)}
-          </span>
+        <div className="flex flex-col items-center gap-2">
+          <ScaledEntityToken label={target.sectionType} isPlayer={target.targetIsPlayer} iconUrl={iconUrl} />
+          <LaneBadge laneId={target.lane} />
         </div>
       );
     }
+    // Fallback when section data is unavailable (e.g. no placed sections in test/AI context).
     return (
       <div className="flex flex-col items-center justify-center">
-        <span className="text-2xl font-orbitron font-bold text-cyan-200 uppercase tracking-wider">
+        <span className={`font-orbitron font-bold text-cyan-200 uppercase tracking-wider${target.summary ? ' text-3xl drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]' : ' text-2xl'}`}>
           {formatLane(target.lane)}
         </span>
       </div>

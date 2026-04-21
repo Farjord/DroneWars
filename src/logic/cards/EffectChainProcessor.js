@@ -108,7 +108,7 @@ function resolveEffectValues(effectData, effectResults) {
 // Walks effects+selections; emits one entry per non-player-targeting stage, in selection order.
 // NONE / CARD_IN_HAND stages are skipped — they're self-explanatory (draw, energy, discard your own).
 // Returns [] when the card has no non-player targets (caller falls back to CARD_REVEAL).
-function buildAnnouncementTargets(effects, selections, playerStates, placedSections) {
+function buildAnnouncementTargets(effects, selections, playerStates, placedSections, actingPlayerId) {
   const droneLookup = (droneId) => {
     for (const pid of ['player1', 'player2']) {
       const board = playerStates[pid]?.dronesOnBoard || {};
@@ -138,12 +138,21 @@ function buildAnnouncementTargets(effects, selections, playerStates, placedSecti
         ownerId: t.owner || lookup.ownerId,
       });
     } else if (type === 'LANE') {
+      // Resolve which player's section sits in the target lane.
+      // FRIENDLY targets the acting player's own section; ENEMY/ANY default to opponent.
+      const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+      const laneSectionOwnerId = affinity === 'FRIENDLY' ? actingPlayerId : opponentId;
+      const laneIdx = parseInt(t.id?.replace('lane', ''), 10) - 1;
+      const laneSectionKey = !isNaN(laneIdx) ? placedSections?.[laneSectionOwnerId]?.[laneIdx] : null;
+      const laneSectionData = laneSectionKey ? playerStates[laneSectionOwnerId]?.shipSections?.[laneSectionKey] : null;
       targets.push({
         kind: 'LANE',
         lane: t.id,
         affinity,
-        // scope 'LANE' (Nuke) and 'ALL' (Purge Protocol) hit many entities — overlay summarises.
         summary: scope === 'LANE' || scope === 'ALL',
+        sectionType: laneSectionData?.type || null,
+        shipId: laneSectionData ? playerStates[laneSectionOwnerId]?.shipId : null,
+        ownerId: laneSectionOwnerId,
       });
     } else if (type === 'SHIP_SECTION') {
       const sectionOwnerId = t.owner || null;
@@ -277,7 +286,7 @@ class EffectChainProcessor {
     // Card-play announcement: if the card has any non-player targets (DRONE/LANE/SHIP_SECTION/TECH),
     // emit a CARD_ANNOUNCEMENT (3-column overlay with card + targets). Otherwise fall back to
     // CARD_REVEAL (simple card image). Never emit both — avoids the player seeing two card images.
-    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates, placedSections);
+    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates, placedSections, playerId);
     if (announcementTargets.length > 0) {
       cardPreambleEvents.push({
         type: CARD_ANNOUNCEMENT,
