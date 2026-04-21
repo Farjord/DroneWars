@@ -108,7 +108,7 @@ function resolveEffectValues(effectData, effectResults) {
 // Walks effects+selections; emits one entry per non-player-targeting stage, in selection order.
 // NONE / CARD_IN_HAND stages are skipped — they're self-explanatory (draw, energy, discard your own).
 // Returns [] when the card has no non-player targets (caller falls back to CARD_REVEAL).
-function buildAnnouncementTargets(effects, selections, playerStates, placedSections, actingPlayerId) {
+function buildAnnouncementTargets(effects, selections, playerStates, placedSections, actingPlayerId, card) {
   const droneLookup = (droneId) => {
     for (const pid of ['player1', 'player2']) {
       const board = playerStates[pid]?.dronesOnBoard || {};
@@ -176,6 +176,20 @@ function buildAnnouncementTargets(effects, selections, playerStates, placedSecti
     }
     // NONE, CARD_IN_HAND, or unknown: intentionally skipped.
   }
+
+  // Upgrade cards: targeting is NONE per effect, but the selection carries the drone type.
+  // Emit one DRONE_TYPE entry per selection so the overlay can show which drone was upgraded.
+  if (targets.length === 0 && card?.type === 'Upgrade') {
+    for (const sel of selections) {
+      if (!sel || !sel.target?.name) continue;
+      targets.push({
+        kind: 'DRONE_TYPE',
+        drone: sel.target,
+        ownerId: sel.target.owner || actingPlayerId,
+      });
+    }
+  }
+
   return targets;
 }
 
@@ -286,7 +300,7 @@ class EffectChainProcessor {
     // Card-play announcement: if the card has any non-player targets (DRONE/LANE/SHIP_SECTION/TECH),
     // emit a CARD_ANNOUNCEMENT (3-column overlay with card + targets). Otherwise fall back to
     // CARD_REVEAL (simple card image). Never emit both — avoids the player seeing two card images.
-    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates, placedSections, playerId);
+    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates, placedSections, playerId, card);
     if (announcementTargets.length > 0) {
       cardPreambleEvents.push({
         type: CARD_ANNOUNCEMENT,

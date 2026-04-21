@@ -69,6 +69,14 @@ const TargetEntry = ({ target }) => {
     );
   }
 
+  if (kind === 'DRONE_TYPE') {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <ScaledDroneToken drone={target.drone} isPlayer={target.targetIsPlayer} lane={null} />
+      </div>
+    );
+  }
+
   return null;
 };
 
