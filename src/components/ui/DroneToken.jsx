@@ -189,7 +189,7 @@ const DroneToken = ({
     ? (isVisuallyOwned ? 'bg-slate-600' : 'bg-stone-700')
     : (isVisuallyOwned ? 'bg-cyan-900' : 'bg-red-950');
   const shieldColor = drone.isExhausted ? 'text-white' : 'text-cyan-200';
-  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : 'text-cyan-200 opacity-50';
+  const emptyShieldColor = drone.isExhausted ? 'text-white' : 'text-cyan-200 opacity-50';
 
   const isAttackBuffed = effectiveStats.attack > effectiveStats.baseAttack;
   const isAttackDebuffed = effectiveStats.attack < effectiveStats.baseAttack;

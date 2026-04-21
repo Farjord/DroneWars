@@ -62,7 +62,7 @@ describe('DroneActionAnnouncementOverlay', () => {
       />
     );
 
-    expect(screen.getAllByText('Left').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Left Lane').length).toBeGreaterThan(0);
   });
 
   it('renders INTERCEPTED! badge when isIntercepted is true', () => {
@@ -119,7 +119,7 @@ describe('DroneActionAnnouncementOverlay', () => {
 
     expect(screen.getByTestId('drone-token')).toHaveTextContent('Dart');
     expect(screen.getByText('MOVES →')).toBeTruthy();
-    expect(screen.getByText('Centre')).toBeTruthy();
+    expect(screen.getByText('Centre Lane')).toBeTruthy();
   });
 
   it('shows source lane badge for move variant', () => {
@@ -131,7 +131,7 @@ describe('DroneActionAnnouncementOverlay', () => {
       />
     );
 
-    expect(screen.getByText('Left')).toBeTruthy();
+    expect(screen.getByText('Left Lane')).toBeTruthy();
   });
 
   it('calls onComplete after display duration', async () => {

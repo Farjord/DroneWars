@@ -15,17 +15,17 @@ import { FACTION_COLORS } from '../../utils/factionColors.js';
  * Formats a lane id like 'lane1' into a human-readable label like 'Lane 1'.
  * Returns '' when laneId is falsy so callers never crash on missing data.
  */
-const LANE_LABELS = { lane1: 'Left', lane2: 'Centre', lane3: 'Right' };
+const LANE_LABELS = { lane1: 'Left Lane', lane2: 'Centre Lane', lane3: 'Right Lane' };
 export const formatLane = (laneId) => LANE_LABELS[laneId] ?? '';
 
 /**
- * Small badge shown beneath a token to identify its lane.
+ * Badge shown beneath a token to identify its lane. Sized to match the width of an ActionCard (~225px).
  * Renders nothing when laneId is missing so we don't show an empty bubble.
  */
 export const LaneBadge = ({ laneId }) => {
   if (!laneId) return null;
   return (
-    <span className="mt-2 px-3 py-0.5 rounded-full bg-black/50 border border-cyan-400/40 text-cyan-200 font-orbitron text-xs uppercase tracking-wider">
+    <span className="mt-2 py-1.5 rounded-full bg-black/50 border border-cyan-400/40 text-cyan-200 font-orbitron text-sm uppercase tracking-wider text-center" style={{ width: '225px' }}>
       {formatLane(laneId)}
     </span>
   );

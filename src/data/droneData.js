@@ -789,7 +789,7 @@ const fullDroneCollection = [
     name: 'Odin',
     class: 4,
     limit: 1,
-    rebuildRate: 0.33,
+    rebuildRate: 0.25,
     rarity: 'Common',
     attack: 1,
     hull: 3,
@@ -798,12 +798,12 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Odin.png',
     abilities: [{
       name: 'All-Seeing Eye',
-      description: 'Each time you draw cards during the action phase, permanently gain +1 attack per card drawn.',
+      description: 'On Card Draw: Gain +1 attack per card drawn until the end of the phase.',
       type: 'TRIGGERED',
       trigger: 'ON_CARD_DRAWN',
       triggerOwner: 'CONTROLLER',
       triggerTiming: 'ANY_TURN',
-      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'permanent' }, effectTarget: 'TRIGGER_OWNER' }]
+      effects: [{ type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1, type: 'temporary' }, effectTarget: 'TRIGGER_OWNER' }]
     }],
     upgradeSlots: 1
   },
@@ -820,7 +820,7 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Thor.png',
     abilities: [{
       name: 'Storm Surge',
-      description: 'Each time you gain energy during the action phase, permanently gain +1 attack per 2 energy gained (rounded down).',
+      description: 'On Energy Gain: Permenantly gain +1 attack per 2 energy gained (rounded down).',
       type: 'TRIGGERED',
       trigger: 'ON_ENERGY_GAINED',
       triggerOwner: 'CONTROLLER',

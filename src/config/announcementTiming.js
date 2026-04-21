@@ -14,7 +14,7 @@ export const STAGE_HOLD_MS = 1000;
 export const FADE_OUT_MS = 300;
 
 // Action announcement overlays (CardRevealOverlay + DroneActionAnnouncementOverlay)
-export const ACTION_ANNOUNCEMENT_DISPLAY_MS = 2500;
+export const ACTION_ANNOUNCEMENT_DISPLAY_MS = 2000;
 export const ACTION_ANNOUNCEMENT_FADE_MS = 300;
 // Total queue duration for drone action announcements
 export const ACTION_ANNOUNCEMENT_TOTAL_MS = ACTION_ANNOUNCEMENT_DISPLAY_MS + ACTION_ANNOUNCEMENT_FADE_MS;

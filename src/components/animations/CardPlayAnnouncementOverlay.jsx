@@ -140,44 +140,47 @@ const CardPlayAnnouncementOverlay = ({ payload, onComplete }) => {
       {/* Content container — duration-300 matches ACTION_ANNOUNCEMENT_FADE_MS */}
       <div
         className={`
-          relative flex flex-row items-center justify-center gap-8
+          relative flex flex-col items-center gap-3
           transition-all duration-300 transform
           ${isVisible ? 'scale-100 translate-y-0' : 'scale-90 translate-y-4'}
         `}
       >
-        {/* Card column */}
-        <div className="flex flex-col items-center gap-2">
-          <span
-            className={`
-              text-sm font-orbitron font-bold uppercase tracking-widest
-              ${cardIsPlayer ? 'text-cyan-300' : 'text-red-300'}
-            `}
-          >
-            {label}
-          </span>
-          <ActionCard card={cardData} isPlayable={true} />
-        </div>
-
-        {/* Centre label column */}
-        <div className="flex flex-col items-center justify-center px-4">
-          <span className="text-3xl font-orbitron font-bold text-cyan-400 uppercase tracking-widest drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">
-            TARGETING →
-          </span>
-        </div>
-
-        {/* Target column(s) */}
-        <div
-          className={
-            useGrid
-              ? 'grid grid-cols-3 gap-4 items-center justify-items-center'
-              : 'flex flex-row items-center gap-6'
-          }
+        {/* Header label */}
+        <span
+          className={`
+            text-sm font-orbitron font-bold uppercase tracking-widest
+            ${cardIsPlayer ? 'text-cyan-300' : 'text-red-300'}
+          `}
         >
-          {targets.map((t, idx) => (
-            <div key={idx} className={targetScale}>
-              <TargetEntry target={t} />
-            </div>
-          ))}
+          {label}
+        </span>
+
+        {/* Three-column row — card, arrow, target(s) — all top-aligned */}
+        <div className="flex flex-row items-start justify-center gap-8">
+          {/* Card column */}
+          <ActionCard card={cardData} isPlayable={true} />
+
+          {/* Centre label column — vertically centred relative to the row */}
+          <div className="flex flex-col items-center justify-center self-center px-4">
+            <span className="text-3xl font-orbitron font-bold text-cyan-400 uppercase tracking-widest drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]">
+              TARGETING →
+            </span>
+          </div>
+
+          {/* Target column(s) */}
+          <div
+            className={
+              useGrid
+                ? 'grid grid-cols-3 gap-4 items-center justify-items-center'
+                : 'flex flex-row items-start gap-6'
+            }
+          >
+            {targets.map((t, idx) => (
+              <div key={idx} className={targetScale}>
+                <TargetEntry target={t} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
