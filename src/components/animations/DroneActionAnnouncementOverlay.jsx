@@ -84,11 +84,14 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
         {/* Target column */}
         <div className="flex flex-col items-center gap-2">
           {isSection
-            ? <ScaledEntityToken
-                label={targetDrone?.type || targetDrone?.key}
-                isPlayer={targetIsPlayer}
-                iconUrl={resolveShipSectionImage(targetShipId, targetDrone?.type || targetDrone?.key, targetIsPlayer ?? false)}
-              />
+            ? <>
+                <ScaledEntityToken
+                  label={targetDrone?.type || targetDrone?.key}
+                  isPlayer={targetIsPlayer}
+                  iconUrl={resolveShipSectionImage(targetShipId, targetDrone?.type || targetDrone?.key, targetIsPlayer ?? false)}
+                />
+                <LaneBadge laneId={targetLane} />
+              </>
             : <>
                 <ScaledDroneToken drone={targetDrone} isPlayer={targetIsPlayer} lane={targetLane} />
                 <LaneBadge laneId={targetLane} />

@@ -108,7 +108,7 @@ function resolveEffectValues(effectData, effectResults) {
 // Walks effects+selections; emits one entry per non-player-targeting stage, in selection order.
 // NONE / CARD_IN_HAND stages are skipped — they're self-explanatory (draw, energy, discard your own).
 // Returns [] when the card has no non-player targets (caller falls back to CARD_REVEAL).
-function buildAnnouncementTargets(effects, selections, playerStates) {
+function buildAnnouncementTargets(effects, selections, playerStates, placedSections) {
   const droneLookup = (droneId) => {
     for (const pid of ['player1', 'player2']) {
       const board = playerStates[pid]?.dronesOnBoard || {};
@@ -147,10 +147,14 @@ function buildAnnouncementTargets(effects, selections, playerStates) {
       });
     } else if (type === 'SHIP_SECTION') {
       const sectionOwnerId = t.owner || null;
+      const sectionKey = t.key || t.name || t.id;
+      const ownerPlacement = placedSections?.[sectionOwnerId] || [];
+      const sectionIdx = ownerPlacement.indexOf(sectionKey);
       targets.push({
         kind: 'SHIP_SECTION',
         sectionType: t.type || t.key,
         shipId: sectionOwnerId ? playerStates[sectionOwnerId]?.shipId : null,
+        lane: sectionIdx !== -1 ? `lane${sectionIdx + 1}` : null,
         ownerId: sectionOwnerId,
       });
     } else if (type === 'TECH') {
@@ -273,7 +277,7 @@ class EffectChainProcessor {
     // Card-play announcement: if the card has any non-player targets (DRONE/LANE/SHIP_SECTION/TECH),
     // emit a CARD_ANNOUNCEMENT (3-column overlay with card + targets). Otherwise fall back to
     // CARD_REVEAL (simple card image). Never emit both — avoids the player seeing two card images.
-    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates);
+    const announcementTargets = buildAnnouncementTargets(effects, selections, currentStates, placedSections);
     if (announcementTargets.length > 0) {
       cardPreambleEvents.push({
         type: CARD_ANNOUNCEMENT,
