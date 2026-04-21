@@ -237,6 +237,7 @@ export async function processMove(payload, ctx) {
   const { droneId, fromLane, toLane, playerId, insertionIndex } = payload;
 
   const currentState = ctx.getState();
+  const allPlacedSections = ctx.getPlacedSections();
   const playerState = currentState[playerId];
   const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
   const opponentPlayerState = currentState[opponentPlayerId];
@@ -312,6 +313,10 @@ export async function processMove(payload, ctx) {
     },
   });
 
+  const destLaneIdx = parseInt(toLane.replace('lane', ''), 10) - 1;
+  const destSectionKey = allPlacedSections[opponentPlayerId]?.[destLaneIdx];
+  const destSectionData = destSectionKey ? opponentPlayerState?.shipSections?.[destSectionKey] : null;
+
   ctx.captureAnimations([{
     animationName: 'MOVE_ANNOUNCEMENT',
     timing: 'pre-state',
@@ -320,6 +325,8 @@ export async function processMove(payload, ctx) {
       sourceLane: fromLane,
       destinationLane: toLane,
       dronePlayerId: playerId,
+      destinationSectionType: destSectionData?.type || null,
+      destinationShipId: opponentPlayerState?.shipId || null,
     },
   }]);
 

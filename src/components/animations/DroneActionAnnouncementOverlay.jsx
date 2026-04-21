@@ -103,7 +103,9 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
   };
 
   const renderMoveContent = () => {
-    const { drone, sourceLane, destinationLane, droneIsPlayer } = payload;
+    const { drone, sourceLane, destinationLane, droneIsPlayer, destinationSectionType, destinationShipId } = payload;
+    // Section in the destination lane belongs to the opponent of the moving drone.
+    const destSectionIsPlayer = !droneIsPlayer;
 
     return (
       <>
@@ -121,10 +123,20 @@ const DroneActionAnnouncementOverlay = ({ variant, payload, onComplete }) => {
         </div>
 
         {/* Destination column */}
-        <div className="flex flex-col items-center justify-center gap-2">
-          <span className="text-2xl font-orbitron font-bold text-cyan-200 uppercase tracking-wider">
-            {formatLane(destinationLane)}
-          </span>
+        <div className="flex flex-col items-center gap-2">
+          {destinationSectionType
+            ? <>
+                <ScaledEntityToken
+                  label={destinationSectionType}
+                  isPlayer={destSectionIsPlayer}
+                  iconUrl={resolveShipSectionImage(destinationShipId, destinationSectionType, destSectionIsPlayer)}
+                />
+                <LaneBadge laneId={destinationLane} />
+              </>
+            : <span className="text-2xl font-orbitron font-bold text-cyan-200 uppercase tracking-wider">
+                {formatLane(destinationLane)}
+              </span>
+          }
         </div>
       </>
     );
