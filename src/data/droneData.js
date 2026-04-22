@@ -820,7 +820,7 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Thor.png',
     abilities: [{
       name: 'Storm Surge',
-      description: 'On Energy Gain: Permenantly gain +1 attack per 2 energy gained (rounded down).',
+      description: '***On Energy Gain:*** Permenantly gain +1 attack per 2 energy gained (rounded down).',
       type: 'TRIGGERED',
       trigger: 'ON_ENERGY_GAINED',
       triggerOwner: 'CONTROLLER',
@@ -879,17 +879,33 @@ const fullDroneCollection = [
   },
   {
     name: 'Wraith',
-    class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon',
-    attack: 1, hull: 1, shields: 0, speed: 1,
+    class: 2, limit: 2, rebuildRate: 0.5, rarity: 'Uncommon',
+    attack: 2, hull: 1, shields: 2, speed: 3,
     image: '/DroneWars/img/Wraith.png',
     abilities: [{
       name: 'Energy Disruption',
-      description: "When an enemy drone moves into this lane, your opponent loses 1 energy.",
+      description: "When an enemy drone moves into this lane, your opponent loses 2 energy.",
       type: 'TRIGGERED',
       trigger: 'ON_LANE_MOVEMENT_IN',
       triggerOwner: 'LANE_ENEMY',
       triggerTiming: 'ANY_TURN',
-      effects: [{ type: 'DRAIN_ENERGY', amount: 1, effectTarget: 'TRIGGER_OWNER' }]
+      effects: [{ type: 'DRAIN_ENERGY', amount: 2, effectTarget: 'TRIGGER_OWNER' }]
+    }],
+    upgradeSlots: 1
+  },
+  {
+    name: 'Banshee',
+    class: 1, limit: 2, rebuildRate: 2.0, rarity: 'Uncommon',
+    attack: 1, hull: 1, shields: 0, speed: 5,
+    image: '/DroneWars/img/Banshee.png',
+    abilities: [{
+      name: 'Disruption Vortex',
+      description: "***On Destroy:*** Your opponent discards a card at random.",
+      type: 'TRIGGERED',
+      trigger: 'ON_DESTROYED',
+      triggerOwner: 'CONTROLLER',
+      triggerTiming: 'ANY_TURN',
+      effects: [{ type: 'DISCARD', count: 1 }]
     }],
     upgradeSlots: 1
   },

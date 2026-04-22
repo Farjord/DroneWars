@@ -12,6 +12,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import fullTechCollection from '../../data/techData.js';
 import { countDroneTypeInLane, MAX_TECH_PER_LANE } from '../utils/gameEngineUtils.js';
 import { TECH_DEPLOY } from '../../config/animationTypes.js';
+import { updateAuras } from '../utils/auraManager.js';
 
 /**
  * Processor for CREATE_TECH effect type
@@ -141,6 +142,13 @@ class TechCreationProcessor extends BaseEffectProcessor {
         });
       }
     });
+
+    const opponentPlayerId = targetPlayerId === 'player1' ? 'player2' : 'player1';
+    targetPlayerState.dronesOnBoard = updateAuras(
+      targetPlayerState,
+      newPlayerStates[opponentPlayerId],
+      context.placedSections
+    );
 
     const result = {
       newPlayerStates,

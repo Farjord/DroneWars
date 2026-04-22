@@ -11,8 +11,12 @@ const effect = { type: 'DESTROY_TECH' };
 const makeTech = (id, name) => ({ id, name, hull: 1, isTech: true });
 
 const makePlayerStates = () => ({
-  player1: { techSlots: { lane1: [], lane2: [], lane3: [] } },
+  player1: {
+    dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+    techSlots: { lane1: [], lane2: [], lane3: [] }
+  },
   player2: {
+    dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
     techSlots: {
       lane1: [makeTech('tech_1', 'Proximity Mine')],
       lane2: [makeTech('tech_2', 'Jammer')],

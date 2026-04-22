@@ -17,6 +17,8 @@ import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
 import { calculateEffectiveStats } from '../../statsCalculator.js';
 import { gameEngine } from '../../gameLogic.js';
 import { resolveAttack } from '../../combat/AttackProcessor.js';
+import TriggerProcessor from '../../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../../triggers/triggerConstants.js';
 import { calculateDamageByType } from '../../utils/damageCalculation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { buildDefaultDamageAnimation } from './animations/DefaultDamageAnimation.js';
@@ -203,10 +205,32 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       damageResults.push(this.applyEffectDamageToDrone(effect, dronesInLane[droneIndex]));
     });
 
-    // Remove destroyed drones
+    // Remove destroyed drones, firing ON_DESTROYED before each removal
+    const triggerProcessor = new TriggerProcessor();
+    const onDestroyedAnimEvents = [];
     for (let i = dronesInLane.length - 1; i >= 0; i--) {
       if (dronesInLane[i].hull <= 0) {
         const destroyedDrone = dronesInLane[i];
+        const onDestroyedResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DESTROYED, {
+          lane: laneId,
+          triggeringDrone: destroyedDrone,
+          triggeringPlayerId: targetPlayerId,
+          actingPlayerId: context.actingPlayerId,
+          playerStates: newPlayerStates,
+          placedSections: context.placedSections,
+          logCallback: context.callbacks?.logCallback ?? null,
+          pairSet: context.pairSet ?? new Set(),
+          chainDepth: context.chainDepth ?? 0,
+          gameSeed: context.gameSeed,
+          roundNumber: context.roundNumber
+        });
+        if (onDestroyedResult.triggered) {
+          for (const playerId of ['player1', 'player2']) {
+            const { dronesOnBoard: _, ...rest } = onDestroyedResult.newPlayerStates[playerId] || {};
+            Object.assign(newPlayerStates[playerId], rest);
+          }
+          onDestroyedAnimEvents.push(...(onDestroyedResult.animationEvents || []));
+        }
         const updates = gameEngine.onDroneDestroyed(targetPlayerState, destroyedDrone);
         targetPlayerState.deployedDroneCounts = {
           ...(targetPlayerState.deployedDroneCounts || {}),
@@ -216,13 +240,14 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    // Build animations using animation builder
-    const animationEvents = buildFilteredDamageAnimation({
+    // Build animations: ON_DESTROYED trigger overlays first, then damage animations
+    const damageAnimEvents = buildFilteredDamageAnimation({
       affectedDrones: damageResults,
       card,
       targetPlayer: targetPlayerId,
       targetLane: laneId
     });
+    const animationEvents = [...onDestroyedAnimEvents, ...damageAnimEvents];
 
     return this.createResult(newPlayerStates, animationEvents);
   }
@@ -268,6 +293,8 @@ class DamageEffectProcessor extends BaseEffectProcessor {
 
     const pool = [...candidateDrones];
     const damageResults = [];
+    const triggerProcessor = new TriggerProcessor();
+    const onDestroyedAnimEvents = [];
 
     for (let i = 0; i < targetSelection.count; i++) {
       if (pool.length === 0) break;
@@ -283,6 +310,26 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       damageResults.push(damageResult);
 
       if (damageResult.destroyed) {
+        const onDestroyedResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DESTROYED, {
+          lane: laneId,
+          triggeringDrone: drone,
+          triggeringPlayerId: targetPlayerId,
+          actingPlayerId: context.actingPlayerId,
+          playerStates: newPlayerStates,
+          placedSections: context.placedSections,
+          logCallback: context.callbacks?.logCallback ?? null,
+          pairSet: context.pairSet ?? new Set(),
+          chainDepth: context.chainDepth ?? 0,
+          gameSeed: context.gameSeed,
+          roundNumber: context.roundNumber
+        });
+        if (onDestroyedResult.triggered) {
+          for (const playerId of ['player1', 'player2']) {
+            const { dronesOnBoard: _, ...rest } = onDestroyedResult.newPlayerStates[playerId] || {};
+            Object.assign(newPlayerStates[playerId], rest);
+          }
+          onDestroyedAnimEvents.push(...(onDestroyedResult.animationEvents || []));
+        }
         const updates = gameEngine.onDroneDestroyed(targetPlayerState, drone);
         targetPlayerState.deployedDroneCounts = {
           ...(targetPlayerState.deployedDroneCounts || {}),
@@ -292,12 +339,13 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    const animationEvents = buildFilteredDamageAnimation({
+    const damageAnimEvents = buildFilteredDamageAnimation({
       affectedDrones: damageResults,
       card,
       targetPlayer: targetPlayerId,
       targetLane: laneId
     });
+    const animationEvents = [...onDestroyedAnimEvents, ...damageAnimEvents];
 
     return this.createResult(newPlayerStates, animationEvents);
   }

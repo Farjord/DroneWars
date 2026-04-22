@@ -17,6 +17,8 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { DRONE_DESTROYED } from '../../config/animationTypes.js';
 import { applyTargetSelection, hashString } from '../targeting/TargetSelector.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
+import TriggerProcessor from '../triggers/TriggerProcessor.js';
+import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
 
 /**
  * Processor for DESTROY effect type
@@ -67,6 +69,17 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const newPlayerStates = this.clonePlayerStates(playerStates);
     const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
 
+    const triggerCtx = {
+      triggerProcessor: new TriggerProcessor(),
+      actingPlayerId,
+      placedSections,
+      logCallback: context.callbacks?.logCallback ?? null,
+      pairSet: context.pairSet ?? new Set(),
+      chainDepth: context.chainDepth ?? 0,
+      gameSeed: context.gameSeed,
+      roundNumber: context.roundNumber
+    };
+
     const animationEvents = [];
     const destroyedDrones = [];
 
@@ -75,19 +88,19 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const targetSelection = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if ((affectedFilter || targetSelection) && target?.id?.startsWith('lane')) {
       // Filtered lane destroy: Destroy drones in a lane matching targeting criteria
-      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context);
+      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context, triggerCtx);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
 
     } else if (effect.scope === 'LANE' && target.id) {
       // LANE scope: Destroy all drones in a lane (BOTH sides - area effect like Nuke)
-      const result = this.processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates);
+      const result = this.processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates, triggerCtx);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
 
     } else if (effect.scope === 'SELF' && target) {
       // SELF scope: Drone destroys itself (e.g., Firefly after attacking)
-      const result = this.processSingleDestroy(target, actingPlayerId, newPlayerStates);
+      const result = this.processSingleDestroy(target, actingPlayerId, newPlayerStates, triggerCtx);
       if (result.droneDestroyed) {
         destroyedDrones.push(result.droneDestroyed);
       }
@@ -95,7 +108,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
     } else if (effect.scope === 'SINGLE' && target && target.owner !== actingPlayerId) {
       // SINGLE scope: Destroy one specific drone
-      const result = this.processSingleDestroy(target, opponentId, newPlayerStates);
+      const result = this.processSingleDestroy(target, opponentId, newPlayerStates, triggerCtx);
       if (result.droneDestroyed) {
         destroyedDrones.push(result.droneDestroyed);
       }
@@ -103,7 +116,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
     } else if (effect.scope === 'ALL') {
       // ALL scope: Destroy all marked enemy drones (Purge Protocol)
-      const result = this.processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates);
+      const result = this.processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates, triggerCtx);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
     }
@@ -148,7 +161,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context = {}) {
+  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections, context = {}, triggerCtx = null) {
     const laneId = target.id;
     const affinity = effect?.targeting?.affinity || card?.targeting?.affinity || effect.affinity;
     const targetPlayer = affinity === 'ENEMY'
@@ -194,7 +207,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const tsConfig = effect?.targeting?.targetSelection || card?.targeting?.targetSelection;
     if (tsConfig) {
       if (tsConfig.method === 'RANDOM') {
-        return this.processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card);
+        return this.processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card, triggerCtx);
       }
       candidateDrones = applyTargetSelection(candidateDrones, tsConfig, context, laneId, targetPlayerState, actingPlayerState, placedSections, card);
     }
@@ -210,6 +223,8 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
       destroyedDrones.push(droneInLane);
       debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} marked for destruction`);
+
+      this._fireOnDestroyedTrigger(droneInLane, targetPlayer, laneId, newPlayerStates, animationEvents, triggerCtx);
 
       animationEvents.push({
         type: DRONE_DESTROYED,
@@ -234,7 +249,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card) {
+  processRandomDestroy(candidateDrones, dronesInLane, tsConfig, context, laneId, targetPlayer, targetPlayerState, newPlayerStates, card, triggerCtx = null) {
     const discriminator = card?.instanceId || candidateDrones.length;
     const rng = SeededRandom.forTargetSelection(
       { gameSeed: context.gameSeed ?? 12345, roundNumber: context.roundNumber },
@@ -257,6 +272,8 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
       const drone = dronesInLane[droneIndex];
       destroyedDrones.push(drone);
 
+      this._fireOnDestroyedTrigger(drone, targetPlayer, laneId, newPlayerStates, animationEvents, triggerCtx);
+
       animationEvents.push({
         type: DRONE_DESTROYED,
         targetId: drone.id,
@@ -278,7 +295,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates) {
+  processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates, triggerCtx = null) {
     const laneId = target.id;
     const destroyedDrones = [];
     const animationEvents = [];
@@ -289,8 +306,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const opponentDrones = newPlayerStates[opponentId].dronesOnBoard[laneId] || [];
     opponentDrones.forEach(drone => {
       destroyedDrones.push(drone);
-
-      // Add destruction animation event
+      this._fireOnDestroyedTrigger(drone, opponentId, laneId, newPlayerStates, animationEvents, triggerCtx);
       animationEvents.push({
         type: DRONE_DESTROYED,
         targetId: drone.id,
@@ -299,8 +315,6 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         targetType: 'drone',
         timestamp: Date.now()
       });
-
-      // Update deployment counts and availability
       this.applyDestroyCleanup(newPlayerStates[opponentId], drone);
     });
     newPlayerStates[opponentId].dronesOnBoard[laneId] = [];
@@ -309,8 +323,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     const actingPlayerDrones = newPlayerStates[actingPlayerId].dronesOnBoard[laneId] || [];
     actingPlayerDrones.forEach(drone => {
       destroyedDrones.push(drone);
-
-      // Add destruction animation event
+      this._fireOnDestroyedTrigger(drone, actingPlayerId, laneId, newPlayerStates, animationEvents, triggerCtx);
       animationEvents.push({
         type: DRONE_DESTROYED,
         targetId: drone.id,
@@ -319,8 +332,6 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         targetType: 'drone',
         timestamp: Date.now()
       });
-
-      // Update deployment counts and availability
       this.applyDestroyCleanup(newPlayerStates[actingPlayerId], drone);
     });
     newPlayerStates[actingPlayerId].dronesOnBoard[laneId] = [];
@@ -335,7 +346,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processSingleDestroy(target, opponentId, newPlayerStates) {
+  processSingleDestroy(target, opponentId, newPlayerStates, triggerCtx = null) {
     const targetPlayerState = newPlayerStates[opponentId];
     const laneId = getLaneOfDrone(target.id, targetPlayerState);
     const animationEvents = [];
@@ -348,6 +359,9 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         droneDestroyed = droneToDestroy;
 
         debugLog('EFFECT_PROCESSING', `[DESTROY] Single drone destroy: ${droneToDestroy.name} in ${laneId}`);
+
+        // Fire ON_DESTROYED before removal: TRIGGER_FIRED animation appears over live drone
+        this._fireOnDestroyedTrigger(droneToDestroy, opponentId, laneId, newPlayerStates, animationEvents, triggerCtx);
 
         animationEvents.push({
           type: DRONE_DESTROYED,
@@ -372,7 +386,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates) {
+  processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates, triggerCtx = null) {
     const destroyedDrones = [];
     const animationEvents = [];
 
@@ -396,7 +410,8 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
 
           debugLog('EFFECT_PROCESSING', `[DESTROY] ${drone.name} (marked) in ${laneId} destroyed`);
 
-          // Add destruction animation event
+          this._fireOnDestroyedTrigger(drone, targetPlayerId, laneId, newPlayerStates, animationEvents, triggerCtx);
+
           animationEvents.push({
             type: DRONE_DESTROYED,
             targetId: drone.id,
@@ -406,10 +421,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
             timestamp: Date.now()
           });
 
-          // Update deployment counts and availability
           this.applyDestroyCleanup(targetPlayerState, drone);
-
-          // Remove drone from lane
           dronesInLane.splice(i, 1);
         }
       }
@@ -418,6 +430,49 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     debugLog('EFFECT_PROCESSING', `[DESTROY] ALL scope destroyed ${destroyedDrones.length} marked drones`);
 
     return { destroyedDrones, animationEvents };
+  }
+
+  /**
+   * Fire ON_DESTROYED trigger for a drone that is about to be removed from the board.
+   * Must be called BEFORE removal so the liveness check passes and TRIGGER_FIRED
+   * animation is positioned over the live drone (before the DRONE_DESTROYED explosion).
+   *
+   * Merges non-board state changes (hand, energy, etc.) back into newPlayerStates
+   * while preserving active dronesOnBoard references used by the calling loop.
+   *
+   * @private
+   */
+  _fireOnDestroyedTrigger(drone, ownerPlayerId, laneId, newPlayerStates, animationEvents, triggerCtx) {
+    if (!triggerCtx) return;
+
+    const result = triggerCtx.triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DESTROYED, {
+      lane: laneId,
+      triggeringDrone: drone,
+      triggeringPlayerId: ownerPlayerId,
+      actingPlayerId: triggerCtx.actingPlayerId,
+      playerStates: newPlayerStates,
+      placedSections: triggerCtx.placedSections,
+      logCallback: triggerCtx.logCallback,
+      pairSet: triggerCtx.pairSet,
+      chainDepth: triggerCtx.chainDepth,
+      gameSeed: triggerCtx.gameSeed,
+      roundNumber: triggerCtx.roundNumber
+    });
+
+    if (result.triggered) {
+      // Merge state changes back, preserving dronesOnBoard references that calling
+      // loops still hold. ON_DESTROYED effects (e.g. DISCARD) only modify hand/energy,
+      // not dronesOnBoard, so skipping that key is safe here.
+      for (const playerId of ['player1', 'player2']) {
+        const { dronesOnBoard: _, ...rest } = result.newPlayerStates[playerId] || {};
+        Object.assign(newPlayerStates[playerId], rest);
+      }
+      if (result.animationEvents?.length > 0) {
+        // Insert TRIGGER_FIRED events before the upcoming DRONE_DESTROYED event
+        // (at the current end of animationEvents, which is where DRONE_DESTROYED will be pushed)
+        animationEvents.push(...result.animationEvents);
+      }
+    }
   }
 }
 

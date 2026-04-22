@@ -8,6 +8,7 @@
 import BaseEffectProcessor from './BaseEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { TECH_DESTROY } from '../../config/animationTypes.js';
+import { updateAuras } from '../utils/auraManager.js';
 
 /**
  * Processor for DESTROY_TECH effect type
@@ -60,6 +61,13 @@ class DestroyTechEffectProcessor extends BaseEffectProcessor {
     debugLog('EFFECT_PROCESSING', `[DESTROY_TECH] Destroying ${destroyedTech.name} in ${lane} (owner: ${targetPlayerId})`);
 
     targetPlayerState.techSlots[lane] = targetPlayerState.techSlots[lane].filter(t => t.id !== target.id);
+
+    const opponentPlayerId = targetPlayerId === 'player1' ? 'player2' : 'player1';
+    targetPlayerState.dronesOnBoard = updateAuras(
+      targetPlayerState,
+      newPlayerStates[opponentPlayerId],
+      context.placedSections
+    );
 
     animationEvents.push({
       type: TECH_DESTROY,

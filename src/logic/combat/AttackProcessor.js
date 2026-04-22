@@ -262,6 +262,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
 
     // Create animation events array
     const animationEvents = [];
+    let droneDestroyedAnimIndex = -1;
 
     // Cache the target lane lookup (used by multiple animation events below)
     const finalTargetLane = finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null;
@@ -297,6 +298,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     // Handle destruction vs survival
     if (wasDestroyed) {
       // Target was destroyed
+      droneDestroyedAnimIndex = animationEvents.length;
       animationEvents.push(createDestructionAnimation(
         finalTarget,
         defendingPlayerId,
@@ -354,6 +356,10 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }, 'resolveAttack', aiContext);
     }
 
+    // Shared trigger processor for all post-attack triggers (ON_DESTROYED, ON_ATTACK, ON_INTERCEPT, ON_ATTACKED)
+    const triggerProcessor = new TriggerProcessor();
+    const triggerEvents = [];
+
     // Create updated player states
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
@@ -373,6 +379,25 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                 if ((newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].hull - hullDamage) <= 0) {
                     droneDestroyed = true;
                     const destroyedDrone = newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex];
+
+                    // Fire ON_DESTROYED while drone is still on the board so TRIGGER_FIRED
+                    // animation positions over the live drone, appearing before the explosion.
+                    const onDestroyedResult = triggerProcessor.fireTrigger(TRIGGER_TYPES.ON_DESTROYED, {
+                        lane: laneKey,
+                        triggeringDrone: destroyedDrone,
+                        triggeringPlayerId: defendingPlayerId,
+                        actingPlayerId: attackingPlayerId,
+                        playerStates: newPlayerStates,
+                        placedSections,
+                        logCallback
+                    });
+                    if (onDestroyedResult.triggered) {
+                        Object.assign(newPlayerStates, onDestroyedResult.newPlayerStates);
+                        if (onDestroyedResult.animationEvents?.length > 0) {
+                            animationEvents.splice(droneDestroyedAnimIndex, 0, ...onDestroyedResult.animationEvents);
+                        }
+                    }
+
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey] =
                         newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey].filter(d => d.id !== finalTarget.id);
                     Object.assign(newPlayerStates[defendingPlayerId], onDroneDestroyed(newPlayerStates[defendingPlayerId], destroyedDrone));
@@ -397,10 +422,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         newPlayerStates[defendingPlayerId].shipSections[finalTarget.name].hull -= hullDamage;
         newPlayerStates[defendingPlayerId].shipSections[finalTarget.name].allocatedShields -= shieldDamage;
     }
-
-    // Shared trigger processor for all post-attack triggers (ON_ATTACK, ON_INTERCEPT, ON_ATTACKED)
-    const triggerProcessor = new TriggerProcessor();
-    const triggerEvents = [];
 
     // Handle attacker exhaustion and after-attack abilities (like DESTROY_SELF)
     if (!isAbilityOrCard && attacker && attacker.id) {

@@ -672,6 +672,15 @@ class TriggerProcessor {
         case 'COUNTER_DAMAGE':
           parts.push(`counter damage (${effect.damageType || 'RETALIATE'})`);
           break;
+        case 'DISCARD':
+          parts.push(`opponent discards ${effect.count || 1} card${(effect.count || 1) !== 1 ? 's' : ''}`);
+          break;
+        case 'DRAIN_ENERGY':
+          parts.push(`opponent loses ${effect.value || 1} energy`);
+          break;
+        case 'GAIN_ENERGY':
+          parts.push(`gain ${effect.value || 1} energy`);
+          break;
         default:
           parts.push(effect.type);
       }
