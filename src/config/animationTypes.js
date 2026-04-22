@@ -14,6 +14,7 @@ export const DRONE_RETURN = 'DRONE_RETURN';
 export const CARD_REVEAL = 'CARD_REVEAL';
 export const SHIP_ABILITY_REVEAL = 'SHIP_ABILITY_REVEAL';
 export const CARD_VISUAL = 'CARD_VISUAL';
+export const CARD_DISCARD = 'CARD_DISCARD';
 
 // Movement
 export const DRONE_MOVEMENT = 'DRONE_MOVEMENT';
