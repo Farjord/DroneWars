@@ -27,6 +27,7 @@ import GoAgainOverlay from '../components/animations/GoAgainOverlay.jsx';
 import TriggerFiredOverlay from '../components/animations/TriggerFiredOverlay.jsx';
 import MovementBlockedOverlay from '../components/animations/MovementBlockedOverlay.jsx';
 import StatusConsumptionOverlay from '../components/animations/StatusConsumptionOverlay.jsx';
+import DiscardAnnouncementOverlay from '../components/animations/DiscardAnnouncementOverlay.jsx';
 
 export const ANIMATION_REGISTRY = {
   flyingDrones: FlyingDrone,
@@ -51,4 +52,5 @@ export const ANIMATION_REGISTRY = {
   triggerFiredNotifications: TriggerFiredOverlay,
   movementBlockedNotifications: MovementBlockedOverlay,
   statusConsumptions: StatusConsumptionOverlay,
+  discardAnnouncements: DiscardAnnouncementOverlay,
 };
