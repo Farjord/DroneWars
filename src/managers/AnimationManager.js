@@ -7,7 +7,7 @@ import { flowCheckpoint } from '../utils/flowVerification.js';
 import {
   ANIMATION_SEQUENCE, STATE_SNAPSHOT, TRIGGER_CHAIN_PAUSE,
   DRONE_ATTACK_START, DRONE_RETURN,
-  CARD_REVEAL, SHIP_ABILITY_REVEAL, CARD_VISUAL,
+  CARD_REVEAL, SHIP_ABILITY_REVEAL, CARD_VISUAL, CARD_DISCARD,
   DRONE_MOVEMENT, STATUS_CONSUMPTION,
   PASS_NOTIFICATION, GO_AGAIN_NOTIFICATION, TRIGGER_FIRED, MOVEMENT_BLOCKED,
   TELEPORT_IN, TELEPORT_OUT,
@@ -16,7 +16,7 @@ import {
   TECH_DEPLOY, TECH_DESTROY, TECH_TRIGGER_FIRE,
   STAT_BUFF, STAT_DEBUFF,
 } from '../config/animationTypes.js';
-import { ACTION_ANNOUNCEMENT_TOTAL_MS } from '../config/announcementTiming.js';
+import { ACTION_ANNOUNCEMENT_TOTAL_MS, DISCARD_TOTAL_MS } from '../config/announcementTiming.js';
 
 class AnimationManager {
   constructor(gameStateManager) {
@@ -64,6 +64,12 @@ class AnimationManager {
         type: 'CARD_VISUAL_EFFECT',
         timing: 'independent',  // Doesn't need specific entities
         config: { }
+      },
+      [CARD_DISCARD]: {
+        duration: DISCARD_TOTAL_MS,
+        type: 'CARD_DISCARD_EFFECT',
+        timing: 'independent',
+        config: {}
       },
 
       // Movement animations
