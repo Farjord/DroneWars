@@ -1,0 +1,72 @@
+/* ========================================
+   SHATTER CARD ANIMATION
+   ========================================
+   Six clip-path polygon shards that fly outward from the card centre
+   when the shard-N--active class is applied.
+   Card dimensions: 225px × 275px. Centre: ~(112, 137).
+   Default animation-duration is 600ms — override via inline style.
+*/
+
+.shatter-card-container {
+  position: relative;
+  width: 225px;
+  height: 275px;
+}
+
+.shatter-shard {
+  position: absolute;
+  inset: 0;
+  width: 225px;
+  height: 275px;
+}
+
+/* Shard polygons tile the full card area without gaps */
+/* Shard 1: top-left  */ .shatter-shard-1 { clip-path: polygon(0px 0px, 80px 0px, 68px 142px, 0px 132px); }
+/* Shard 2: top-mid   */ .shatter-shard-2 { clip-path: polygon(80px 0px, 155px 0px, 162px 142px, 68px 142px); }
+/* Shard 3: top-right */ .shatter-shard-3 { clip-path: polygon(155px 0px, 225px 0px, 225px 128px, 162px 142px); }
+/* Shard 4: bot-left  */ .shatter-shard-4 { clip-path: polygon(0px 132px, 68px 142px, 72px 275px, 0px 275px); }
+/* Shard 5: bot-mid   */ .shatter-shard-5 { clip-path: polygon(68px 142px, 162px 142px, 153px 275px, 72px 275px); }
+/* Shard 6: bot-right */ .shatter-shard-6 { clip-path: polygon(162px 142px, 225px 128px, 225px 275px, 153px 275px); }
+
+@keyframes shatterShard1 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(-80px, -90px) rotate(-25deg); opacity: 0; }
+}
+
+@keyframes shatterShard2 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(0px, -110px) rotate(10deg); opacity: 0; }
+}
+
+@keyframes shatterShard3 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(85px, -85px) rotate(30deg); opacity: 0; }
+}
+
+@keyframes shatterShard4 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(-90px, 95px) rotate(-35deg); opacity: 0; }
+}
+
+@keyframes shatterShard5 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(-10px, 120px) rotate(-15deg); opacity: 0; }
+}
+
+@keyframes shatterShard6 {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  15%  { opacity: 1; }
+  100% { transform: translate(90px, 100px) rotate(35deg); opacity: 0; }
+}
+
+.shatter-shard-1--active { animation: shatterShard1 600ms ease-in forwards; }
+.shatter-shard-2--active { animation: shatterShard2 600ms ease-in forwards; }
+.shatter-shard-3--active { animation: shatterShard3 600ms ease-in forwards; }
+.shatter-shard-4--active { animation: shatterShard4 600ms ease-in forwards; }
+.shatter-shard-5--active { animation: shatterShard5 600ms ease-in forwards; }
+.shatter-shard-6--active { animation: shatterShard6 600ms ease-in forwards; }
