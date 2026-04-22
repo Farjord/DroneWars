@@ -8,7 +8,7 @@ import EffectRouter from '../EffectRouter.js';
 import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import MovementEffectProcessor from '../effects/MovementEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { CARD_REVEAL, CARD_ANNOUNCEMENT, CARD_VISUAL, STATE_SNAPSHOT, TELEPORT_IN } from '../../config/animationTypes.js';
+import { CARD_REVEAL, CARD_ANNOUNCEMENT, CARD_VISUAL, STATE_SNAPSHOT, TELEPORT_IN, CARD_DISCARD } from '../../config/animationTypes.js';
 import { stripChainFields } from './chainConstants.js';
 import TriggerProcessor from '../triggers/TriggerProcessor.js';
 import { TRIGGER_TYPES } from '../triggers/triggerConstants.js';
@@ -704,10 +704,9 @@ class EffectChainProcessor {
     return {
       newPlayerStates: newStates,
       animationEvents: [{
-        type: 'CARD_DISCARD',
-        playerId,
-        cardId: cardToDiscard.id,
-        cardName: cardToDiscard.name,
+        type: CARD_DISCARD,
+        cards: [cardToDiscard],
+        discardingPlayerId: playerId,
       }],
       effectResult: { discardedCard: cardToDiscard, cardCost: cardToDiscard.cost },
     };
