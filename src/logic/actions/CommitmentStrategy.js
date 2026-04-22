@@ -10,6 +10,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import { calculateSectionBaseStats } from '../statsCalculator.js';
+import { CARD_DISCARD } from '../../config/animationTypes.js';
 
 /**
  * Get phase commitment status
@@ -313,6 +314,11 @@ export async function handleAICommitment(phase, currentState, ctx, subPhase) {
           });
 
           debugLog('COMMITMENTS', `🤖 AI discarded ${aiResult.cardsToDiscard.length} cards for mandatory discard`);
+
+          await ctx.executeAndCaptureAnimations([{
+            animationName: CARD_DISCARD,
+            payload: { cards: aiResult.cardsToDiscard, discardingPlayerId: 'player2' }
+          }]);
         }
 
         await ctx.processCommitment({
