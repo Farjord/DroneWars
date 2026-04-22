@@ -34,8 +34,8 @@ export function computeCompoundDuration(stageCount) {
 }
 
 // Discard announcement overlay timing
-export const DISCARD_APPEAR_MS = 300;
+export const DISCARD_APPEAR_MS = 1000;
 export const DISCARD_SHATTER_MS = 600;
-export const DISCARD_HOLD_MS = 500;
-export const DISCARD_FADE_MS = 300;
+export const DISCARD_HOLD_MS = 300;
+export const DISCARD_FADE_MS = 200;
 export const DISCARD_TOTAL_MS = DISCARD_APPEAR_MS + DISCARD_SHATTER_MS + DISCARD_HOLD_MS + DISCARD_FADE_MS; // 1700ms
