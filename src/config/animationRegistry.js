@@ -11,7 +11,6 @@ import HealEffect from '../components/animations/HealEffect.jsx';
 import StatBuffEffect from '../components/animations/StatBuffEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import CardRevealOverlay from '../components/animations/CardRevealOverlay.jsx';
-import CardDiscardOverlay from '../components/animations/CardDiscardOverlay.jsx';
 import ShipAbilityRevealOverlay from '../components/animations/ShipAbilityRevealOverlay.jsx';
 import PhaseAnnouncementOverlay from '../components/animations/PhaseAnnouncementOverlay.jsx';
 import DroneActionAnnouncementOverlay from '../components/animations/DroneActionAnnouncementOverlay.jsx';
@@ -36,7 +35,6 @@ export const ANIMATION_REGISTRY = {
   statChangeEffects: StatBuffEffect,
   cardVisuals: CardVisualEffect,
   cardReveals: CardRevealOverlay,
-  discardAnnouncements: CardDiscardOverlay,
   shipAbilityReveals: ShipAbilityRevealOverlay,
   phaseAnnouncements: PhaseAnnouncementOverlay,
   droneActionAnnouncements: DroneActionAnnouncementOverlay,
