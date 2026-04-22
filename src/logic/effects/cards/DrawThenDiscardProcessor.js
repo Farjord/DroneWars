@@ -100,7 +100,10 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
       this.logProcessComplete(effect, result, context);
       return result;
     } else {
-      // Human player needs UI selection
+      // Human player needs UI selection.
+      // The CARD_DISCARD animation event is NOT emitted here — the caller
+      // (processOptionalDiscard via DroneActionStrategy) emits it when the
+      // human confirms their discard selection.
       debugLog('EFFECT_PROCESSING', `[DRAW_THEN_DISCARD] Human player needs to select ${effect.value.discard} cards to discard`);
 
       const result = {

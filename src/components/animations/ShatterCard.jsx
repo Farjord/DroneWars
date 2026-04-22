@@ -18,12 +18,15 @@ const SHARD_IDS = [1, 2, 3, 4, 5, 6];
  * @param {number} shatterDurationMs - Animation duration in ms (default 600)
  */
 const ShatterCard = ({ card, triggered, shatterDurationMs = 600 }) => (
-  <div className="shatter-card-container">
+  // --shard-duration CSS custom property cascades into .shatter-shard-N--active rules
+  <div
+    className="shatter-card-container"
+    style={triggered ? { '--shard-duration': `${shatterDurationMs}ms` } : undefined}
+  >
     {SHARD_IDS.map((id) => (
       <div
         key={id}
         className={`shatter-shard shatter-shard-${id}${triggered ? ` shatter-shard-${id}--active` : ''}`}
-        style={triggered ? { animationDuration: `${shatterDurationMs}ms` } : undefined}
       >
         <ActionCard card={card} isPlayable={false} />
       </div>

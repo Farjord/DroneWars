@@ -64,9 +64,10 @@
   100% { transform: translate(90px, 100px) rotate(35deg); opacity: 0; }
 }
 
-.shatter-shard-1--active { animation: shatterShard1 600ms ease-in forwards; }
-.shatter-shard-2--active { animation: shatterShard2 600ms ease-in forwards; }
-.shatter-shard-3--active { animation: shatterShard3 600ms ease-in forwards; }
-.shatter-shard-4--active { animation: shatterShard4 600ms ease-in forwards; }
-.shatter-shard-5--active { animation: shatterShard5 600ms ease-in forwards; }
-.shatter-shard-6--active { animation: shatterShard6 600ms ease-in forwards; }
+/* --shard-duration is set via inline style on .shatter-card-container, default 600ms */
+.shatter-shard-1--active { animation: shatterShard1 var(--shard-duration, 600ms) ease-in forwards; }
+.shatter-shard-2--active { animation: shatterShard2 var(--shard-duration, 600ms) ease-in forwards; }
+.shatter-shard-3--active { animation: shatterShard3 var(--shard-duration, 600ms) ease-in forwards; }
+.shatter-shard-4--active { animation: shatterShard4 var(--shard-duration, 600ms) ease-in forwards; }
+.shatter-shard-5--active { animation: shatterShard5 var(--shard-duration, 600ms) ease-in forwards; }
+.shatter-shard-6--active { animation: shatterShard6 var(--shard-duration, 600ms) ease-in forwards; }

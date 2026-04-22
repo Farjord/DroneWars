@@ -70,9 +70,8 @@ describe('EffectChainProcessor — CARD_DISCARD ordering', () => {
     const statBuffIdx = eventTypes.findIndex(t => t === 'STAT_BUFF' || t === 'STAT_DEBUFF');
 
     expect(discardIdx).toBeGreaterThanOrEqual(0); // CARD_DISCARD event present
-    if (statBuffIdx !== -1) {
-      expect(discardIdx).toBeLessThan(statBuffIdx); // discard comes before buff
-    }
+    expect(statBuffIdx).toBeGreaterThanOrEqual(0); // STAT_BUFF event present
+    expect(discardIdx).toBeLessThan(statBuffIdx);  // discard overlay plays before buff animation
 
     const discardEvent = result.animationEvents[discardIdx];
     expect(discardEvent.cards).toHaveLength(1);
