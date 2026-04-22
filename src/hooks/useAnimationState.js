@@ -32,6 +32,7 @@ export const INITIAL_ANIMATION_STATE = {
   triggerFiredNotifications: [],
   movementBlockedNotifications: [],
   statusConsumptions: [],
+  discardAnnouncements: [],
 };
 
 function validateChannel(state, channel, actionType) {

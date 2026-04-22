@@ -8,7 +8,7 @@ const LANE_AREA_OFFSET = 200;
 
 /**
  * Registers card-related animation handlers on the AnimationManager.
- * Handlers: CARD_VISUAL_EFFECT, CARD_REVEAL_EFFECT, STATUS_CONSUMPTION_EFFECT
+ * Handlers: CARD_VISUAL_EFFECT, CARD_REVEAL_EFFECT, STATUS_CONSUMPTION_EFFECT, CARD_DISCARD_EFFECT
  */
 export function registerCardAnimations(animationManager, {
   gameStateManager,
@@ -130,6 +130,30 @@ export function registerCardAnimations(animationManager, {
       label: isLocal ? 'You Played' : 'Opponent Played',
       onComplete: () => {
         animationDispatch.remove('cardReveals', revealId);
+        onComplete?.();
+      }
+    });
+  });
+
+  animationManager.registerVisualHandler('CARD_DISCARD_EFFECT', (payload) => {
+    const { cards, discardingPlayerId, onComplete } = payload;
+    const localPlayerId = gameStateManager.getLocalPlayerId();
+
+    debugLog('ANIMATIONS', '🃏 CARD_DISCARD_EFFECT handler called:', {
+      cardCount: cards?.length,
+      discardingPlayerId,
+      localPlayerId
+    });
+
+    const discardId = `discard-${crypto.randomUUID()}`;
+
+    animationDispatch.add('discardAnnouncements', {
+      id: discardId,
+      cards,
+      discardingPlayerId,
+      localPlayerId,
+      onComplete: () => {
+        animationDispatch.remove('discardAnnouncements', discardId);
         onComplete?.();
       }
     });
