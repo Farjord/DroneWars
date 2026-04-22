@@ -13,6 +13,7 @@
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import DrawEffectProcessor from './DrawEffectProcessor.js';
+import { CARD_DISCARD } from '../../../config/animationTypes.js';
 
 /**
  * Processor for DRAW_THEN_DISCARD effect type
@@ -76,6 +77,7 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
       // AI auto-discards worst cards
       debugLog('EFFECT_PROCESSING', `[DRAW_THEN_DISCARD] AI auto-discarding ${effect.value.discard} worst cards`);
 
+      const discardedCards = [];
       for (let i = 0; i < effect.value.discard; i++) {
         if (actingPlayerState.hand.length === 0) break;
 
@@ -85,11 +87,16 @@ class DrawThenDiscardProcessor extends BaseEffectProcessor {
         // Remove from hand and add to discard pile
         actingPlayerState.hand = actingPlayerState.hand.filter(c => c.instanceId !== cardToDiscard.instanceId);
         actingPlayerState.discardPile.push(cardToDiscard);
+        discardedCards.push(cardToDiscard);
 
         debugLog('EFFECT_PROCESSING', `[DRAW_THEN_DISCARD] AI discarded: ${cardToDiscard.name}`);
       }
 
-      const result = this.createResult(currentStates);
+      const animationEvents = discardedCards.length > 0
+        ? [{ type: CARD_DISCARD, cards: discardedCards, discardingPlayerId: actingPlayerId }]
+        : [];
+
+      const result = this.createResult(currentStates, animationEvents);
       this.logProcessComplete(effect, result, context);
       return result;
     } else {
