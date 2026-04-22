@@ -7,6 +7,7 @@
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { SeededRandom } from '../../../utils/seededRandom.js';
+import { CARD_DISCARD } from '../../../config/animationTypes.js';
 
 /**
  * DiscardEffectProcessor - Handles forced discard
@@ -63,6 +64,7 @@ class DiscardEffectProcessor extends BaseEffectProcessor {
     );
 
     // Randomly discard cards one at a time
+    const discardedCards = [];
     for (let i = 0; i < actualDiscardCount; i++) {
       // Select random index from remaining cards
       const randomIndex = rng.randomInt(0, newHand.length);
@@ -70,6 +72,7 @@ class DiscardEffectProcessor extends BaseEffectProcessor {
       // Remove card from hand and add to discard pile
       const discardedCard = newHand.splice(randomIndex, 1)[0];
       newDiscard.push(discardedCard);
+      discardedCards.push(discardedCard);
 
       debugLog('EFFECT_PROCESSING', `[DISCARD] ${discardedCard.name} discarded from ${targetPlayerId}'s hand`, {
         cardId: discardedCard.id,
@@ -97,7 +100,11 @@ class DiscardEffectProcessor extends BaseEffectProcessor {
     targetPlayerState.hand = newHand;
     targetPlayerState.discardPile = newDiscard;
 
-    const result = this.createResult(newPlayerStates);
+    const animationEvents = discardedCards.length > 0
+      ? [{ type: CARD_DISCARD, cards: discardedCards, discardingPlayerId: targetPlayerId }]
+      : [];
+
+    const result = this.createResult(newPlayerStates, animationEvents);
 
     this.logProcessComplete(effect, result, context);
 
